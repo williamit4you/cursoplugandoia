@@ -49,31 +49,67 @@ export async function getInstagramAccountId(pageId: string, accessToken: string)
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export async function publishInstagramStory(videoUrl: string, instagramId: string, accessToken: string) {
-  // Passo 1: Criar o contêiner de mídia (STORIES)
-  const createContainerUrl = `https://graph.facebook.com/v19.0/${instagramId}/media?media_type=STORIES&video_url=${encodeURIComponent(videoUrl)}&access_token=${accessToken}`;
-  const resContainer = await fetch(createContainerUrl, { method: 'POST' });
+
+export async function publishInstagramStory(
+  videoUrl: string,
+  instagramId: string,
+  accessToken: string,
+  onRetryLog?: (msg: string) => Promise<void>
+): Promise<string> {
+  // Passo 1: Criar o container de mídia (REELS suporta vídeo e vai para Stories)
+  const createUrl = `https://graph.facebook.com/v19.0/${instagramId}/media`;
+  const resContainer = await fetch(createUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      media_type: "REELS",
+      video_url: videoUrl,
+      access_token: accessToken,
+    }),
+  });
   const containerData = await resContainer.json();
-  
+
   if (containerData.error) {
-    throw new Error(containerData.error.message || 'Error creating IG Story Container');
+    throw new Error(containerData.error.message || "Erro criando container IG");
   }
 
   const creationId = containerData.id;
+  await onRetryLog?.(`✅ Container criado (ID: ${creationId})`);
 
-  // Passo 2: Aguardar o processamento da Meta (Vídeos exigem tempo de transcodificação)
-  console.log(`Container criado (ID: ${creationId}). Aguardando 10 segundos para processamento da Meta...`);
-  await sleep(10000);
+  // Passo 2: Polling do status até FINISHED (máx 10 tentativas × 6s = 60s)
+  const MAX_RETRIES = 10;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    await sleep(6000);
+    const statusRes = await fetch(
+      `https://graph.facebook.com/v19.0/${creationId}?fields=status_code&access_token=${accessToken}`
+    );
+    const statusData = await statusRes.json();
+    const statusCode = statusData.status_code;
 
-  // Passo 3: Publicar efetivamente
-  const publishUrl = `https://graph.facebook.com/v19.0/${instagramId}/media_publish?creation_id=${creationId}&access_token=${accessToken}`;
-  const resPublish = await fetch(publishUrl, { method: 'POST' });
-  const publishData = await resPublish.json();
+    await onRetryLog?.(`⏳ Tentativa ${attempt}/${MAX_RETRIES} — status: ${statusCode}`);
 
-  if (publishData.error) {
-     throw new Error(publishData.error.message || 'Error publishing IG Story');
+    if (statusCode === "FINISHED") break;
+    if (statusCode === "ERROR") {
+      throw new Error(`Meta falhou ao processar: ${JSON.stringify(statusData)}`);
+    }
+    if (attempt === MAX_RETRIES) {
+      throw new Error(`Timeout: container não ficou FINISHED em ${MAX_RETRIES} tentativas`);
+    }
   }
 
+  // Passo 3: Publicar
+  const publishRes = await fetch(`https://graph.facebook.com/v19.0/${instagramId}/media_publish`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ creation_id: creationId, access_token: accessToken }),
+  });
+  const publishData = await publishRes.json();
+
+  if (publishData.error) {
+    throw new Error(publishData.error.message || "Erro publicando IG Story");
+  }
+
+  await onRetryLog?.(`🚀 Publicado no Instagram! ID: ${publishData.id}`);
   return publishData.id;
 }
 

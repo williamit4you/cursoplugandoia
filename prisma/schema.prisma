@@ -66,6 +66,7 @@ model SocialPost {
   postedAt    DateTime?
   platform    String   @default("META")
   log         String?
+  thumbUrl    String?  // URL de thumbnail (MinIO)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -77,5 +78,13 @@ model Lead {
   email     String   @unique
   name      String?
   source    String?  // Ref do Post (Slug) para saber onde o lead foi captado
+  createdAt DateTime @default(now())
+}
+
+model PipelineLog {
+  id        String   @id @default(cuid())
+  step      String   // FETCH, AI, VIDEO, UPLOAD, INGEST, PEXELS, ERROR
+  message   String
+  level     String   @default("INFO") // INFO, SUCCESS, ERROR, WARN
   createdAt DateTime @default(now())
 }

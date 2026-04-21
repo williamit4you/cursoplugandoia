@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { Pool } from "pg"
-import { publishInstagramStory, publishFacebookVideoStory } from "@/lib/metaGraph"
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
+import { publishInstagramStory, publishFacebookVideoStory } from "@/lib/metaGraph";
 
-const connectionString = process.env.DATABASE_URL!
-const pool = new Pool({ connectionString })
-const adapter = new PrismaPg(pool)
-const prisma = new PrismaClient({ adapter })
+const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
+const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,64 +13,98 @@ export async function POST(req: NextRequest) {
     const { socialPostId, bypassTimeCheck } = body;
 
     const socialPost = await prisma.socialPost.findUnique({
-       where: { id: socialPostId }
+      where: { id: socialPostId },
     });
 
     if (!socialPost) {
-       return NextResponse.json({ error: "Social Post not found" }, { status: 404 });
+      return NextResponse.json({ error: "Social Post não encontrado" }, { status: 404 });
     }
 
     if (!bypassTimeCheck) {
       if (socialPost.status === "SCHEDULED" && socialPost.scheduledTo) {
-          const now = new Date();
-          if (socialPost.scheduledTo > now) {
-              return NextResponse.json({ error: "Cannot post yet. Please wait until scheduled time.", timeLimit: true }, { status: 400 });
-          }
+        const now = new Date();
+        if (socialPost.scheduledTo > now) {
+          return NextResponse.json(
+            { error: "Limite de tempo não atingido.", timeLimit: true },
+            { status: 400 }
+          );
+        }
       }
     }
 
     const settings = await prisma.integrationSettings.findUnique({
-       where: { platform: "META" }
+      where: { platform: "META" },
     });
 
-    if (!settings || !settings.accessToken || !settings.instagramId || !settings.pageId) {
-        return NextResponse.json({ error: "Meta settings missing. Configure them in the panel." }, { status: 400 });
+    if (!settings?.accessToken || !settings?.instagramId || !settings?.pageId) {
+      return NextResponse.json(
+        { error: "Configurações Meta ausentes. Configure no painel de integrações." },
+        { status: 400 }
+      );
     }
 
-    let igId = null;
-    let fbId = null;
-    let errors: string[] = [];
+    // Função que persiste cada log no banco para a UI consumir via polling
+    const logs: string[] = [];
+    const appendLog = async (msg: string) => {
+      const entry = `[${new Date().toLocaleTimeString("pt-BR")}] ${msg}`;
+      logs.push(entry);
+      await prisma.socialPost.update({
+        where: { id: socialPostId },
+        data: { status: "PUBLISHING", log: logs.join("\n") },
+      });
+    };
 
+    let igId: string | null = null;
+    let fbId: string | null = null;
+    const errors: string[] = [];
+
+    // Publicar no Instagram com polling + retry
     try {
-        igId = await publishInstagramStory(socialPost.videoUrl, settings.instagramId, settings.accessToken);
+      await appendLog("🚀 Iniciando publicação no Instagram...");
+      igId = await publishInstagramStory(
+        socialPost.videoUrl,
+        settings.instagramId,
+        settings.accessToken,
+        appendLog
+      );
     } catch (e: any) {
-        errors.push(`IG: ${e.message}`);
+      errors.push(`IG: ${e.message}`);
+      await appendLog(`❌ Erro IG: ${e.message}`);
     }
 
+    // Publicar no Facebook
     try {
-        fbId = await publishFacebookVideoStory(socialPost.videoUrl, settings.pageId, settings.accessToken);
+      await appendLog("🚀 Publicando no Facebook...");
+      fbId = await publishFacebookVideoStory(
+        socialPost.videoUrl,
+        settings.pageId,
+        settings.accessToken
+      );
+      await appendLog(`✅ Facebook publicado! ID: ${fbId}`);
     } catch (e: any) {
-        errors.push(`FB: ${e.message}`);
+      errors.push(`FB: ${e.message}`);
+      await appendLog(`❌ Erro FB: ${e.message}`);
     }
 
-    if (errors.length > 0) {
-         const errorLog = errors.join(" | ");
-         await prisma.socialPost.update({
-             where: { id: socialPostId },
-             data: { status: "FAILED", log: errorLog }
-         });
-         return NextResponse.json({ error: errorLog }, { status: 500 });
-    }
+    const finalStatus = errors.length === 0 ? "POSTED" : "FAILED";
 
     await prisma.socialPost.update({
-        where: { id: socialPostId },
-        data: { status: "POSTED", postedAt: new Date(), log: "Postado via Meta Graph API" }
+      where: { id: socialPostId },
+      data: {
+        status: finalStatus,
+        postedAt: finalStatus === "POSTED" ? new Date() : undefined,
+        log: logs.join("\n"),
+      },
     });
 
-    return NextResponse.json({ success: true, igId, fbId });
-
+    return NextResponse.json({
+      success: finalStatus === "POSTED",
+      igId,
+      fbId,
+      errors,
+    });
   } catch (error: any) {
     console.error("Publishing error:", error);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    return NextResponse.json({ error: "Erro interno no servidor" }, { status: 500 });
   }
 }

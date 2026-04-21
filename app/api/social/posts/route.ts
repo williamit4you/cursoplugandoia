@@ -10,11 +10,19 @@ const prisma = new PrismaClient({ adapter })
 
 export const dynamic = "force-dynamic";
 
-// Retorna todos os social posts ordernados por data 
+// Retorna posts (ou um único post por ?id=xxx)
 export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (id) {
+      const post = await prisma.socialPost.findUnique({ where: { id } });
+      return NextResponse.json(post || { error: "Not found" });
+    }
+
     const posts = await prisma.socialPost.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(posts);
   } catch (error) {
