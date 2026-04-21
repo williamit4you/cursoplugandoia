@@ -6,6 +6,14 @@ import { Box, Typography, Paper, TextField, Button, Switch, FormControlLabel, Al
 export default function IntegrationsPage() {
   const [webhookUrl, setWebhookUrl] = useState("");
   const [isActive, setIsActive] = useState(false);
+  
+  // Meta Settings
+  const [metaAppId, setMetaAppId] = useState("");
+  const [metaAppSecret, setMetaAppSecret] = useState("");
+  const [metaPageId, setMetaPageId] = useState("");
+  const [metaInstagramId, setMetaInstagramId] = useState("");
+  const [metaAccessToken, setMetaAccessToken] = useState("");
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
@@ -18,6 +26,15 @@ export default function IntegrationsPage() {
         if (n8n) {
           setWebhookUrl(n8n.webhookUrl || "");
           setIsActive(n8n.isActive);
+        }
+
+        const meta = data.find((d: any) => d.platform === "META");
+        if (meta) {
+          setMetaAppId(meta.appId || "");
+          setMetaAppSecret(meta.apiSecret || "");
+          setMetaPageId(meta.pageId || "");
+          setMetaInstagramId(meta.instagramId || "");
+          setMetaAccessToken(meta.accessToken || "");
         }
         setLoading(false);
       });
@@ -41,6 +58,33 @@ export default function IntegrationsPage() {
       setMsg({ type: "success", text: "Integração N8N configurada com sucesso!" });
     } catch(err) {
        setMsg({ type: "error", text: "Falha na conexão com o banco." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveMeta = async () => {
+    setSaving(true);
+    setMsg({ type: "", text: "" });
+    try {
+      const res = await fetch("/api/integrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: "META",
+          appId: metaAppId,
+          apiSecret: metaAppSecret,
+          pageId: metaPageId,
+          instagramId: metaInstagramId,
+          accessToken: metaAccessToken,
+          isActive: true
+        })
+      });
+
+      if (!res.ok) throw new Error("Erro ao salvar configurações da Meta.");
+      setMsg({ type: "success", text: "Configurações da Meta salvas com sucesso!" });
+    } catch(err: any) {
+       setMsg({ type: "error", text: err.message || "Falha ao salvar." });
     } finally {
       setSaving(false);
     }
@@ -101,6 +145,73 @@ export default function IntegrationsPage() {
 
         <Button variant="contained" onClick={handleSave} disabled={saving} sx={{ bgcolor: '#1a1a1a', textTransform: 'none' }}>
           {saving ? "Salvando..." : "Salvar Configuração Webhook"}
+        </Button>
+      </Paper>
+
+      <Paper sx={{ p: 4, borderRadius: 2, mt: 4, mb: 6 }}>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: "bold" }} color="#c00000">Configurações Meta (Facebook/Instagram)</Typography>
+          <Typography variant="body2" color="textSecondary">
+            Insira as credenciais do seu App no Facebook Developers para habilitar a postagem automática de Stories.
+          </Typography>
+        </Box>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 3 }}>
+          <TextField 
+            label="App ID"
+            fullWidth
+            variant="outlined"
+            size="small"
+            value={metaAppId}
+            onChange={(e) => setMetaAppId(e.target.value)}
+          />
+          <TextField 
+            label="App Secret"
+            fullWidth
+            variant="outlined"
+            size="small"
+            type="password"
+            value={metaAppSecret}
+            onChange={(e) => setMetaAppSecret(e.target.value)}
+          />
+        </Box>
+
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 3 }}>
+          <TextField 
+            label="Facebook Page ID"
+            fullWidth
+            variant="outlined"
+            size="small"
+            value={metaPageId}
+            onChange={(e) => setMetaPageId(e.target.value)}
+          />
+          <TextField 
+            label="Instagram Business Account ID"
+            fullWidth
+            variant="outlined"
+            size="small"
+            value={metaInstagramId}
+            onChange={(e) => setMetaInstagramId(e.target.value)}
+            helperText="Opcional se você usar o botão de busca automática (em breve)."
+          />
+        </Box>
+
+        <TextField 
+          label="User/Page Access Token (Long-lived)"
+          fullWidth
+          variant="outlined"
+          multiline
+          rows={3}
+          placeholder="EAA..."
+          value={metaAccessToken}
+          onChange={(e) => setMetaAccessToken(e.target.value)}
+          sx={{ mb: 3 }}
+        />
+
+        <Button variant="contained" onClick={handleSaveMeta} disabled={saving} sx={{ bgcolor: '#1a1a1a', textTransform: 'none' }}>
+          {saving ? "Salvando..." : "Salvar Configurações Meta"}
         </Button>
       </Paper>
     </Box>
