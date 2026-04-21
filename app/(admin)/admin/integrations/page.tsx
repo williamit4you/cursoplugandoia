@@ -50,7 +50,7 @@ export default function IntegrationsPage() {
 
   return (
     <Box sx={{ maxWidth: 800, mx: "auto", mt: 4 }}>
-      <Typography variant="h4" fontWeight="bold" sx={{ mb: 4 }}>Hub de Integrações</Typography>
+      <Typography variant="h4" sx={{ fontWeight: "bold", mb: 4 }}>Hub de Integrações</Typography>
 
       {msg.text && (
         <Alert severity={msg.type as any} sx={{ mb: 3 }}>{msg.text}</Alert>
