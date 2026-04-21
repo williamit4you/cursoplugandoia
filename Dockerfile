@@ -19,6 +19,29 @@ RUN \
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+
+# --- INÍCIO DA CORREÇÃO ---
+# Captura os argumentos passados pelo docker buildx (Easypanel) e os transforma em 
+# variáveis de ambiente para que o Next.js e o Prisma possam usá-los durante o build.
+ARG DATABASE_URL
+ENV DATABASE_URL=$DATABASE_URL
+
+ARG NEXTAUTH_SECRET
+ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
+
+ARG NEXTAUTH_URL
+ENV NEXTAUTH_URL=$NEXTAUTH_URL
+
+ARG FASTAPI_URL
+ENV FASTAPI_URL=$FASTAPI_URL
+
+ARG ADMIN_EMAIL
+ENV ADMIN_EMAIL=$ADMIN_EMAIL
+
+ARG ADMIN_PASSWORD
+ENV ADMIN_PASSWORD=$ADMIN_PASSWORD
+# --- FIM DA CORREÇÃO ---
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
