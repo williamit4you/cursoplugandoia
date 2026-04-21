@@ -67,6 +67,7 @@ model SocialPost {
   platform    String   @default("META")
   log         String?
   thumbUrl    String?  // URL de thumbnail (MinIO)
+  metaContainerId String? // ID do container criado na Meta (para publicação async)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

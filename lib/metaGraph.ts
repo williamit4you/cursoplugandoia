@@ -50,15 +50,13 @@ export async function getInstagramAccountId(pageId: string, accessToken: string)
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 
-export async function publishInstagramStory(
+// ─── FASE 1: Cria o container e retorna o ID imediatamente ───────────────────
+export async function createInstagramContainer(
   videoUrl: string,
   instagramId: string,
-  accessToken: string,
-  onRetryLog?: (msg: string) => Promise<void>
+  accessToken: string
 ): Promise<string> {
-  // Passo 1: Criar o container de mídia (REELS suporta vídeo e vai para Stories)
-  const createUrl = `https://graph.facebook.com/v19.0/${instagramId}/media`;
-  const resContainer = await fetch(createUrl, {
+  const res = await fetch(`https://graph.facebook.com/v19.0/${instagramId}/media`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -67,51 +65,64 @@ export async function publishInstagramStory(
       access_token: accessToken,
     }),
   });
-  const containerData = await resContainer.json();
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "Erro criando container IG");
+  return data.id; // creationId
+}
 
-  if (containerData.error) {
-    throw new Error(containerData.error.message || "Erro criando container IG");
+// ─── FASE 2: Checa o status e publica quando a Meta terminar de processar ────
+// Retorna: { status: "FINISHED" | "IN_PROGRESS" | "ERROR", igPostId?: string }
+export async function checkAndPublishInstagramContainer(
+  creationId: string,
+  instagramId: string,
+  accessToken: string
+): Promise<{ status: string; igPostId?: string }> {
+  // Checa o status atual
+  const statusRes = await fetch(
+    `https://graph.facebook.com/v19.0/${creationId}?fields=status_code&access_token=${accessToken}`
+  );
+  const statusData = await statusRes.json();
+  const statusCode: string = statusData.status_code;
+
+  if (statusCode === "ERROR") {
+    throw new Error(`Meta processamento falhou: ${JSON.stringify(statusData)}`);
   }
 
-  const creationId = containerData.id;
-  await onRetryLog?.(`✅ Container criado (ID: ${creationId})`);
-
-  // Passo 2: Polling do status até FINISHED (máx 10 tentativas × 6s = 60s)
-  const MAX_RETRIES = 10;
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    await sleep(6000);
-    const statusRes = await fetch(
-      `https://graph.facebook.com/v19.0/${creationId}?fields=status_code&access_token=${accessToken}`
-    );
-    const statusData = await statusRes.json();
-    const statusCode = statusData.status_code;
-
-    await onRetryLog?.(`⏳ Tentativa ${attempt}/${MAX_RETRIES} — status: ${statusCode}`);
-
-    if (statusCode === "FINISHED") break;
-    if (statusCode === "ERROR") {
-      throw new Error(`Meta falhou ao processar: ${JSON.stringify(statusData)}`);
-    }
-    if (attempt === MAX_RETRIES) {
-      throw new Error(`Timeout: container não ficou FINISHED em ${MAX_RETRIES} tentativas`);
-    }
+  if (statusCode !== "FINISHED") {
+    // Ainda processando — a UI vai tentar de novo
+    return { status: statusCode };
   }
 
-  // Passo 3: Publicar
+  // FINISHED → publicar agora
   const publishRes = await fetch(`https://graph.facebook.com/v19.0/${instagramId}/media_publish`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ creation_id: creationId, access_token: accessToken }),
   });
   const publishData = await publishRes.json();
+  if (publishData.error) throw new Error(publishData.error.message || "Erro publicando IG Story");
 
-  if (publishData.error) {
-    throw new Error(publishData.error.message || "Erro publicando IG Story");
-  }
-
-  await onRetryLog?.(`🚀 Publicado no Instagram! ID: ${publishData.id}`);
-  return publishData.id;
+  return { status: "FINISHED", igPostId: publishData.id };
 }
+
+// Mantido por compatibilidade — uso interno apenas
+export async function publishInstagramStory(
+  videoUrl: string,
+  instagramId: string,
+  accessToken: string,
+  onRetryLog?: (msg: string) => Promise<void>
+): Promise<string> {
+  const creationId = await createInstagramContainer(videoUrl, instagramId, accessToken);
+  await onRetryLog?.(`✅ Container criado (ID: ${creationId})`);
+
+  const result = await checkAndPublishInstagramContainer(creationId, instagramId, accessToken);
+  if (result.igPostId) {
+    await onRetryLog?.(`🚀 Publicado! ID: ${result.igPostId}`);
+    return result.igPostId;
+  }
+  throw new Error("Publicação não concluída");
+}
+
 
 export async function publishFacebookVideoStory(videoUrl: string, pageId: string, accessToken: string) {
   // A API de páginas permite postar Reels. 
