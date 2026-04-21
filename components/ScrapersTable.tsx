@@ -104,6 +104,9 @@ export default function ScrapersTable({ initialData }: { initialData: any[] }) {
   };
 
   const handleTrigger = async () => {
+    // Timestamp ANTES do trigger — SSE só vai mostrar logs a partir daqui
+    const sinceTs = new Date().toISOString();
+
     // Reset state
     setPipelineLogs([]);
     setIsRunning(true);
@@ -120,8 +123,8 @@ export default function ScrapersTable({ initialData }: { initialData: any[] }) {
     // Fecha SSE anterior se existir
     evtRef.current?.close();
 
-    // Conecta ao SSE
-    const evtSource = new EventSource("/api/pipeline/status");
+    // Conecta ao SSE passando o timestamp para filtrar apenas logs novos
+    const evtSource = new EventSource(`/api/pipeline/status?since=${encodeURIComponent(sinceTs)}`);
     evtRef.current = evtSource;
 
     evtSource.onmessage = (e) => {

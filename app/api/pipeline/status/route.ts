@@ -8,9 +8,12 @@ export const dynamic = "force-dynamic";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
-// GET /api/pipeline/status — SSE stream de logs em tempo real
+// GET /api/pipeline/status?since=ISO — SSE stream de logs em tempo real
+// O parâmetro ?since= filtra logs criados APÓS aquele timestamp,
+// evitando que logs antigos de execuções anteriores apareçam no monitor.
 export async function GET(req: NextRequest) {
-  let lastId = "";
+  const sinceParam = req.nextUrl.searchParams.get("since");
+  const sinceDate = sinceParam ? new Date(sinceParam) : null;
 
   const encoder = new TextEncoder();
 
@@ -20,9 +23,22 @@ export async function GET(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       };
 
+      // Inicializa lastId com o ID do log mais recente ANTES do since
+      // para que o polling só busque logs NOVOS a partir do clique do botão
+      let lastId = "";
+      if (sinceDate) {
+        try {
+          const latestBefore = await prisma.pipelineLog.findFirst({
+            where: { createdAt: { lt: sinceDate } },
+            orderBy: { createdAt: "desc" },
+          });
+          if (latestBefore) lastId = latestBefore.id;
+        } catch {}
+      }
+
       const poll = async () => {
         try {
-          const where = lastId ? { id: { gt: lastId } } : {};
+          const where: any = lastId ? { id: { gt: lastId } } : {};
           const logs = await prisma.pipelineLog.findMany({
             where,
             orderBy: { createdAt: "asc" },
@@ -32,7 +48,7 @@ export async function GET(req: NextRequest) {
             lastId = logs[logs.length - 1].id;
             logs.forEach((l: { id: string; step: string; message: string; level: string; createdAt: Date }) => send(l));
           }
-        } catch (e) {
+        } catch {
           // Silencia erros de DB para não quebrar o stream
         }
       };
@@ -53,7 +69,7 @@ export async function GET(req: NextRequest) {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
-      "X-Accel-Buffering": "no", // Para Nginx/proxy não bufferizar
+      "X-Accel-Buffering": "no",
     },
   });
 }
