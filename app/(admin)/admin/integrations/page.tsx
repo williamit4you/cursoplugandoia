@@ -13,6 +13,8 @@ export default function IntegrationsPage() {
   const [metaPageId, setMetaPageId] = useState("");
   const [metaInstagramId, setMetaInstagramId] = useState("");
   const [metaAccessToken, setMetaAccessToken] = useState("");
+  const [metaAccounts, setMetaAccounts] = useState<any[]>([]);
+  const [discovering, setDiscovering] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -87,6 +89,35 @@ export default function IntegrationsPage() {
        setMsg({ type: "error", text: err.message || "Falha ao salvar." });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDiscoverMeta = async () => {
+    if (!metaAccessToken) {
+        setMsg({ type: "error", text: "Insira o Access Token primeiro para descobrir os IDs." });
+        return;
+    }
+    setDiscovering(true);
+    setMsg({ type: "", text: "" });
+    try {
+      const res = await fetch("/api/social/debug", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken: metaAccessToken })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      
+      setMetaAccounts(data.accounts || []);
+      if (data.accounts?.length > 0) {
+          setMsg({ type: "success", text: `Encontradas ${data.accounts.length} contas vinculadas ao seu token!` });
+      } else {
+          setMsg({ type: "warning", text: "Nenhuma página de Facebook encontrada para este token." });
+      }
+    } catch (err: any) {
+       setMsg({ type: "error", text: err.message || "Erro na descoberta." });
+    } finally {
+      setDiscovering(false);
     }
   };
 
@@ -207,12 +238,42 @@ export default function IntegrationsPage() {
           placeholder="EAA..."
           value={metaAccessToken}
           onChange={(e) => setMetaAccessToken(e.target.value)}
-          sx={{ mb: 3 }}
+          sx={{ mb: 2 }}
         />
 
-        <Button variant="contained" onClick={handleSaveMeta} disabled={saving} sx={{ bgcolor: '#1a1a1a', textTransform: 'none' }}>
-          {saving ? "Salvando..." : "Salvar Configurações Meta"}
+        <Button 
+          variant="outlined" 
+          onClick={handleDiscoverMeta} 
+          disabled={discovering || !metaAccessToken}
+          sx={{ mb: 3, textTransform: 'none' }}
+        >
+          {discovering ? "Buscando..." : "🔍 Descobrir IDs Automaticamente"}
         </Button>
+
+        {metaAccounts.length > 0 && (
+          <Box sx={{ mb: 3, p: 2, bgcolor: '#f0f4f8', borderRadius: 2, border: '1px solid #d1d5db' }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>Contas Encontradas:</Typography>
+            {metaAccounts.map((acc, i) => (
+                <Box key={i} sx={{ mb: 1.5, pb: 1, borderBottom: i !== metaAccounts.length - 1 ? '1px dashed #ccc' : 'none' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1a1a1a' }}>{acc.name}</Typography>
+                    <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
+                        <Box sx={{ cursor: 'pointer', '&:hover': { color: '#c00000' } }} onClick={() => setMetaPageId(acc.pageId)}>
+                            <Typography variant="caption" color="primary">Page ID: {acc.pageId} (clique para usar)</Typography>
+                        </Box>
+                        <Box sx={{ cursor: 'pointer', '&:hover': { color: '#c00000' } }} onClick={() => setMetaInstagramId(acc.instagramId)}>
+                            <Typography variant="caption" color="secondary">Insta ID: {acc.instagramId} (clique para usar)</Typography>
+                        </Box>
+                    </Box>
+                </Box>
+            ))}
+          </Box>
+        )}
+
+        <Box>
+            <Button variant="contained" onClick={handleSaveMeta} disabled={saving} sx={{ bgcolor: '#1a1a1a', textTransform: 'none' }}>
+                {saving ? "Salvando..." : "Salvar Configurações Meta"}
+            </Button>
+        </Box>
       </Paper>
     </Box>
   );

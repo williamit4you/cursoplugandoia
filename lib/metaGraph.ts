@@ -1,4 +1,12 @@
 // lib/metaGraph.ts
+export async function getMetaAccounts(accessToken: string) {
+  const res = await fetch(`https://graph.facebook.com/v19.0/me/accounts?fields=name,id,access_token,instagram_business_account&access_token=${accessToken}`);
+  const data = await res.json();
+  if (data.error) {
+    throw new Error(data.error.message || 'Failed to list Meta accounts');
+  }
+  return data.data || [];
+}
 export async function getInstagramAccountId(pageId: string, accessToken: string) {
   const res = await fetch(`https://graph.facebook.com/v19.0/${pageId}?fields=instagram_business_account&access_token=${accessToken}`);
   const data = await res.json();
