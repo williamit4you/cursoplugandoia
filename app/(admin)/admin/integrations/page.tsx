@@ -59,7 +59,7 @@ export default function IntegrationsPage() {
       <Paper sx={{ p: 4, borderRadius: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
           <Box>
-            <Typography variant="h6" fontWeight="bold" color="#c00000">Motor N8N / Make</Typography>
+            <Typography variant="h6" sx={{ fontWeight: "bold" }} color="#c00000">Motor N8N / Make</Typography>
             <Typography variant="body2" color="textSecondary">
               Configure a URL de Webhook para escutar quando um artigo for PUBLISHED no Portal.
             </Typography>
@@ -84,7 +84,7 @@ export default function IntegrationsPage() {
         />
 
         <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 2, mb: 3 }}>
-          <Typography variant="subtitle2" fontWeight="bold">Payload de Disparo JSON:</Typography>
+          <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>Payload de Disparo JSON:</Typography>
           <Typography variant="caption" component="pre" sx={{ mt: 1, color: '#333', overflowX: 'auto' }}>
 {`{
   "event": "POST_PUBLISHED",

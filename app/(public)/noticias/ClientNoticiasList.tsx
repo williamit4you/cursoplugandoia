@@ -15,7 +15,7 @@ export default function ClientNoticiasList({ posts }: { posts: any[] }) {
   if (posts.length === 0) {
     return (
       <Container maxWidth="lg" sx={{ py: 6, minHeight: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Typography textAlign="center" color="textSecondary" variant="h6">
+        <Typography sx={{ p: 4, fontSize: '0.9rem' }}>
           Nenhuma notícia foi publicada no momento. O site está limpo!
         </Typography>
       </Container>
@@ -25,35 +25,35 @@ export default function ClientNoticiasList({ posts }: { posts: any[] }) {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 5 }}>
-        
+
         {/* COLUNA PRINCIPAL - MANCHETES */}
         <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 66.66%' }, width: { xs: '100%', md: '66.66%' }, overflow: 'hidden' }}>
           {mainPosts.map((post, index) => (
             <React.Fragment key={post.id}>
-              <Box sx={{ 
-                display: 'flex', 
+              <Box sx={{
+                display: 'flex',
                 flexDirection: { xs: 'column', sm: 'row' },
-                gap: 3, 
-                mb: 4, 
-                pb: 4, 
+                gap: 3,
+                mb: 4,
+                pb: 4,
                 borderBottom: index !== mainPosts.length - 1 ? '1px solid #e0e0e0' : 'none',
                 "&:hover .post-title": { textDecoration: "underline" }
               }}>
                 {/* Imagem Editorial */}
-                <Box 
-                  component={Link} 
-                  href={`/noticias/${post.slug}`} 
-                  sx={{ 
-                    flexShrink: 0, 
-                    width: { xs: '100%', sm: 340 }, 
-                    height: { xs: 220, sm: 200 }, 
-                    overflow: 'hidden', 
-                    borderRadius: 2, 
-                    bgcolor: '#f5f5f5', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    textDecoration: 'none' 
+                <Box
+                  component={Link}
+                  href={`/noticias/${post.slug}`}
+                  sx={{
+                    flexShrink: 0,
+                    width: { xs: '100%', sm: 340 },
+                    height: { xs: 220, sm: 200 },
+                    overflow: 'hidden',
+                    borderRadius: 2,
+                    bgcolor: '#f5f5f5',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textDecoration: 'none'
                   }}
                 >
                   {post.coverImage ? (
@@ -68,20 +68,20 @@ export default function ClientNoticiasList({ posts }: { posts: any[] }) {
                   <Typography component="span" sx={{ color: '#555', fontSize: '0.85rem', fontWeight: 'bold', mb: 0.5, textTransform: 'uppercase' }}>
                     TECNOLOGIA E CONTEÚDO
                   </Typography>
-                  
+
                   <Link href={`/noticias/${post.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <Typography component="h2" className="post-title" sx={{ 
-                      color: '#c00000', 
-                      fontSize: { xs: '1.5rem', sm: '1.65rem' }, 
-                      fontWeight: 900, 
-                      lineHeight: 1.1, 
+                    <Typography component="h2" className="post-title" sx={{
+                      color: '#c00000',
+                      fontSize: { xs: '1.5rem', sm: '1.65rem' },
+                      fontWeight: 900,
+                      lineHeight: 1.1,
                       mb: 1.5,
                       letterSpacing: '-0.5px'
                     }}>
                       {post.title}
                     </Typography>
                   </Link>
-                  
+
                   {post.summary && (
                     <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'flex-start' }}>
                       <Box component="span" sx={{ color: '#c00000', fontSize: '1.2rem', lineHeight: 1 }}>•</Box>
@@ -99,10 +99,10 @@ export default function ClientNoticiasList({ posts }: { posts: any[] }) {
 
               {/* PROPAGANDA CURSO MEIO DAS NOTÍCIAS */}
               {index === 1 && (
-                <Box 
+                <Box
                   component={Link}
                   href="/"
-                  sx={{ 
+                  sx={{
                     display: 'block',
                     textDecoration: 'none',
                     background: 'linear-gradient(90deg, #111827 0%, #1f2937 100%)',
@@ -145,48 +145,48 @@ export default function ClientNoticiasList({ posts }: { posts: any[] }) {
                   Viu isso?
                 </Typography>
               </Box>
-              
+
               <Box sx={{ p: 0 }}>
                 {sidePosts.length === 0 && posts.length > 0 && (
-                   <Typography textAlign="center" color="textSecondary" sx={{ p: 4, fontSize: '0.9rem' }}>
-                     Mais notícias exclusivas aparecerão logo aqui...
-                   </Typography>
+                  <Typography sx={{ p: 4, fontSize: '0.9rem' }}>
+                    Mais notícias exclusivas aparecerão logo aqui...
+                  </Typography>
                 )}
-                
+
                 {sidePosts.map((post, index) => (
-                  <Box 
-                    key={post.id} 
+                  <Box
+                    key={post.id}
                     component={Link}
                     href={`/noticias/${post.slug}`}
-                    sx={{ 
-                      display: 'flex', 
+                    sx={{
+                      display: 'flex',
                       alignItems: 'center',
-                      gap: 2, 
-                      p: 2, 
+                      gap: 2,
+                      p: 2,
                       borderBottom: index !== sidePosts.length - 1 ? '1px solid #e0e0e0' : 'none',
                       textDecoration: 'none',
                       '&:hover .side-title': { textDecoration: 'underline' }
                     }}
                   >
-                    <Typography component="h3" className="side-title" sx={{ 
-                      flexGrow: 1, 
-                      color: '#c00000', 
-                      fontWeight: 800, 
-                      fontSize: '1rem', 
-                      lineHeight: 1.2 
+                    <Typography component="h3" className="side-title" sx={{
+                      flexGrow: 1,
+                      color: '#c00000',
+                      fontWeight: 800,
+                      fontSize: '1rem',
+                      lineHeight: 1.2
                     }}>
                       {post.title}
                     </Typography>
 
-                    <Box sx={{ 
-                      flexShrink: 0, 
-                      width: 75, 
-                      height: 75, 
-                      borderRadius: 2, 
-                      overflow: 'hidden', 
+                    <Box sx={{
+                      flexShrink: 0,
+                      width: 75,
+                      height: 75,
+                      borderRadius: 2,
+                      overflow: 'hidden',
                       bgcolor: '#f5f5f5',
-                      display: 'flex', 
-                      alignItems: 'center', 
+                      display: 'flex',
+                      alignItems: 'center',
                       justifyContent: 'center'
                     }}>
                       {post.coverImage ? (
@@ -201,12 +201,12 @@ export default function ClientNoticiasList({ posts }: { posts: any[] }) {
             </Box>
 
             {/* WIDGET CURSO (LATERAL) */}
-            <Box 
+            <Box
               component={Link}
               href="/"
-              sx={{ 
-                border: '1px solid #e0e0e0', 
-                borderRadius: 2, 
+              sx={{
+                border: '1px solid #e0e0e0',
+                borderRadius: 2,
                 bgcolor: 'white',
                 overflow: 'hidden',
                 textDecoration: 'none',

@@ -209,9 +209,11 @@ export default function LinkedInEditor({
           fullWidth
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          InputProps={{
-            disableUnderline: true,
-            style: { fontSize: "3rem", fontWeight: "bold", color: "#191919", lineHeight: 1.2, paddingBottom: 24 }
+          slotProps={{
+            input: {
+              disableUnderline: true,
+              style: { fontSize: "3rem", fontWeight: "bold", color: "#191919", lineHeight: 1.2, paddingBottom: 24 }
+            }
           }}
         />
 

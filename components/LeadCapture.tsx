@@ -29,7 +29,7 @@ export default function LeadCapture({ source }: { source: string }) {
   if (status === "success") {
     return (
       <Paper elevation={0} sx={{ p: 4, my: 6, textAlign: "center", bgcolor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 2 }}>
-        <Typography variant="h6" color="success.main" fontWeight="bold">Parabéns! Cadastro Realizado.</Typography>
+        <Typography variant="h6" color="success.main" sx={{ fontWeight: "bold" }}>Parabéns! Cadastro Realizado.</Typography>
         <Typography variant="body2" sx={{ mt: 1, color: "text.secondary" }}>Em breve enviaremos os materiais e novidades de IA diretamente para o seu e-mail.</Typography>
       </Paper>
     );
@@ -37,7 +37,7 @@ export default function LeadCapture({ source }: { source: string }) {
 
   return (
     <Paper elevation={3} sx={{ p: { xs: 3, sm: 5 }, my: 6, borderRadius: 2, borderTop: "6px solid #1976d2", bgcolor: "white" }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>Quer dominar IA e Criação de Sistemas?</Typography>
+      <Typography variant="h5" sx={{ fontWeight: "bold" }} gutterBottom>Quer dominar IA e Criação de Sistemas?</Typography>
       <Typography variant="body1" color="textSecondary" sx={{ mb: 4 }}>
         Deixe seu e-mail abaixo para garantir acesso a tutoriais exclusivos, novos conteúdos do projeto e nossos lançamentos em primeira mão.
       </Typography>

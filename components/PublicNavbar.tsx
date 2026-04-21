@@ -6,22 +6,22 @@ import Link from "next/link";
 export default function PublicNavbar({ children }: { children: React.ReactNode }) {
   return (
     <Box sx={{ flexGrow: 1, backgroundColor: '#f9fafb' }}>
-      <Box sx={{ 
-        width: '100%', 
-        bgcolor: '#c00000', 
+      <Box sx={{
+        width: '100%',
+        bgcolor: '#c00000',
         height: 6
       }} />
-      <Box sx={{ 
-        bgcolor: 'white', 
-        py: 2, 
-        px: 3, 
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)', 
-        display: 'flex', 
+      <Box sx={{
+        bgcolor: 'white',
+        py: 2,
+        px: 3,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        display: 'flex',
         justifyContent: 'center',
         borderBottom: '1px solid #eaeaea'
       }}>
         <Link href="/noticias" style={{ textDecoration: 'none' }}>
-          <Typography variant="h4" component="h1" fontWeight="900" sx={{ color: '#c00000', letterSpacing: '-1.5px', fontFamily: '"Georgia", serif' }}>
+          <Typography variant="h4" component="h1" sx={{ color: '#c00000', letterSpacing: '-1.5px', fontFamily: '"Georgia", serif' }}>
             Portal Inteligente
           </Typography>
         </Link>

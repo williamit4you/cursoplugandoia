@@ -5,7 +5,7 @@ import { Grid, Card, CardContent, Typography } from "@mui/material";
 export default function DashboardMetrics({ stats }: { stats: { posts: number, views: number, leads: number } }) {
   return (
     <Grid container spacing={3}>
-      <Grid item xs={12} sm={4}>
+      <Grid size={{ xs: 12, sm: 4 }}>
         <Card elevation={2}>
           <CardContent>
             <Typography color="textSecondary" gutterBottom>Notícias Publicadas</Typography>
@@ -13,7 +13,7 @@ export default function DashboardMetrics({ stats }: { stats: { posts: number, vi
           </CardContent>
         </Card>
       </Grid>
-      <Grid item xs={12} sm={4}>
+      <Grid size={{ xs: 12, sm: 4 }}>
         <Card elevation={2}>
           <CardContent>
             <Typography color="textSecondary" gutterBottom>Total de Visualizações</Typography>
@@ -21,7 +21,7 @@ export default function DashboardMetrics({ stats }: { stats: { posts: number, vi
           </CardContent>
         </Card>
       </Grid>
-      <Grid item xs={12} sm={4}>
+      <Grid size={{ xs: 12, sm: 4 }}>
         <Card elevation={2}>
           <CardContent>
             <Typography color="textSecondary" gutterBottom>Leads Capturados</Typography>
