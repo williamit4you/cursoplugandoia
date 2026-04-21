@@ -255,14 +255,20 @@ export default function IntegrationsPage() {
             <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>Contas Encontradas:</Typography>
             {metaAccounts.map((acc, i) => (
                 <Box key={i} sx={{ mb: 1.5, pb: 1, borderBottom: i !== metaAccounts.length - 1 ? '1px dashed #ccc' : 'none' }}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1a1a1a' }}>{acc.name}</Typography>
-                    <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
-                        <Box sx={{ cursor: 'pointer', '&:hover': { color: '#c00000' } }} onClick={() => setMetaPageId(acc.pageId)}>
-                            <Typography variant="caption" color="primary">Page ID: {acc.pageId} (clique para usar)</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: acc.type === 'PAGE' ? '#c00000' : 'text.secondary' }}>
+                      {acc.name} {acc.type === 'PAGE' ? '✅ RECOMENDADO' : ''}
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
+                        <Box sx={{ cursor: 'pointer', '&:hover': { opacity: 0.7 } }} onClick={() => setMetaPageId(acc.pageId)}>
+                            <Typography variant="caption" color="primary">ID da Página: {acc.pageId} (clique p/ usar)</Typography>
                         </Box>
-                        <Box sx={{ cursor: 'pointer', '&:hover': { color: '#c00000' } }} onClick={() => setMetaInstagramId(acc.instagramId)}>
-                            <Typography variant="caption" color="secondary">Insta ID: {acc.instagramId} (clique para usar)</Typography>
-                        </Box>
+                        {acc.instagramId !== "N/A" ? (
+                          <Box sx={{ cursor: 'pointer', '&:hover': { opacity: 0.7 } }} onClick={() => setMetaInstagramId(acc.instagramId)}>
+                              <Typography variant="caption" color="secondary">ID do Instagram: {acc.instagramId} (clique p/ usar)</Typography>
+                          </Box>
+                        ) : (
+                          <Typography variant="caption" color="text.disabled">Sem Instagram vinculado</Typography>
+                        )}
                     </Box>
                 </Box>
             ))}

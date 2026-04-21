@@ -1,11 +1,42 @@
 // lib/metaGraph.ts
 export async function getMetaAccounts(accessToken: string) {
-  const res = await fetch(`https://graph.facebook.com/v19.0/me/accounts?fields=name,id,access_token,instagram_business_account&access_token=${accessToken}`);
-  const data = await res.json();
-  if (data.error) {
-    throw new Error(data.error.message || 'Failed to list Meta accounts');
+  try {
+    // 1. Tenta listar as páginas (Contas de Desenvolvedor / User Token)
+    const res = await fetch(`https://graph.facebook.com/v19.0/me/accounts?fields=name,id,instagram_business_account&access_token=${accessToken}`);
+    const data = await res.json();
+    
+    let accounts: any[] = [];
+
+    if (data.data && data.data.length > 0) {
+        accounts = data.data.map((acc: any) => ({
+            name: `${acc.name} (Página)`,
+            pageId: acc.id,
+            instagramId: acc.instagram_business_account?.id || "N/A",
+            type: "PAGE"
+        }));
+    }
+
+    // 2. Tenta pegar a própria conta (Caso seja um Page Token direto ou User ID)
+    const resMe = await fetch(`https://graph.facebook.com/v19.0/me?fields=name,id,instagram_business_account&access_token=${accessToken}`);
+    const dataMe = await resMe.json();
+    
+    if (!dataMe.error) {
+        accounts.push({
+            name: `${dataMe.name} (Perfil/Token Ativo)`,
+            pageId: dataMe.id,
+            instagramId: dataMe.instagram_business_account?.id || "N/A",
+            type: "ME"
+        });
+    }
+
+    if (accounts.length === 0 && data.error) {
+        throw new Error(data.error.message);
+    }
+
+    return accounts;
+  } catch (err: any) {
+    throw new Error(err.message || 'Meta API Error');
   }
-  return data.data || [];
 }
 export async function getInstagramAccountId(pageId: string, accessToken: string) {
   const res = await fetch(`https://graph.facebook.com/v19.0/${pageId}?fields=instagram_business_account&access_token=${accessToken}`);
