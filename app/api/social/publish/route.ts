@@ -41,21 +41,22 @@ export async function POST(req: NextRequest) {
 
     let igId = null;
     let fbId = null;
-    let errorLog = null;
+    let errors: string[] = [];
 
     try {
         igId = await publishInstagramStory(socialPost.videoUrl, settings.instagramId, settings.accessToken);
     } catch (e: any) {
-        errorLog = e.message;
+        errors.push(`IG: ${e.message}`);
     }
 
     try {
         fbId = await publishFacebookVideoStory(socialPost.videoUrl, settings.pageId, settings.accessToken);
     } catch (e: any) {
-        errorLog += ` | FB Error: ${e.message}`;
+        errors.push(`FB: ${e.message}`);
     }
 
-    if (errorLog) {
+    if (errors.length > 0) {
+         const errorLog = errors.join(" | ");
          await prisma.socialPost.update({
              where: { id: socialPostId },
              data: { status: "FAILED", log: errorLog }

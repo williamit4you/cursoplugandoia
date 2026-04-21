@@ -47,6 +47,8 @@ export async function getInstagramAccountId(pageId: string, accessToken: string)
   return data.instagram_business_account?.id || null;
 }
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export async function publishInstagramStory(videoUrl: string, instagramId: string, accessToken: string) {
   // Passo 1: Criar o contêiner de mídia (STORIES)
   const createContainerUrl = `https://graph.facebook.com/v19.0/${instagramId}/media?media_type=STORIES&video_url=${encodeURIComponent(videoUrl)}&access_token=${accessToken}`;
@@ -59,7 +61,11 @@ export async function publishInstagramStory(videoUrl: string, instagramId: strin
 
   const creationId = containerData.id;
 
-  // Passo 2: Publicar efetivamente
+  // Passo 2: Aguardar o processamento da Meta (Vídeos exigem tempo de transcodificação)
+  console.log(`Container criado (ID: ${creationId}). Aguardando 10 segundos para processamento da Meta...`);
+  await sleep(10000);
+
+  // Passo 3: Publicar efetivamente
   const publishUrl = `https://graph.facebook.com/v19.0/${instagramId}/media_publish?creation_id=${creationId}&access_token=${accessToken}`;
   const resPublish = await fetch(publishUrl, { method: 'POST' });
   const publishData = await resPublish.json();

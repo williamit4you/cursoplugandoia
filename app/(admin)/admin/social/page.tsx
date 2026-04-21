@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 export default function SocialPostsDashboard() {
   const [posts, setPosts] = useState<any[]>([]);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const fetchPosts = async () => {
     // Para simplificar, vou supor que criei um GET api/social/posts/route.ts
@@ -20,6 +21,7 @@ export default function SocialPostsDashboard() {
   }, []);
 
   const handlePostNow = async (id: string, bypass: boolean = false) => {
+    setLoadingId(id);
     try {
       const res = await fetch("/api/social/publish", {
         method: "POST",
@@ -45,6 +47,8 @@ export default function SocialPostsDashboard() {
       fetchPosts();
     } catch (e) {
       toast.error("Erro desconhecido");
+    } finally {
+      setLoadingId(null);
     }
   };
 
@@ -78,9 +82,14 @@ export default function SocialPostsDashboard() {
                 {p.status !== "POSTED" && (
                   <button 
                     onClick={() => handlePostNow(p.id)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-bold"
+                    disabled={loadingId === p.id}
+                    className={`px-3 py-1 rounded text-sm font-bold text-white transition-colors ${
+                      loadingId === p.id 
+                        ? "bg-gray-400 cursor-not-allowed" 
+                        : "bg-blue-600 hover:bg-blue-700"
+                    }`}
                   >
-                    Postar Manualmente
+                    {loadingId === p.id ? "Postando..." : "Postar Manualmente"}
                   </button>
                 )}
               </td>
