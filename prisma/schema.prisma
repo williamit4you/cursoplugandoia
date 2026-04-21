@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Armazenará o hash gerado a partir do env inicial
+  role      String   @default("ADMIN")
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  summary     String
+  content     String   // Conteúdo em Markdown ou HTML enriquecido
+  status      String   @default("DRAFT") // Valores: DRAFT, PUBLISHED
+  views       Int      @default(0)
+  coverImage  String?  // URL do MinIO
+  sourceUrl   String?  @unique // Evita duplicidade de rotinas do robô
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  socialPosts SocialPost[]
+}
+
+model ScrapingSource {
+  id          String   @id @default(cuid())
+  url         String   @unique
+  name        String
+  isActive    Boolean  @default(true)
+  lastScraped DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model IntegrationSettings {
+  id              String   @id @default(cuid())
+  platform        String   @unique // Valores: META, LINKEDIN, INSTAGRAM, N8N, WHATSAPP
+  apiKey          String?
+  apiSecret       String?
+  appId           String?
+  pageId          String?
+  instagramId     String?
+  accessToken     String?
+  webhookUrl      String?
+  isActive        Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+}
+
+model SocialPost {
+  id          String   @id @default(cuid())
+  postId      String?  
+  summary     String
+  videoUrl    String
+  status      String   @default("DRAFT") // DRAFT, SCHEDULED, POSTED, FAILED
+  scheduledTo DateTime?
+  postedAt    DateTime?
+  platform    String   @default("META")
+  log         String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  post        Post?    @relation(fields: [postId], references: [id])
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  source    String?  // Ref do Post (Slug) para saber onde o lead foi captado
+  createdAt DateTime @default(now())
+}
