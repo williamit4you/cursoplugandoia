@@ -36,26 +36,33 @@ export async function POST(req: NextRequest) {
     });
 
     if (body.videoUrl) {
-      let scheduledTo = new Date();
-      const lastScheduled = await prisma.socialPost.findFirst({
-         where: { status: { in: ["SCHEDULED", "POSTED"] } },
-         orderBy: { scheduledTo: 'desc' }
+      // Deduplicação: só cria SocialPost se ainda não existir para este post
+      const existingSocial = await prisma.socialPost.findFirst({
+        where: { postId: upsertedPost.id }
       });
 
-      if (lastScheduled && lastScheduled.scheduledTo && lastScheduled.scheduledTo > scheduledTo) {
-         scheduledTo = new Date(lastScheduled.scheduledTo.getTime() + 60 * 60 * 1000); // +1 hora
-      }
+      if (!existingSocial) {
+        let scheduledTo = new Date();
+        const lastScheduled = await prisma.socialPost.findFirst({
+          where: { status: { in: ["SCHEDULED", "POSTED"] } },
+          orderBy: { scheduledTo: 'desc' }
+        });
 
-      await prisma.socialPost.create({
-         data: {
+        if (lastScheduled && lastScheduled.scheduledTo && lastScheduled.scheduledTo > scheduledTo) {
+          scheduledTo = new Date(lastScheduled.scheduledTo.getTime() + 60 * 60 * 1000); // +1 hora
+        }
+
+        await prisma.socialPost.create({
+          data: {
             postId: upsertedPost.id,
             summary: body.summary,
             videoUrl: body.videoUrl,
             status: "SCHEDULED",
             scheduledTo: scheduledTo,
             log: `Agendado automaticamente para respeitar limite de tráfego.`
-         }
-      });
+          }
+        });
+      }
     }
 
     return NextResponse.json({ success: true, post: upsertedPost.id });

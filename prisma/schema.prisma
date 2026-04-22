@@ -30,6 +30,7 @@ model Post {
   updatedAt   DateTime @updatedAt
 
   socialPosts SocialPost[]
+  aiUsageLogs AiUsageLog[]
 }
 
 model ScrapingSource {
@@ -88,4 +89,65 @@ model PipelineLog {
   message   String
   level     String   @default("INFO") // INFO, SUCCESS, ERROR, WARN
   createdAt DateTime @default(now())
+}
+
+model ScraperConfig {
+  id                String   @id @default(cuid())
+  // Agendamento
+  intervalHours     Int      @default(6)
+  scheduledTimes    String   @default("[]")    // JSON: ["08:00","14:00"]
+  useScheduledTimes Boolean  @default(false)   // true = horários fixos; false = intervalo
+  isEnabled         Boolean  @default(true)
+  // Limites
+  maxArticlesPerRun Int      @default(3)       // 3 | 5 | 7 | 10
+  // Modelo de IA
+  aiModel           String   @default("gpt-4o-mini")
+  aiTemperature     Float    @default(0.7)
+  // Prompt
+  systemPrompt      String   @default("")
+  // Vídeo
+  videoDurationSec  Int      @default(30)      // 30 | 60 | 90 | 120 | 180 | 300
+  videoStyle        String   @default("journalism") // journalism|story|ad|funny|ironic
+  // TTS
+  ttsVoice          String   @default("pt-BR-AntonioNeural")
+  ttsSpeed          String   @default("+5%")
+  // Pexels
+  pexelsEnabled     Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model ScraperRun {
+  id             String       @id @default(cuid())
+  startedAt      DateTime
+  finishedAt     DateTime?
+  status         String       @default("RUNNING") // RUNNING | SUCCESS | FAILED | PARTIAL
+  articlesFound  Int          @default(0)
+  articlesSaved  Int          @default(0)
+  triggerType    String       @default("AUTO")    // AUTO | MANUAL
+  errorMessage   String?
+  totalTokensIn  Int          @default(0)
+  totalTokensOut Int          @default(0)
+  totalCostUsd   Float        @default(0)
+  createdAt      DateTime     @default(now())
+
+  aiUsageLogs    AiUsageLog[]
+}
+
+model AiUsageLog {
+  id               String      @id @default(cuid())
+  runId            String?
+  postId           String?
+  operation        String      // rewrite_article
+  model            String
+  promptTokens     Int         @default(0)
+  completionTokens Int         @default(0)
+  totalTokens      Int         @default(0)
+  costUsd          Float       @default(0)
+  inputSummary     String?
+  outputSummary    String?
+  createdAt        DateTime    @default(now())
+
+  run              ScraperRun? @relation(fields: [runId], references: [id])
+  post             Post?       @relation(fields: [postId], references: [id])
 }
