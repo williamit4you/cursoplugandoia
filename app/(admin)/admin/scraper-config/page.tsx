@@ -64,6 +64,9 @@ const VIDEO_STYLES = [
   { id: "ad", label: "📣 Propaganda", desc: "Persuasivo, apelativo, focado em benefícios" },
   { id: "funny", label: "😂 Engraçado", desc: "Humor, descontraído, mas informativo" },
   { id: "ironic", label: "😏 Irônico", desc: "Sarcástico, crítico, embasado nos fatos" },
+  { id: "polemico", label: "🔥 Polêmico", desc: "Provocador, emocional, foco no viral" },
+  { id: "breaking", label: "⚡ Breaking News", desc: "Urgência máxima, sensação de ao vivo" },
+  { id: "investigativo", label: "🔍 Investigativo", desc: "Revela detalhes ocultos, jornalismo profundo" },
 ];
 
 const TTS_VOICES = [
@@ -89,6 +92,166 @@ Você deve outputar um JSON rigorosamente estruturado com:
 - "summary": Um roteiro ENGAJADOR e direto de até {duration_sec} segundos de locução para um vídeo TikTok/Reels/Story baseado na notícia (máx 450 caracteres).
 - "content_html": O artigo escrito, formatado com tags HTML semânticas como <p>, <h2>, e <b>. Formato pronto pro TipTap Editor.
 {style_instruction}`;
+
+// ─── PRESETS DE OBJETIVO DE PROMPT ───────────────────────────────────────────
+
+const PROMPT_PRESETS = [
+  {
+    id: "jornalistico",
+    label: "📰 Jornalístico",
+    emoji: "📰",
+    desc: "Rigoroso, imparcial, editorial",
+    color: "#1d4ed8",
+    bg: "#dbeafe",
+    prompt: `Você é um jornalista sênior de tecnologia, imparcial e rigoroso.
+Leia o texto bruto e reescreva-o completamente com linguagem jornalística formal.
+Sua missão é informar com precisão, sem opinião pessoal ou sensacionalismo.
+JSON obrigatório:
+- "title": Título no estilo manchete editorial (objetivo, sem exagero)
+- "summary": Roteiro neutro e informativo de até {duration_sec}s de locução (máx 450 chars)
+- "content_html": Artigo em HTML com <p>, <h2>, <b>. Estrutura: lead → desenvolvimento → contexto.
+{style_instruction}`,
+  },
+  {
+    id: "viral",
+    label: "🔥 Viral / Polêmico",
+    emoji: "🔥",
+    desc: "Provocador, emocional, máxima retenção",
+    color: "#dc2626",
+    bg: "#fee2e2",
+    prompt: `Você é um criador de conteúdo especialista em VIRALIZAÇÂO para redes sociais.
+Sua missão é transformar o texto bruto em conteúdo EXPLOSIVO que gera compartilhamentos, reações e comentários.
+Use linguagem provocadora, gatilhos emocionais (curiosidade, indignação, surpresa) e ganchos irresistíveis.
+JSON obrigatório:
+- "title": Título CHOCANTE que para o scroll (use números, perguntas ou afirmações polêmicas)
+- "summary": Roteiro com GANCHO poderoso nos primeiros 3 segundos, revelação gradual, CTA final. Até {duration_sec}s (máx 450 chars)
+- "content_html": Artigo em HTML com <p>, <h2>, <b>. Tom: provocador mas embasado nos fatos.
+{style_instruction}`,
+  },
+  {
+    id: "cientifico",
+    label: "🔬 Científico",
+    emoji: "🔬",
+    desc: "Educativo, aprofundado, baseado em dados",
+    color: "#0891b2",
+    bg: "#e0f2fe",
+    prompt: `Você é um divulgador científico especializado em tecnologia e inovação.
+Explique o tema com precisão técnica, mas de forma compreensível para leigos inteligentes.
+Cite dados, contextualize descobertas e explique o impacto no mundo real.
+JSON obrigatório:
+- "title": Título que desperta curiosidade intelectual (ex: "Como X funciona e por que muda tudo")
+- "summary": Explicação clara e fascinante de até {duration_sec}s, como um documentário. Máx 450 chars.
+- "content_html": Artigo em HTML com <p>, <h2>, <b>. Inclua: o que é → como funciona → impacto → futuro.
+{style_instruction}`,
+  },
+  {
+    id: "storytelling",
+    label: "📖 Storytelling",
+    emoji: "📖",
+    desc: "Narrativo, humano, emocional",
+    color: "#7c3aed",
+    bg: "#ede9fe",
+    prompt: `Você é um mestre do storytelling digital.
+Transforme a notícia em uma história com personagens, conflito e resolução.
+Conecte os fatos com a emoção humana por trás deles.
+JSON obrigatório:
+- "title": Título que conta o começo de uma história (ex: "A noite em que X mudou tudo para Y")
+- "summary": Roteiro como uma mini-história de até {duration_sec}s — cena de abertura, conflito, desfecho. Máx 450 chars.
+- "content_html": Artigo em HTML com <p>, <h2>, <b>. Narrativa em primeira ou terceira pessoa, vívida e humana.
+{style_instruction}`,
+  },
+  {
+    id: "breaking",
+    label: "⚡ Breaking News",
+    emoji: "⚡",
+    desc: "Urgência máxima, sensação de ao vivo",
+    color: "#ea580c",
+    bg: "#ffedd5",
+    prompt: `Você é um âncora de telejornal ao vivo cobrindo uma notícia de última hora.
+Transmita urgência e importância. O leitor deve sentir que precisa saber AGORA.
+JSON obrigatório:
+- "title": Manchete de URGÊNCIA (ex: "AGORA: X acontece e pode mudar Y")
+- "summary": Boletim urgente de até {duration_sec}s, direto ao ponto, sem enrolação. Máx 450 chars.
+- "content_html": Artigo em HTML com <p>, <h2>, <b>. Estrutura: fato principal → quem → quando → impacto imediato.
+{style_instruction}`,
+  },
+  {
+    id: "investigativo",
+    label: "🔍 Investigativo",
+    emoji: "🔍",
+    desc: "Revela detalhes ocultos, profundo",
+    color: "#374151",
+    bg: "#f3f4f6",
+    prompt: `Você é um jornalista investigativo que revela o que a mídia mainstream não conta.
+Questione, aprofunde, mostre os bastidores e o impacto oculto da notícia.
+JSON obrigatório:
+- "title": Título que sugere revelação (ex: "O que ninguém está falando sobre X")
+- "summary": Roteiro de até {duration_sec}s revelando camadas da história. Tom: suspense investigativo. Máx 450 chars.
+- "content_html": Artigo em HTML com <p>, <h2>, <b>. Mostre: contexto oculto → quem se beneficia → o que pode acontecer.
+{style_instruction}`,
+  },
+  {
+    id: "opiniao",
+    label: "💬 Opinativo",
+    emoji: "💬",
+    desc: "Editorial, provocativo, toma partido",
+    color: "#0f766e",
+    bg: "#ccfbf1",
+    prompt: `Você é um colunista de tecnologia com posição clara e fundamentada.
+Expresse uma opinião forte sobre o tema, defendendo um ponto de vista com argumentos sólidos.
+JSON obrigatório:
+- "title": Título opinativo e direto (ex: "Por que X é um erro" ou "X vai mudar tudo — e ninguém está preparado")
+- "summary": Roteiro opinativo de até {duration_sec}s com tese + argumento + conclusão. Máx 450 chars.
+- "content_html": Artigo em HTML com <p>, <h2>, <b>. Tom: assertivo, fundamentado, sem neutralidade.
+{style_instruction}`,
+  },
+  {
+    id: "marketing",
+    label: "📣 Marketing",
+    emoji: "📣",
+    desc: "Persuasivo, CTA, orientado a conversão",
+    color: "#d97706",
+    bg: "#fef3c7",
+    prompt: `Você é um copywriter especialista em marketing digital e conversão.
+Transforme a notícia em conteúdo que educa E gera interesse em produtos/serviços relacionados.
+JSON obrigatório:
+- "title": Título que desperta desejo ou resolve uma dor (ex: "Como X pode te poupar Y" ou "A solução para Z finalmente chegou")
+- "summary": Roteiro de até {duration_sec}s com problema → solução → CTA implícito. Máx 450 chars.
+- "content_html": Artigo em HTML com <p>, <h2>, <b>. Estrutura AIDA: Atenção → Interesse → Desejo → Ação.
+{style_instruction}`,
+  },
+  {
+    id: "humor",
+    label: "😂 Humor",
+    emoji: "😂",
+    desc: "Entretenimento, leveza, compartilhável",
+    color: "#b45309",
+    bg: "#fef9c3",
+    prompt: `Você é um comediante digital especializado em humor inteligente sobre tecnologia.
+Transforme a notícia em conteúdo divertido, leve e compartilhável — sem perder a informação real.
+JSON obrigatório:
+- "title": Título engraçado ou com trocadilho inteligente
+- "summary": Roteiro de até {duration_sec}s com humor situacional, analogias cômicas ou ironia afiada. Máx 450 chars.
+- "content_html": Artigo em HTML com <p>, <h2>, <b>. Informe de forma divertida — educação disfarçada de entretenimento.
+{style_instruction}`,
+  },
+  {
+    id: "analise",
+    label: "📊 Análise Profunda",
+    emoji: "📊",
+    desc: "Estratégico, comparativo, com dados",
+    color: "#4338ca",
+    bg: "#e0e7ff",
+    prompt: `Você é um analista estratégico de mercado de tecnologia.
+Forneça uma análise profunda com comparações, dados e perspectivas de longo prazo.
+JSON obrigatório:
+- "title": Título analítico (ex: "X vs Y: o que os dados revelam" ou "Análise: o que X significa para o setor")
+- "summary": Síntese analítica de até {duration_sec}s com dados-chave e conclusão estratégica. Máx 450 chars.
+- "content_html": Artigo em HTML com <p>, <h2>, <b>. Inclua: contexto histórico → análise atual → cenários futuros.
+{style_instruction}`,
+  },
+];
+
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -684,6 +847,50 @@ export default function ScraperConfigPage() {
             </button>
           </div>
         </div>
+
+        {/* ─── Seletor de Objetivo de Prompt ─────────────────────────────────── */}
+        <div style={{ marginBottom: 16 }}>
+          <label className="cfg-label" style={{ marginBottom: 8, display: "block" }}>
+            🎯 Objetivo do Conteúdo — selecione para carregar um prompt base
+          </label>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(155px, 1fr))", gap: 8 }}>
+            {PROMPT_PRESETS.map(preset => {
+              const isActive = config.systemPrompt === preset.prompt;
+              return (
+                <button
+                  key={preset.id}
+                  onClick={() => {
+                    const isDifferent = config.systemPrompt !== DEFAULT_PROMPT && config.systemPrompt !== preset.prompt;
+                    if (isDifferent) {
+                      const ok = confirm(`Substituir o prompt atual pelo preset "${preset.label}"?\n\nO conteúdo atual será sobrescrito.`);
+                      if (!ok) return;
+                    }
+                    setConfig(c => ({ ...c, systemPrompt: preset.prompt }));
+                  }}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: `2px solid ${isActive ? preset.color : "#e5e7eb"}`,
+                    background: isActive ? preset.bg : "white",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <div style={{ fontSize: 18, marginBottom: 3 }}>{preset.emoji}</div>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: isActive ? preset.color : "#374151", lineHeight: 1.2 }}>
+                    {preset.label.replace(preset.emoji + " ", "")}
+                  </div>
+                  <div style={{ fontSize: 10, color: "#6b7280", marginTop: 2, lineHeight: 1.3 }}>{preset.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+          <p style={{ margin: "8px 0 0", fontSize: 11, color: "#9ca3af" }}>
+            💡 Após selecionar, você pode editar livremente o prompt abaixo antes de salvar.
+          </p>
+        </div>
+
         <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8, padding: "8px 12px", background: "#fef9c3", borderRadius: 8, border: "1px solid #fde68a" }}>
           💡 Use <code style={{ background: "#fef3c7", padding: "1px 4px", borderRadius: 4 }}>{"{duration_sec}"}</code> para inserir a duração do vídeo e{" "}
           <code style={{ background: "#fef3c7", padding: "1px 4px", borderRadius: 4 }}>{"{style_instruction}"}</code> para inserir o estilo de narração.
@@ -700,6 +907,7 @@ export default function ScraperConfigPage() {
           </button>
         </div>
       </div>
+
 
       {/* ── CARD 7: VÍDEO ── */}
       <div className="cfg-card">
