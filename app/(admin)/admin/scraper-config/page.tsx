@@ -258,15 +258,14 @@ export default function ScraperConfigPage() {
   const [showModelModal, setShowModelModal] = useState(false);
   const [newScheduleTime, setNewScheduleTime] = useState("08:00");
 
-  const headers = { "x-worker-secret": SECRET, "Content-Type": "application/json" };
-
   // ── FETCH CONFIG ──
   const fetchAll = useCallback(async () => {
+    const hdrs = { "x-worker-secret": SECRET, "Content-Type": "application/json" };
     try {
       const [cfgRes, runsRes, sumRes] = await Promise.all([
-        fetch("/api/worker/config", { headers }),
-        fetch("/api/worker/runs", { headers }),
-        fetch("/api/worker/ai-usage/summary", { headers }),
+        fetch("/api/worker/config", { headers: hdrs }),
+        fetch("/api/worker/runs", { headers: hdrs }),
+        fetch("/api/worker/ai-usage/summary", { headers: hdrs }),
       ]);
       if (cfgRes.ok) setConfig(await cfgRes.json());
       if (runsRes.ok) setRuns(await runsRes.json());
@@ -288,10 +287,11 @@ export default function ScraperConfigPage() {
   const saveConfig = async (patch?: Partial<ScraperConfig>) => {
     setSaving(true);
     const toSave = { ...config, ...(patch ?? {}) };
+    const hdrs = { "x-worker-secret": SECRET, "Content-Type": "application/json" };
     try {
       const res = await fetch("/api/worker/config", {
         method: "POST",
-        headers,
+        headers: hdrs,
         body: JSON.stringify(toSave),
       });
       if (res.ok) {
@@ -849,7 +849,7 @@ export default function ScraperConfigPage() {
                               <span style={{ color: "#6b7280" }}>📥 {log.promptTokens} in · 📤 {log.completionTokens} out · Total: {log.totalTokens}</span>
                               <span style={{ color: "#059669", fontFamily: "monospace", fontWeight: 700 }}>{formatCost(log.costUsd)}</span>
                               {log.outputSummary && (
-                                <span style={{ color: "#374151", fontStyle: "italic" }}>"{log.outputSummary.slice(0, 60)}…"</span>
+                                <span style={{ color: "#374151", fontStyle: "italic" }}>&quot;{log.outputSummary.slice(0, 60)}&hellip;&quot;</span>
                               )}
                             </div>
                           </td>
