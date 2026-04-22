@@ -107,6 +107,10 @@ type ScraperConfig = {
   ttsVoice: string;
   ttsSpeed: string;
   pexelsEnabled: boolean;
+  autoPublishReels: boolean;
+  autoPublishStory: boolean;
+  autoPublishTikTok: boolean;
+  autoPublishLinkedIn: boolean;
 };
 
 type ScraperRun = {
@@ -156,6 +160,10 @@ const DEFAULT_CONFIG: ScraperConfig = {
   ttsVoice: "pt-BR-AntonioNeural",
   ttsSpeed: "+5%",
   pexelsEnabled: true,
+  autoPublishReels: false,
+  autoPublishStory: false,
+  autoPublishTikTok: false,
+  autoPublishLinkedIn: false,
 };
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -770,7 +778,51 @@ export default function ScraperConfigPage() {
         </div>
       </div>
 
-      {/* ── CARD 8: HISTÓRICO ── */}
+      {/* ── CARD 8B: PUBLICAÇÃO AUTOMÁTICA ── */}
+      <div className="cfg-card">
+        <h3 style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 700, color: "#111827" }}>📡 Publicação Automática</h3>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#6b7280" }}>
+          Plataformas onde os vídeos serão publicados automaticamente após serem gerados pelo scraper.
+          Configure as credenciais em <strong>Hub de Integrações</strong>.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+          {([
+            { key: "autoPublishReels" as const, label: "📹 Instagram/FB Reels", desc: "Reel permanente" },
+            { key: "autoPublishStory" as const, label: "📸 Instagram/FB Story", desc: "Dura 24 horas" },
+            { key: "autoPublishTikTok" as const, label: "🎵 TikTok", desc: "Publicação no TikTok" },
+            { key: "autoPublishLinkedIn" as const, label: "💼 LinkedIn", desc: "Post de texto + link" },
+          ] as { key: keyof ScraperConfig; label: string; desc: string }[]).map(({ key, label, desc }) => (
+            <label key={key} style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "12px 16px",
+              border: `2px solid ${config[key] ? "#6366f1" : "#e5e7eb"}`,
+              borderRadius: 10, cursor: "pointer",
+              background: config[key] ? "#f5f3ff" : "white",
+              transition: "all 0.2s",
+            }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: config[key] ? "#4f46e5" : "#374151" }}>{label}</div>
+                <div style={{ fontSize: 11, color: "#6b7280" }}>{desc}</div>
+              </div>
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={!!config[key]}
+                  onChange={e => setConfig(c => ({ ...c, [key]: e.target.checked }))}
+                />
+                <span className="toggle-slider" />
+              </label>
+            </label>
+          ))}
+        </div>
+        <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
+          <button className="cfg-btn cfg-btn-primary" onClick={() => saveConfig()} disabled={saving}>
+            {saving ? "Salvando..." : "💾 Salvar"}
+          </button>
+        </div>
+      </div>
+
+      {/* ── CARD 9: HISTÓRICO ── */}
       <div className="cfg-card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#111827" }}>📋 Histórico de Coletas</h3>

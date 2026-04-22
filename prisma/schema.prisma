@@ -66,6 +66,7 @@ model SocialPost {
   scheduledTo DateTime?
   postedAt    DateTime?
   platform    String   @default("META")
+  postType    String   @default("REEL") // REEL | STORY
   log         String?
   thumbUrl    String?  // URL de thumbnail (MinIO)
   metaContainerId String? // ID do container criado na Meta (para publicação async)
@@ -113,6 +114,11 @@ model ScraperConfig {
   ttsSpeed          String   @default("+5%")
   // Pexels
   pexelsEnabled     Boolean  @default(true)
+  // Auto-publicação por plataforma
+  autoPublishReels    Boolean  @default(false)
+  autoPublishStory    Boolean  @default(false)
+  autoPublishTikTok   Boolean  @default(false)
+  autoPublishLinkedIn Boolean  @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }

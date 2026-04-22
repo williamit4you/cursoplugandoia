@@ -49,6 +49,47 @@ export async function getInstagramAccountId(pageId: string, accessToken: string)
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// ─── STORY 24H: Cria container para Story de 24h no Instagram ────────────────
+export async function createInstagramStoryContainer(
+  videoUrl: string,
+  instagramId: string,
+  accessToken: string
+): Promise<string> {
+  const res = await fetch(`https://graph.facebook.com/v19.0/${instagramId}/media`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      media_type: "STORIES",
+      video_url: videoUrl,
+      access_token: accessToken,
+    }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "Erro criando container Story IG");
+  return data.id;
+}
+
+// ─── STORY 24H: Publica Story de 24h na Página do Facebook ──────────────────
+export async function publishFacebookStory24h(
+  videoUrl: string,
+  pageId: string,
+  accessToken: string
+): Promise<string> {
+  const res = await fetch(`https://graph.facebook.com/v19.0/${pageId}/video_stories`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      file_url: videoUrl,
+      upload_phase: "finish",
+      access_token: accessToken,
+    }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "Erro publicando Story no Facebook");
+  return data.video_id || data.id;
+}
+
+
 
 // ─── FASE 1: Cria o container e retorna o ID imediatamente ───────────────────
 export async function createInstagramContainer(

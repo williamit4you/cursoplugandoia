@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
           scheduledTo = new Date(lastScheduled.scheduledTo.getTime() + 60 * 60 * 1000); // +1 hora
         }
 
-        await prisma.socialPost.create({
+        const newSocialPost = await prisma.socialPost.create({
           data: {
             postId: upsertedPost.id,
             summary: body.summary,
@@ -62,10 +62,17 @@ export async function POST(req: NextRequest) {
             log: `Agendado automaticamente para respeitar limite de tráfego.`
           }
         });
+
+        return NextResponse.json({
+          success: true,
+          post: upsertedPost.id,
+          socialPostId: newSocialPost.id,
+        });
       }
     }
 
-    return NextResponse.json({ success: true, post: upsertedPost.id });
+    return NextResponse.json({ success: true, post: upsertedPost.id, socialPostId: null });
+
 
   } catch (error: any) {
     if (error.code === 'P2002') {
