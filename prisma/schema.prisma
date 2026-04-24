@@ -111,8 +111,54 @@ model CodeVideoProject {
   errorMessage     String?
   log              String?
 
+  question         VideoQuestion?
+
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+}
+
+model VideoQuestionConfig {
+  id                String   @id @default(cuid())
+  isEnabled         Boolean  @default(true)
+
+  // Agendamento
+  intervalMinutes   Int      @default(60)      // executa a cada X minutos
+  scheduledTimes    String   @default("[]")    // JSON: ["08:00","14:00"]
+  useScheduledTimes Boolean  @default(false)
+
+  // Limites
+  maxQuestionsPerRun Int     @default(3)
+
+  // Defaults do vídeo
+  defaultAspectRatio VideoAspectRatio @default(PORTRAIT_9_16)
+  videoDurationSec   Int      @default(30)
+  fps                Int      @default(30)
+  ttsVoice           String   @default("pt-BR-AntonioNeural")
+  ttsSpeed           String   @default("+5%")
+
+  // Pós-processo
+  autoEnqueueMeta     Boolean @default(false)
+  autoEnqueueTikTok   Boolean @default(false)
+  autoEnqueueLinkedIn Boolean @default(false)
+  autoEnqueueYouTube  Boolean @default(false)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model VideoQuestion {
+  id               String   @id @default(cuid())
+  questionText     String
+  status           String   @default("PENDING") // PENDING | PROCESSING | DONE | FAILED
+  errorMessage     String?
+  startedAt        DateTime?
+  completedAt      DateTime?
+
+  codeVideoProjectId String? @unique
+  codeVideoProject   CodeVideoProject? @relation(fields: [codeVideoProjectId], references: [id])
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model Lead {
