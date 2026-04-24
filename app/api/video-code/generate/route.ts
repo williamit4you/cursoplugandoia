@@ -102,6 +102,7 @@ export async function POST(req: NextRequest) {
       "- Use ganchos visuais e textuais fortes nos primeiros 3 segundos.",
       "- NarrationText em português (pt-BR), tom enérgico e sem pausas desnecessárias.",
       "- CRITICAL: O narrationText deve conter APENAS o texto que será lido. PROIBIDO incluir emojis, descrições de imagens entre colchetes ou parênteses (ex: [foguete], (mão apontando)), ou qualquer instrução de direção de arte.",
+      "- CRITICAL: NUNCA invente URLs falsas ou placeholders (ex: example.com, placeholder.com). Se não houver uma URL válida do Pexels disponível, deixe props.url como string vazia ou null.",
       "- Todos os elementos visuais (emojis, arrows, icons) devem ser colocados EXCLUSIVAMENTE no campo props.overlays.",
       "- Adicione overlays e sfx (woosh, pop, ding) nas props para reforçar o conteúdo.",
       "- props.overlays: array de { type: 'emoji'|'icon'|'arrow', value: string, timeSec: number, position: 'top'|'center'|'bottom' }.",

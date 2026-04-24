@@ -14,12 +14,15 @@ export const RetentionScene: React.FC<{
 
   const isVideo = url?.match(/\.(mp4|webm|mov)$/i);
 
+  const [error, setError] = React.useState(false);
+
   return (
     <AbsoluteFill style={{ backgroundColor: "black", overflow: "hidden" }}>
-      {url ? (
+      {url && !error ? (
         isVideo ? (
           <Video
             src={url}
+            onError={() => setError(true)}
             style={{
               width: "100%",
               height: "100%",
@@ -31,6 +34,7 @@ export const RetentionScene: React.FC<{
         ) : (
           <Img
             src={url}
+            onError={() => setError(true)}
             style={{
               width: "100%",
               height: "100%",
@@ -40,7 +44,7 @@ export const RetentionScene: React.FC<{
           />
         )
       ) : (
-        <div style={{ flex: 1, backgroundColor: "#111" }} />
+        <div style={{ flex: 1, background: "linear-gradient(45deg, #1a1a2e 0%, #16213e 100%)" }} />
       )}
       
       {/* Overlay darkening */}
