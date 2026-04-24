@@ -119,7 +119,7 @@ JSON obrigatório:
     desc: "Provocador, emocional, máxima retenção",
     color: "#dc2626",
     bg: "#fee2e2",
-    prompt: `Você é um criador de conteúdo especialista em VIRALIZAÇÂO para redes sociais.
+    prompt: `Você é um criador de conteúdo especialista em VIRALIZAÇÃO para redes sociais.
 Sua missão é transformar o texto bruto em conteúdo EXPLOSIVO que gera compartilhamentos, reações e comentários.
 Use linguagem provocadora, gatilhos emocionais (curiosidade, indignação, surpresa) e ganchos irresistíveis.
 JSON obrigatório:

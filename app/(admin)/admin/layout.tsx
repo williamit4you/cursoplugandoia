@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { usePathname } from "next/navigation";
 import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, AppBar, Toolbar, Typography, Button } from "@mui/material";
@@ -9,6 +9,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import WebhookIcon from "@mui/icons-material/Webhook";
 import VideoCameraBackIcon from "@mui/icons-material/VideoCameraBack";
 import SettingsIcon from "@mui/icons-material/Settings";
+import CodeIcon from "@mui/icons-material/Code";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 
@@ -28,6 +29,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Fontes (Scraping)", icon: <LinkIcon />, path: "/admin/scrapers" },
     { text: "Integrações N8N", icon: <WebhookIcon />, path: "/admin/integrations" },
     { text: "Fila de Stories", icon: <VideoCameraBackIcon />, path: "/admin/social" },
+    { text: "Vídeos com código", icon: <CodeIcon />, path: "/admin/video-code" },
     { text: "Config. Scraper", icon: <SettingsIcon />, path: "/admin/scraper-config" },
   ];
 

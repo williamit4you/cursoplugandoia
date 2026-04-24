@@ -6,6 +6,11 @@ datasource db {
   provider = "postgresql"
 }
 
+enum VideoAspectRatio {
+  PORTRAIT_9_16
+  LANDSCAPE_16_9
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -74,6 +79,40 @@ model SocialPost {
   updatedAt   DateTime @updatedAt
 
   post        Post?    @relation(fields: [postId], references: [id])
+}
+
+model CodeVideoProject {
+  id               String           @id @default(cuid())
+  status           String           @default("DRAFT") // DRAFT | GENERATING | READY | RENDERING | DONE | FAILED
+
+  // Entrada do usuário
+  ideaPrompt       String
+  aspectRatio      VideoAspectRatio @default(PORTRAIT_9_16)
+  videoDurationSec Int              @default(30)
+  fps              Int              @default(30)
+  // TTS (worker Python / edge-tts)
+  ttsVoice         String           @default("pt-BR-AntonioNeural")
+  ttsSpeed         String           @default("+5%")
+
+  // Conteúdo editável (IA -> usuário pode revisar)
+  title            String?
+  description      String?
+  narrationText    String?
+
+  // Plano do vídeo (JSON serializado, validado no backend)
+  videoSpecJson    String           @default("{}")
+
+  // Artefatos gerados
+  audioUrl         String?
+  captionsUrl      String?
+  videoUrl         String?
+  thumbUrl         String?
+
+  errorMessage     String?
+  log              String?
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 }
 
 model Lead {
