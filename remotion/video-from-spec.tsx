@@ -49,8 +49,10 @@ export function VideoFromSpec(props: {
   let from = 0;
   return (
     <div style={{ flex: 1, backgroundColor: 'black' }}>
-      {/* Background Music - Lo-fi or Hype track */}
+      {/* Background Music - Lo-fi or Hype track 
+          Descomente a linha abaixo apenas após adicionar o arquivo em public/sfx/bgm.mp3
       <Audio src="/sfx/bgm.mp3" volume={0.15} loop />
+      */}
 
       {props.audioUrl ? <Audio src={props.audioUrl} /> : null}
       

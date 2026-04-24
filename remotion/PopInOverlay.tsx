@@ -22,13 +22,9 @@ export const PopInOverlay: React.FC<{ overlays: OverlayItem[] }> = ({ overlays }
         // Handle SFX
         if (["woosh", "pop", "ding", "success"].includes(ov.type)) {
           // If it's just an audio effect, we only render the Audio component if we reached the frame
-          // Note: In Remotion, Audio should ideally be wrapped in Sequence, but rendering it from startFrame is fine if we use `from` props or let it play at that time.
-          // Better: Audio plays automatically when mounted. So we mount it only when frame >= startFrame.
-          // Wait, Remotion Audio needs to be present for the whole duration and we use `startFrom`? No, Audio plays at the time it appears in the timeline.
-          // Let's just return Audio if isVisible
           if (isVisible) {
-             // We use a dummy public path. The user needs to add these files to public/sfx/
-             return <Audio key={i} src={`/sfx/${ov.type}.mp3`} volume={0.5} />;
+             // Descomente a linha abaixo apenas após adicionar os arquivos na pasta public/sfx/
+             // return <Audio key={i} src={`/sfx/${ov.type}.mp3`} volume={0.5} />;
           }
           return null;
         }
