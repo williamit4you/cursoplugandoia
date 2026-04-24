@@ -86,6 +86,17 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# --- A GARANTIA DEFINITIVA ---
+# 1. Copia o Prisma Client e a Engine (o standalone SEMPRE esquece de copiar a engine)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+
+# 2. Copia explicitamente os pacotes que o Remotion precisa para rodar o vídeo
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/execa ./node_modules/execa
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/which ./node_modules/which
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/cross-spawn ./node_modules/cross-spawn
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/isexe ./node_modules/isexe
+
 USER nextjs
 
 EXPOSE 3000
