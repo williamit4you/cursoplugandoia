@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
       autoEnqueueTikTok: body.autoEnqueueTikTok ?? false,
       autoEnqueueLinkedIn: body.autoEnqueueLinkedIn ?? false,
       autoEnqueueYouTube: body.autoEnqueueYouTube ?? false,
+      useExternalMedia: body.useExternalMedia ?? false,
     };
 
     const cfg = existing

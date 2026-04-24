@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
         videoDurationSec,
         ttsVoice,
         ttsSpeed,
+        useExternalMedia: Boolean(body?.useExternalMedia ?? false),
       },
     });
 

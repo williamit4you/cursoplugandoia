@@ -20,6 +20,7 @@ type Config = {
   autoEnqueueTikTok: boolean;
   autoEnqueueLinkedIn: boolean;
   autoEnqueueYouTube: boolean;
+  useExternalMedia: boolean;
 };
 
 const DEFAULT: Config = {
@@ -38,6 +39,7 @@ const DEFAULT: Config = {
   autoEnqueueTikTok: false,
   autoEnqueueLinkedIn: false,
   autoEnqueueYouTube: false,
+  useExternalMedia: false,
 };
 
 export default function VideoQuestionsConfigPage() {
@@ -212,6 +214,20 @@ export default function VideoQuestionsConfigPage() {
               YouTube (em breve)
             </label>
           </div>
+        </div>
+
+        <div className="rounded-md border p-4 bg-indigo-50 border-indigo-100">
+          <label className="flex items-center gap-2 text-sm font-bold text-indigo-900 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={config.useExternalMedia}
+              onChange={(e) => setConfig((c) => ({ ...c, useExternalMedia: e.target.checked }))}
+            />
+            Usar banco de mídias externas (Pexels)
+          </label>
+          <p className="text-xs text-indigo-700 mt-1 ml-5">
+            Se ativo, a IA buscará vídeos e imagens no Pexels para ilustrar o fundo do vídeo.
+          </p>
         </div>
 
         <div className="flex items-center gap-3">

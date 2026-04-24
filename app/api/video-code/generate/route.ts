@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { searchPexelsMedia } from "@/lib/pexels";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -28,6 +29,7 @@ const ALLOWED_TEMPLATES = new Set([
   "QuoteScene",
   "TimelineScene",
   "CodeTypingScene",
+  "RetentionScene", // Nova cena focada em retenção (mídia de fundo + texto central)
 ]);
 
 function coerceScenes(scenes: any[], videoDurationSec: number) {
@@ -89,26 +91,41 @@ export async function POST(req: NextRequest) {
         : "TikTok/Reels (9:16, 1080x1920)";
 
     const system = [
-      "Você é um roteirista e motion designer.",
-      "Você deve responder APENAS com um JSON válido (sem markdown, sem comentários).",
+      "Você é um Especialista em Vídeos Virais e Edição de Retenção (Retention Editing).",
+      "Seu objetivo é criar roteiros e planos de cena que prendam a atenção do início ao fim, estilo Alex Hormozi.",
+      "Você deve responder APENAS com um JSON válido.",
       "Saída obrigatória:",
       `- title (string), description (string), narrationText (string), scenes (array).`,
       "Cada scene deve ter: sceneTemplate, durationSec, props.",
       `sceneTemplate permitido: ${Array.from(ALLOWED_TEMPLATES).join(", ")}.`,
-      "Regras:",
-      "- narrationText em português (pt-BR), natural para narração.",
-      "- O vídeo precisa ser didático, objetivo e engajador.",
-      "- A soma aproximada das cenas deve bater com a duração total.",
+      "Regras de Retenção:",
+      "- Use ganchos visuais e textuais fortes nos primeiros 3 segundos.",
+      "- NarrationText em português (pt-BR), tom enérgico e sem pausas desnecessárias.",
+      "- Adicione overlays (emojis, arrows, icons) e sfx (woosh, pop, ding) nas props para reforçar o conteúdo.",
+      "- props.overlays: array de { type: 'emoji'|'icon'|'arrow', value: string, timeSec: number, position: 'top'|'center'|'bottom' }.",
+      "- props.sfx: array de { type: 'woosh'|'pop'|'ding'|'success', timeSec: number }.",
+      "- Se props.url for fornecido, use-o como fundo da cena (especialmente em RetentionScene).",
     ].join("\n");
+
+    let pexelsAssets = "";
+    if (project.useExternalMedia) {
+      const assets = await searchPexelsMedia(project.ideaPrompt, 6);
+      if (assets.length > 0) {
+        pexelsAssets = "\nRECURSOS DISPONÍVEIS (Pexels URLs para usar em props.url):\n" + 
+          assets.map(a => `- ${a.url} (Thumbnail: ${a.thumbnail})`).join("\n");
+      }
+    }
 
     const user = [
       `IDEIA: ${project.ideaPrompt}`,
       `FORMATO: ${formatHint}`,
       `DURACAO_TOTAL_SEGUNDOS: ${project.videoDurationSec}`,
+      pexelsAssets,
       "",
       "Gere um roteiro com 4 a 7 cenas.",
-      "Use TitleScene no começo e um fechamento curto no final.",
-      "Se fizer sentido, use CodeTypingScene com um comando curto (ex.: SQL, npm, bash).",
+      "Use TitleScene no começo com um gancho forte.",
+      "Use RetentionScene para partes explicativas com mídias de fundo se disponíveis.",
+      "Capriche nos overlays e SFX para manter a energia alta.",
     ].join("\n");
 
     const res = await fetch("https://api.openai.com/v1/chat/completions", {

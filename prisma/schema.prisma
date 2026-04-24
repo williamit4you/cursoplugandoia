@@ -93,6 +93,7 @@ model CodeVideoProject {
   // TTS (worker Python / edge-tts)
   ttsVoice         String           @default("pt-BR-AntonioNeural")
   ttsSpeed         String           @default("+5%")
+  useExternalMedia Boolean          @default(false)
 
   // Conteúdo editável (IA -> usuário pode revisar)
   title            String?
@@ -141,6 +142,7 @@ model VideoQuestionConfig {
   autoEnqueueTikTok   Boolean @default(false)
   autoEnqueueLinkedIn Boolean @default(false)
   autoEnqueueYouTube  Boolean @default(false)
+  useExternalMedia    Boolean @default(false)
 
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -153,6 +155,7 @@ model VideoQuestion {
   errorMessage     String?
   startedAt        DateTime?
   completedAt      DateTime?
+  useExternalMedia Boolean   @default(false)
 
   codeVideoProjectId String? @unique
   codeVideoProject   CodeVideoProject? @relation(fields: [codeVideoProjectId], references: [id])

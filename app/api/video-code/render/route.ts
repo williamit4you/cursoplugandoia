@@ -153,6 +153,31 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // NEW: Get word-level transcription for Retention Editing
+    let transcription = null;
+    if (audioUrl) {
+      try {
+        const baseUrl = (process.env.WORKER_FASTAPI_BASE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
+        const url = `${baseUrl}/transcrever-palavras`;
+        
+        // Fetch audio from S3/MinIO first to send to worker
+        const audioRes = await fetch(audioUrl);
+        if (audioRes.ok) {
+          const audioBlob = await audioRes.blob();
+          const form = new FormData();
+          form.append("file", audioBlob, "audio.mp3");
+          
+          const transRes = await fetch(url, { method: "POST", body: form });
+          if (transRes.ok) {
+            const data = await transRes.json();
+            transcription = data.words;
+          }
+        }
+      } catch (err) {
+        console.error("[render/route.ts] Transcription failed:", err);
+      }
+    }
+
     const { bundle } = dynamicRequire("@remotion/bundler") as typeof import("@remotion/bundler");
     const { getCompositions, renderMedia } = dynamicRequire("@remotion/renderer") as typeof import("@remotion/renderer");
 
@@ -160,7 +185,7 @@ export async function POST(req: NextRequest) {
     const bundleLocation = await bundle({ entryPoint, webpackOverride: (c) => c });
 
     const compositions = await getCompositions(bundleLocation, {
-      inputProps: { videoSpec, audioUrl },
+      inputProps: { videoSpec, audioUrl, transcription },
     });
 
     const compositionId = project.aspectRatio === "LANDSCAPE_16_9" ? "VideoLandscape" : "VideoPortrait";
@@ -186,7 +211,7 @@ export async function POST(req: NextRequest) {
       serveUrl: bundleLocation,
       codec: "h264",
       outputLocation: localMp4,
-      inputProps: { videoSpec, audioUrl },
+      inputProps: { videoSpec, audioUrl, transcription },
     });
 
     const buffer = await fs.readFile(localMp4);

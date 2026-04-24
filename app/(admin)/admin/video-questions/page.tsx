@@ -10,8 +10,16 @@ type Question = {
   status: string;
   errorMessage: string | null;
   createdAt: string;
+  useExternalMedia: boolean;
   codeVideoProjectId: string | null;
   codeVideoProject?: { id: string; status: string; title: string | null; videoUrl: string | null } | null;
+};
+
+type Pagination = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 };
 
 function StatusPill({ status }: { status: string }) {
@@ -31,28 +39,47 @@ function StatusPill({ status }: { status: string }) {
 
 export default function VideoQuestionsPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
   const [questionText, setQuestionText] = useState("");
+  const [useExternalMedia, setUseExternalMedia] = useState(false);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [enqueueing, setEnqueueing] = useState<string | null>(null);
 
   const doneCount = useMemo(() => questions.filter((q) => q.status === "DONE").length, [questions]);
 
-  const fetchAll = async () => {
+  const fetchAll = async (p = page, s = search) => {
     setRefreshing(true);
     try {
-      const res = await fetch("/api/video-questions", { cache: "no-store" });
-      if (res.ok) setQuestions(await res.json());
+      const qs = new URLSearchParams({
+        page: String(p),
+        limit: "10",
+        search: s,
+      });
+      const res = await fetch(`/api/video-questions?${qs.toString()}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setQuestions(data.questions);
+        setPagination(data.pagination);
+      }
     } finally {
       setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchAll();
-    const iv = setInterval(fetchAll, 10000);
+    fetchAll(page, search);
+    const iv = setInterval(() => fetchAll(page, search), 10000);
     return () => clearInterval(iv);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, search]);
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(1); // Reset page when searching
+  };
 
   const create = async () => {
     setCreating(true);
@@ -60,7 +87,7 @@ export default function VideoQuestionsPage() {
       const res = await fetch("/api/video-questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionText }),
+        body: JSON.stringify({ questionText, useExternalMedia }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -68,7 +95,8 @@ export default function VideoQuestionsPage() {
         return;
       }
       setQuestionText("");
-      await fetchAll();
+      setUseExternalMedia(false);
+      await fetchAll(1, search);
     } catch {
       alert("Erro de conexão");
     } finally {
@@ -125,13 +153,36 @@ export default function VideoQuestionsPage() {
           value={questionText}
           onChange={(e) => setQuestionText(e.target.value)}
         />
-        <button
-          onClick={create}
-          disabled={creating || questionText.trim().length === 0}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-white font-semibold disabled:opacity-50"
-        >
-          {creating ? "Criando..." : "Salvar pergunta"}
-        </button>
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer">
+            <input type="checkbox" checked={useExternalMedia} onChange={(e) => setUseExternalMedia(e.target.checked)} />
+            Usar mídias externas (Pexels)
+          </label>
+          <button
+            onClick={create}
+            disabled={creating || questionText.trim().length === 0}
+            className="rounded-md bg-indigo-600 px-4 py-2 text-white font-semibold disabled:opacity-50"
+          >
+            {creating ? "Criando..." : "Salvar pergunta"}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
+        <div className="relative w-full md:w-96">
+          <input
+            type="text"
+            className="w-full rounded-md border pl-10 pr-4 py-2"
+            placeholder="Buscar perguntas..."
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3">
@@ -207,7 +258,31 @@ export default function VideoQuestionsPage() {
         ))}
 
         {questions.length === 0 ? (
-          <div className="rounded-lg border bg-white p-6 text-gray-700">Nenhuma pergunta cadastrada.</div>
+          <div className="rounded-lg border bg-white p-12 text-center text-gray-500">
+            {search ? "Nenhuma pergunta encontrada para esta busca." : "Nenhuma pergunta cadastrada."}
+          </div>
+        ) : null}
+
+        {pagination && pagination.totalPages > 1 ? (
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+              className="px-3 py-1 rounded border bg-white disabled:opacity-50"
+            >
+              Anterior
+            </button>
+            <div className="text-sm font-semibold">
+              Página {page} de {pagination.totalPages}
+            </div>
+            <button
+              disabled={page === pagination.totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              className="px-3 py-1 rounded border bg-white disabled:opacity-50"
+            >
+              Próxima
+            </button>
+          </div>
         ) : null}
       </div>
     </div>
