@@ -100,6 +100,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/shebang-command ./no
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/shebang-regex ./node_modules/shebang-regex
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/isexe ./node_modules/isexe
 
+# Fallback: garante `node_modules` completo no runtime (evita faltar deps transitivas em produção).
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+
 USER nextjs
 
 EXPOSE 3000
