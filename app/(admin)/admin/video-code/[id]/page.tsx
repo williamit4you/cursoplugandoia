@@ -70,10 +70,10 @@ export default function VideoCodeProjectDetailPage() {
       if (res.ok) {
         const data = await res.json();
         setProject(data);
-        if (data.status === "DONE" || data.status === "FAILED") {
+        if (data.status === "DONE" || data.status === "FAILED" || data.status === "READY") {
+          if (data.status === "DONE") setRendering(false);
+          if (data.status === "READY") setGenerating(false);
           clearInterval(iv);
-          setRendering(false);
-          setGenerating(false);
         }
       }
     }, 2000);
@@ -136,8 +136,13 @@ export default function VideoCodeProjectDetailPage() {
         body: JSON.stringify({ projectId: project.id }),
       });
       const data = await res.json();
-      if (res.ok) setProject(data);
-    } finally {
+      if (res.ok) {
+        setProject(data);
+      } else {
+        alert(data.error || "Erro ao renderizar");
+        setRendering(false);
+      }
+    } catch {
       setRendering(false);
     }
   };
@@ -151,7 +156,7 @@ export default function VideoCodeProjectDetailPage() {
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      <p className="text-gray-500 font-medium">Carregando projeto...</p>
+      <p className="text-gray-500 font-medium text-sm font-bold uppercase tracking-widest">Iniciando motor de vídeo...</p>
     </div>
   );
   if (!project) return <div className="p-12 text-center text-gray-500 font-bold bg-gray-50 rounded-2xl">Projeto não encontrado.</div>;
@@ -166,25 +171,25 @@ export default function VideoCodeProjectDetailPage() {
             className="group flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors"
           >
             <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Voltar
+            Voltar para a lista
           </button>
           <div className="flex items-center gap-3">
-             <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight truncate">
+             <h1 className="text-3xl font-black text-gray-900 tracking-tight truncate">
               {project.title?.trim() ? project.title : "Projeto sem título"}
             </h1>
             <div className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${
               project.status === 'DONE' ? 'bg-emerald-100 text-emerald-700' : 
               project.status === 'FAILED' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'
             }`}>
-              {project.status}
+              {project.status === 'RENDERING' ? 'Renderizando' : project.status}
             </div>
           </div>
           <p className="text-gray-500 flex items-center gap-2 text-sm">
              <span className="font-bold text-indigo-600">{aspectRatioLabel}</span>
              <span className="text-gray-300">•</span>
-             <span>{project.videoDurationSec} segundos</span>
+             <span className="font-medium">{project.videoDurationSec} segundos</span>
              <span className="text-gray-300">•</span>
-             <span>{project.fps} FPS</span>
+             <span className="font-medium">{project.fps} FPS</span>
           </p>
         </div>
 
@@ -195,7 +200,7 @@ export default function VideoCodeProjectDetailPage() {
             className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 font-bold text-gray-700 shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-all disabled:opacity-50"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            {generating ? "Gerando..." : "Gerar com IA"}
+            {generating ? "Gerando Roteiro..." : "Gerar com IA"}
           </button>
           <button
             onClick={renderMp4}
@@ -236,30 +241,55 @@ export default function VideoCodeProjectDetailPage() {
                 <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                </div>
                <div>
-                <div className="font-black text-red-900 text-sm">Erro detectado</div>
+                <div className="font-black text-red-900 text-sm">Erro na renderização</div>
                 <div className="mt-1 text-sm text-red-700 whitespace-pre-wrap">{project.errorMessage}</div>
                </div>
             </div>
           )}
 
           {project.status === "RENDERING" && (
-            <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-xl shadow-indigo-50 space-y-4 animate-in slide-in-from-top-2 duration-300">
+            <div className="rounded-3xl border border-indigo-100 bg-white p-8 shadow-2xl shadow-indigo-50 space-y-6 animate-in slide-in-from-top-2 duration-300">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-black text-indigo-900 flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-ping"></div>
-                  Renderizando vídeo no Remotion...
+                <div className="text-lg font-black text-indigo-900 flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-indigo-600 animate-ping"></div>
+                  Processando Vídeo...
                 </div>
-                <div className="text-xs font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">
+                <div className="text-sm font-black text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl">
                   {Math.round(project.renderProgress)}%
                 </div>
               </div>
-              <div className="w-full bg-gray-100 h-3.5 rounded-full overflow-hidden">
+              
+              <div className="w-full bg-gray-100 h-4 rounded-full overflow-hidden">
                 <div 
-                  className="bg-indigo-600 h-full transition-all duration-700 ease-out shadow-[0_0_15px_rgba(79,70,229,0.4)]" 
+                  className="bg-indigo-600 h-full transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(79,70,229,0.5)]" 
                   style={{ width: `${project.renderProgress}%` }}
                 ></div>
               </div>
-              <p className="text-[11px] text-gray-400 font-bold uppercase tracking-tight text-center italic">Aguarde. Isso pode levar alguns segundos.</p>
+
+              {/* Rendering Checklist */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {[
+                  { label: "Gerando Narração (Voz IA)", min: 0 },
+                  { label: "Sincronizando Legendas (Whisper)", min: 10 },
+                  { label: "Renderizando Cenas (Remotion)", min: 20 },
+                  { label: "Finalizando Arquivo MP4", min: 95 },
+                ].map((step, i) => {
+                  const isDone = project.renderProgress >= step.min + 5 || (step.min === 95 && project.renderProgress === 100);
+                  const isCurrent = project.renderProgress >= step.min && !isDone;
+                  return (
+                    <div key={i} className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${isDone ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : isCurrent ? 'bg-indigo-50 border-indigo-100 text-indigo-700 scale-[1.02] shadow-sm' : 'bg-gray-50 border-gray-100 text-gray-400 opacity-60'}`}>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${isDone ? 'bg-emerald-500 text-white' : isCurrent ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-white'}`}>
+                        {isDone ? (
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                        ) : (
+                          <span className="text-[10px] font-black">{i + 1}</span>
+                        )}
+                      </div>
+                      <span className={`text-xs font-bold uppercase tracking-tight ${isCurrent ? 'animate-pulse' : ''}`}>{step.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -430,8 +460,9 @@ export default function VideoCodeProjectDetailPage() {
           
           {/* Result Card */}
           <div className="bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden">
-            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 font-black text-xs text-gray-400 uppercase tracking-widest">
-              Preview do Resultado
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 font-black text-xs text-gray-400 uppercase tracking-widest flex justify-between">
+              <span>Preview Final</span>
+              {project.status === 'DONE' && <span className="text-emerald-600 animate-pulse">● PRONTO</span>}
             </div>
             <div className="p-6 space-y-6">
               {project.videoUrl ? (
@@ -439,6 +470,7 @@ export default function VideoCodeProjectDetailPage() {
                   <div className="relative rounded-2xl overflow-hidden bg-black shadow-2xl group border-4 border-indigo-50">
                     <video 
                       controls 
+                      autoPlay={project.status === 'DONE'}
                       src={project.videoUrl} 
                       className="w-full h-auto aspect-[9/16] object-cover" 
                     />
@@ -448,10 +480,10 @@ export default function VideoCodeProjectDetailPage() {
                     href={project.videoUrl} 
                     target="_blank" 
                     rel="noreferrer"
-                    className="flex items-center justify-center gap-2 w-full bg-indigo-50 text-indigo-700 py-3 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-all border border-indigo-100"
+                    className="flex items-center justify-center gap-2 w-full bg-indigo-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Baixar MP4
+                    Baixar Vídeo MP4
                   </a>
                 </div>
               ) : (
@@ -459,14 +491,17 @@ export default function VideoCodeProjectDetailPage() {
                   <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4">
                     <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                   </div>
-                  <p className="text-gray-400 text-sm font-bold leading-tight">O vídeo ainda não foi renderizado.</p>
-                  <p className="text-gray-300 text-xs mt-2 italic">Clique em &quot;Renderizar MP4&quot; para começar.</p>
+                  <p className="text-gray-400 text-sm font-bold leading-tight">Vídeo ainda não disponível.</p>
+                  <p className="text-gray-300 text-[10px] mt-2 font-bold uppercase tracking-tighter italic">Configure o roteiro e clique em &quot;Renderizar MP4&quot;.</p>
                 </div>
               )}
 
               {project.audioUrl && (
                 <div className="pt-4 border-t border-gray-50 space-y-3">
-                  <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Narração de Áudio</div>
+                  <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex justify-between items-center">
+                    <span>Narração Gerada</span>
+                    <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">OK</span>
+                  </div>
                   <audio controls src={project.audioUrl} className="w-full h-10 custom-audio" />
                 </div>
               )}
@@ -478,15 +513,14 @@ export default function VideoCodeProjectDetailPage() {
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-700">
                <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
             </div>
-            <h4 className="font-black text-lg mb-2 relative z-10">Dica de Especialista</h4>
+            <h4 className="font-black text-lg mb-2 relative z-10 tracking-tight">Dica de Especialista</h4>
             <p className="text-indigo-100 text-xs leading-relaxed font-medium relative z-10">
-              Vídeos curtos de 30 a 45 segundos convertem muito mais. Use o &quot;Gerar com IA&quot; para otimizar o roteiro automaticamente com ganchos de retenção!
+              O vídeo completo demora mais para processar que o áudio. Acompanhe o checklist ao lado para ver em qual etapa estamos!
             </p>
           </div>
 
         </div>
       </div>
-
     </div>
   );
 }

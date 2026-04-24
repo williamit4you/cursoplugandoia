@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
       audioUrl = `${publicBase}/${audioKey}`;
       await prisma.codeVideoProject.update({
         where: { id: projectId },
-        data: { audioUrl },
+        data: { audioUrl, renderProgress: 10 },
       });
     }
 
@@ -178,6 +178,10 @@ export async function POST(req: NextRequest) {
           if (transRes.ok) {
             const data = await transRes.json();
             transcription = data.words;
+            await prisma.codeVideoProject.update({
+              where: { id: projectId },
+              data: { renderProgress: 20 },
+            });
           }
         }
       } catch (err) {
@@ -222,8 +226,8 @@ export async function POST(req: NextRequest) {
       outputLocation: localMp4,
       inputProps: { videoSpec, audioUrl, transcription },
       onProgress: async (p: any) => {
-        const percent = p * 100;
-        if (percent - lastProgressUpdate > 5 || percent === 100) {
+        const percent = 20 + (p * 75); // 20% to 95%
+        if (percent - lastProgressUpdate > 5 || percent >= 95) {
           lastProgressUpdate = percent;
           await prisma.codeVideoProject.update({
             where: { id: projectId },
@@ -256,6 +260,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(updated);
   } catch (error: any) {
     const msg = error?.message || "Failed to render";
+    console.error("[RENDER_ERROR]", error);
+    
+    // Attempt to save error to DB
+    try {
+      const body = await req.clone().json();
+      const pId = String(body?.projectId ?? "").trim();
+      if (pId) {
+        await prisma.codeVideoProject.update({
+          where: { id: pId },
+          data: { status: "FAILED", errorMessage: msg, renderProgress: 0 },
+        });
+      }
+    } catch (e) {}
+
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
