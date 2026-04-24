@@ -195,8 +195,12 @@ export async function POST(req: NextRequest) {
     const entryPoint = path.resolve(process.cwd(), "remotion", "index.ts");
     const bundleLocation = await bundle({ entryPoint, webpackOverride: (c) => c });
 
+    // --- CORRIGIDO: Puxa o caminho do Chromium e passa direto nas funções
+    const browserPath = process.env.REMOTION_CHROME_BIN || undefined;
+
     const compositions = await getCompositions(bundleLocation, {
       inputProps: { videoSpec, audioUrl, transcription },
+      browserExecutable: browserPath, // <-- Passado direto na raiz
     });
 
     const compositionId = project.aspectRatio === "LANDSCAPE_16_9" ? "VideoLandscape" : "VideoPortrait";
@@ -225,6 +229,7 @@ export async function POST(req: NextRequest) {
       codec: "h264",
       outputLocation: localMp4,
       inputProps: { videoSpec, audioUrl, transcription },
+      browserExecutable: browserPath, // <-- Passado direto na raiz
       onProgress: async (p: any) => {
         const percent = 20 + (p * 75); // 20% to 95%
         if (percent - lastProgressUpdate > 5 || percent >= 95) {
