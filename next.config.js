@@ -17,6 +17,8 @@ const nextConfig = {
         "./node_modules/puppeteer/**/*",
         "./node_modules/puppeteer-core/**/*",
         "./node_modules/@remotion/studio-shared/**/*",
+        "./node_modules/@rspack/**/*",
+        "./node_modules/webpack/**/*",
       ],
     },
   },
