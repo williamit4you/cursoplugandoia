@@ -16,7 +16,8 @@ type Config = {
   fps: number;
   ttsVoice: string;
   ttsSpeed: string; // Like "+5%" or "-10%"
-  autoEnqueueMeta: boolean;
+  autoEnqueueMetaStory: boolean;
+  autoEnqueueMetaReels: boolean;
   autoEnqueueTikTok: boolean;
   autoEnqueueLinkedIn: boolean;
   autoEnqueueYouTube: boolean;
@@ -35,7 +36,8 @@ const DEFAULT: Config = {
   fps: 30,
   ttsVoice: "pt-BR-AntonioNeural",
   ttsSpeed: "+0%",
-  autoEnqueueMeta: false,
+  autoEnqueueMetaStory: false,
+  autoEnqueueMetaReels: false,
   autoEnqueueTikTok: false,
   autoEnqueueLinkedIn: false,
   autoEnqueueYouTube: false,
@@ -350,7 +352,8 @@ export default function VideoQuestionsConfigPage() {
               <p className="text-xs text-gray-500 leading-relaxed mb-2">Enviar automaticamente para a fila de publicação assim que o vídeo estiver pronto.</p>
               
               {[
-                { key: 'autoEnqueueMeta', label: 'Instagram / Meta', icon: 'M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z' },
+                { key: 'autoEnqueueMetaReels', label: 'Instagram / Meta (Reels)', icon: 'M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z' },
+                { key: 'autoEnqueueMetaStory', label: 'Instagram / Meta (Story)', icon: 'M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z' },
                 { key: 'autoEnqueueTikTok', label: 'TikTok', icon: 'M11.666 3.333v10.667a2.667 2.667 0 11-2.666-2.667c.366 0 .708.075 1.018.209V8.209A5.333 5.333 0 1014.333 11c0-.05-.002-.1-.005-.15V3.333h-2.662z' },
                 { key: 'autoEnqueueLinkedIn', label: 'LinkedIn', icon: 'M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a2.7 2.7 0 0 0-2.7-2.7c-1.2 0-2 .7-2.4 1.3v-1.1h-2.5v7.8h2.5v-4.2c0-.6.5-1.1 1.1-1.1s1.1.5 1.1 1.1v4.2h2.9M8.1 18.5v-7.8h-2.6v7.8H8.1M7.9 9.5c.9 0 1.4-.5 1.4-1.3c0-.7-.5-1.2-1.3-1.2c-.8 0-1.4.5-1.4 1.2c0 .8.6 1.3 1.3 1.3z' },
                 { key: 'autoEnqueueYouTube', label: 'YouTube Shorts', icon: 'M21.58 7.19c-.23-.86-.91-1.54-1.77-1.77C18.25 5 12 5 12 5s-6.25 0-7.81.42c-.86.23-1.54.91-1.77 1.77C2 8.75 2 12 2 12s0 3.25.42 4.81c.23.86.91 1.54 1.77 1.77C5.75 19 12 19 12 19s6.25 0 7.81-.42c.86-.23 1.54-.91 1.77-1.77C22 15.25 22 12 22 12s0-3.25-.42-4.81zM10 15V9l5.2 3L10 15z' },

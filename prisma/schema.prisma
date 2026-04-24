@@ -139,7 +139,8 @@ model VideoQuestionConfig {
   ttsSpeed           String   @default("+5%")
 
   // Pós-processo
-  autoEnqueueMeta     Boolean @default(false)
+  autoEnqueueMetaStory  Boolean @default(false)
+  autoEnqueueMetaReels  Boolean @default(false)
   autoEnqueueTikTok   Boolean @default(false)
   autoEnqueueLinkedIn Boolean @default(false)
   autoEnqueueYouTube  Boolean @default(false)

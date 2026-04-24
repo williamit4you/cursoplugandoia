@@ -20,10 +20,14 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
     const id = ctx.params.id;
     const body = await req.json();
     const platform = String(body?.platform ?? "").trim().toUpperCase();
+    const postType = String(body?.postType ?? "REEL").trim().toUpperCase();
 
     if (!platform) return NextResponse.json({ error: "platform is required" }, { status: 400 });
     if (!["META", "TIKTOK", "LINKEDIN", "YOUTUBE"].includes(platform)) {
       return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
+    }
+    if (!["STORY", "REEL"].includes(postType)) {
+      return NextResponse.json({ error: "Invalid postType. Must be STORY or REEL" }, { status: 400 });
     }
 
     const q = await prisma.videoQuestion.findUnique({
@@ -46,7 +50,7 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
         videoUrl: q.codeVideoProject.videoUrl,
         status: "DRAFT",
         platform,
-        postType: "REEL",
+        postType,
         log: `[${new Date().toLocaleTimeString("pt-BR")}] Enfileirado via Perguntas → vídeos`,
       },
     });
