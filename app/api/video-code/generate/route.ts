@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
       "Cada scene deve ter: sceneTemplate, durationSec, props.",
       `sceneTemplate permitido: ${Array.from(ALLOWED_TEMPLATES).join(", ")}.`,
       "Regras de Retenção:",
+      `- A narração deve ter tamanho suficiente para preencher os ${project.videoDurationSec} segundos de vídeo (aproximadamente 2.5 palavras por segundo). Portanto, gere em torno de ${Math.round(project.videoDurationSec * 2.5)} palavras no narrationText.`,
       "- Use ganchos visuais e textuais fortes nos primeiros 3 segundos.",
       "- NarrationText em português (pt-BR), tom enérgico e sem pausas desnecessárias.",
       "- CRITICAL: O narrationText deve conter APENAS o texto que será lido. PROIBIDO incluir emojis, descrições de imagens entre colchetes ou parênteses (ex: [foguete], (mão apontando)), ou qualquer instrução de direção de arte.",
@@ -108,6 +109,8 @@ export async function POST(req: NextRequest) {
       "- props.overlays: array de { type: 'emoji'|'icon'|'arrow', value: string, timeSec: number, position: 'top'|'center'|'bottom' }.",
       "- props.sfx: array de { type: 'woosh'|'pop'|'ding'|'success', timeSec: number }.",
       "- Se props.url for fornecido, use-o como fundo da cena (especialmente em RetentionScene).",
+      "- Para garantir contraste legível, adicione na props 'backgroundColor' e 'textColor'.",
+      "- IMPORTANTE: Se 'backgroundColor' for azul escuro ou qualquer cor escura, 'textColor' OBRIGATORIAMENTE deve ser claro (ex: '#FFFFFF'). Se o fundo for claro, o texto deve ser escuro (ex: '#000000').",
     ].join("\n");
 
     let pexelsAssets = "";

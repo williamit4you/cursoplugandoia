@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 
-export function TimelineScene(props: { items: { label: string; text: string }[]; title?: string }) {
+export function TimelineScene(props: { items: { label: string; text: string }[]; title?: string; backgroundColor?: string; textColor?: string }) {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
 
@@ -16,8 +16,8 @@ export function TimelineScene(props: { items: { label: string; text: string }[];
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #06121b 0%, #0a1f2b 45%, #06121b 100%)",
-        color: "white",
+        background: props.backgroundColor || "linear-gradient(135deg, #06121b 0%, #0a1f2b 45%, #06121b 100%)",
+        color: props.textColor || "white",
         fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
         padding: 80,
       }}

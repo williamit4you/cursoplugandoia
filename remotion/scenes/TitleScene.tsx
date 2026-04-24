@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 
-export function TitleScene(props: { title: string; subtitle?: string }) {
+export function TitleScene(props: { title: string; subtitle?: string; backgroundColor?: string; textColor?: string }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -15,8 +15,8 @@ export function TitleScene(props: { title: string; subtitle?: string }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #0b1220 0%, #1f2a44 45%, #0b1220 100%)",
-        color: "white",
+        background: props.backgroundColor || "linear-gradient(135deg, #0b1220 0%, #1f2a44 45%, #0b1220 100%)",
+        color: props.textColor || "white",
         fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
         padding: 80,
       }}

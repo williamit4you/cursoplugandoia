@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 
-export function QuoteScene(props: { quote: string; author?: string }) {
+export function QuoteScene(props: { quote: string; author?: string; backgroundColor?: string; textColor?: string }) {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
 
@@ -15,8 +15,8 @@ export function QuoteScene(props: { quote: string; author?: string }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "radial-gradient(circle at 30% 20%, rgba(124,58,237,0.35), transparent 55%), radial-gradient(circle at 70% 70%, rgba(34,197,94,0.25), transparent 55%), #070813",
-        color: "white",
+        background: props.backgroundColor || "radial-gradient(circle at 30% 20%, rgba(124,58,237,0.35), transparent 55%), radial-gradient(circle at 70% 70%, rgba(34,197,94,0.25), transparent 55%), #070813",
+        color: props.textColor || "white",
         fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
         padding: 90,
       }}

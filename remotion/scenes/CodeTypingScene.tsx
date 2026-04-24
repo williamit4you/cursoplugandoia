@@ -5,7 +5,7 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-export function CodeTypingScene(props: { code: string; title?: string; language?: string }) {
+export function CodeTypingScene(props: { code: string; title?: string; language?: string; backgroundColor?: string; textColor?: string }) {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
 
@@ -22,8 +22,8 @@ export function CodeTypingScene(props: { code: string; title?: string; language?
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #070a10 0%, #0b1220 55%, #070a10 100%)",
-        color: "white",
+        background: props.backgroundColor || "linear-gradient(135deg, #070a10 0%, #0b1220 55%, #070a10 100%)",
+        color: props.textColor || "white",
         fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
         padding: 80,
       }}

@@ -6,7 +6,9 @@ export const RetentionScene: React.FC<{
   url?: string;
   title?: string;
   durationInFrames: number;
-}> = ({ url, title, durationInFrames }) => {
+  textColor?: string;
+  backgroundColor?: string;
+}> = ({ url, title, durationInFrames, textColor, backgroundColor }) => {
   const frame = useCurrentFrame();
   
   // Subtle zoom effect
@@ -17,7 +19,7 @@ export const RetentionScene: React.FC<{
   const [error, setError] = React.useState(false);
 
   return (
-    <AbsoluteFill style={{ backgroundColor: "black", overflow: "hidden" }}>
+    <AbsoluteFill style={{ backgroundColor: backgroundColor || "black", overflow: "hidden" }}>
       {url && !error ? (
         isVideo ? (
           <Video
@@ -44,11 +46,11 @@ export const RetentionScene: React.FC<{
           />
         )
       ) : (
-        <div style={{ flex: 1, background: "linear-gradient(45deg, #1a1a2e 0%, #16213e 100%)" }} />
+        <div style={{ flex: 1, background: backgroundColor || "linear-gradient(45deg, #1a1a2e 0%, #16213e 100%)" }} />
       )}
       
       {/* Overlay darkening */}
-      <AbsoluteFill style={{ backgroundColor: "rgba(0,0,0,0.3)" }} />
+      <AbsoluteFill style={{ backgroundColor: backgroundColor ? "transparent" : "rgba(0,0,0,0.3)" }} />
 
       {title && (
         <div
@@ -57,12 +59,12 @@ export const RetentionScene: React.FC<{
             top: "30%",
             width: "100%",
             textAlign: "center",
-            color: "white",
+            color: textColor || "white",
             fontSize: 80,
             fontWeight: 800,
             textTransform: "uppercase",
             padding: "0 50px",
-            textShadow: "0 0 20px black",
+            textShadow: textColor === "#000000" ? "0 0 20px white" : "0 0 20px black",
           }}
         >
           {title}
