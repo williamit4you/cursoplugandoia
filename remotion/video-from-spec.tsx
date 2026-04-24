@@ -6,6 +6,9 @@ import { BulletListScene } from "./scenes/BulletListScene";
 import { QuoteScene } from "./scenes/QuoteScene";
 import { CodeTypingScene } from "./scenes/CodeTypingScene";
 import { TimelineScene } from "./scenes/TimelineScene";
+import { ChartScene } from "./scenes/ChartScene";
+import { BigNumberScene } from "./scenes/BigNumberScene";
+import { CircleHighlightScene } from "./scenes/CircleHighlightScene";
 import { RetentionScene } from "./RetentionScene";
 import { WordCaptions } from "./WordCaptions";
 import { PopInOverlay } from "./PopInOverlay";
@@ -22,6 +25,12 @@ function sceneToComponent(scene: VideoSpecScene) {
       return <CodeTypingScene {...scene.props} />;
     case "TimelineScene":
       return <TimelineScene {...scene.props} />;
+    case "ChartScene":
+      return <ChartScene {...scene.props} />;
+    case "BigNumberScene":
+      return <BigNumberScene {...scene.props} />;
+    case "CircleHighlightScene":
+      return <CircleHighlightScene {...scene.props} />;
     case "RetentionScene":
       return <RetentionScene {...scene.props} durationInFrames={scene.durationInFrames} />;
     default:
@@ -40,6 +49,9 @@ export function VideoFromSpec(props: {
   let from = 0;
   return (
     <div style={{ flex: 1, backgroundColor: 'black' }}>
+      {/* Background Music - Lo-fi or Hype track */}
+      <Audio src="/sfx/bgm.mp3" volume={0.15} loop />
+
       {props.audioUrl ? <Audio src={props.audioUrl} /> : null}
       
       {scenes.map((scene) => {

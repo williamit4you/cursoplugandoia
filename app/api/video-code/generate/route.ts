@@ -29,7 +29,10 @@ const ALLOWED_TEMPLATES = new Set([
   "QuoteScene",
   "TimelineScene",
   "CodeTypingScene",
-  "RetentionScene", // Nova cena focada em retenção (mídia de fundo + texto central)
+  "RetentionScene", // Background media + center text
+  "ChartScene", // Bar chart for stats/growth
+  "BigNumberScene", // Huge numbers/percentages
+  "CircleHighlightScene", // Connected concepts
 ]);
 
 function coerceScenes(scenes: any[], videoDurationSec: number) {
@@ -98,19 +101,22 @@ export async function POST(req: NextRequest) {
       `- title (string), description (string), narrationText (string), scenes (array).`,
       "Cada scene deve ter: sceneTemplate, durationSec, props.",
       `sceneTemplate permitido: ${Array.from(ALLOWED_TEMPLATES).join(", ")}.`,
-      "Regras de Retenção:",
+      "Regras de Retenção e Visual:",
       `- A narração deve ter tamanho suficiente para preencher os ${project.videoDurationSec} segundos de vídeo (aproximadamente 2.5 palavras por segundo). Portanto, gere em torno de ${Math.round(project.videoDurationSec * 2.5)} palavras no narrationText.`,
       "- Use ganchos visuais e textuais fortes nos primeiros 3 segundos.",
       "- NarrationText em português (pt-BR), tom enérgico e sem pausas desnecessárias.",
-      "- CRITICAL: O narrationText deve conter APENAS o texto que será lido. PROIBIDO incluir emojis, descrições de imagens entre colchetes ou parênteses (ex: [foguete], (mão apontando)), ou qualquer instrução de direção de arte.",
-      "- CRITICAL: NUNCA invente URLs falsas ou placeholders (ex: example.com, placeholder.com). Se não houver uma URL válida do Pexels disponível, deixe props.url como string vazia ou null.",
-      "- Todos os elementos visuais (emojis, arrows, icons) devem ser colocados EXCLUSIVAMENTE no campo props.overlays.",
-      "- Adicione overlays e sfx (woosh, pop, ding) nas props para reforçar o conteúdo.",
-      "- props.overlays: array de { type: 'emoji'|'icon'|'arrow', value: string, timeSec: number, position: 'top'|'center'|'bottom' }.",
-      "- props.sfx: array de { type: 'woosh'|'pop'|'ding'|'success', timeSec: number }.",
-      "- Se props.url for fornecido, use-o como fundo da cena (especialmente em RetentionScene).",
-      "- Para garantir contraste legível, adicione na props 'backgroundColor' e 'textColor'.",
-      "- IMPORTANTE: Se 'backgroundColor' for azul escuro ou qualquer cor escura, 'textColor' OBRIGATORIAMENTE deve ser claro (ex: '#FFFFFF'). Se o fundo for claro, o texto deve ser escuro (ex: '#000000').",
+      "- CRITICAL: O narrationText deve conter APENAS o texto que será lido. PROIBIDO incluir emojis, descrições de imagens entre colchetes ou parênteses.",
+      "- NUNCA invente URLs falsas. Se não houver URL válida do Pexels, deixe props.url vazio.",
+      "- Adicione overlays e sfx (woosh, pop, ding, success) nas props para reforçar o conteúdo.",
+      "- props.overlays: array de { type: 'emoji'|'icon'|'arrow'|'woosh'|'pop'|'ding'|'success', value: string, timeSec: number, position: 'top'|'center'|'bottom' }.",
+      "- IMPORTANTE CORES: Pare de usar fundos brancos, pretos chatos ou cinzas. Você DEVE ESCOLHER cores de fundo hiper-contrastantes e vibrantes baseadas no tema (ex: Amarelo Neon #FFEB3B, Azul Cobalto #2962FF, Verde Dinheiro #00E676, Vermelho Choque #D50000).",
+      "- IMPORTANTE CORES: O texto deve ter contraste perfeito. Se fundo for neon/claro, texto DEVE ser #000000. Se fundo for escuro, texto DEVE ser #FFFFFF.",
+      "- CENAS OBRIGATÓRIAS: Escolha as cenas conforme o contexto da frase.",
+      "  * Falando de porcentagens, dinheiro ou dias? Use 'BigNumberScene' (number, subtitle).",
+      "  * Falando de crescimento, vendas ou estatísticas? Use 'ChartScene' (title, dataPoints).",
+      "  * Explicando pilares ou conceitos? Use 'CircleHighlightScene' (centerText, surroundingTexts).",
+      "  * Imagens reais de fundo necessárias? Use 'RetentionScene' (title, url).",
+      "  * Início do vídeo? Use 'TitleScene'.",
     ].join("\n");
 
     let pexelsAssets = "";
@@ -123,15 +129,15 @@ export async function POST(req: NextRequest) {
     }
 
     const user = [
-      `IDEIA: ${project.ideaPrompt}`,
+      `IDEIA / PERGUNTA: ${project.ideaPrompt}`,
       `FORMATO: ${formatHint}`,
       `DURACAO_TOTAL_SEGUNDOS: ${project.videoDurationSec}`,
       pexelsAssets,
       "",
-      "Gere um roteiro com 4 a 7 cenas.",
-      "Use TitleScene no começo com um gancho forte.",
-      "Use RetentionScene para partes explicativas com mídias de fundo se disponíveis.",
-      "Capriche nos overlays e SFX para manter a energia alta.",
+      "Gere um roteiro dinâmico com 4 a 8 cenas curtas (2 a 5 segundos cada).",
+      "Variação é rei: NUNCA repita a mesma cor de fundo 3 vezes seguidas. Alterne as cores (ex: Amarelo Neon -> Preto -> Azul).",
+      "Use as novas ferramentas (BigNumberScene, ChartScene, CircleHighlightScene) se o tema encaixar.",
+      "Mantenha o vídeo ultra profissional e dinâmico.",
     ].join("\n");
 
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
