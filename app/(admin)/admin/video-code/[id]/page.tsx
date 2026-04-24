@@ -460,7 +460,7 @@ export default function VideoCodeProjectDetailPage() {
                     <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                   </div>
                   <p className="text-gray-400 text-sm font-bold leading-tight">O vídeo ainda não foi renderizado.</p>
-                  <p className="text-gray-300 text-xs mt-2 italic">Clique em "Renderizar MP4" para começar.</p>
+                  <p className="text-gray-300 text-xs mt-2 italic">Clique em &quot;Renderizar MP4&quot; para começar.</p>
                 </div>
               )}
 
@@ -480,28 +480,13 @@ export default function VideoCodeProjectDetailPage() {
             </div>
             <h4 className="font-black text-lg mb-2 relative z-10">Dica de Especialista</h4>
             <p className="text-indigo-100 text-xs leading-relaxed font-medium relative z-10">
-              Vídeos curtos de 30 a 45 segundos convertem muito mais. Use o **"Gerar com IA"** para otimizar o roteiro automaticamente com ganchos de retenção!
+              Vídeos curtos de 30 a 45 segundos convertem muito mais. Use o &quot;Gerar com IA&quot; para otimizar o roteiro automaticamente com ganchos de retenção!
             </p>
           </div>
 
         </div>
       </div>
 
-      <style jsx global>{`
-        .custom-audio::-webkit-media-controls-panel {
-          background-color: #f3f4f6;
-          border-radius: 12px;
-        }
-        
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .animate-in {
-          animation: fade-in 0.6s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 }
