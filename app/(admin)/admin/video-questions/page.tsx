@@ -45,6 +45,7 @@ export default function VideoQuestionsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [enqueueing, setEnqueueing] = useState<string | null>(null);
 
@@ -131,6 +132,50 @@ export default function VideoQuestionsPage() {
     }
   };
 
+  const generateNow = async (q: Question) => {
+    setGeneratingId(q.id);
+    try {
+      const cfgRes = await fetch("/api/video-questions/config", { headers: { "x-worker-secret": SECRET } });
+      if (!cfgRes.ok) throw new Error("Falha ao obter configuração");
+      const cfg = await cfgRes.json();
+
+      const projRes = await fetch("/api/video-code/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ideaPrompt: q.questionText,
+          useExternalMedia: q.useExternalMedia,
+          aspectRatio: cfg.defaultAspectRatio || "PORTRAIT_9_16",
+          videoDurationSec: cfg.videoDurationSec || 30,
+          ttsVoice: cfg.ttsVoice || "pt-BR-AntonioNeural",
+          ttsSpeed: cfg.ttsSpeed || "+5%",
+        }),
+      });
+      if (!projRes.ok) throw new Error("Falha ao criar projeto");
+      const project = await projRes.json();
+
+      await fetch(`/api/video-questions/${q.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codeVideoProjectId: project.id, status: "PROCESSING" }),
+      });
+
+      const genRes = await fetch("/api/video-code/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id }),
+      });
+      if (!genRes.ok) throw new Error("Falha na geração por IA");
+
+      alert("Geração iniciada! Você pode ver o roteiro agora.");
+      await fetchAll();
+    } catch (err: any) {
+      alert(err.message || "Erro ao gerar");
+    } finally {
+      setGeneratingId(null);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-start justify-between gap-4 mb-6">
@@ -200,11 +245,26 @@ export default function VideoQuestionsPage() {
                 ) : null}
                 {q.codeVideoProject?.videoUrl ? (
                   <div className="mt-2 text-sm">
-                    <a className="text-indigo-700 underline" href={q.codeVideoProject.videoUrl} target="_blank" rel="noreferrer">
+                    <a className="text-indigo-700 underline font-bold" href={q.codeVideoProject.videoUrl} target="_blank" rel="noreferrer">
                       Abrir MP4
                     </a>
                   </div>
                 ) : null}
+                {q.codeVideoProjectId ? (
+                   <div className="mt-1 text-sm">
+                    <a className="text-indigo-600 underline" href={`/admin/video-code/${q.codeVideoProjectId}`}>
+                      Ver Roteiro / Editar
+                    </a>
+                  </div>
+                ) : (
+                  <button 
+                    disabled={generatingId != null}
+                    onClick={() => generateNow(q)}
+                    className="mt-3 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md px-3 py-1 text-xs font-bold hover:bg-indigo-100 transition-colors"
+                  >
+                    {generatingId === q.id ? "Gerando..." : "Gerar Vídeo Agora"}
+                  </button>
+                )}
               </div>
 
               <div className="flex flex-col gap-2 min-w-[220px]">

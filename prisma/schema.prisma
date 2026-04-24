@@ -108,6 +108,7 @@ model CodeVideoProject {
   captionsUrl      String?
   videoUrl         String?
   thumbUrl         String?
+  renderProgress   Float            @default(0)
 
   errorMessage     String?
   log              String?

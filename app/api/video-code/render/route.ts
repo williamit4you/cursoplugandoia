@@ -206,12 +206,24 @@ export async function POST(req: NextRequest) {
     await fs.mkdir(outDir, { recursive: true });
     const localMp4 = path.join(outDir, `code-video-${projectId}.mp4`);
 
+    let lastProgressUpdate = 0;
+
     await renderMedia({
       composition,
       serveUrl: bundleLocation,
       codec: "h264",
       outputLocation: localMp4,
       inputProps: { videoSpec, audioUrl, transcription },
+      onProgress: async (p) => {
+        const percent = p * 100;
+        if (percent - lastProgressUpdate > 5 || percent === 100) {
+          lastProgressUpdate = percent;
+          await prisma.codeVideoProject.update({
+            where: { id: projectId },
+            data: { renderProgress: percent },
+          });
+        }
+      },
     });
 
     const buffer = await fs.readFile(localMp4);

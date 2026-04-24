@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -22,6 +22,7 @@ type Project = {
   captionsUrl: string | null;
   videoUrl: string | null;
   thumbUrl: string | null;
+  renderProgress: number;
   errorMessage: string | null;
   log: string | null;
   createdAt: string;
@@ -66,6 +67,26 @@ export default function VideoCodeProjectDetailPage() {
     fetchProject();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Polling for progress during rendering
+  useEffect(() => {
+    if (!project || (project.status !== "RENDERING" && project.status !== "GENERATING")) return;
+
+    const iv = setInterval(async () => {
+      const res = await fetch(`/api/video-code/projects/${id}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setProject(data);
+        if (data.status === "DONE" || data.status === "FAILED") {
+          clearInterval(iv);
+          setRendering(false);
+          setGenerating(false);
+        }
+      }
+    }, 2000);
+
+    return () => clearInterval(iv);
+  }, [id, project?.status, project]);
 
   const save = async () => {
     if (!project) return;
@@ -166,7 +187,17 @@ export default function VideoCodeProjectDetailPage() {
   if (!project) return <div>Projeto não encontrado.</div>;
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-4xl pb-20">
+      <div className="mb-6 flex items-center justify-between">
+        <button 
+          onClick={() => router.back()} 
+          className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          Voltar para lista
+        </button>
+      </div>
+
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold truncate">
@@ -209,6 +240,27 @@ export default function VideoCodeProjectDetailPage() {
             <div className="mt-1 whitespace-pre-wrap">{project.errorMessage}</div>
           </div>
         ) : null}
+
+        {project.status === "RENDERING" && (
+          <div className="rounded-xl border border-indigo-100 bg-white p-6 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-bold text-indigo-900 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></div>
+                Renderizando vídeo no Remotion...
+              </div>
+              <div className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+                {Math.round(project.renderProgress)}%
+              </div>
+            </div>
+            <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+              <div 
+                className="bg-indigo-600 h-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(79,70,229,0.5)]" 
+                style={{ width: `${project.renderProgress}%` }}
+              ></div>
+            </div>
+            <p className="text-[10px] text-gray-400 font-medium">O processo pode levar de 30 a 60 segundos dependendo da duração do vídeo.</p>
+          </div>
+        )}
 
         <div className="rounded-lg border bg-white p-5 space-y-4">
           <div className="grid grid-cols-2 gap-3">
