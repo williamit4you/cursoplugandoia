@@ -95,6 +95,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modul
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/execa ./node_modules/execa
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/which ./node_modules/which
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/cross-spawn ./node_modules/cross-spawn
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/path-key ./node_modules/path-key
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/shebang-command ./node_modules/shebang-command
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/shebang-regex ./node_modules/shebang-regex
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/isexe ./node_modules/isexe
 
 USER nextjs
