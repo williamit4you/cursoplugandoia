@@ -102,6 +102,8 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+COPY --from=builder --chown=nextjs:nodejs /app/remotion ./remotion
+
 # --- A GARANTIA DEFINITIVA ---
 # 1. Copia o Prisma Client e a Engine (o standalone SEMPRE esquece de copiar a engine)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
