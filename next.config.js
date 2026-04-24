@@ -19,6 +19,8 @@ const nextConfig = {
         "./node_modules/@remotion/studio-shared/**/*",
         "./node_modules/@rspack/**/*",
         "./node_modules/webpack/**/*",
+        "./node_modules/execa/**/*",
+        "./node_modules/cross-spawn/**/*",
       ],
     },
   },
