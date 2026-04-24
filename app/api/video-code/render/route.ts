@@ -214,7 +214,7 @@ export async function POST(req: NextRequest) {
       codec: "h264",
       outputLocation: localMp4,
       inputProps: { videoSpec, audioUrl, transcription },
-      onProgress: async (p) => {
+      onProgress: async (p: any) => {
         const percent = p * 100;
         if (percent - lastProgressUpdate > 5 || percent === 100) {
           lastProgressUpdate = percent;

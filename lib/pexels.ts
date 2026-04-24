@@ -1,4 +1,11 @@
-export async function searchPexelsMedia(query: string, limit = 5) {
+export type PexelsAsset = {
+  id: number;
+  type: string;
+  url: string;
+  thumbnail: string;
+};
+
+export async function searchPexelsMedia(query: string, limit = 5): Promise<PexelsAsset[]> {
   const apiKey = process.env.PEXELS_API_KEY;
   if (!apiKey) return [];
 

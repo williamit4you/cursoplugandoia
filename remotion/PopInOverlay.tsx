@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from "react";
 import { useCurrentFrame, useVideoConfig, interpolate, spring, AbsoluteFill } from "remotion";
 

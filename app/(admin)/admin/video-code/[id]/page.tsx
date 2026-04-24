@@ -14,6 +14,7 @@ type Project = {
   fps: number;
   ttsVoice: string;
   ttsSpeed: string;
+  useExternalMedia: boolean;
   title: string | null;
   description: string | null;
   narrationText: string | null;

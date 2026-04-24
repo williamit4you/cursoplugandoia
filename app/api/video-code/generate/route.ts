@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { searchPexelsMedia } from "@/lib/pexels";
+import { searchPexelsMedia, type PexelsAsset } from "@/lib/pexels";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
       const assets = await searchPexelsMedia(project.ideaPrompt, 6);
       if (assets.length > 0) {
         pexelsAssets = "\nRECURSOS DISPONÍVEIS (Pexels URLs para usar em props.url):\n" + 
-          assets.map(a => `- ${a.url} (Thumbnail: ${a.thumbnail})`).join("\n");
+          assets.map((a: PexelsAsset) => `- ${a.url} (Thumbnail: ${a.thumbnail})`).join("\n");
       }
     }
 
