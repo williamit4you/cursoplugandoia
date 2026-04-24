@@ -30,6 +30,13 @@ function totalDurationInSeconds(videoSpec: any) {
 }
 
 function dynamicRequire(moduleName: string) {
+  // NEW: Dummy imports to trick Next.js standalone tracer
+  if (process.env.NODE_ENV === "production" && false) {
+    require("@remotion/bundler");
+    require("@remotion/renderer");
+    require("remotion");
+  }
+
   // Avoid bundling native deps (Remotion bundler/renderer) into Next.js build.
   // eslint-disable-next-line no-eval
   const req = eval("require") as (name: string) => any;
