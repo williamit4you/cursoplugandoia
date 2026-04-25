@@ -538,7 +538,7 @@ export default function IntegrationsPage() {
 
         <Box sx={{ bgcolor: '#fef2f2', p: 2, borderRadius: 2, mb: 3 }}>
           <Typography variant="body2" color="textSecondary" sx={{ fontSize: 12 }}>
-            ℹ️ Salve as credenciais primeiro e depois clique em "Autenticar com o Google" para autorizar o envio de vídeos para o seu canal. Não se esqueça de adicionar <strong>{typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"}/api/integrations/youtube/callback</strong> nas URIs de redirecionamento autorizadas no Google Cloud.
+            ℹ️ Salve as credenciais primeiro e depois clique em &quot;Autenticar com o Google&quot; para autorizar o envio de vídeos para o seu canal. Não se esqueça de adicionar <strong>{typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"}/api/integrations/youtube/callback</strong> nas URIs de redirecionamento autorizadas no Google Cloud.
           </Typography>
         </Box>
       </Paper>
