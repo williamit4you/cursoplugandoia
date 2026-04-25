@@ -11,16 +11,10 @@ import {
   recalculateChannelMetrics,
   recalculateRankings,
 } from "@/lib/youtubeAnalyticsRepo";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 min max for this heavy endpoint
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));

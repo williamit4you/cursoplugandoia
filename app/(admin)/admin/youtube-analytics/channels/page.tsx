@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { Box } from "@mui/material";
 import YtChannelsTable from "@/components/youtube-analytics/YtChannelsTable";
 

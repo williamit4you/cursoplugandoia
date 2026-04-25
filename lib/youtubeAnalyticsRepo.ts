@@ -1,16 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
-
-// ═══════════════════════════════════════════════════════════════
-// YouTube Analytics — Repository Layer
-// Todas as queries ao banco para o módulo YT Analytics
-// ═══════════════════════════════════════════════════════════════
-
-const connectionString = process.env.DATABASE_URL!;
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+import { prisma } from "./prisma";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -446,7 +434,7 @@ export async function recalculateChannelMetrics(channelId: string) {
     _count: true,
   });
   const avgViewsPerShort = shortsData._count > 0 
-    ? bigintToNumber(shortsData._avg.views || BigInt(0))
+    ? Number(shortsData._avg.views || 0)
     : 0;
 
   await prisma.ytChannel.update({

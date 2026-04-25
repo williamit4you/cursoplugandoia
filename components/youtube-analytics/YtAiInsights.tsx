@@ -48,7 +48,7 @@ export default function YtAiInsights() {
     <Box sx={{ mt: 3 }}>
       <Card sx={{ mb: 4, p: 2, borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
         <CardContent>
-          <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
             <SmartToyIcon color="primary" /> Selecione um Canal para Análise
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
@@ -78,10 +78,10 @@ export default function YtAiInsights() {
 
       {report && !loading && (
         <Grid container spacing={3}>
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Card sx={{ borderRadius: 4, bgcolor: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <CardContent>
-                <Typography variant="h6" fontWeight="bold" color="primary.main" gutterBottom>
+                <Typography variant="h6" sx={{ fontWeight: "bold", color: "primary.main", mb: 0.35 }}>
                   Resumo Executivo
                 </Typography>
                 <Typography variant="body1" sx={{ fontSize: '1.1rem', color: '#334155' }}>
@@ -94,16 +94,16 @@ export default function YtAiInsights() {
             </Card>
           </Grid>
 
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{ borderRadius: 4, height: '100%', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
               <CardContent>
-                <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>Diagnóstico do Canal</Typography>
-                <Typography variant="body2" paragraph>{report.insights?.diagnosis}</Typography>
+                <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>Diagnóstico do Canal</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>{report.insights?.diagnosis}</Typography>
                 
-                <Typography variant="subtitle2" fontWeight="bold" sx={{ mt: 2, mb: 1 }}>Padrão de Conteúdo</Typography>
-                <Typography variant="body2" paragraph>{report.insights?.contentPattern}</Typography>
+                <Typography variant="subtitle2" sx={{ fontWeight: "bold", mt: 2, mb: 1 }}>Padrão de Conteúdo</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>{report.insights?.contentPattern}</Typography>
                 
-                <Typography variant="subtitle2" fontWeight="bold" sx={{ mt: 2, mb: 1 }}>Melhores Dias para Postar</Typography>
+                <Typography variant="subtitle2" sx={{ fontWeight: "bold", mt: 2, mb: 1 }}>Melhores Dias para Postar</Typography>
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   {(report.insights?.bestDays || []).map((day: string, idx: number) => (
                     <Chip key={idx} label={day} color="primary" variant="outlined" size="small" />
@@ -113,19 +113,19 @@ export default function YtAiInsights() {
             </Card>
           </Grid>
 
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{ borderRadius: 4, height: '100%', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
               <CardContent>
-                <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                   <TipsAndUpdatesIcon color="warning" /> Oportunidades & Ideias
                 </Typography>
                 
-                <Typography variant="subtitle2" fontWeight="bold" sx={{ mt: 2, mb: 1 }}>Ideias de Vídeos Virais</Typography>
+                <Typography variant="subtitle2" sx={{ fontWeight: "bold", mt: 2, mb: 1 }}>Ideias de Vídeos Virais</Typography>
                 <ul style={{ paddingLeft: 20, margin: 0, fontSize: '0.875rem' }}>
                   {(report.recommendations?.viralTitles || []).map((t: string, i: number) => <li key={i}>{t}</li>)}
                 </ul>
 
-                <Typography variant="subtitle2" fontWeight="bold" sx={{ mt: 2, mb: 1 }}>Sugestões de Melhoria</Typography>
+                <Typography variant="subtitle2" sx={{ fontWeight: "bold", mt: 2, mb: 1 }}>Sugestões de Melhoria</Typography>
                 <ul style={{ paddingLeft: 20, margin: 0, fontSize: '0.875rem' }}>
                   {(report.recommendations?.improvements || []).map((t: string, i: number) => <li key={i}>{t}</li>)}
                 </ul>

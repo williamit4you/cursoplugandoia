@@ -6,6 +6,7 @@ import {
   Paper, TablePagination, TableSortLabel, Typography, Avatar, Link, Chip,
   TextField, InputAdornment, Button, IconButton, Tooltip
 } from "@mui/material";
+import { useCallback } from "react";
 import SearchIcon from '@mui/icons-material/Search';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
@@ -42,11 +43,7 @@ export default function YtChannelsTable() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchChannels();
-  }, [page, pageSize, search, sortBy, sortOrder]);
-
-  const fetchChannels = async () => {
+  const fetchChannels = useCallback(async () => {
     setLoading(true);
     try {
       const query = new URLSearchParams({
@@ -65,7 +62,11 @@ export default function YtChannelsTable() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize, search, sortBy, sortOrder]);
+
+  useEffect(() => {
+    fetchChannels();
+  }, [page, pageSize, search, sortBy, sortOrder, fetchChannels]);
 
   const handleSort = (property: string) => {
     const isAsc = sortBy === property && sortOrder === 'asc';
@@ -104,8 +105,10 @@ export default function YtChannelsTable() {
           placeholder="Buscar canal..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-          InputProps={{
-            startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+          slotProps={{
+            input: {
+              startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+            }
           }}
           sx={{ bgcolor: '#fff', width: { xs: '100%', sm: 300 } }}
         />
@@ -161,12 +164,12 @@ export default function YtChannelsTable() {
               data.map((row) => (
                 <TableRow key={row.id} hover>
                   <TableCell>
-                    <Typography fontWeight="bold" color="text.secondary">#{row.rankPosition}</Typography>
+                    <Typography sx={{ fontWeight: "bold", color: "text.secondary" }}>#{row.rankPosition}</Typography>
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       <Avatar src={row.thumbnailUrl || undefined} alt={row.name} sx={{ width: 40, height: 40 }} />
-                      <Typography fontWeight="600">{row.name}</Typography>
+                      <Typography sx={{ fontWeight: "600" }}>{row.name}</Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
@@ -175,7 +178,7 @@ export default function YtChannelsTable() {
                   <TableCell align="right" sx={{ fontWeight: 'bold' }}>{formatNum(row.subscribers)}</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 'bold' }}>{formatNum(row.totalViews)}</TableCell>
                   <TableCell align="right">
-                    <Typography fontWeight="bold" color={row.weeklyGrowth >= 0 ? "success.main" : "error.main"}>
+                    <Typography sx={{ fontWeight: "bold", color: row.weeklyGrowth >= 0 ? "success.main" : "error.main" }}>
                       {row.weeklyGrowth >= 0 ? '+' : ''}{row.weeklyGrowth}%
                     </Typography>
                   </TableCell>

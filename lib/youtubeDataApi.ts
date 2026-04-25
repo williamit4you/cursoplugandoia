@@ -1,9 +1,5 @@
 import { google, youtube_v3 } from "googleapis";
-import { PrismaClient } from "@prisma/client";
-
-// Instancia um Prisma Client limpo ou compartilha um existente se aplicável, 
-// mas para simplicidade em rota de API Serverless podemos usar a nova instância
-const prisma = new PrismaClient();
+import { prisma } from "./prisma";
 
 // ═══════════════════════════════════════════════════════════════
 // YouTube Data API v3 — Service Layer

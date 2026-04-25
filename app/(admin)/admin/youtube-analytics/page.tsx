@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+export const dynamic = "force-dynamic";
+
+import { useEffect, useState, useCallback } from "react";
 import { Box, CircularProgress, Alert } from "@mui/material";
 import YtFilterBar from "@/components/youtube-analytics/YtFilterBar";
 import YtDashboardKPIs from "@/components/youtube-analytics/YtDashboardKPIs";
@@ -15,11 +17,7 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, [categoryId, period]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -33,7 +31,11 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [categoryId, period]);
+
+  useEffect(() => {
+    fetchData();
+  }, [categoryId, period, fetchData]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

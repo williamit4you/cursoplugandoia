@@ -14,7 +14,13 @@ type Question = {
   createdAt: string;
   useExternalMedia: boolean;
   codeVideoProjectId: string | null;
-  codeVideoProject?: { id: string; status: string; title: string | null; videoUrl: string | null } | null;
+  codeVideoProject?: { 
+    id: string; 
+    status: string; 
+    title: string | null; 
+    videoUrl: string | null;
+    socialPosts?: any[];
+  } | null;
 };
 
 type Pagination = {
@@ -127,7 +133,7 @@ export default function VideoQuestionsPage() {
     }
   };
 
-  const del = async (id: string) => {
+  const deleteQuestion = async (id: string) => {
     if (!confirm("Excluir esta pergunta?")) return;
     const res = await fetch(`/api/video-questions/${id}`, { method: "DELETE" });
     if (res.ok) fetchAll();
@@ -275,7 +281,7 @@ export default function VideoQuestionsPage() {
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
-            <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={handleImportCsv} />
+            <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={handleCSVUpload} />
             <button 
               onClick={() => fileInputRef.current?.click()}
               className="px-4 py-2 text-xs font-bold text-gray-600 hover:text-indigo-600 hover:bg-white rounded-lg transition-all"
@@ -459,7 +465,7 @@ export default function VideoQuestionsPage() {
                                   return (
                                     <button 
                                       key={p + t}
-                                      onClick={() => enqueueSocial(q.id, p, t)}
+                                      onClick={() => enqueueSocial(q.id, p as "META" | "YOUTUBE" | "TIKTOK" | "LINKEDIN", t as "STORY" | "REEL")}
                                       disabled={enqueueing != null || already}
                                       className={`text-[9px] font-black px-2 py-1 rounded bg-${c}-50 text-${c}-700 border border-${c}-100 hover:bg-${c}-100 disabled:opacity-30 disabled:cursor-not-allowed uppercase transition-all`}
                                     >

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, ScatterChart, Scatter, ZAxis, Legend,
@@ -22,11 +22,7 @@ export default function YtChartsDashboard({ categories }: YtChartsDashboardProps
   
   const [data, setData] = useState<any>({});
 
-  useEffect(() => {
-    fetchAllCharts();
-  }, [period, categoryId]);
-
-  const fetchAllCharts = async () => {
+  const fetchAllCharts = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -45,19 +41,23 @@ export default function YtChartsDashboard({ categories }: YtChartsDashboardProps
     } finally {
       setLoading(false);
     }
-  };
+  }, [period, categoryId]);
 
-  const formatViews = (val: number) => {
+  useEffect(() => {
+    fetchAllCharts();
+  }, [period, categoryId, fetchAllCharts]);
+
+  const formatViews = (val: number): string => {
     if (val >= 1e9) return (val / 1e9).toFixed(1) + "B";
     if (val >= 1e6) return (val / 1e6).toFixed(1) + "M";
     if (val >= 1e3) return (val / 1e3).toFixed(1) + "K";
-    return val;
+    return val.toString();
   };
 
   const renderChartCard = (title: string, children: React.ReactNode, height = 350) => (
     <Card sx={{ borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9', height: '100%' }}>
       <CardContent>
-        <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#1e293b' }}>{title}</Typography>
+        <Typography variant="h6" sx={{ fontWeight: "bold", mb: 3, color: '#1e293b' }}>{title}</Typography>
         <Box sx={{ width: '100%', height }}>
           {children}
         </Box>
@@ -92,7 +92,7 @@ export default function YtChartsDashboard({ categories }: YtChartsDashboardProps
       ) : (
         <Grid container spacing={3}>
           {/* 1. Evolução Views */}
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             {renderChartCard("Evolução de Visualizações", (
               <ResponsiveContainer>
                 <AreaChart data={data.evolution || []} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -105,7 +105,7 @@ export default function YtChartsDashboard({ categories }: YtChartsDashboardProps
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="date" tick={{fontSize: 12}} tickLine={false} axisLine={false} />
                   <YAxis tickFormatter={formatViews} tick={{fontSize: 12}} tickLine={false} axisLine={false} />
-                  <RechartsTooltip formatter={(val: number) => formatViews(val)} />
+                  <RechartsTooltip formatter={(val: any) => formatViews(Number(val))} />
                   <Area type="monotone" dataKey="views" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorViews)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -113,14 +113,14 @@ export default function YtChartsDashboard({ categories }: YtChartsDashboardProps
           </Grid>
 
           {/* 2. Evolução Inscritos */}
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             {renderChartCard("Evolução de Inscritos", (
               <ResponsiveContainer>
                 <LineChart data={data.subscribers || []} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="date" tick={{fontSize: 12}} tickLine={false} axisLine={false} />
                   <YAxis tickFormatter={formatViews} tick={{fontSize: 12}} tickLine={false} axisLine={false} />
-                  <RechartsTooltip formatter={(val: number) => formatViews(val)} />
+                  <RechartsTooltip formatter={(val: any) => formatViews(Number(val))} />
                   <Line type="monotone" dataKey="subscribers" stroke="#f43f5e" strokeWidth={3} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -128,7 +128,7 @@ export default function YtChartsDashboard({ categories }: YtChartsDashboardProps
           </Grid>
 
           {/* 3. Distribuição por Formato (Pie) */}
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             {renderChartCard("Views por Formato", (
               <ResponsiveContainer>
                 <PieChart>
@@ -137,7 +137,7 @@ export default function YtChartsDashboard({ categories }: YtChartsDashboardProps
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <RechartsTooltip formatter={(val: number) => formatViews(val)} />
+                  <RechartsTooltip formatter={(val: any) => formatViews(Number(val))} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -145,7 +145,7 @@ export default function YtChartsDashboard({ categories }: YtChartsDashboardProps
           </Grid>
 
           {/* 4. Uploads por Dia da Semana */}
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             {renderChartCard("Uploads por Dia da Semana", (
               <ResponsiveContainer>
                 <BarChart data={data.weekday || []}>
@@ -160,7 +160,7 @@ export default function YtChartsDashboard({ categories }: YtChartsDashboardProps
           </Grid>
 
           {/* 5. Comparativo de Formatos Mês a Mês */}
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             {renderChartCard("Uploads por Formato (Mês)", (
               <ResponsiveContainer>
                 <BarChart data={data.format || []}>
@@ -178,14 +178,14 @@ export default function YtChartsDashboard({ categories }: YtChartsDashboardProps
           </Grid>
 
           {/* 6. Crescimento por Nicho */}
-          <Grid item xs={12} md={12}>
+          <Grid size={{ xs: 12, md: 12 }}>
             {renderChartCard("Crescimento Semanal Médio por Nicho (%)", (
               <ResponsiveContainer>
                 <BarChart data={data.niche || []} layout="vertical" margin={{ left: 100 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                   <XAxis type="number" tick={{fontSize: 12}} tickLine={false} axisLine={false} />
                   <YAxis dataKey="niche" type="category" tick={{fontSize: 12}} tickLine={false} axisLine={false} width={150} />
-                  <RechartsTooltip formatter={(val: number) => val + '%'} />
+                  <RechartsTooltip formatter={(val: any) => val + '%'} />
                   <Bar dataKey="growth" radius={[0, 4, 4, 0]}>
                     {(data.niche || []).map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />

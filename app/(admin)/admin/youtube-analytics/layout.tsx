@@ -1,10 +1,8 @@
+"use client";
+
 import { ReactNode } from "react";
 import { Box, Typography } from "@mui/material";
 import YtNavigation from "@/components/youtube-analytics/YtNavigation";
-
-export const metadata = {
-  title: "YouTube Analytics - Admin",
-};
 
 export default function YoutubeAnalyticsLayout({ children }: { children: ReactNode }) {
   return (

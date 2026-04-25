@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import { Box, CircularProgress } from "@mui/material";
 import YtChartsDashboard from "@/components/youtube-analytics/YtChartsDashboard";

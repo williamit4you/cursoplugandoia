@@ -37,7 +37,7 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
     if (!q) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (!q.codeVideoProject?.videoUrl) return NextResponse.json({ error: "Video not ready" }, { status: 400 });
 
-      q.codeVideoProject.description ||
+    const summary = q.codeVideoProject.description ||
       q.codeVideoProject.title ||
       q.questionText.slice(0, 240);
 

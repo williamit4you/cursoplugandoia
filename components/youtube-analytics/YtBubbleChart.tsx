@@ -167,7 +167,7 @@ export default function YtBubbleChart({ categoryId }: YtBubbleChartProps) {
   return (
     <Box sx={{ mt: 4, bgcolor: '#f8fafc', borderRadius: 4, p: { xs: 2, md: 3 }, border: '1px solid #e2e8f0' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <Typography variant="h6" fontWeight="900" color="#1e293b">
+        <Typography variant="h6" sx={{ fontWeight: "900", color: "#1e293b" }}>
           Mapa de Canais (Bubble View)
         </Typography>
         <ButtonGroup size="small" sx={{ bgcolor: '#fff' }}>

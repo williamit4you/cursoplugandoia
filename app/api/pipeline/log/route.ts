@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
-const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 // POST /api/pipeline/log — recebe logs do scraper Python
 export async function POST(req: NextRequest) {

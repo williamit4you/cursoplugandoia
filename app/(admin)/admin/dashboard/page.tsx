@@ -17,8 +17,7 @@ export default async function DashboardPage() {
     prisma.lead.count(),
   ]);
 
-  // Fetching Video Question and Social Post stats
-  let videoStats = { totalQuestions: 0, readyVideos: 0, totalPosts: 0, platforms: {} };
+  let videoStats = { totalQuestions: 0, readyVideos: 0, totalPosts: 0, platforms: {}, views: 0 as number };
   try {
     const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
     const host = process.env.VERCEL_URL || 'localhost:3000';
@@ -30,11 +29,12 @@ export default async function DashboardPage() {
     console.error("Failed to fetch video stats:", e);
   }
 
+  const { views: videoViews, ...restVideoStats } = videoStats;
   const stats = {
     posts: postsCount,
-    views: (totalViews._sum.views || 0) + (videoStats.views || 0),
+    views: (totalViews._sum.views || 0) + (videoViews || 0),
     leads: leadsCount,
-    ...videoStats
+    ...restVideoStats
   }
 
   return (

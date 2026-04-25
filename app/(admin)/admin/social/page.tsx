@@ -229,6 +229,7 @@ export default function SocialPostsDashboard() {
           <p style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
             {posts.length} vídeo(s) na fila · atualiza automaticamente a cada 15s
           </p>
+        </div>
         <div style={{ display: "flex", gap: 12 }}>
           <button
             onClick={handleRefreshStats}
