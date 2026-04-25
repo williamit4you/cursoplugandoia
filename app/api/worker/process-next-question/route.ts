@@ -57,8 +57,9 @@ async function processQuestionBackground(questionId: string, cfg: any) {
     if (!question) return;
 
     const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-    const host = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_SITE_URL || "localhost:3000";
-    const baseUrl = `${protocol}://${host}`;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL;
+    const host = siteUrl || "localhost:3000";
+    const baseUrl = host.startsWith("http") ? host.replace(/\/+$/, "") : `${protocol}://${host}`;
 
     // 1. Create Project
     let res = await fetch(`${baseUrl}/api/video-code/projects`, {
@@ -115,6 +116,9 @@ async function processQuestionBackground(questionId: string, cfg: any) {
     }
     if (cfg.autoEnqueueLinkedIn) {
       await enqueueSocial(baseUrl, questionId, "LINKEDIN", "REEL");
+    }
+    if (cfg.autoEnqueueYouTube) {
+      await enqueueSocial(baseUrl, questionId, "YOUTUBE", "REEL");
     }
   } catch (error: any) {
     console.error(`[processQuestionBackground] Failed for question ${questionId}:`, error);

@@ -175,29 +175,87 @@ export default function SocialPostsDashboard() {
     }
   };
 
+  // ── Publicar no YouTube ───────────────────────────────────────────────────
+  const handlePublishYouTube = async (id: string) => {
+    setLoadingId(id + "-youtube");
+    try {
+      const res = await fetch("/api/social/publish-youtube", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ socialPostId: id }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) toast.error(data.error || "Erro ao publicar no YouTube");
+      else toast.success("✅ Vídeo enviado ao YouTube com sucesso!");
+    } catch {
+      toast.error("Erro de conexão ao publicar no YouTube");
+    } finally {
+      setLoadingId(null);
+      await fetchPosts();
+    }
+  };
+
+  const handleRefreshStats = async () => {
+    setLoadingId("refresh-stats");
+    try {
+      const res = await fetch("/api/social/refresh-stats", { method: "POST" });
+      if (res.ok) {
+        toast.success("📈 Estatísticas atualizadas com sucesso!");
+        await fetchPosts();
+      } else {
+        toast.error("Erro ao atualizar estatísticas");
+      }
+    } catch {
+      toast.error("Erro de conexão");
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
   return (
     <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
       <style>{`
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
         @keyframes pulse-dot { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.4); } }
       `}</style>
-      <ToastContainer position="top-right" />
+      <ToastContainer position="top-right" autoClose={4000} />
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
-            📱 Fila de Publicações — Instagram, Facebook & TikTok
+            📱 Fila de Publicações — Meta, TikTok & YouTube
           </h1>
           <p style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
             {posts.length} vídeo(s) na fila · atualiza automaticamente a cada 15s
           </p>
+        <div style={{ display: "flex", gap: 12 }}>
+          <button
+            onClick={handleRefreshStats}
+            disabled={loadingId === "refresh-stats"}
+            style={{ 
+              padding: "8px 16px", 
+              borderRadius: 8, 
+              border: "1px solid #10b981", 
+              background: "#ecfdf5", 
+              color: "#047857",
+              cursor: loadingId === "refresh-stats" ? "not-allowed" : "pointer", 
+              fontSize: 13,
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              gap: 6
+            }}
+          >
+            {loadingId === "refresh-stats" ? "⏳..." : "📈 Atualizar Views"}
+          </button>
+          <button
+            onClick={fetchPosts}
+            style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #d1d5db", background: "white", cursor: "pointer", fontSize: 13 }}
+          >
+            🔄 Atualizar Lista
+          </button>
         </div>
-        <button
-          onClick={fetchPosts}
-          style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #d1d5db", background: "white", cursor: "pointer", fontSize: 13 }}
-        >
-          🔄 Atualizar
-        </button>
       </div>
 
       <div style={{ display: "grid", gap: 16 }}>
@@ -251,9 +309,22 @@ export default function SocialPostsDashboard() {
                     </span>
                   )}
                   {p.postedAt && (
-                    <span style={{ fontSize: 12, color: "#6b7280" }}>
-                      Publicado: {new Date(p.postedAt).toLocaleString("pt-BR")}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 12, color: "#6b7280" }}>
+                        📅 {new Date(p.postedAt).toLocaleString("pt-BR")}
+                      </span>
+                      {p.postUrl && (
+                        <a href={p.postUrl} target="_blank" rel="noreferrer"
+                          style={{ fontSize: 11, color: "#4f46e5", fontWeight: 700, textDecoration: "none", background: "#eef2ff", padding: "2px 8px", borderRadius: 4, border: "1px solid #c7d2fe" }}>
+                          🔗 Abrir Link
+                        </a>
+                      )}
+                      {p.views !== undefined && (
+                        <span style={{ fontSize: 12, color: "#059669", fontWeight: 800, display: "flex", alignItems: "center", gap: 4 }}>
+                          <span style={{ fontSize: 14 }}>👁️</span> {p.views.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
                   )}
                   {p.metaContainerId && (
                     <span style={{ fontSize: 11, color: "#9ca3af", fontFamily: "monospace" }}>
@@ -383,6 +454,24 @@ export default function SocialPostsDashboard() {
                     }}
                   >
                     {loadingId === p.id + "-tiktok" ? "⏳ Enviando..." : "🎵 TikTok"}
+                  </button>
+                )}
+
+                {/* Botão YouTube */}
+                {!isProcessing && (
+                  <button
+                    onClick={() => handlePublishYouTube(p.id)}
+                    disabled={loadingId === p.id + "-youtube"}
+                    style={{
+                      padding: "8px 14px", borderRadius: 8, border: "none",
+                      cursor: loadingId === p.id + "-youtube" ? "not-allowed" : "pointer",
+                      fontWeight: 700, fontSize: 12,
+                      background: loadingId === p.id + "-youtube" ? "#d1d5db" : "#FF0000",
+                      color: loadingId === p.id + "-youtube" ? "#6b7280" : "white",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    {loadingId === p.id + "-youtube" ? "⏳ Enviando..." : "▶️ YouTube"}
                   </button>
                 )}
               </div>

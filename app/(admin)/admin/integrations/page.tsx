@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Box, Typography, Paper, TextField, Button, Switch, FormControlLabel, Alert, Divider } from "@mui/material";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function IntegrationsPage() {
   const [webhookUrl, setWebhookUrl] = useState("");
@@ -95,9 +97,9 @@ export default function IntegrationsPage() {
         body: JSON.stringify({ platform: "N8N", webhookUrl, isActive })
       });
       if (!res.ok) throw new Error("Erro ao salvar.");
-      setMsg({ type: "success", text: "Integração N8N configurada com sucesso!" });
+      toast.success("Integração N8N configurada com sucesso!");
     } catch(err) {
-       setMsg({ type: "error", text: "Falha na conexão com o banco." });
+       toast.error("Falha na conexão com o banco.");
     } finally {
       setSaving(false);
     }
@@ -121,9 +123,9 @@ export default function IntegrationsPage() {
         })
       });
       if (!res.ok) throw new Error("Erro ao salvar configurações da Meta.");
-      setMsg({ type: "success", text: "Configurações da Meta salvas com sucesso!" });
+      toast.success("Configurações da Meta salvas com sucesso!");
     } catch(err: any) {
-       setMsg({ type: "error", text: err.message || "Falha ao salvar." });
+       toast.error(err.message || "Falha ao salvar.");
     } finally {
       setSaving(false);
     }
@@ -145,9 +147,9 @@ export default function IntegrationsPage() {
         }),
       });
       if (!res.ok) throw new Error("Erro ao salvar TikTok.");
-      setMsg({ type: "success", text: "TikTok configurado com sucesso!" });
+      toast.success("TikTok configurado com sucesso!");
     } catch (err: any) {
-      setMsg({ type: "error", text: err.message || "Falha ao salvar TikTok." });
+      toast.error(err.message || "Falha ao salvar TikTok.");
     } finally {
       setSaving(false);
     }
@@ -169,9 +171,9 @@ export default function IntegrationsPage() {
         }),
       });
       if (!res.ok) throw new Error("Erro ao salvar LinkedIn.");
-      setMsg({ type: "success", text: "LinkedIn configurado com sucesso!" });
+      toast.success("LinkedIn configurado com sucesso!");
     } catch (err: any) {
-      setMsg({ type: "error", text: err.message || "Falha ao salvar LinkedIn." });
+      toast.error(err.message || "Falha ao salvar LinkedIn.");
     } finally {
       setSaving(false);
     }
@@ -192,16 +194,27 @@ export default function IntegrationsPage() {
         }),
       });
       if (!res.ok) throw new Error("Erro ao salvar YouTube.");
-      setMsg({ type: "success", text: "Credenciais do YouTube salvas com sucesso! Agora você pode se autenticar." });
+      toast.success("Credenciais do YouTube salvas com sucesso! Agora você pode se autenticar.");
     } catch (err: any) {
-      setMsg({ type: "error", text: err.message || "Falha ao salvar YouTube." });
+      toast.error(err.message || "Falha ao salvar YouTube.");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleAuthYouTube = () => {
-    window.location.href = "/api/integrations/youtube/auth";
+  const handleAuthYouTube = async () => {
+    // Check if we can start auth (backend validation)
+    try {
+      const res = await fetch("/api/integrations/youtube/auth", { method: "GET", redirect: "manual" });
+      if (res.status === 400) {
+        const data = await res.json();
+        toast.error(data.error || "Erro ao iniciar autenticação.");
+        return;
+      }
+      window.location.href = "/api/integrations/youtube/auth";
+    } catch (e) {
+      toast.error("Erro ao conectar com o serviço de autenticação.");
+    }
   };
 
   const handleDiscoverMeta = async () => {
@@ -222,12 +235,12 @@ export default function IntegrationsPage() {
       
       setMetaAccounts(data.accounts || []);
       if (data.accounts?.length > 0) {
-          setMsg({ type: "success", text: `Encontradas ${data.accounts.length} contas vinculadas ao seu token!` });
+          toast.success(`Encontradas ${data.accounts.length} contas vinculadas ao seu token!`);
       } else {
-          setMsg({ type: "warning", text: "Nenhuma página de Facebook encontrada para este token." });
+          toast.warn("Nenhuma página de Facebook encontrada para este token.");
       }
     } catch (err: any) {
-       setMsg({ type: "error", text: err.message || "Erro na descoberta." });
+       toast.error(err.message || "Erro na descoberta.");
     } finally {
       setDiscovering(false);
     }
@@ -236,7 +249,8 @@ export default function IntegrationsPage() {
   if (loading) return <Typography>Carregando integrações...</Typography>;
 
   return (
-    <Box sx={{ maxWidth: 800, mx: "auto", mt: 4 }}>
+    <Box sx={{ maxWidth: 800, mx: "auto", mt: 4, pb: 10 }}>
+      <ToastContainer position="top-right" autoClose={4000} />
       <Typography variant="h4" sx={{ fontWeight: "bold", mb: 4 }}>Hub de Integrações</Typography>
 
       {msg.text && (

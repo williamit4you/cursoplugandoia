@@ -76,10 +76,14 @@ model SocialPost {
   log         String?
   thumbUrl    String?  // URL de thumbnail (MinIO)
   metaContainerId String? // ID do container criado na Meta (para publicação async)
+  postUrl     String?  // URL pública da postagem
+  views       Int      @default(0) // Visualizações
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   post        Post?    @relation(fields: [postId], references: [id])
+  codeVideoProjectId String?
+  codeVideoProject   CodeVideoProject? @relation(fields: [codeVideoProjectId], references: [id])
 }
 
 model CodeVideoProject {
@@ -114,6 +118,7 @@ model CodeVideoProject {
   errorMessage     String?
   log              String?
 
+  socialPosts      SocialPost[]
   question         VideoQuestion?
 
   createdAt        DateTime         @default(now())

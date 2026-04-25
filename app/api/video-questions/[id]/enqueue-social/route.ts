@@ -36,18 +36,30 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
     });
     if (!q) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (!q.codeVideoProject?.videoUrl) return NextResponse.json({ error: "Video not ready" }, { status: 400 });
-    if (platform === "YOUTUBE") return NextResponse.json({ error: "YouTube integration not implemented yet" }, { status: 400 });
 
-    const summary =
       q.codeVideoProject.description ||
       q.codeVideoProject.title ||
       q.questionText.slice(0, 240);
 
+    const existing = await prisma.socialPost.findFirst({
+      where: {
+        codeVideoProjectId: q.codeVideoProjectId!,
+        platform,
+        postType,
+        status: { not: "FAILED" },
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json({ success: true, socialPostId: existing.id, alreadyExists: true });
+    }
+
     const post = await prisma.socialPost.create({
       data: {
         postId: null,
+        codeVideoProjectId: q.codeVideoProjectId,
         summary,
-        videoUrl: q.codeVideoProject.videoUrl,
+        videoUrl: q.codeVideoProject!.videoUrl!,
         status: "DRAFT",
         platform,
         postType,

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 type AspectRatio = "PORTRAIT_9_16" | "LANDSCAPE_16_9";
 
@@ -39,6 +41,7 @@ export default function VideoCodeProjectDetailPage() {
   const [generating, setGenerating] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [enqueueing, setEnqueueing] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"content" | "settings" | "json">("content");
 
   const aspectRatioLabel = useMemo(() => {
@@ -138,12 +141,41 @@ export default function VideoCodeProjectDetailPage() {
       const data = await res.json();
       if (res.ok) {
         setProject(data);
+        toast.success("Renderização iniciada!");
       } else {
-        alert(data.error || "Erro ao renderizar");
+        toast.error(data.error || "Erro ao renderizar");
         setRendering(false);
       }
     } catch {
+      toast.error("Erro de conexão");
       setRendering(false);
+    }
+  };
+
+  const enqueueSocial = async (platform: string, postType: string = "REEL") => {
+    if (!project?.videoUrl) return;
+    setEnqueueing(platform + postType);
+    try {
+      const res = await fetch("/api/social/enqueue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          videoUrl: project.videoUrl,
+          summary: project.description || project.title || project.ideaPrompt,
+          platform,
+          postType,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`Enfileirado para ${platform}! Vá em Fila de Stories para publicar.`);
+      } else {
+        toast.error(data.error || "Erro ao enfileirar");
+      }
+    } catch {
+      toast.error("Erro de conexão");
+    } finally {
+      setEnqueueing(null);
     }
   };
 
@@ -155,6 +187,7 @@ export default function VideoCodeProjectDetailPage() {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+      <ToastContainer position="top-right" autoClose={4000} />
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       <p className="text-gray-500 font-medium text-sm font-bold uppercase tracking-widest">Iniciando motor de vídeo...</p>
     </div>
@@ -163,6 +196,7 @@ export default function VideoCodeProjectDetailPage() {
 
   return (
     <div className="max-w-6xl pb-24 animate-in fade-in duration-500">
+      <ToastContainer position="top-right" autoClose={4000} />
       {/* Header & Navigation */}
       <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-4 flex-1 min-w-0">
@@ -204,11 +238,11 @@ export default function VideoCodeProjectDetailPage() {
           </button>
           <button
             onClick={renderMp4}
-            disabled={rendering || generating}
+            disabled={rendering || generating || project.status === "RENDERING"}
             className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-white font-bold shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all disabled:opacity-50"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            {rendering ? "Renderizando..." : "Renderizar MP4"}
+            {(rendering || project.status === "RENDERING") ? "Renderizando..." : "Renderizar MP4"}
           </button>
           <button 
             onClick={save} 
@@ -485,6 +519,37 @@ export default function VideoCodeProjectDetailPage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                     Baixar Vídeo MP4
                   </a>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => enqueueSocial("META", "STORY")}
+                      disabled={enqueueing != null}
+                      className="rounded-xl border border-pink-100 bg-pink-50 px-4 py-2 text-xs font-bold text-pink-700 hover:bg-pink-100 disabled:opacity-50"
+                    >
+                      {enqueueing === "METASTORY" ? "..." : "Meta Story"}
+                    </button>
+                    <button
+                      onClick={() => enqueueSocial("META", "REEL")}
+                      disabled={enqueueing != null}
+                      className="rounded-xl border border-purple-100 bg-purple-50 px-4 py-2 text-xs font-bold text-purple-700 hover:bg-purple-100 disabled:opacity-50"
+                    >
+                      {enqueueing === "METAREEL" ? "..." : "Meta Reels"}
+                    </button>
+                    <button
+                      onClick={() => enqueueSocial("LINKEDIN", "REEL")}
+                      disabled={enqueueing != null}
+                      className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                    >
+                      {enqueueing === "LINKEDINREEL" ? "..." : "LinkedIn"}
+                    </button>
+                    <button
+                      onClick={() => enqueueSocial("YOUTUBE", "REEL")}
+                      disabled={enqueueing != null}
+                      className="rounded-xl border border-red-100 bg-red-50 px-4 py-2 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                    >
+                      {enqueueing === "YOUTUBEREEL" ? "..." : "YouTube"}
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="aspect-[9/16] rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center p-8">

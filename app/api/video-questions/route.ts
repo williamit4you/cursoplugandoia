@@ -27,7 +27,18 @@ export async function GET(req: NextRequest) {
         where,
         orderBy: { createdAt: "desc" },
         include: {
-          codeVideoProject: { select: { id: true, status: true, title: true, videoUrl: true } },
+          codeVideoProject: {
+            include: {
+              socialPosts: {
+                select: {
+                  platform: true,
+                  status: true,
+                  postType: true,
+                  postedAt: true,
+                }
+              }
+            }
+          },
         },
         skip,
         take: limit,
