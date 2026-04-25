@@ -20,12 +20,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { platform, webhookUrl, isActive, apiKey, appId, apiSecret, pageId, instagramId, accessToken } = body;
+    const { platform, webhookUrl, isActive, apiKey, appId, apiSecret, pageId, instagramId, accessToken, refreshToken } = body;
 
     const upserted = await prisma.integrationSettings.upsert({
       where: { platform: platform },
-      update: { webhookUrl, isActive, apiKey, appId, apiSecret, pageId, instagramId, accessToken },
-      create: { platform, webhookUrl, isActive, apiKey, appId, apiSecret, pageId, instagramId, accessToken }
+      update: { webhookUrl, isActive, apiKey, appId, apiSecret, pageId, instagramId, accessToken, refreshToken },
+      create: { platform, webhookUrl, isActive, apiKey, appId, apiSecret, pageId, instagramId, accessToken, refreshToken }
     });
 
     return NextResponse.json(upserted);

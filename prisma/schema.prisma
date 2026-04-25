@@ -50,13 +50,14 @@ model ScrapingSource {
 
 model IntegrationSettings {
   id              String   @id @default(cuid())
-  platform        String   @unique // Valores: META, LINKEDIN, INSTAGRAM, N8N, WHATSAPP
+  platform        String   @unique // Valores: META, LINKEDIN, INSTAGRAM, N8N, WHATSAPP, YOUTUBE
   apiKey          String?
   apiSecret       String?
   appId           String?
   pageId          String?
   instagramId     String?
   accessToken     String?
+  refreshToken    String?
   webhookUrl      String?
   isActive        Boolean  @default(false)
   updatedAt       DateTime @updatedAt

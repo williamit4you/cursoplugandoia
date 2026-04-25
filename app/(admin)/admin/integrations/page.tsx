@@ -28,6 +28,12 @@ export default function IntegrationsPage() {
   const [linkedinOrgUrn, setLinkedinOrgUrn] = useState("");
   const [linkedinActive, setLinkedinActive] = useState(false);
 
+  // YouTube Settings
+  const [youtubeClientId, setYoutubeClientId] = useState("");
+  const [youtubeClientSecret, setYoutubeClientSecret] = useState("");
+  const [youtubeRefreshToken, setYoutubeRefreshToken] = useState("");
+  const [youtubeActive, setYoutubeActive] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
@@ -65,6 +71,14 @@ export default function IntegrationsPage() {
           setLinkedinPersonUrn(linkedin.instagramId || "");
           setLinkedinOrgUrn(linkedin.pageId || "");
           setLinkedinActive(linkedin.isActive);
+        }
+
+        const youtube = data.find((d: any) => d.platform === "YOUTUBE");
+        if (youtube) {
+          setYoutubeClientId(youtube.apiKey || "");
+          setYoutubeClientSecret(youtube.apiSecret || "");
+          setYoutubeRefreshToken(youtube.refreshToken || "");
+          setYoutubeActive(youtube.isActive);
         }
 
         setLoading(false);
@@ -161,6 +175,33 @@ export default function IntegrationsPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSaveYouTube = async () => {
+    setSaving(true);
+    setMsg({ type: "", text: "" });
+    try {
+      const res = await fetch("/api/integrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: "YOUTUBE",
+          apiKey: youtubeClientId,
+          apiSecret: youtubeClientSecret,
+          isActive: youtubeActive,
+        }),
+      });
+      if (!res.ok) throw new Error("Erro ao salvar YouTube.");
+      setMsg({ type: "success", text: "Credenciais do YouTube salvas com sucesso! Agora você pode se autenticar." });
+    } catch (err: any) {
+      setMsg({ type: "error", text: err.message || "Falha ao salvar YouTube." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAuthYouTube = () => {
+    window.location.href = "/api/integrations/youtube/auth";
   };
 
   const handleDiscoverMeta = async () => {
@@ -436,6 +477,70 @@ export default function IntegrationsPage() {
         <Button variant="contained" onClick={handleSaveLinkedIn} disabled={saving} sx={{ bgcolor: '#0A66C2', textTransform: 'none' }}>
           {saving ? "Salvando..." : "Salvar Configurações LinkedIn"}
         </Button>
+      </Paper>
+
+      {/* ── YOUTUBE ── */}
+      <Paper sx={{ p: 4, borderRadius: 2, mb: 6 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: "bold" }} color="#FF0000">▶️ YouTube</Typography>
+            <Typography variant="body2" color="textSecondary">
+              Configure as credenciais OAuth do Google para postar vídeos no seu canal.{" "}
+              <a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer" style={{ color: '#FF0000' }}>
+                Google Cloud Console
+              </a>
+            </Typography>
+          </Box>
+          <FormControlLabel
+            control={<Switch checked={youtubeActive} onChange={(e) => setYoutubeActive(e.target.checked)} color="primary" />}
+            label={youtubeActive ? "Ativado" : "Desligado"}
+          />
+        </Box>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 3 }}>
+          <TextField
+            label="Client ID"
+            fullWidth variant="outlined" size="small"
+            placeholder="123456-abc.apps.googleusercontent.com"
+            value={youtubeClientId}
+            onChange={(e) => setYoutubeClientId(e.target.value)}
+          />
+          <TextField
+            label="Client Secret"
+            fullWidth variant="outlined" size="small" type="password"
+            value={youtubeClientSecret}
+            onChange={(e) => setYoutubeClientSecret(e.target.value)}
+          />
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+          <Button variant="contained" onClick={handleSaveYouTube} disabled={saving} sx={{ bgcolor: '#010101', textTransform: 'none' }}>
+            {saving ? "Salvando..." : "Salvar Credenciais"}
+          </Button>
+
+          {youtubeRefreshToken ? (
+            <Typography variant="body2" sx={{ color: 'green', fontWeight: 'bold' }}>
+              ✅ Conta Autenticada
+            </Typography>
+          ) : (
+            <Button
+              variant="contained"
+              onClick={handleAuthYouTube}
+              disabled={!youtubeClientId || !youtubeClientSecret}
+              sx={{ bgcolor: '#FF0000', '&:hover': { bgcolor: '#cc0000' }, textTransform: 'none' }}
+            >
+              Autenticar com o Google
+            </Button>
+          )}
+        </Box>
+
+        <Box sx={{ bgcolor: '#fef2f2', p: 2, borderRadius: 2, mb: 3 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ fontSize: 12 }}>
+            ℹ️ Salve as credenciais primeiro e depois clique em "Autenticar com o Google" para autorizar o envio de vídeos para o seu canal. Não se esqueça de adicionar <strong>{typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"}/api/integrations/youtube/callback</strong> nas URIs de redirecionamento autorizadas no Google Cloud.
+          </Typography>
+        </Box>
       </Paper>
     </Box>
   );
