@@ -9,6 +9,15 @@ const nextConfig = {
     "@remotion/studio-shared",
     "@remotion/cli"
   ],
+  eslint: {
+    // Ignorar linting no build para economizar memória (já validado no dev)
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    // Ignorar erros de TS no build se necessário para economizar RAM
+    // mas mantemos false para garantir qualidade, a menos que o OOM persista.
+    ignoreBuildErrors: false,
+  },
   experimental: {
     outputFileTracingIncludes: {
       "/**/*": [

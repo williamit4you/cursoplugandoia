@@ -34,6 +34,9 @@ RUN \
 FROM base AS builder
 WORKDIR /app
 
+# Aumentar memória para o build do Next.js evitar erro de OOM
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 # --- INÍCIO DA CORREÇÃO ---
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
