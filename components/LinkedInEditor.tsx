@@ -183,6 +183,7 @@ export default function LinkedInEditor({
         >
           {coverImage ? (
             <Box sx={{ position: 'relative', width: '100%' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={coverImage} alt="Cover" style={{ width: "100%", height: "auto", display: "block" }} />
               <IconButton 
                 size="small" 

@@ -129,6 +129,7 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
                 {/* Capa */}
                 <TableCell sx={{ minWidth: 90 }}>
                   {item.coverImage ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
                     <img
                       src={item.coverImage}
                       alt="capa"

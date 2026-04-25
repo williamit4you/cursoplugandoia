@@ -57,6 +57,7 @@ export default function ClientNoticiasList({ posts }: { posts: any[] }) {
                   }}
                 >
                   {post.coverImage ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
                     <img src={post.coverImage} alt={post.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <Typography color="textSecondary" sx={{ fontSize: '0.8rem' }}>Sem Arte</Typography>
@@ -190,6 +191,7 @@ export default function ClientNoticiasList({ posts }: { posts: any[] }) {
                       justifyContent: 'center'
                     }}>
                       {post.coverImage ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img src={post.coverImage} alt={post.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         <Typography sx={{ fontSize: '0.6rem', color: '#999' }}>Sem Arte</Typography>

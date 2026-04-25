@@ -46,9 +46,10 @@ export default function SocialPostsDashboard() {
   useEffect(() => {
     fetchPosts();
     const interval = setInterval(fetchPosts, 15000);
+    const timers = retryTimers.current;
     return () => {
       clearInterval(interval);
-      Object.values(retryTimers.current).forEach(clearTimeout);
+      Object.values(timers).forEach(clearTimeout);
     };
   }, []);
 
