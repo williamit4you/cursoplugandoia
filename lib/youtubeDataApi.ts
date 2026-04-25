@@ -1,17 +1,41 @@
 import { google, youtube_v3 } from "googleapis";
+import { PrismaClient } from "@prisma/client";
+
+// Instancia um Prisma Client limpo ou compartilha um existente se aplicável, 
+// mas para simplicidade em rota de API Serverless podemos usar a nova instância
+const prisma = new PrismaClient();
 
 // ═══════════════════════════════════════════════════════════════
 // YouTube Data API v3 — Service Layer
-// Usa API Key para leitura pública de dados de canais e vídeos
+// Usa as credenciais OAuth do banco (IntegrationSettings)
 // ═══════════════════════════════════════════════════════════════
 
-const API_KEY = process.env.YOUTUBE_DATA_API_KEY;
+async function getYoutubeClient(): Promise<youtube_v3.Youtube> {
+  const youtubeIntegration = await prisma.integrationSettings.findUnique({
+    where: { platform: "YOUTUBE" }
+  });
 
-function getYoutubeClient(): youtube_v3.Youtube {
-  if (!API_KEY) {
-    throw new Error("YOUTUBE_DATA_API_KEY não configurada no .env");
+  if (youtubeIntegration?.apiKey && youtubeIntegration?.apiSecret && youtubeIntegration?.refreshToken) {
+    // Usar OAuth 2.0 (Mais seguro e usa cota garantida do projeto do usuário)
+    const oauth2Client = new google.auth.OAuth2(
+      youtubeIntegration.apiKey, // Client ID
+      youtubeIntegration.apiSecret, // Client Secret
+    );
+    
+    oauth2Client.setCredentials({ 
+      refresh_token: youtubeIntegration.refreshToken 
+    });
+
+    return google.youtube({ version: "v3", auth: oauth2Client });
   }
-  return google.youtube({ version: "v3", auth: API_KEY });
+
+  // Fallback para API_KEY estática se configurada no .env
+  const API_KEY = process.env.YOUTUBE_DATA_API_KEY;
+  if (API_KEY) {
+    return google.youtube({ version: "v3", auth: API_KEY });
+  }
+
+  throw new Error("Credenciais do YouTube não configuradas. Acesse /admin/integrations para configurar as credenciais OAuth.");
 }
 
 // ── Tipos ────────────────────────────────────────────────────
@@ -88,7 +112,7 @@ function sleep(ms: number): Promise<void> {
 export async function fetchChannelData(
   channelId: string
 ): Promise<YtChannelData | null> {
-  const youtube = getYoutubeClient();
+  const youtube = await getYoutubeClient();
   const res = await youtube.channels.list({
     id: [channelId],
     part: ["snippet", "statistics", "brandingSettings"],
@@ -122,7 +146,7 @@ export async function fetchChannelData(
 export async function fetchMultipleChannels(
   channelIds: string[]
 ): Promise<YtChannelData[]> {
-  const youtube = getYoutubeClient();
+  const youtube = await getYoutubeClient();
   const results: YtChannelData[] = [];
 
   // Processar em batches de 50
@@ -168,7 +192,7 @@ export async function fetchMultipleChannels(
 export async function fetchChannelByHandle(
   handle: string
 ): Promise<YtChannelData | null> {
-  const youtube = getYoutubeClient();
+  const youtube = await getYoutubeClient();
   // Remove @ se presente
   const cleanHandle = handle.startsWith("@") ? handle : `@${handle}`;
 
@@ -205,7 +229,7 @@ export async function fetchChannelVideos(
   youtubeChannelId: string,
   maxResults: number = 50
 ): Promise<YtVideoData[]> {
-  const youtube = getYoutubeClient();
+  const youtube = await getYoutubeClient();
 
   // Converter UC... → UU... para obter playlist de uploads
   const uploadsPlaylistId = youtubeChannelId.replace(/^UC/, "UU");
