@@ -253,3 +253,170 @@ model AiUsageLog {
   run              ScraperRun? @relation(fields: [runId], references: [id])
   post             Post?       @relation(fields: [postId], references: [id])
 }
+
+// ═══════════════════════════════════════════════════════════════
+// YouTube Analytics Module
+// ═══════════════════════════════════════════════════════════════
+
+model YtCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique  // "Entretenimento / Humor"
+  slug      String   @unique  // "entretenimento-humor"
+  color     String   @default("#6366f1")
+  icon      String?  // Nome do ícone MUI
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  channels  YtChannel[]
+}
+
+model YtChannel {
+  id                String   @id @default(cuid())
+  youtubeChannelId  String   @unique
+  name              String
+  handle            String?
+  description       String?
+  thumbnailUrl      String?
+  bannerUrl         String?
+  country           String?
+  customUrl         String?
+
+  // Métricas atuais (última coleta)
+  subscribers       BigInt   @default(0)
+  totalViews        BigInt   @default(0)
+  totalVideos       Int      @default(0)
+
+  // Métricas calculadas
+  viewsShorts       BigInt   @default(0)
+  viewsLongs        BigInt   @default(0)
+  viewsLives        BigInt   @default(0)
+  avgViewsPerVideo  Float    @default(0)
+  avgViewsPerShort  Float    @default(0)
+  weeklyGrowth      Float    @default(0)
+  monthlyGrowth     Float    @default(0)
+  uploadsThisWeek   Int      @default(0)
+  uploadsThisMonth  Int      @default(0)
+  subsGainedWeek    Int      @default(0)
+  subsGainedMonth   Int      @default(0)
+  livesPerMonth     Float    @default(0)
+  lastVideoAt       DateTime?
+
+  // Ranking
+  rankPosition      Int      @default(0)
+
+  // Relações
+  categoryId        String
+  category          YtCategory @relation(fields: [categoryId], references: [id])
+
+  isActive          Boolean  @default(true)
+  lastFetchedAt     DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  videos            YtVideo[]
+  snapshots         YtChannelSnapshot[]
+  aiReports         YtAiReport[]
+
+  @@index([categoryId])
+  @@index([rankPosition])
+}
+
+model YtVideo {
+  id              String   @id @default(cuid())
+  youtubeVideoId  String   @unique
+  title           String
+  description     String?
+  thumbnailUrl    String?
+
+  // Tipo: SHORT | LONG | LIVE
+  videoType       String   @default("LONG")
+
+  // Métricas
+  views           BigInt   @default(0)
+  likes           Int      @default(0)
+  comments        Int      @default(0)
+  duration        Int      @default(0) // segundos
+
+  // Temporal
+  publishedAt     DateTime
+  dayOfWeek       Int?     // 0=Dom, 6=Sab
+  hourOfDay       Int?     // 0-23
+
+  // Relações
+  channelId       String
+  channel         YtChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  snapshots       YtVideoSnapshot[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([channelId])
+  @@index([channelId, publishedAt])
+  @@index([videoType])
+}
+
+model YtChannelSnapshot {
+  id               String   @id @default(cuid())
+
+  subscribers      BigInt
+  totalViews       BigInt
+  totalVideos      Int
+  viewsShorts      BigInt   @default(0)
+  viewsLongs       BigInt   @default(0)
+
+  // Deltas desde snapshot anterior
+  deltaSubscribers Int      @default(0)
+  deltaViews       BigInt   @default(0)
+  deltaVideos      Int      @default(0)
+
+  channelId        String
+  channel          YtChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  snapshotDate     DateTime @default(now())
+  createdAt        DateTime @default(now())
+
+  @@index([channelId, snapshotDate])
+  @@index([snapshotDate])
+}
+
+model YtVideoSnapshot {
+  id           String   @id @default(cuid())
+
+  views        BigInt
+  likes        Int      @default(0)
+  comments     Int      @default(0)
+
+  videoId      String
+  video        YtVideo  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  snapshotDate DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@index([videoId, snapshotDate])
+}
+
+model YtAiReport {
+  id               String   @id @default(cuid())
+
+  // Conteúdo
+  summary          String   // Resumo executivo
+  insights         String   // JSON com insights detalhados
+  recommendations  String   // JSON com recomendações
+  rawResponse      String?  // Resposta bruta da IA
+
+  // Metadados
+  model            String   @default("gpt-4o-mini")
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  costUsd          Float    @default(0)
+
+  // Relação
+  channelId        String
+  channel          YtChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime @default(now())
+
+  @@index([channelId, createdAt])
+}

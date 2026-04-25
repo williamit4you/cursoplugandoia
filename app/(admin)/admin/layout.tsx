@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { usePathname } from "next/navigation";
 import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, AppBar, Toolbar, Typography, Button } from "@mui/material";
@@ -11,6 +11,7 @@ import VideoCameraBackIcon from "@mui/icons-material/VideoCameraBack";
 import SettingsIcon from "@mui/icons-material/Settings";
 import CodeIcon from "@mui/icons-material/Code";
 import QuizIcon from "@mui/icons-material/Quiz";
+import YouTubeIcon from "@mui/icons-material/YouTube";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 
@@ -32,6 +33,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Fila de Stories", icon: <VideoCameraBackIcon />, path: "/admin/social" },
     { text: "Vídeos com código", icon: <CodeIcon />, path: "/admin/video-code" },
     { text: "Perguntas → vídeos", icon: <QuizIcon />, path: "/admin/video-questions" },
+    { text: "YT Analytics", icon: <YouTubeIcon />, path: "/admin/youtube-analytics" },
     { text: "Config. Scraper", icon: <SettingsIcon />, path: "/admin/scraper-config" },
     { text: "Config. Perguntas", icon: <SettingsIcon />, path: "/admin/video-questions-config" },
   ];
