@@ -274,3 +274,84 @@ export async function fetchChannelVideos(
 
   return results;
 }
+
+// ── Discovery helpers (não existe endpoint oficial "top channels by category") ─────────────────────
+
+export async function fetchTopVideosByCategoryInPeriod(params: {
+  regionCode: string; // ISO 3166-1 alpha-2
+  videoCategoryId: string; // YouTube videoCategoryId (ex: 23 = Comedy)
+  publishedAfter: string; // RFC3339
+  publishedBefore: string; // RFC3339
+  maxResults?: number; // max 500 (10 pages * 50)
+}) {
+  const youtube = await getYoutubeClient();
+
+  const max = Math.min(Math.max(params.maxResults ?? 200, 1), 500);
+  const pages = Math.ceil(max / 50);
+
+  const videoIds: string[] = [];
+  let pageToken: string | undefined = undefined;
+
+  for (let i = 0; i < pages; i++) {
+    const res: any = await youtube.search.list({
+      part: ["snippet"],
+      type: ["video"],
+      order: "viewCount",
+      regionCode: params.regionCode,
+      videoCategoryId: params.videoCategoryId,
+      publishedAfter: params.publishedAfter,
+      publishedBefore: params.publishedBefore,
+      maxResults: 50,
+      pageToken,
+    });
+
+    for (const item of res.data.items || []) {
+      const vid = item.id?.videoId;
+      if (vid) videoIds.push(vid);
+    }
+
+    pageToken = res.data.nextPageToken || undefined;
+    if (!pageToken) break;
+
+    // small delay to be gentle
+    await sleep(120);
+  }
+
+  const uniqueVideoIds = Array.from(new Set(videoIds)).slice(0, max);
+  if (uniqueVideoIds.length === 0) return [];
+
+  const results: Array<{
+    youtubeVideoId: string;
+    youtubeChannelId: string;
+    views: bigint;
+    publishedAt: Date;
+    title: string;
+  }> = [];
+
+  // videos.list supports up to 50 ids
+  for (let i = 0; i < uniqueVideoIds.length; i += 50) {
+    const batch = uniqueVideoIds.slice(i, i + 50);
+    const vids: any = await youtube.videos.list({
+      id: batch,
+      part: ["snippet", "statistics"],
+    });
+
+    for (const v of vids.data.items || []) {
+      const channelId = v.snippet?.channelId;
+      if (!v.id || !channelId) continue;
+      results.push({
+        youtubeVideoId: v.id,
+        youtubeChannelId: channelId,
+        views: BigInt(v.statistics?.viewCount || "0"),
+        publishedAt: new Date(v.snippet?.publishedAt || Date.now()),
+        title: v.snippet?.title || "Unknown",
+      });
+    }
+
+    if (i + 50 < uniqueVideoIds.length) {
+      await sleep(120);
+    }
+  }
+
+  return results;
+}

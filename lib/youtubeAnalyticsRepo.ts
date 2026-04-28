@@ -280,8 +280,10 @@ export async function upsertVideos(
     hourOfDay: number;
   }>
 ) {
+  const todayKey = new Date().toISOString().slice(0, 10);
+
   for (const video of videos) {
-    await prisma.ytVideo.upsert({
+    const dbVideo = await prisma.ytVideo.upsert({
       where: { youtubeVideoId: video.youtubeVideoId },
       update: {
         views: video.views,
@@ -305,6 +307,25 @@ export async function upsertVideos(
         channelId,
       },
     });
+
+    // Snapshot diário por vídeo (evita duplicar no mesmo dia)
+    const latest = await prisma.ytVideoSnapshot.findFirst({
+      where: { videoId: dbVideo.id },
+      orderBy: { snapshotDate: "desc" },
+      select: { snapshotDate: true },
+    });
+
+    const latestKey = latest?.snapshotDate?.toISOString().slice(0, 10);
+    if (latestKey !== todayKey) {
+      await prisma.ytVideoSnapshot.create({
+        data: {
+          videoId: dbVideo.id,
+          views: dbVideo.views,
+          likes: dbVideo.likes,
+          comments: dbVideo.comments,
+        },
+      });
+    }
   }
 }
 
