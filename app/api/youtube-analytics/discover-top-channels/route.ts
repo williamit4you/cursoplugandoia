@@ -19,21 +19,25 @@ function parseIntSafe(value: unknown, fallback: number) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function resolveRelevanceLanguage(regionCode: string) {
+  const byRegion: Record<string, string> = {
+    BR: "pt",
+    PT: "pt",
+    US: "en",
+    MX: "es",
+    AR: "es",
+    ES: "es",
+  };
+
+  return byRegion[regionCode] || "en";
+}
+
 /**
  * POST /api/youtube-analytics/discover-top-channels
  *
  * Importa automaticamente canais a partir de vídeos com mais views no período.
  * Não existe endpoint oficial do YouTube para "top canais por categoria", então
  * a descoberta é feita a partir de vídeos da categoria e agregação por canal.
- *
- * Body:
- * - ytCategoryId: string (categoria interna)
- * - regionCode?: string (ex: BR)
- * - youtubeVideoCategoryId?: string (override opcional)
- * - publishedAfter: string RFC3339
- * - publishedBefore: string RFC3339
- * - maxVideos?: number (<=500, default 300)
- * - maxChannels?: number (<=200, default 100)
  */
 export async function POST(req: NextRequest) {
   try {
@@ -43,6 +47,7 @@ export async function POST(req: NextRequest) {
     const youtubeVideoCategoryIdInput = String(body?.youtubeVideoCategoryId ?? "").trim();
     const publishedAfter = String(body?.publishedAfter ?? "").trim();
     const publishedBefore = String(body?.publishedBefore ?? "").trim();
+    const requireChannelCountryMatch = body?.requireChannelCountryMatch !== false;
 
     const maxVideos = Math.min(500, Math.max(50, parseIntSafe(body?.maxVideos, 300)));
     const maxChannels = Math.min(200, Math.max(10, parseIntSafe(body?.maxChannels, 100)));
@@ -66,9 +71,11 @@ export async function POST(req: NextRequest) {
     const { youtubeCategoryId, youtubeCategoryLabel } =
       resolveYoutubeCategoryFromInternalCategory(category);
     const youtubeVideoCategoryId = youtubeVideoCategoryIdInput || youtubeCategoryId;
+    const relevanceLanguage = resolveRelevanceLanguage(regionCode);
 
     const topVideos = await fetchTopVideosByCategoryInPeriod({
       regionCode,
+      relevanceLanguage,
       videoCategoryId: youtubeVideoCategoryId,
       publishedAfter,
       publishedBefore,
@@ -107,17 +114,38 @@ export async function POST(req: NextRequest) {
 
     const createdOrUpdated: string[] = [];
     const errors: Array<{ youtubeChannelId: string; error: string }> = [];
+    const skippedCountryMismatch: Array<{ youtubeChannelId: string; country: string | null }> = [];
+    const skippedMissingCountry: string[] = [];
+
+    let matchedCountryCount = 0;
+    let missingCountryCount = 0;
 
     for (const data of channelData) {
-      try {
-        const updated = await upsertChannel(
-          {
-            ...data,
-            country: data.country || regionCode,
-          },
-          ytCategoryId
-        );
+      const channelCountry = data.country?.trim().toUpperCase() || null;
 
+      if (channelCountry === regionCode) {
+        matchedCountryCount += 1;
+      } else if (!channelCountry) {
+        missingCountryCount += 1;
+      }
+
+      if (requireChannelCountryMatch) {
+        if (!channelCountry) {
+          skippedMissingCountry.push(data.youtubeChannelId);
+          continue;
+        }
+
+        if (channelCountry !== regionCode) {
+          skippedCountryMismatch.push({
+            youtubeChannelId: data.youtubeChannelId,
+            country: channelCountry,
+          });
+          continue;
+        }
+      }
+
+      try {
+        const updated = await upsertChannel(data, ytCategoryId);
         createdOrUpdated.push(updated.id);
         await createChannelSnapshot(updated.id);
       } catch (error: any) {
@@ -134,17 +162,28 @@ export async function POST(req: NextRequest) {
       success: true,
       ytCategory: { id: category.id, name: category.name, slug: category.slug },
       regionCode,
+      requireChannelCountryMatch,
+      relevanceLanguage,
       youtubeVideoCategoryId,
       youtubeVideoCategoryLabel: youtubeCategoryLabel,
       publishedAfter,
       publishedBefore,
       topVideosFetched: topVideos.length,
       channelsDiscovered: byChannel.size,
+      rankedChannelsConsidered: rankedChannels.length,
+      channelDetailsFetched: channelData.length,
+      channelsWithCountryMatch: matchedCountryCount,
+      channelsWithMissingCountry: missingCountryCount,
+      skippedMissingCountryCount: skippedMissingCountry.length,
+      skippedCountryMismatchCount: skippedCountryMismatch.length,
+      skippedCountryMismatchSample: skippedCountryMismatch.slice(0, 10),
       channelsImported: createdOrUpdated.length,
       errorsCount: errors.length,
       errors,
       note:
-        "Importação baseada em vídeos mais vistos do período. O YouTube não fornece um top oficial de canais por categoria.",
+        requireChannelCountryMatch
+          ? "Importação restrita a canais cujo country público no YouTube corresponde ao país selecionado."
+          : "Importação baseada em vídeos mais vistos do período, sem exigir correspondência exata do country do canal.",
     });
   } catch (error: any) {
     console.error("Discover top channels error:", error);

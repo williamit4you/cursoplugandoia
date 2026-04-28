@@ -283,6 +283,7 @@ export async function fetchTopVideosByCategoryInPeriod(params: {
   publishedAfter: string; // RFC3339
   publishedBefore: string; // RFC3339
   maxResults?: number; // max 500 (10 pages * 50)
+  relevanceLanguage?: string;
 }) {
   const youtube = await getYoutubeClient();
 
@@ -298,6 +299,7 @@ export async function fetchTopVideosByCategoryInPeriod(params: {
       type: ["video"],
       order: "viewCount",
       regionCode: params.regionCode,
+      relevanceLanguage: params.relevanceLanguage,
       videoCategoryId: params.videoCategoryId,
       publishedAfter: params.publishedAfter,
       publishedBefore: params.publishedBefore,
