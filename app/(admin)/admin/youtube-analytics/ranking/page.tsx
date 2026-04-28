@@ -2,11 +2,20 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Avatar,
   Box,
+  Button,
+  Checkbox,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
+  LinearProgress,
+  ListItemText,
   MenuItem,
   Paper,
   Select,
@@ -22,21 +31,22 @@ import {
   Tooltip,
   Typography,
   IconButton,
+  TextField,
 } from "@mui/material";
+import type { SelectChangeEvent } from "@mui/material/Select";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import Alert from "@mui/material/Alert";
-import TextField from "@mui/material/TextField";
+import { resolveYoutubeCategoryFromInternalCategory } from "@/lib/youtubeCategoryMapping";
 
 type Metric = "subscribers" | "viewsLongs" | "viewsShorts" | "totalViews";
 type Period = "7d" | "30d" | "90d";
 
-type Category = { id: string; name: string; slug: string; color: string };
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  color: string;
+};
 
 type RankingRow = {
   id: string;
@@ -62,24 +72,99 @@ type RankingRow = {
   deltaCommentsShorts: string | null;
 };
 
+type DiscoverStatus = "pending" | "running" | "success" | "empty" | "error";
+
+type DiscoverRun = {
+  categoryId: string;
+  categoryName: string;
+  youtubeCategoryLabel: string;
+  status: DiscoverStatus;
+  topVideosFetched: number;
+  channelsDiscovered: number;
+  channelsImported: number;
+  errorsCount: number;
+  note?: string;
+  message?: string;
+};
+
+const COUNTRY_OPTIONS = ["BR", "US", "PT", "AR", "MX", "ES"];
+const MAX_CHANNEL_OPTIONS = [20, 50, 100, 150, 200];
+const MAX_VIDEO_OPTIONS = [100, 200, 300, 400, 500];
+
 function formatNum(numStr: string) {
-  const n = Number(numStr);
-  if (!Number.isFinite(n)) return "0";
-  if (n >= 1e9) return (n / 1e9).toFixed(1) + "B";
-  if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
-  if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
-  return n.toString();
+  const value = Number(numStr);
+  if (!Number.isFinite(value)) return "0";
+  if (value >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
+  if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
+  if (value >= 1e3) return `${(value / 1e3).toFixed(1)}K`;
+  return value.toString();
 }
 
 function formatDelta(delta: string | null) {
   if (delta === null) return "—";
-  const n = Number(delta);
-  if (!Number.isFinite(n)) return "—";
-  const sign = n >= 0 ? "+" : "";
-  return sign + formatNum(delta);
+  const value = Number(delta);
+  if (!Number.isFinite(value)) return "—";
+  return `${value >= 0 ? "+" : ""}${formatNum(delta)}`;
+}
+
+function formatLocalDateTimeInput(date: Date) {
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60 * 1000);
+  return local.toISOString().slice(0, 16);
+}
+
+function buildDefaultDateRange() {
+  const now = new Date();
+  const start = new Date(now);
+  start.setDate(start.getDate() - 30);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(now);
+  end.setHours(23, 59, 0, 0);
+
+  return {
+    start: formatLocalDateTimeInput(start),
+    end: formatLocalDateTimeInput(end),
+  };
+}
+
+function toIsoString(value: string) {
+  return new Date(value).toISOString();
+}
+
+function getStatusLabel(status: DiscoverStatus) {
+  switch (status) {
+    case "running":
+      return "Processando";
+    case "success":
+      return "Concluída";
+    case "empty":
+      return "Sem resultados";
+    case "error":
+      return "Com erro";
+    default:
+      return "Pendente";
+  }
+}
+
+function getStatusColor(status: DiscoverStatus) {
+  switch (status) {
+    case "running":
+      return "warning";
+    case "success":
+      return "success";
+    case "empty":
+      return "info";
+    case "error":
+      return "error";
+    default:
+      return "default";
+  }
 }
 
 export default function RankingPage() {
+  const defaultDateRange = useMemo(() => buildDefaultDateRange(), []);
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [country, setCountry] = useState("");
@@ -94,14 +179,20 @@ export default function RankingPage() {
   const [loading, setLoading] = useState(false);
 
   const [openDiscover, setOpenDiscover] = useState(false);
-  const [discoverYtCategoryId, setDiscoverYtCategoryId] = useState("");
+  const [discoverCategoryIds, setDiscoverCategoryIds] = useState<string[]>([]);
   const [discoverRegionCode, setDiscoverRegionCode] = useState("BR");
-  const [discoverYoutubeVideoCategoryId, setDiscoverYoutubeVideoCategoryId] = useState("23");
-  const [discoverAfter, setDiscoverAfter] = useState("2026-04-01T00:00:00Z");
-  const [discoverBefore, setDiscoverBefore] = useState("2026-04-30T23:59:59Z");
+  const [discoverAfter, setDiscoverAfter] = useState(defaultDateRange.start);
+  const [discoverBefore, setDiscoverBefore] = useState(defaultDateRange.end);
   const [discoverMaxChannels, setDiscoverMaxChannels] = useState(100);
   const [discoverMaxVideos, setDiscoverMaxVideos] = useState(300);
-  const [discoverResult, setDiscoverResult] = useState<string | null>(null);
+  const [discoverRunning, setDiscoverRunning] = useState(false);
+  const [discoverFeedback, setDiscoverFeedback] = useState<string | null>(null);
+  const [discoverRuns, setDiscoverRuns] = useState<DiscoverRun[]>([]);
+  const [discoverProgress, setDiscoverProgress] = useState({
+    completed: 0,
+    total: 0,
+    currentCategoryName: "",
+  });
 
   const fetchCategories = useCallback(async () => {
     const res = await fetch("/api/youtube-analytics/categories");
@@ -172,15 +263,185 @@ export default function RankingPage() {
       case "subscribers":
         return "Inscritos";
       case "totalViews":
-        return "Views (total)";
+        return "Views totais";
       case "viewsLongs":
-        return "Views (long)";
+        return "Views long";
       case "viewsShorts":
-        return "Views (short)";
+        return "Views short";
       default:
         return "Inscritos";
     }
   }, [metric]);
+
+  const selectedDiscoverCategories = useMemo(
+    () => categories.filter((category) => discoverCategoryIds.includes(category.id)),
+    [categories, discoverCategoryIds]
+  );
+
+  const discoverProgressValue = useMemo(() => {
+    if (discoverProgress.total === 0) return 0;
+    return Math.round((discoverProgress.completed / discoverProgress.total) * 100);
+  }, [discoverProgress]);
+
+  const discoverSummary = useMemo(() => {
+    const successCount = discoverRuns.filter((run) => run.status === "success").length;
+    const emptyCount = discoverRuns.filter((run) => run.status === "empty").length;
+    const errorCount = discoverRuns.filter((run) => run.status === "error").length;
+    const importedCount = discoverRuns.reduce((sum, run) => sum + run.channelsImported, 0);
+    const discoveredCount = discoverRuns.reduce((sum, run) => sum + run.channelsDiscovered, 0);
+    const videoCount = discoverRuns.reduce((sum, run) => sum + run.topVideosFetched, 0);
+
+    return {
+      successCount,
+      emptyCount,
+      errorCount,
+      importedCount,
+      discoveredCount,
+      videoCount,
+    };
+  }, [discoverRuns]);
+
+  const openDiscoverDialog = () => {
+    const fallbackCategoryId = categoryId || categories[0]?.id || "";
+    setDiscoverFeedback(null);
+    setDiscoverRuns([]);
+    setDiscoverProgress({ completed: 0, total: 0, currentCategoryName: "" });
+    setDiscoverCategoryIds(fallbackCategoryId ? [fallbackCategoryId] : []);
+    setOpenDiscover(true);
+  };
+
+  const updateDiscoverRun = useCallback((categoryIdToUpdate: string, patch: Partial<DiscoverRun>) => {
+    setDiscoverRuns((current) =>
+      current.map((run) =>
+        run.categoryId === categoryIdToUpdate
+          ? {
+              ...run,
+              ...patch,
+            }
+          : run
+      )
+    );
+  }, []);
+
+  const handleDiscoverCategoriesChange = (event: SelectChangeEvent<string[]>) => {
+    const value = event.target.value;
+    setDiscoverCategoryIds(typeof value === "string" ? value.split(",") : value);
+  };
+
+  const runDiscovery = async () => {
+    if (selectedDiscoverCategories.length === 0) {
+      setDiscoverFeedback("Selecione ao menos uma categoria para iniciar a descoberta.");
+      return;
+    }
+
+    if (!discoverAfter || !discoverBefore) {
+      setDiscoverFeedback("Selecione o período inicial e final.");
+      return;
+    }
+
+    if (new Date(discoverAfter).getTime() >= new Date(discoverBefore).getTime()) {
+      setDiscoverFeedback("A data final precisa ser maior que a data inicial.");
+      return;
+    }
+
+    const initialRuns: DiscoverRun[] = selectedDiscoverCategories.map((category) => ({
+      categoryId: category.id,
+      categoryName: category.name,
+      youtubeCategoryLabel: resolveYoutubeCategoryFromInternalCategory(category).youtubeCategoryLabel,
+      status: "pending",
+      topVideosFetched: 0,
+      channelsDiscovered: 0,
+      channelsImported: 0,
+      errorsCount: 0,
+    }));
+
+    setDiscoverRunning(true);
+    setDiscoverFeedback(null);
+    setDiscoverRuns(initialRuns);
+    setDiscoverProgress({
+      completed: 0,
+      total: initialRuns.length,
+      currentCategoryName: initialRuns[0]?.categoryName || "",
+    });
+
+    let completed = 0;
+
+    for (const category of selectedDiscoverCategories) {
+      updateDiscoverRun(category.id, { status: "running" });
+      setDiscoverProgress((current) => ({
+        ...current,
+        currentCategoryName: category.name,
+      }));
+
+      try {
+        const response = await fetch("/api/youtube-analytics/discover-top-channels", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ytCategoryId: category.id,
+            regionCode: discoverRegionCode,
+            publishedAfter: toIsoString(discoverAfter),
+            publishedBefore: toIsoString(discoverBefore),
+            maxChannels: discoverMaxChannels,
+            maxVideos: discoverMaxVideos,
+          }),
+        });
+
+        const json = await response.json();
+
+        if (!response.ok) {
+          updateDiscoverRun(category.id, {
+            status: "error",
+            message: json?.error || "Falha ao processar esta categoria.",
+          });
+        } else {
+          const status: DiscoverStatus =
+            json.channelsImported > 0
+              ? "success"
+              : json.errorsCount > 0 && json.channelsDiscovered === 0
+                ? "error"
+                : "empty";
+
+          const message =
+            status === "success"
+              ? `Busca concluída com ${json.channelsImported} canais importados.`
+              : status === "empty"
+                ? `Nenhum canal foi importado. Procurei vídeos mais vistos em ${json.youtubeVideoCategoryLabel} para ${discoverRegionCode} no período informado.`
+                : json?.error || "Não foi possível concluir a importação.";
+
+          updateDiscoverRun(category.id, {
+            status,
+            topVideosFetched: Number(json.topVideosFetched) || 0,
+            channelsDiscovered: Number(json.channelsDiscovered) || 0,
+            channelsImported: Number(json.channelsImported) || 0,
+            errorsCount: Number(json.errorsCount) || 0,
+            note: json.note,
+            message,
+            youtubeCategoryLabel: json.youtubeVideoCategoryLabel || resolveYoutubeCategoryFromInternalCategory(category).youtubeCategoryLabel,
+          });
+        }
+      } catch (error: any) {
+        updateDiscoverRun(category.id, {
+          status: "error",
+          message: error?.message || "Falha inesperada durante a descoberta.",
+        });
+      } finally {
+        completed += 1;
+        setDiscoverProgress((current) => ({
+          ...current,
+          completed,
+          currentCategoryName:
+            completed < selectedDiscoverCategories.length
+              ? selectedDiscoverCategories[completed].name
+              : "",
+        }));
+      }
+    }
+
+    setDiscoverRunning(false);
+    setDiscoverFeedback("Descoberta finalizada. Confira abaixo o resultado de cada categoria.");
+    await fetchRanking();
+  };
 
   return (
     <Box>
@@ -190,20 +451,13 @@ export default function RankingPage() {
             Ranking
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Top canais por métrica + variação por período (via snapshots).
+            Top canais por métrica com variação por período com base nos snapshots coletados.
           </Typography>
         </Box>
+
         <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-          <Button
-            variant="contained"
-            startIcon={<AutoAwesomeIcon />}
-            onClick={() => {
-              setDiscoverResult(null);
-              setDiscoverYtCategoryId(categoryId || (categories[0]?.id || ""));
-              setOpenDiscover(true);
-            }}
-          >
-            Descobrir top canais (beta)
+          <Button variant="contained" startIcon={<AutoAwesomeIcon />} onClick={openDiscoverDialog}>
+            Descobrir top canais
           </Button>
         </Box>
       </Box>
@@ -213,9 +467,9 @@ export default function RankingPage() {
           <ToggleButtonGroup
             value={metric}
             exclusive
-            onChange={(_e, v) => {
-              if (!v) return;
-              setMetric(v);
+            onChange={(_event, value) => {
+              if (!value) return;
+              setMetric(value);
               setPage(0);
             }}
             size="small"
@@ -230,32 +484,32 @@ export default function RankingPage() {
             <ToggleButtonGroup
               value={period}
               exclusive
-              onChange={(_e, v) => {
-                if (!v) return;
-                setPeriod(v);
+              onChange={(_event, value) => {
+                if (!value) return;
+                setPeriod(value);
                 setPage(0);
               }}
               size="small"
             >
-              <ToggleButton value="7d">7d</ToggleButton>
-              <ToggleButton value="30d">30d</ToggleButton>
-              <ToggleButton value="90d">90d</ToggleButton>
+              <ToggleButton value="7d">7 dias</ToggleButton>
+              <ToggleButton value="30d">30 dias</ToggleButton>
+              <ToggleButton value="90d">90 dias</ToggleButton>
             </ToggleButtonGroup>
 
             <FormControl size="small" sx={{ minWidth: 260 }}>
-              <InputLabel>Nicho</InputLabel>
+              <InputLabel>Categoria</InputLabel>
               <Select
-                label="Nicho"
+                label="Categoria"
                 value={categoryId}
-                onChange={(e) => {
-                  setCategoryId(String(e.target.value));
+                onChange={(event) => {
+                  setCategoryId(String(event.target.value));
                   setPage(0);
                 }}
               >
-                <MenuItem value="">Todos</MenuItem>
-                {categories.map((c) => (
-                  <MenuItem key={c.id} value={c.id}>
-                    {c.name}
+                <MenuItem value="">Todas</MenuItem>
+                {categories.map((category) => (
+                  <MenuItem key={category.id} value={category.id}>
+                    {category.name}
                   </MenuItem>
                 ))}
               </Select>
@@ -266,15 +520,15 @@ export default function RankingPage() {
               <Select
                 label="País"
                 value={country}
-                onChange={(e) => {
-                  setCountry(String(e.target.value).toUpperCase());
+                onChange={(event) => {
+                  setCountry(String(event.target.value).toUpperCase());
                   setPage(0);
                 }}
               >
                 <MenuItem value="">Todos</MenuItem>
-                {["BR", "US", "PT", "AR", "MX", "ES"].map((c) => (
-                  <MenuItem key={c} value={c}>
-                    {c}
+                {COUNTRY_OPTIONS.map((countryOption) => (
+                  <MenuItem key={countryOption} value={countryOption}>
+                    {countryOption}
                   </MenuItem>
                 ))}
               </Select>
@@ -289,26 +543,27 @@ export default function RankingPage() {
             <TableRow>
               <TableCell>Rank</TableCell>
               <TableCell>Canal</TableCell>
-              <TableCell>Nicho</TableCell>
+              <TableCell>Categoria</TableCell>
               <TableCell align="right">{metricLabel}</TableCell>
-              <TableCell align="right">Δ {period}</TableCell>
-              <TableCell align="right">Likes Δ</TableCell>
-              <TableCell align="right">Coments Δ</TableCell>
+              <TableCell align="right">Variação</TableCell>
+              <TableCell align="right">Likes</TableCell>
+              <TableCell align="right">Comentários</TableCell>
               <TableCell align="center">País</TableCell>
               <TableCell align="center">Ações</TableCell>
             </TableRow>
           </TableHead>
+
           <TableBody>
             {loading ? (
               <TableRow>
                 <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
-                  Carregando...
+                  Carregando ranking...
                 </TableCell>
               </TableRow>
             ) : data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
-                  Nenhum canal encontrado
+                  Nenhum canal encontrado para os filtros selecionados.
                 </TableCell>
               </TableRow>
             ) : (
@@ -322,26 +577,28 @@ export default function RankingPage() {
                       : metric === "viewsShorts"
                         ? row.viewsShorts
                         : row.totalViews;
-                const delta = (row as any)[deltaField] as string | null;
-                const deltaLikes = (row as any)[deltaLikesField] as string | null;
-                const deltaComments = (row as any)[deltaCommentsField] as string | null;
+                const delta = row[deltaField];
+                const deltaLikes = row[deltaLikesField];
+                const deltaComments = row[deltaCommentsField];
 
                 return (
                   <TableRow key={row.id} hover>
                     <TableCell sx={{ fontWeight: 900, color: "text.secondary" }}>
                       #{rankOffset + idx + 1}
                     </TableCell>
+
                     <TableCell>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                         <Avatar src={row.thumbnailUrl || undefined} alt={row.name} />
                         <Box>
                           <Typography sx={{ fontWeight: 800 }}>{row.name}</Typography>
                           <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                            {formatNum(row.subscribers)} subs · {formatNum(row.totalViews)} views
+                            {formatNum(row.subscribers)} inscritos · {formatNum(row.totalViews)} views
                           </Typography>
                         </Box>
                       </Box>
                     </TableCell>
+
                     <TableCell>
                       <Chip
                         size="small"
@@ -353,9 +610,11 @@ export default function RankingPage() {
                         }}
                       />
                     </TableCell>
+
                     <TableCell align="right" sx={{ fontWeight: 900 }}>
                       {formatNum(currentValue)}
                     </TableCell>
+
                     <TableCell
                       align="right"
                       sx={{
@@ -370,13 +629,17 @@ export default function RankingPage() {
                     >
                       {formatDelta(delta)}
                     </TableCell>
+
                     <TableCell align="right" sx={{ fontWeight: 900, color: "text.secondary" }}>
                       {formatDelta(deltaLikes)}
                     </TableCell>
+
                     <TableCell align="right" sx={{ fontWeight: 900, color: "text.secondary" }}>
                       {formatDelta(deltaComments)}
                     </TableCell>
+
                     <TableCell align="center">{row.country || "—"}</TableCell>
+
                     <TableCell align="center">
                       <Tooltip title="Abrir no YouTube">
                         <IconButton size="small" component="a" href={url} target="_blank">
@@ -390,76 +653,73 @@ export default function RankingPage() {
             )}
           </TableBody>
         </Table>
+
         <TablePagination
           rowsPerPageOptions={[10, 20, 50, 100]}
           component="div"
           count={total}
           rowsPerPage={pageSize}
           page={page}
-          onPageChange={(_e, p) => setPage(p)}
-          onRowsPerPageChange={(e) => {
-            setPageSize(parseInt(e.target.value, 10));
+          onPageChange={(_event, nextPage) => setPage(nextPage)}
+          onRowsPerPageChange={(event) => {
+            setPageSize(parseInt(event.target.value, 10));
             setPage(0);
           }}
           labelRowsPerPage="Linhas por página:"
         />
       </TableContainer>
 
-      <Dialog open={openDiscover} onClose={() => setOpenDiscover(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Descobrir top canais por categoria (beta)</DialogTitle>
+      <Dialog open={openDiscover} onClose={() => !discoverRunning && setOpenDiscover(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Descobrir top canais por categoria</DialogTitle>
+
         <DialogContent dividers>
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Não existe endpoint oficial do YouTube para “Top 100 canais por categoria”.
-            Esta automação usa <strong>TOP VÍDEOS</strong> no período (search order=viewCount) e agrega por canal.
-            As views são o <strong>viewCount total no momento</strong> (não “views do mês” históricas).
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Você escolhe apenas as categorias internas. O sistema faz o relacionamento com a categoria pública do YouTube,
+            busca os vídeos mais vistos do período e tenta cadastrar os canais encontrados.
           </Alert>
 
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 160px 220px" }, gap: 2, mb: 2 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.7fr 0.8fr" }, gap: 2, mb: 2 }}>
             <FormControl size="small">
-              <InputLabel>Categoria interna</InputLabel>
+              <InputLabel>Categorias</InputLabel>
               <Select
-                label="Categoria interna"
-                value={discoverYtCategoryId}
-                onChange={(e) => setDiscoverYtCategoryId(String(e.target.value))}
+                multiple
+                label="Categorias"
+                value={discoverCategoryIds}
+                onChange={handleDiscoverCategoriesChange}
+                renderValue={(selected) =>
+                  categories
+                    .filter((category) => selected.includes(category.id))
+                    .map((category) => category.name)
+                    .join(", ")
+                }
               >
-                {categories.map((c) => (
-                  <MenuItem key={c.id} value={c.id}>
-                    {c.name}
-                  </MenuItem>
-                ))}
+                {categories.map((category) => {
+                  const mapped = resolveYoutubeCategoryFromInternalCategory(category);
+                  return (
+                    <MenuItem key={category.id} value={category.id}>
+                      <Checkbox checked={discoverCategoryIds.includes(category.id)} />
+                      <ListItemText
+                        primary={category.name}
+                        secondary={`Categoria pública: ${mapped.youtubeCategoryLabel}`}
+                      />
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
 
-            <TextField
-              size="small"
-              label="RegionCode"
-              value={discoverRegionCode}
-              onChange={(e) => setDiscoverRegionCode(e.target.value.toUpperCase())}
-              placeholder="BR"
-            />
-
             <FormControl size="small">
-              <InputLabel>Categoria YouTube</InputLabel>
+              <InputLabel>País</InputLabel>
               <Select
-                label="Categoria YouTube"
-                value={discoverYoutubeVideoCategoryId}
-                onChange={(e) => setDiscoverYoutubeVideoCategoryId(String(e.target.value))}
+                label="País"
+                value={discoverRegionCode}
+                onChange={(event) => setDiscoverRegionCode(String(event.target.value))}
               >
-                <MenuItem value="23">23 — Comedy</MenuItem>
-                <MenuItem value="24">24 — Entertainment</MenuItem>
-                <MenuItem value="20">20 — Gaming</MenuItem>
-                <MenuItem value="22">22 — People & Blogs</MenuItem>
-                <MenuItem value="15">15 — Pets & Animals</MenuItem>
-                <MenuItem value="1">1 — Film & Animation</MenuItem>
-                <MenuItem value="10">10 — Music</MenuItem>
-                <MenuItem value="17">17 — Sports</MenuItem>
-                <MenuItem value="28">28 — Science & Technology</MenuItem>
-                <MenuItem value="26">26 — Howto & Style</MenuItem>
-                <MenuItem value="25">25 — News & Politics</MenuItem>
-                <MenuItem value="27">27 — Education</MenuItem>
-                <MenuItem value="29">29 — Nonprofits & Activism</MenuItem>
-                <MenuItem value="2">2 — Autos & Vehicles</MenuItem>
-                <MenuItem value="19">19 — Travel & Events</MenuItem>
+                {COUNTRY_OPTIONS.map((countryOption) => (
+                  <MenuItem key={countryOption} value={countryOption}>
+                    {countryOption}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Box>
@@ -467,76 +727,141 @@ export default function RankingPage() {
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, mb: 2 }}>
             <TextField
               size="small"
-              label="publishedAfter (RFC3339)"
+              type="datetime-local"
+              label="Data e hora inicial"
               value={discoverAfter}
-              onChange={(e) => setDiscoverAfter(e.target.value)}
+              onChange={(event) => setDiscoverAfter(event.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
             />
+
             <TextField
               size="small"
-              label="publishedBefore (RFC3339)"
+              type="datetime-local"
+              label="Data e hora final"
               value={discoverBefore}
-              onChange={(e) => setDiscoverBefore(e.target.value)}
+              onChange={(event) => setDiscoverBefore(event.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
             />
           </Box>
 
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
-            <TextField
-              size="small"
-              type="number"
-              label="maxChannels"
-              value={discoverMaxChannels}
-              onChange={(e) => setDiscoverMaxChannels(Number(e.target.value))}
-            />
-            <TextField
-              size="small"
-              type="number"
-              label="maxVideos (até 500)"
-              value={discoverMaxVideos}
-              onChange={(e) => setDiscoverMaxVideos(Number(e.target.value))}
-            />
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, mb: 2 }}>
+            <FormControl size="small">
+              <InputLabel>Limite de canais</InputLabel>
+              <Select
+                label="Limite de canais"
+                value={String(discoverMaxChannels)}
+                onChange={(event) => setDiscoverMaxChannels(Number(event.target.value))}
+              >
+                {MAX_CHANNEL_OPTIONS.map((value) => (
+                  <MenuItem key={value} value={value}>
+                    Até {value} canais
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl size="small">
+              <InputLabel>Limite de vídeos</InputLabel>
+              <Select
+                label="Limite de vídeos"
+                value={String(discoverMaxVideos)}
+                onChange={(event) => setDiscoverMaxVideos(Number(event.target.value))}
+              >
+                {MAX_VIDEO_OPTIONS.map((value) => (
+                  <MenuItem key={value} value={value}>
+                    Até {value} vídeos
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
 
-          {discoverResult && (
-            <Alert severity="info" sx={{ mt: 2 }}>
-              {discoverResult}
+          {discoverRunning && (
+            <Paper sx={{ p: 2, mb: 2, borderRadius: 3, border: "1px solid #fde68a", bgcolor: "#fffbeb" }} elevation={0}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, mb: 1, flexWrap: "wrap" }}>
+                <Typography sx={{ fontWeight: 800 }}>
+                  Processando {discoverProgress.completed}/{discoverProgress.total} categorias
+                </Typography>
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                  {discoverProgress.currentCategoryName
+                    ? `Categoria atual: ${discoverProgress.currentCategoryName}`
+                    : "Finalizando processamento"}
+                </Typography>
+              </Box>
+              <LinearProgress variant="determinate" value={discoverProgressValue} sx={{ height: 10, borderRadius: 999 }} />
+              <Typography variant="caption" sx={{ display: "block", mt: 1, color: "text.secondary" }}>
+                {discoverProgressValue}% concluído
+              </Typography>
+            </Paper>
+          )}
+
+          {discoverFeedback && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {discoverFeedback}
             </Alert>
           )}
+
+          {discoverRuns.length > 0 && (
+            <Box sx={{ display: "grid", gap: 2 }}>
+              <Paper sx={{ p: 2, borderRadius: 3, border: "1px solid #e2e8f0" }} elevation={0}>
+                <Typography sx={{ fontWeight: 900, mb: 1 }}>Resumo da execução</Typography>
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 1 }}>
+                  <Chip label={`${discoverSummary.successCount} concluídas`} color="success" variant="outlined" />
+                  <Chip label={`${discoverSummary.emptyCount} sem resultados`} color="info" variant="outlined" />
+                  <Chip label={`${discoverSummary.errorCount} com erro`} color="error" variant="outlined" />
+                </Box>
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                  Vídeos consultados: {discoverSummary.videoCount} · Canais encontrados: {discoverSummary.discoveredCount} ·
+                  Canais importados: {discoverSummary.importedCount}
+                </Typography>
+              </Paper>
+
+              {discoverRuns.map((run) => (
+                <Paper
+                  key={run.categoryId}
+                  sx={{ p: 2, borderRadius: 3, border: "1px solid #e2e8f0" }}
+                  elevation={0}
+                >
+                  <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, flexWrap: "wrap", mb: 1 }}>
+                    <Box>
+                      <Typography sx={{ fontWeight: 900 }}>{run.categoryName}</Typography>
+                      <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                        Busca pública usada: {run.youtubeCategoryLabel}
+                      </Typography>
+                    </Box>
+                    <Chip label={getStatusLabel(run.status)} color={getStatusColor(run.status)} />
+                  </Box>
+
+                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 1 }}>
+                    <Chip label={`Vídeos coletados: ${run.topVideosFetched}`} variant="outlined" />
+                    <Chip label={`Canais encontrados: ${run.channelsDiscovered}`} variant="outlined" />
+                    <Chip label={`Canais importados: ${run.channelsImported}`} variant="outlined" />
+                    <Chip label={`Erros: ${run.errorsCount}`} variant="outlined" />
+                  </Box>
+
+                  {run.message && (
+                    <Typography variant="body2" sx={{ color: "text.secondary", mb: run.note ? 1 : 0 }}>
+                      {run.message}
+                    </Typography>
+                  )}
+
+                  {run.note && (
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      {run.note}
+                    </Typography>
+                  )}
+                </Paper>
+              ))}
+            </Box>
+          )}
         </DialogContent>
+
         <DialogActions>
-          <Button onClick={() => setOpenDiscover(false)}>Fechar</Button>
-          <Button
-            variant="contained"
-            onClick={async () => {
-              setDiscoverResult(null);
-              try {
-                const res = await fetch("/api/youtube-analytics/discover-top-channels", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    ytCategoryId: discoverYtCategoryId,
-                    regionCode: discoverRegionCode,
-                    youtubeVideoCategoryId: discoverYoutubeVideoCategoryId,
-                    publishedAfter: discoverAfter,
-                    publishedBefore: discoverBefore,
-                    maxChannels: discoverMaxChannels,
-                    maxVideos: discoverMaxVideos,
-                  }),
-                });
-                const json = await res.json();
-                if (!res.ok) {
-                  setDiscoverResult(json?.error || "Erro ao descobrir canais");
-                  return;
-                }
-                setDiscoverResult(
-                  `Import concluído: ${json.channelsImported}/${json.channelsDiscovered} canais. Vídeos coletados: ${json.topVideosFetched}. Erros: ${json.errorsCount}.`
-                );
-                setOpenDiscover(false);
-              } catch (e: any) {
-                setDiscoverResult(e?.message || "Erro ao descobrir canais");
-              }
-            }}
-          >
-            Rodar descoberta
+          <Button onClick={() => setOpenDiscover(false)} disabled={discoverRunning}>
+            Fechar
+          </Button>
+          <Button variant="contained" onClick={runDiscovery} disabled={discoverRunning}>
+            {discoverRunning ? "Processando..." : "Iniciar descoberta"}
           </Button>
         </DialogActions>
       </Dialog>

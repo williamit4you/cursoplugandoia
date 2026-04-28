@@ -9,39 +9,38 @@ import {
   createChannelSnapshot,
   recalculateRankings,
 } from "@/lib/youtubeAnalyticsRepo";
+import { resolveYoutubeCategoryFromInternalCategory } from "@/lib/youtubeCategoryMapping";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-function parseIntSafe(v: any, fallback: number) {
-  const n = Number.parseInt(String(v ?? ""), 10);
-  return Number.isFinite(n) ? n : fallback;
+function parseIntSafe(value: unknown, fallback: number) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 /**
  * POST /api/youtube-analytics/discover-top-channels
  *
- * Importa automaticamente canais a partir de TOP VÍDEOS do período (workaround).
- * Limitações importantes:
- * - NÃO existe endpoint oficial para "top 100 canais por categoria".
- * - O que fazemos aqui: pega top vídeos da categoria no período (search.list order=viewCount),
- *   agrega por channelId e cadastra os canais mais fortes.
+ * Importa automaticamente canais a partir de vídeos com mais views no período.
+ * Não existe endpoint oficial do YouTube para "top canais por categoria", então
+ * a descoberta é feita a partir de vídeos da categoria e agregação por canal.
  *
  * Body:
- *  - ytCategoryId: string (nossa categoria interna)
- *  - regionCode: string (ex: BR)
- *  - youtubeVideoCategoryId: string (ex: 23 Comedy)
- *  - publishedAfter: string RFC3339
- *  - publishedBefore: string RFC3339
- *  - maxVideos?: number (<=500, default 300)
- *  - maxChannels?: number (<=200, default 100)
+ * - ytCategoryId: string (categoria interna)
+ * - regionCode?: string (ex: BR)
+ * - youtubeVideoCategoryId?: string (override opcional)
+ * - publishedAfter: string RFC3339
+ * - publishedBefore: string RFC3339
+ * - maxVideos?: number (<=500, default 300)
+ * - maxChannels?: number (<=200, default 100)
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const ytCategoryId = String(body?.ytCategoryId ?? "").trim();
     const regionCode = String(body?.regionCode ?? "BR").trim().toUpperCase();
-    const youtubeVideoCategoryId = String(body?.youtubeVideoCategoryId ?? "").trim();
+    const youtubeVideoCategoryIdInput = String(body?.youtubeVideoCategoryId ?? "").trim();
     const publishedAfter = String(body?.publishedAfter ?? "").trim();
     const publishedBefore = String(body?.publishedBefore ?? "").trim();
 
@@ -51,9 +50,7 @@ export async function POST(req: NextRequest) {
     if (!ytCategoryId) {
       return NextResponse.json({ error: "ytCategoryId is required" }, { status: 400 });
     }
-    if (!youtubeVideoCategoryId) {
-      return NextResponse.json({ error: "youtubeVideoCategoryId is required" }, { status: 400 });
-    }
+
     if (!publishedAfter || !publishedBefore) {
       return NextResponse.json(
         { error: "publishedAfter and publishedBefore are required (RFC3339)" },
@@ -61,10 +58,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cat = await prisma.ytCategory.findUnique({ where: { id: ytCategoryId } });
-    if (!cat) {
+    const category = await prisma.ytCategory.findUnique({ where: { id: ytCategoryId } });
+    if (!category) {
       return NextResponse.json({ error: "Categoria não encontrada" }, { status: 404 });
     }
+
+    const { youtubeCategoryId, youtubeCategoryLabel } =
+      resolveYoutubeCategoryFromInternalCategory(category);
+    const youtubeVideoCategoryId = youtubeVideoCategoryIdInput || youtubeCategoryId;
 
     const topVideos = await fetchTopVideosByCategoryInPeriod({
       regionCode,
@@ -74,28 +75,35 @@ export async function POST(req: NextRequest) {
       maxResults: maxVideos,
     });
 
-    // Aggregate by channel
     const byChannel = new Map<
       string,
       { youtubeChannelId: string; videos: number; summedViews: bigint }
     >();
-    for (const v of topVideos) {
-      const curr = byChannel.get(v.youtubeChannelId) || {
-        youtubeChannelId: v.youtubeChannelId,
+
+    for (const video of topVideos) {
+      const current = byChannel.get(video.youtubeChannelId) || {
+        youtubeChannelId: video.youtubeChannelId,
         videos: 0,
         summedViews: BigInt(0),
       };
-      curr.videos += 1;
-      curr.summedViews += v.views;
-      byChannel.set(v.youtubeChannelId, curr);
+
+      current.videos += 1;
+      current.summedViews += video.views;
+      byChannel.set(video.youtubeChannelId, current);
     }
 
-    const ranked = Array.from(byChannel.values())
-      .sort((a, b) => (a.summedViews > b.summedViews ? -1 : a.summedViews < b.summedViews ? 1 : 0))
+    const rankedChannels = Array.from(byChannel.values())
+      .sort((left, right) =>
+        left.summedViews > right.summedViews
+          ? -1
+          : left.summedViews < right.summedViews
+            ? 1
+            : 0
+      )
       .slice(0, maxChannels);
 
-    const channelIds = ranked.map((r) => r.youtubeChannelId);
-    const channelData = await fetchMultipleChannels(channelIds);
+    const channelIds = rankedChannels.map((channel) => channel.youtubeChannelId);
+    const channelData = channelIds.length ? await fetchMultipleChannels(channelIds) : [];
 
     const createdOrUpdated: string[] = [];
     const errors: Array<{ youtubeChannelId: string; error: string }> = [];
@@ -109,10 +117,14 @@ export async function POST(req: NextRequest) {
           },
           ytCategoryId
         );
+
         createdOrUpdated.push(updated.id);
         await createChannelSnapshot(updated.id);
-      } catch (e: any) {
-        errors.push({ youtubeChannelId: data.youtubeChannelId, error: e?.message || "Erro ao upsert" });
+      } catch (error: any) {
+        errors.push({
+          youtubeChannelId: data.youtubeChannelId,
+          error: error?.message || "Erro ao cadastrar canal",
+        });
       }
     }
 
@@ -120,9 +132,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      ytCategory: { id: cat.id, name: cat.name, slug: cat.slug },
+      ytCategory: { id: category.id, name: category.name, slug: category.slug },
       regionCode,
       youtubeVideoCategoryId,
+      youtubeVideoCategoryLabel: youtubeCategoryLabel,
       publishedAfter,
       publishedBefore,
       topVideosFetched: topVideos.length,
@@ -131,7 +144,7 @@ export async function POST(req: NextRequest) {
       errorsCount: errors.length,
       errors,
       note:
-        "Import baseado em TOP VÍDEOS do período (não é 'top canais' oficial). Views são viewCount total no momento da coleta.",
+        "Importação baseada em vídeos mais vistos do período. O YouTube não fornece um top oficial de canais por categoria.",
     });
   } catch (error: any) {
     console.error("Discover top channels error:", error);
@@ -141,4 +154,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

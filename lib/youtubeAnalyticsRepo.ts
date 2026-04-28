@@ -231,6 +231,7 @@ export async function upsertChannel(
   return prisma.ytChannel.upsert({
     where: { youtubeChannelId: data.youtubeChannelId },
     update: {
+      categoryId,
       name: data.name,
       handle: data.handle,
       description: data.description,
@@ -335,11 +336,48 @@ export async function createChannelSnapshot(channelId: string) {
   const channel = await prisma.ytChannel.findUnique({ where: { id: channelId } });
   if (!channel) return null;
 
-  // Buscar snapshot anterior para calcular deltas
-  const prevSnapshot = await prisma.ytChannelSnapshot.findFirst({
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const latestSnapshot = await prisma.ytChannelSnapshot.findFirst({
     where: { channelId },
     orderBy: { snapshotDate: "desc" },
   });
+
+  if (latestSnapshot?.snapshotDate.toISOString().slice(0, 10) === todayKey) {
+    const prevSnapshot = await prisma.ytChannelSnapshot.findFirst({
+      where: {
+        channelId,
+        snapshotDate: { lt: latestSnapshot.snapshotDate },
+      },
+      orderBy: { snapshotDate: "desc" },
+    });
+
+    const deltaSubscribers = prevSnapshot
+      ? Number(channel.subscribers) - Number(prevSnapshot.subscribers)
+      : 0;
+    const deltaViews = prevSnapshot
+      ? channel.totalViews - prevSnapshot.totalViews
+      : BigInt(0);
+    const deltaVideos = prevSnapshot
+      ? channel.totalVideos - prevSnapshot.totalVideos
+      : 0;
+
+    return prisma.ytChannelSnapshot.update({
+      where: { id: latestSnapshot.id },
+      data: {
+        subscribers: channel.subscribers,
+        totalViews: channel.totalViews,
+        totalVideos: channel.totalVideos,
+        viewsShorts: channel.viewsShorts,
+        viewsLongs: channel.viewsLongs,
+        deltaSubscribers,
+        deltaViews,
+        deltaVideos,
+      },
+    });
+  }
+
+  // Buscar snapshot anterior para calcular deltas
+  const prevSnapshot = latestSnapshot;
 
   const deltaSubscribers = prevSnapshot
     ? Number(channel.subscribers) - Number(prevSnapshot.subscribers)
