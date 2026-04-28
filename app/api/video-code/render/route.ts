@@ -29,6 +29,18 @@ function totalDurationInSeconds(videoSpec: any) {
   return Math.max(1, Math.round(sum));
 }
 
+function totalDurationInFramesFromSpec(videoSpec: any, fps: number) {
+  const scenes = Array.isArray(videoSpec?.scenes) ? videoSpec.scenes : [];
+  let frames = 0;
+  for (const s of scenes) {
+    const sec = s?.durationSec;
+    const n = sec === undefined || sec === null ? 1 : Number(sec);
+    const sceneFrames = Math.max(1, Math.round((Number.isFinite(n) ? n : 1) * fps));
+    frames += sceneFrames;
+  }
+  return Math.max(1, frames);
+}
+
 function dynamicRequire(moduleName: string) {
   // NEW: Dummy imports to trick Next.js standalone tracer
   if (process.env.NODE_ENV === "production" && false) {
@@ -214,7 +226,8 @@ export async function POST(req: NextRequest) {
     }
 
     const fps = project.fps || 30;
-    const durationInFrames = totalDurationInSeconds(videoSpec) * fps;
+    // Use per-scene rounded frames (same logic as remotion/video-from-spec.tsx) to avoid trailing blank frames.
+    const durationInFrames = totalDurationInFramesFromSpec(videoSpec, fps);
     const composition = { ...comp, fps, durationInFrames };
 
     const outDir = path.resolve(process.cwd(), ".remotion-temp");

@@ -70,6 +70,10 @@ export async function POST(req: NextRequest) {
       ttsVoice: body.ttsVoice ?? "pt-BR-AntonioNeural",
       ttsSpeed: body.ttsSpeed ?? "+5%",
       pexelsEnabled: body.pexelsEnabled ?? true,
+      autoPublishReels: body.autoPublishReels ?? false,
+      autoPublishStory: body.autoPublishStory ?? false,
+      autoPublishTikTok: body.autoPublishTikTok ?? false,
+      autoPublishLinkedIn: body.autoPublishLinkedIn ?? false,
     };
 
     const config = existing

@@ -32,6 +32,7 @@ export const RetentionScene: React.FC<{
               transform: `scale(${zoom})`,
             }}
             muted
+            loop
           />
         ) : (
           <Img
