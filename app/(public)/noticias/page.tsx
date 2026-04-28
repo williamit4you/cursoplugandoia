@@ -8,7 +8,7 @@ const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function NoticiasList() {
   const posts = await prisma.post.findMany({

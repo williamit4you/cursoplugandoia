@@ -10,6 +10,8 @@ const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const post = await prisma.post.findUnique({ where: { slug: params.slug } });
   

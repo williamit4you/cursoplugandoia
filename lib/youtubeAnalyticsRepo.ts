@@ -5,6 +5,7 @@ import { prisma } from "./prisma";
 export interface ChannelFilters {
   search?: string;
   categoryId?: string;
+  country?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   page?: number;
@@ -108,6 +109,9 @@ export async function getChannels(filters: ChannelFilters) {
   }
   if (filters.categoryId) {
     where.categoryId = filters.categoryId;
+  }
+  if (filters.country) {
+    where.country = filters.country;
   }
 
   const orderBy: any = {};
@@ -462,7 +466,7 @@ export async function recalculateChannelMetrics(channelId: string) {
 export async function recalculateRankings() {
   const channels = await prisma.ytChannel.findMany({
     where: { isActive: true },
-    orderBy: { totalViews: "desc" },
+    orderBy: { subscribers: "desc" },
     select: { id: true },
   });
 
