@@ -12,11 +12,15 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
+  FormControlLabel,
   IconButton,
   InputAdornment,
   InputLabel,
+  LinearProgress,
   MenuItem,
   Paper,
+  Radio,
+  RadioGroup,
   Select,
   Table,
   TableBody,
@@ -58,6 +62,21 @@ interface Channel {
 
 type Category = { id: string; name: string; color: string; slug: string };
 
+type ResolveCandidate = {
+  youtubeChannelId: string;
+  name: string;
+  thumbnailUrl?: string;
+  customUrl?: string;
+  country?: string;
+  subscribers?: string;
+  totalViews?: string;
+};
+
+type ResolveResult = {
+  name: string;
+  candidates: ResolveCandidate[];
+};
+
 export default function YtChannelsTable() {
   const [data, setData] = useState<Channel[]>([]);
   const [total, setTotal] = useState(0);
@@ -76,6 +95,19 @@ export default function YtChannelsTable() {
   const [addCategoryId, setAddCategoryId] = useState("");
   const [addCountry, setAddCountry] = useState("BR");
   const [info, setInfo] = useState<string | null>(null);
+
+  const [openResolve, setOpenResolve] = useState(false);
+  const [resolveNames, setResolveNames] = useState("");
+  const [resolveCategoryId, setResolveCategoryId] = useState("");
+  const [resolveCountry, setResolveCountry] = useState("BR");
+  const [resolveRegionCode, setResolveRegionCode] = useState("BR");
+  const [resolveLanguage, setResolveLanguage] = useState("pt");
+  const [resolveMaxCandidates, setResolveMaxCandidates] = useState(5);
+  const [resolveLoading, setResolveLoading] = useState(false);
+  const [resolveProgress, setResolveProgress] = useState({ done: 0, total: 0 });
+  const [resolveResults, setResolveResults] = useState<ResolveResult[]>([]);
+  const [resolveSelection, setResolveSelection] = useState<Record<string, string>>({});
+  const [resolveInfo, setResolveInfo] = useState<string | null>(null);
 
   const fetchChannels = useCallback(async () => {
     setLoading(true);
@@ -181,12 +213,33 @@ export default function YtChannelsTable() {
     setOpenAdd(true);
   };
 
+  const openResolveDialog = () => {
+    setResolveInfo(null);
+    setResolveNames("");
+    setResolveResults([]);
+    setResolveSelection({});
+    setResolveProgress({ done: 0, total: 0 });
+    setResolveCategoryId(categoryId || "");
+    setResolveCountry(country || "BR");
+    setResolveRegionCode("BR");
+    setResolveLanguage("pt");
+    setResolveMaxCandidates(5);
+    setOpenResolve(true);
+  };
+
   const parsedTokens = useMemo(() => {
     return addInputs
       .split(/[\n,;]+/g)
       .map((s) => s.trim())
       .filter(Boolean);
   }, [addInputs]);
+
+  const parsedResolveNames = useMemo(() => {
+    return resolveNames
+      .split(/\r?\n/g)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }, [resolveNames]);
 
   const submitAdd = async () => {
     setInfo(null);
@@ -217,6 +270,102 @@ export default function YtChannelsTable() {
       await fetchChannels();
     } catch (e: any) {
       setInfo(e?.message || "Erro ao cadastrar.");
+    }
+  };
+
+  const runResolve = async () => {
+    setResolveInfo(null);
+    setResolveResults([]);
+    setResolveSelection({});
+
+    if (parsedResolveNames.length === 0) {
+      setResolveInfo("Cole ao menos 1 nome de canal (um por linha).");
+      return;
+    }
+
+    const names = parsedResolveNames.slice(0, 100);
+    const chunks: string[][] = [];
+    for (let i = 0; i < names.length; i += 25) chunks.push(names.slice(i, i + 25));
+
+    setResolveLoading(true);
+    setResolveProgress({ done: 0, total: names.length });
+
+    const allResults: ResolveResult[] = [];
+    let done = 0;
+
+    try {
+      for (const chunk of chunks) {
+        const res = await fetch("/api/youtube-analytics/resolve-channel-names", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            names: chunk,
+            regionCode: resolveRegionCode,
+            relevanceLanguage: resolveLanguage,
+            maxCandidates: resolveMaxCandidates,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          setResolveInfo(json?.error || "Falha ao resolver nomes.");
+          return;
+        }
+
+        const results = Array.isArray(json?.results) ? (json.results as ResolveResult[]) : [];
+        allResults.push(...results);
+        done += chunk.length;
+        setResolveProgress({ done, total: names.length });
+      }
+
+      setResolveResults(allResults);
+
+      const initialSelection: Record<string, string> = {};
+      for (const item of allResults) {
+        if (item.candidates?.[0]?.youtubeChannelId) {
+          initialSelection[item.name] = item.candidates[0].youtubeChannelId;
+        }
+      }
+      setResolveSelection(initialSelection);
+
+      setResolveInfo("Resolvido. Revise cada nome (busca por nome pode errar).");
+    } catch (e: any) {
+      setResolveInfo(e?.message || "Falha ao resolver nomes.");
+    } finally {
+      setResolveLoading(false);
+    }
+  };
+
+  const importResolved = async () => {
+    setResolveInfo(null);
+    const selectedIds = Object.values(resolveSelection).filter(Boolean);
+    if (selectedIds.length === 0) {
+      setResolveInfo("Selecione ao menos 1 canal para importar.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/youtube-analytics/channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inputs: selectedIds,
+          categoryId: resolveCategoryId || undefined,
+          country: resolveCountry || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setResolveInfo(json?.error || "Falha ao importar canais.");
+        return;
+      }
+
+      const errCount = Array.isArray(json?.errors) ? json.errors.length : 0;
+      setResolveInfo(
+        `Importação concluída: ${json.createdOrUpdated || 0} cadastrados/atualizados. Erros: ${errCount}.`
+      );
+      await fetchChannels();
+    } catch (e: any) {
+      setResolveInfo(e?.message || "Falha ao importar canais.");
     }
   };
 
@@ -287,6 +436,9 @@ export default function YtChannelsTable() {
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           <Button variant="contained" onClick={openAddDialog}>
             + Cadastrar canais
+          </Button>
+          <Button variant="outlined" onClick={openResolveDialog}>
+            Resolver nomes
           </Button>
           <Button
             variant="outlined"
@@ -543,6 +695,172 @@ export default function YtChannelsTable() {
           <Button onClick={() => setOpenAdd(false)}>Cancelar</Button>
           <Button variant="contained" onClick={submitAdd}>
             Cadastrar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openResolve} onClose={() => !resolveLoading && setOpenResolve(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Resolver nomes de canais (assistido)</DialogTitle>
+        <DialogContent dividers>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Essa etapa usa busca por nome e pode retornar canais errados. Sempre revise antes de importar. Para listas grandes,
+            faça em lotes menores (ex: 20-50 nomes).
+          </Alert>
+
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 260px 140px" }, gap: 2, mb: 2 }}>
+            <TextField
+              label="Nomes dos canais (1 por linha)"
+              value={resolveNames}
+              onChange={(e) => setResolveNames(e.target.value)}
+              multiline
+              minRows={8}
+              placeholder={"Filipe Deschamps\nEi Nerd\nTudoGostoso"}
+            />
+
+            <FormControl>
+              <InputLabel>Nicho</InputLabel>
+              <Select
+                label="Nicho"
+                value={resolveCategoryId}
+                onChange={(e) => setResolveCategoryId(String(e.target.value))}
+              >
+                <MenuItem value="">(Padrão)</MenuItem>
+                {categories.map((c) => (
+                  <MenuItem key={c.id} value={c.id}>
+                    {c.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="País"
+              value={resolveCountry}
+              onChange={(e) => setResolveCountry(e.target.value.toUpperCase())}
+              placeholder="BR"
+            />
+          </Box>
+
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "180px 180px 180px" }, gap: 2, mb: 2 }}>
+            <FormControl size="small">
+              <InputLabel>Região (busca)</InputLabel>
+              <Select
+                label="Região (busca)"
+                value={resolveRegionCode}
+                onChange={(e) => setResolveRegionCode(String(e.target.value).toUpperCase())}
+              >
+                {["BR", "US", "PT", "AR", "MX", "ES"].map((c) => (
+                  <MenuItem key={c} value={c}>
+                    {c}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl size="small">
+              <InputLabel>Idioma</InputLabel>
+              <Select label="Idioma" value={resolveLanguage} onChange={(e) => setResolveLanguage(String(e.target.value))}>
+                <MenuItem value="pt">pt</MenuItem>
+                <MenuItem value="en">en</MenuItem>
+                <MenuItem value="es">es</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl size="small">
+              <InputLabel>Candidatos</InputLabel>
+              <Select
+                label="Candidatos"
+                value={String(resolveMaxCandidates)}
+                onChange={(e) => setResolveMaxCandidates(Number(e.target.value))}
+              >
+                {[3, 5, 8, 10].map((n) => (
+                  <MenuItem key={n} value={n}>
+                    {n}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+
+          <Typography variant="caption" sx={{ display: "block", color: "text.secondary", mb: 1 }}>
+            Nomes detectados: {parsedResolveNames.length} (limitado a 100 por execução no modal)
+          </Typography>
+
+          {resolveLoading && (
+            <Box sx={{ mb: 2 }}>
+              <LinearProgress
+                variant="determinate"
+                value={resolveProgress.total ? Math.round((resolveProgress.done / resolveProgress.total) * 100) : 0}
+              />
+              <Typography variant="caption" sx={{ display: "block", mt: 0.5, color: "text.secondary" }}>
+                Resolvendo {resolveProgress.done}/{resolveProgress.total}
+              </Typography>
+            </Box>
+          )}
+
+          {resolveInfo && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {resolveInfo}
+            </Alert>
+          )}
+
+          {resolveResults.length > 0 && (
+            <Box sx={{ display: "grid", gap: 2 }}>
+              {resolveResults.map((item) => (
+                <Paper key={item.name} elevation={0} sx={{ p: 2, borderRadius: 3, border: "1px solid #e2e8f0" }}>
+                  <Typography sx={{ fontWeight: 800, mb: 1 }}>{item.name}</Typography>
+
+                  {item.candidates.length === 0 ? (
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                      Nenhum candidato encontrado.
+                    </Typography>
+                  ) : (
+                    <RadioGroup
+                      value={resolveSelection[item.name] || ""}
+                      onChange={(e) =>
+                        setResolveSelection((curr) => ({
+                          ...curr,
+                          [item.name]: String(e.target.value),
+                        }))
+                      }
+                    >
+                      {item.candidates.map((c) => (
+                        <FormControlLabel
+                          key={c.youtubeChannelId}
+                          value={c.youtubeChannelId}
+                          control={<Radio />}
+                          label={
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                              <Avatar src={c.thumbnailUrl} sx={{ width: 28, height: 28 }} />
+                              <Box>
+                                <Typography sx={{ fontWeight: 700, lineHeight: 1.2 }}>{c.name}</Typography>
+                                <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                                  {c.youtubeChannelId}
+                                  {c.country ? ` · ${c.country}` : ""}
+                                  {c.subscribers ? ` · ${formatNum(c.subscribers)} subs` : ""}
+                                  {c.totalViews ? ` · ${formatNum(c.totalViews)} views` : ""}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          }
+                        />
+                      ))}
+                    </RadioGroup>
+                  )}
+                </Paper>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenResolve(false)} disabled={resolveLoading}>
+            Fechar
+          </Button>
+          <Button variant="outlined" onClick={runResolve} disabled={resolveLoading}>
+            Buscar candidatos
+          </Button>
+          <Button variant="contained" onClick={importResolved} disabled={resolveLoading || resolveResults.length === 0}>
+            Importar selecionados
           </Button>
         </DialogActions>
       </Dialog>

@@ -357,3 +357,51 @@ export async function fetchTopVideosByCategoryInPeriod(params: {
 
   return results;
 }
+
+export type YtChannelSearchCandidate = {
+  youtubeChannelId: string;
+  name: string;
+  thumbnailUrl?: string;
+};
+
+/**
+ * Busca canais pelo nome (search.list type=channel).
+ * Observação: search.list é caro (quota). Use com parcimônia e em lotes pequenos.
+ */
+export async function searchChannelsByName(params: {
+  query: string;
+  regionCode?: string;
+  relevanceLanguage?: string;
+  maxResults?: number; // max 50
+}): Promise<YtChannelSearchCandidate[]> {
+  const youtube = await getYoutubeClient();
+  const query = params.query.trim();
+  if (!query) return [];
+
+  const res: any = await youtube.search.list({
+    part: ["snippet"],
+    type: ["channel"],
+    q: query,
+    regionCode: params.regionCode,
+    relevanceLanguage: params.relevanceLanguage,
+    maxResults: Math.min(Math.max(params.maxResults ?? 5, 1), 50),
+  });
+
+  const candidates: YtChannelSearchCandidate[] = [];
+  for (const item of res.data.items || []) {
+    const channelId = item.id?.channelId;
+    if (!channelId) continue;
+    candidates.push({
+      youtubeChannelId: channelId,
+      name: item.snippet?.title || "Unknown",
+      thumbnailUrl: item.snippet?.thumbnails?.medium?.url || undefined,
+    });
+  }
+
+  // Dedup by channelId
+  const uniq = new Map<string, YtChannelSearchCandidate>();
+  for (const c of candidates) {
+    if (!uniq.has(c.youtubeChannelId)) uniq.set(c.youtubeChannelId, c);
+  }
+  return Array.from(uniq.values());
+}

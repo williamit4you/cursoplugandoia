@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import "dotenv/config";
 import { YT_CATEGORIES } from './seedData/ytCategories';
 import { YT_SEED_CHANNELS } from './seedData/ytChannels';
+import { YT_CURATED_SEED_CHANNELS } from './seedData/ytCuratedRankings';
 
 const connectionString = process.env.DATABASE_URL
 
@@ -15,6 +16,20 @@ if (!connectionString) {
 const pool = new Pool({ connectionString })
 const adapter = new PrismaPg(pool)
 const prisma = new PrismaClient({ adapter })
+
+function parseSubscriberLabel(label: string): bigint {
+  const normalized = label.trim().toUpperCase().replace(/\./g, "").replace(",", ".");
+  const match = normalized.match(/^(\d+(?:\.\d+)?)([KM]?)$/);
+  if (!match) return BigInt(0);
+
+  const value = Number(match[1]);
+  const multiplier = match[2] === "M" ? 1_000_000 : match[2] === "K" ? 1_000 : 1;
+  return BigInt(Math.round(value * multiplier));
+}
+
+function buildStableMockChannelId(seed: string) {
+  return `UC${Buffer.from(seed).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 22)}`
+}
 
 async function main() {
   // ── Seed Admin User ──────────────────────────────────────
@@ -71,7 +86,7 @@ async function main() {
     }
 
     // Gerar um youtubeChannelId fictício baseado no handle
-    const mockChannelId = `UC${Buffer.from(ch.handle).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 22)}`
+    const mockChannelId = buildStableMockChannelId(ch.handle)
     
     const existing = await prisma.ytChannel.findUnique({
       where: { youtubeChannelId: mockChannelId }
@@ -123,6 +138,67 @@ async function main() {
   }
 
   console.log(`✅ ${channelsCreated} channels created, ${channelsSkipped} skipped (already exist).`)
+
+  console.log('\n🏷️ Seeding curated ranking channels...')
+
+  let curatedCreated = 0
+  let curatedSkipped = 0
+
+  for (const ch of YT_CURATED_SEED_CHANNELS) {
+    const categoryId = catMap.get(ch.category)
+    if (!categoryId) {
+      console.warn(`⚠️  Category "${ch.category}" not found for ${ch.name}`)
+      continue
+    }
+
+    const mockChannelId = buildStableMockChannelId(`curated:${ch.name.toLowerCase()}`)
+    const existing = await prisma.ytChannel.findUnique({
+      where: { youtubeChannelId: mockChannelId }
+    })
+
+    if (existing) {
+      curatedSkipped++
+      continue
+    }
+
+    const subscribers = parseSubscriberLabel(ch.subscribersLabel)
+    const baseTotalViews = subscribers * BigInt(Math.max(8, Math.floor(Math.random() * 18) + 6))
+    const totalVideos = Math.floor(Math.random() * 800) + 30
+    const viewsShorts = BigInt(Math.floor(Number(baseTotalViews) * (Math.random() * 0.35 + 0.1)))
+    const viewsLongs = baseTotalViews - viewsShorts
+
+    await prisma.ytChannel.create({
+      data: {
+        youtubeChannelId: mockChannelId,
+        name: ch.name,
+        handle: null,
+        customUrl: null,
+        categoryId,
+        subscribers,
+        totalViews: baseTotalViews,
+        totalVideos,
+        viewsShorts,
+        viewsLongs,
+        viewsLives: BigInt(Math.floor(Number(baseTotalViews) * 0.03)),
+        weeklyGrowth: parseFloat((Math.random() * 8 - 1).toFixed(2)),
+        monthlyGrowth: parseFloat((Math.random() * 20 - 3).toFixed(2)),
+        avgViewsPerVideo: Math.floor(Number(baseTotalViews) / totalVideos),
+        avgViewsPerShort: Math.floor(Number(viewsShorts) / Math.max(Math.floor(totalVideos * 0.35), 1)),
+        uploadsThisWeek: Math.floor(Math.random() * 6),
+        uploadsThisMonth: Math.floor(Math.random() * 22) + 1,
+        subsGainedWeek: Math.floor(Number(subscribers) * 0.015),
+        subsGainedMonth: Math.floor(Number(subscribers) * 0.05),
+        livesPerMonth: Math.floor(Math.random() * 5),
+        lastVideoAt: new Date(Date.now() - Math.floor(Math.random() * 10 * 24 * 60 * 60 * 1000)),
+        rankPosition: 0,
+        thumbnailUrl: null,
+        country: 'BR',
+      },
+    })
+    curatedCreated++
+  }
+
+  console.log(`✅ ${curatedCreated} curated channels created, ${curatedSkipped} skipped (already exist).`)
 
   // ── Recalculate Rankings ─────────────────────────────────
   console.log('\n🏆 Recalculating rankings...')
