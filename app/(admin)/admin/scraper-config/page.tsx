@@ -89,7 +89,7 @@ Seu objetivo é ler um texto raw raspado da internet, e REESCREVÊ-LO por comple
 garantindo que NENHUM plágio seja detectado, mas mantendo 100% da precisão dos fatos noticiados.
 Você deve outputar um JSON rigorosamente estruturado com:
 - "title": Um título impactante (SEM clickbait exagerado, formato editorial)
-- "summary": Um roteiro ENGAJADOR e direto de até {duration_sec} segundos de locução para um vídeo TikTok/Reels/Story baseado na notícia (máx 450 caracteres).
+- "summary": Um roteiro ENGAJADOR e direto para um vídeo TikTok/Reels/Story baseado na notícia, com tamanho proporcional a {duration_sec} segundos de locução. Mire em cerca de {summary_char_target} a {summary_char_max} caracteres.
 - "content_html": O artigo escrito, formatado com tags HTML semânticas como <p>, <h2>, e <b>. Formato pronto pro TipTap Editor.
 {style_instruction}`;
 
@@ -274,6 +274,7 @@ type ScraperConfig = {
   autoPublishStory: boolean;
   autoPublishTikTok: boolean;
   autoPublishLinkedIn: boolean;
+  autoPublishYouTube: boolean;
 };
 
 type ScraperRun = {
@@ -327,6 +328,7 @@ const DEFAULT_CONFIG: ScraperConfig = {
   autoPublishStory: false,
   autoPublishTikTok: false,
   autoPublishLinkedIn: false,
+  autoPublishYouTube: false,
 };
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -999,6 +1001,7 @@ export default function ScraperConfigPage() {
             { key: "autoPublishStory" as const, label: "📸 Instagram/FB Story", desc: "Dura 24 horas" },
             { key: "autoPublishTikTok" as const, label: "🎵 TikTok", desc: "Publicação no TikTok" },
             { key: "autoPublishLinkedIn" as const, label: "💼 LinkedIn", desc: "Post de texto + link" },
+            { key: "autoPublishYouTube" as const, label: "▶️ YouTube Shorts", desc: "Publicação automática no YouTube" },
           ] as { key: keyof ScraperConfig; label: string; desc: string }[]).map(({ key, label, desc }) => (
             <label key={key} style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",

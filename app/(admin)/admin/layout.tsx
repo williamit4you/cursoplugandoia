@@ -31,6 +31,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Fontes (Scraping)", icon: <LinkIcon />, path: "/admin/scrapers" },
     { text: "Integrações N8N", icon: <WebhookIcon />, path: "/admin/integrations" },
     { text: "Fila de Stories", icon: <VideoCameraBackIcon />, path: "/admin/social" },
+    { text: "Calendário Social", icon: <VideoCameraBackIcon />, path: "/admin/social/calendar" },
     { text: "Vídeos com código", icon: <CodeIcon />, path: "/admin/video-code" },
     { text: "Perguntas → vídeos", icon: <QuizIcon />, path: "/admin/video-questions" },
     { text: "YT Analytics", icon: <YouTubeIcon />, path: "/admin/youtube-analytics" },

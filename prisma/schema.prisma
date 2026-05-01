@@ -215,6 +215,7 @@ model ScraperConfig {
   autoPublishStory    Boolean  @default(false)
   autoPublishTikTok   Boolean  @default(false)
   autoPublishLinkedIn Boolean  @default(false)
+  autoPublishYouTube  Boolean  @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }

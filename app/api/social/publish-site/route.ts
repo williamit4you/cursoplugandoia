@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { buildTitleCoverDataUrl } from "@/lib/titleCover";
 
 export const dynamic = "force-dynamic";
 
@@ -126,6 +127,7 @@ export async function POST(req: NextRequest) {
         content,
         status: publishNow ? "PUBLISHED" : "DRAFT",
         sourceUrl,
+        coverImage: buildTitleCoverDataUrl(titleBase, "SOLUCOES COM IA"),
       },
     });
 
@@ -147,4 +149,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

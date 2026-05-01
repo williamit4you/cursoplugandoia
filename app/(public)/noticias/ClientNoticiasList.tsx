@@ -102,7 +102,7 @@ export default function ClientNoticiasList({ posts }: { posts: any[] }) {
               {index === 1 && (
                 <Box
                   component={Link}
-                  href="/"
+                  href="/solucoes-ia"
                   sx={{
                     display: 'block',
                     textDecoration: 'none',
@@ -205,7 +205,7 @@ export default function ClientNoticiasList({ posts }: { posts: any[] }) {
             {/* WIDGET CURSO (LATERAL) */}
             <Box
               component={Link}
-              href="/"
+              href="/solucoes-ia"
               sx={{
                 border: '1px solid #e0e0e0',
                 borderRadius: 2,

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 
-export function QuoteScene(props: { quote: string; author?: string; backgroundColor?: string; textColor?: string }) {
+export function QuoteScene(props: { quote: string; author?: string; backgroundColor?: string; textColor?: string; accentColor?: string; fontFamily?: string }) {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
 
@@ -17,7 +17,7 @@ export function QuoteScene(props: { quote: string; author?: string; backgroundCo
         justifyContent: "center",
         background: props.backgroundColor || "radial-gradient(circle at 30% 20%, rgba(124,58,237,0.35), transparent 55%), radial-gradient(circle at 70% 70%, rgba(34,197,94,0.25), transparent 55%), #070813",
         color: props.textColor || "white",
-        fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+        fontFamily: props.fontFamily || "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
         padding: 90,
       }}
     >
@@ -26,8 +26,8 @@ export function QuoteScene(props: { quote: string; author?: string; backgroundCo
           maxWidth: 1200,
           padding: "56px 54px",
           borderRadius: 28,
-          background: "rgba(255,255,255,0.06)",
-          border: "1px solid rgba(255,255,255,0.12)",
+          background: props.accentColor ? `${props.accentColor}22` : "rgba(255,255,255,0.06)",
+          border: `1px solid ${props.accentColor ? `${props.accentColor}88` : "rgba(255,255,255,0.12)"}`,
           opacity: opacity * exit,
           transform: `translateY(${(1 - opacity) * 16}px)`,
         }}

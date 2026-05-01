@@ -1,0 +1,2 @@
+ALTER TABLE "ScraperConfig"
+ADD COLUMN IF NOT EXISTS "autoPublishYouTube" BOOLEAN NOT NULL DEFAULT false;

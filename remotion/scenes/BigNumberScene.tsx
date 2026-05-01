@@ -8,12 +8,14 @@ export const BigNumberScene: React.FC<{
   backgroundColor?: string;
   textColor?: string;
   highlightColor?: string;
+  fontFamily?: string;
 }> = ({
   number = "99%",
   subtitle = "das pessoas falham",
   backgroundColor = "#d50000",
   textColor = "#ffffff",
-  highlightColor = "#ffeb3b"
+  highlightColor = "#ffeb3b",
+  fontFamily
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -50,7 +52,7 @@ export const BigNumberScene: React.FC<{
           fontSize: 220,
           fontWeight: 900,
           textAlign: "center",
-          fontFamily: "Impact, sans-serif",
+          fontFamily: fontFamily || "Impact, sans-serif",
           transform: `scale(${scale})`,
           textShadow: `0 20px 50px rgba(0,0,0,0.5)`,
           lineHeight: 1,
@@ -67,6 +69,7 @@ export const BigNumberScene: React.FC<{
           textTransform: "uppercase",
           marginTop: 40,
           opacity: subOpacity,
+          fontFamily: fontFamily || "Impact, sans-serif",
           transform: `translateY(${interpolate(subOpacity, [0, 1], [40, 0])}px)`,
           textShadow: `0 10px 30px rgba(0,0,0,0.5)`,
         }}

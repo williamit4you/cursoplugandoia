@@ -5,7 +5,7 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-export function CodeTypingScene(props: { code: string; title?: string; language?: string; backgroundColor?: string; textColor?: string }) {
+export function CodeTypingScene(props: { code: string; title?: string; language?: string; backgroundColor?: string; textColor?: string; accentColor?: string; fontFamily?: string }) {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
 
@@ -24,7 +24,7 @@ export function CodeTypingScene(props: { code: string; title?: string; language?
         justifyContent: "center",
         background: props.backgroundColor || "linear-gradient(135deg, #070a10 0%, #0b1220 55%, #070a10 100%)",
         color: props.textColor || "white",
-        fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+        fontFamily: props.fontFamily || "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
         padding: 80,
       }}
     >
@@ -36,7 +36,7 @@ export function CodeTypingScene(props: { code: string; title?: string; language?
           style={{
             borderRadius: 18,
             background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.12)",
+            border: `1px solid ${props.accentColor ? `${props.accentColor}88` : "rgba(255,255,255,0.12)"}`,
             padding: "28px 28px",
             fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace",
             fontSize: 38,

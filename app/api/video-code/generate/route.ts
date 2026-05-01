@@ -35,6 +35,120 @@ const ALLOWED_TEMPLATES = new Set([
   "CircleHighlightScene", // Connected concepts
 ]);
 
+const VISUAL_THEMES = [
+  {
+    id: "sunburst",
+    name: "Sunburst",
+    backgroundColor: "#facc15",
+    textColor: "#111827",
+    accentColor: "#ea580c",
+    secondaryColor: "#1d4ed8",
+    surfaceColor: "#fff7cc",
+    fontFamily: "Impact, Arial Black, sans-serif",
+  },
+  {
+    id: "ocean",
+    name: "Ocean Pulse",
+    backgroundColor: "#1d4ed8",
+    textColor: "#f8fafc",
+    accentColor: "#22d3ee",
+    secondaryColor: "#0f172a",
+    surfaceColor: "#1e3a8a",
+    fontFamily: "Trebuchet MS, Verdana, sans-serif",
+  },
+  {
+    id: "mint",
+    name: "Mint Charge",
+    backgroundColor: "#10b981",
+    textColor: "#052e16",
+    accentColor: "#ecfeff",
+    secondaryColor: "#0f766e",
+    surfaceColor: "#d1fae5",
+    fontFamily: "Franklin Gothic Medium, Arial, sans-serif",
+  },
+  {
+    id: "crimson",
+    name: "Crimson Rush",
+    backgroundColor: "#b91c1c",
+    textColor: "#fff7ed",
+    accentColor: "#fbbf24",
+    secondaryColor: "#7f1d1d",
+    surfaceColor: "#ef4444",
+    fontFamily: "Arial Black, Arial, sans-serif",
+  },
+  {
+    id: "midnight",
+    name: "Midnight Grid",
+    backgroundColor: "#111827",
+    textColor: "#f9fafb",
+    accentColor: "#a78bfa",
+    secondaryColor: "#374151",
+    surfaceColor: "#1f2937",
+    fontFamily: "Segoe UI, Arial, sans-serif",
+  },
+];
+
+function hashString(input: string) {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function pickTheme(projectId: string) {
+  return VISUAL_THEMES[hashString(projectId) % VISUAL_THEMES.length];
+}
+
+function decorateScenesWithTheme(scenes: any[], theme: (typeof VISUAL_THEMES)[number]) {
+  return scenes.map((scene, index) => {
+    const isAlt = index % 2 === 1;
+    const backgroundColor = isAlt ? theme.secondaryColor : theme.backgroundColor;
+    const textColor = backgroundColor === theme.backgroundColor ? theme.textColor : "#f9fafb";
+    const accentColor = isAlt ? theme.accentColor : theme.surfaceColor;
+    const props = {
+      fontFamily: theme.fontFamily,
+      ...scene.props,
+    };
+
+    switch (scene.sceneTemplate) {
+      case "TitleScene":
+      case "RetentionScene":
+        props.backgroundColor = props.backgroundColor || backgroundColor;
+        props.textColor = props.textColor || textColor;
+        props.accentColor = props.accentColor || accentColor;
+        break;
+      case "BigNumberScene":
+        props.backgroundColor = props.backgroundColor || backgroundColor;
+        props.textColor = props.textColor || textColor;
+        props.highlightColor = props.highlightColor || theme.accentColor;
+        break;
+      case "ChartScene":
+        props.backgroundColor = props.backgroundColor || backgroundColor;
+        props.textColor = props.textColor || textColor;
+        props.chartColor = props.chartColor || theme.accentColor;
+        break;
+      case "CircleHighlightScene":
+        props.backgroundColor = props.backgroundColor || backgroundColor;
+        props.textColor = props.textColor || textColor;
+        props.circleColor = props.circleColor || theme.accentColor;
+        break;
+      case "BulletListScene":
+      case "QuoteScene":
+      case "TimelineScene":
+      case "CodeTypingScene":
+        props.backgroundColor = props.backgroundColor || backgroundColor;
+        props.textColor = props.textColor || textColor;
+        props.accentColor = props.accentColor || theme.accentColor;
+        break;
+      default:
+        break;
+    }
+
+    return { ...scene, props };
+  });
+}
+
 function coerceScenes(scenes: any[], videoDurationSec: number) {
   const safe: any[] = [];
   if (!Array.isArray(scenes)) return safe;
@@ -179,13 +293,18 @@ export async function POST(req: NextRequest) {
     const title = String(parsed.title ?? "").trim();
     const description = String(parsed.description ?? "").trim();
     const narrationText = String(parsed.narrationText ?? "").trim();
-    const scenes = coerceScenes(parsed.scenes ?? [], project.videoDurationSec);
+    const theme = pickTheme(project.id);
+    const scenes = decorateScenesWithTheme(
+      coerceScenes(parsed.scenes ?? [], project.videoDurationSec),
+      theme
+    );
 
     const videoSpec = {
       version: 1,
       meta: {
         aspectRatio: project.aspectRatio === "LANDSCAPE_16_9" ? "16:9" : "9:16",
         fps: project.fps,
+        theme,
       },
       content: { title, description, narrationText },
       scenes,
@@ -208,4 +327,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error?.message || "Failed to generate" }, { status: 500 });
   }
 }
-

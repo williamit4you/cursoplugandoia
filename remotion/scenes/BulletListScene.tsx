@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 
-export function BulletListScene(props: { items: string[]; title?: string; backgroundColor?: string; textColor?: string }) {
+export function BulletListScene(props: { items: string[]; title?: string; backgroundColor?: string; textColor?: string; accentColor?: string; fontFamily?: string }) {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
 
@@ -16,7 +16,7 @@ export function BulletListScene(props: { items: string[]; title?: string; backgr
         justifyContent: "center",
         background: props.backgroundColor || "linear-gradient(135deg, #0c0a19 0%, #15133a 50%, #0c0a19 100%)",
         color: props.textColor || "white",
-        fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+        fontFamily: props.fontFamily || "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
         padding: 80,
       }}
     >
@@ -47,7 +47,7 @@ export function BulletListScene(props: { items: string[]; title?: string; backgr
                     width: 12,
                     height: 12,
                     borderRadius: 999,
-                    background: "linear-gradient(135deg, #7c3aed, #22c55e)",
+                    background: props.accentColor || "linear-gradient(135deg, #7c3aed, #22c55e)",
                     marginTop: 10,
                     flexShrink: 0,
                   }}

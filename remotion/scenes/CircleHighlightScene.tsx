@@ -8,12 +8,14 @@ export const CircleHighlightScene: React.FC<{
   backgroundColor?: string;
   textColor?: string;
   circleColor?: string;
+  fontFamily?: string;
 }> = ({
   centerText = "FOCO",
   surroundingTexts = ["Atenção", "Dinheiro", "Tempo"],
   backgroundColor = "#2962ff",
   textColor = "#ffffff",
-  circleColor = "#ffeb3b"
+  circleColor = "#ffeb3b",
+  fontFamily
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -43,7 +45,7 @@ export const CircleHighlightScene: React.FC<{
           zIndex: 10,
         }}
       >
-        <span style={{ color: backgroundColor, fontSize: 80, fontWeight: 900, textTransform: "uppercase", textAlign: "center", padding: 20 }}>
+        <span style={{ color: backgroundColor, fontSize: 80, fontWeight: 900, textTransform: "uppercase", textAlign: "center", padding: 20, fontFamily: fontFamily || "Impact, Arial Black, sans-serif" }}>
           {centerText}
         </span>
       </div>
@@ -75,6 +77,7 @@ export const CircleHighlightScene: React.FC<{
               fontSize: 45,
               fontWeight: 800,
               textTransform: "uppercase",
+              fontFamily: fontFamily || "Impact, Arial Black, sans-serif",
               boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
               zIndex: 20,
               opacity: pop,

@@ -17,7 +17,8 @@ export default function PublicNavbar({ children }: { children: React.ReactNode }
         px: 3,
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
         display: 'flex',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         borderBottom: '1px solid #eaeaea'
       }}>
         <Link href="/noticias" style={{ textDecoration: 'none' }}>
@@ -25,6 +26,14 @@ export default function PublicNavbar({ children }: { children: React.ReactNode }
             Portal Inteligente
           </Typography>
         </Link>
+        <Box sx={{ display: 'flex', gap: 3 }}>
+          <Link href="/noticias" style={{ textDecoration: 'none', color: '#334155', fontWeight: 700 }}>
+            Notícias
+          </Link>
+          <Link href="/solucoes-ia" style={{ textDecoration: 'none', color: '#0f766e', fontWeight: 800 }}>
+            Soluções IA
+          </Link>
+        </Box>
       </Box>
       <Box sx={{ minHeight: 'calc(100vh - 64px)', backgroundColor: '#f9fafb' }}>
         {children}

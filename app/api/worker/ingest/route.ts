@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
+import { buildTitleCoverDataUrl } from "@/lib/titleCover"
 
 const connectionString = process.env.DATABASE_URL!
 const pool = new Pool({ connectionString })
@@ -31,7 +32,8 @@ export async function POST(req: NextRequest) {
         content: body.content,
         sourceUrl: body.sourceUrl,
         status: "DRAFT", // Sempre entra escondido!
-        slug: `${baseSlug}-${Date.now().toString().slice(-5)}`
+        slug: `${baseSlug}-${Date.now().toString().slice(-5)}`,
+        coverImage: body.coverImage || buildTitleCoverDataUrl(body.title),
       }
     });
 

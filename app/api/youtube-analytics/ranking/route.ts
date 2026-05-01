@@ -176,89 +176,126 @@ export async function GET(req: NextRequest) {
 
     const channels = await prisma.ytChannel.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        name: true,
+        thumbnailUrl: true,
+        customUrl: true,
+        youtubeChannelId: true,
+        country: true,
+        subscribers: true,
+        totalViews: true,
         category: { select: { name: true, color: true, slug: true } },
-        videos: {
-          where: {
-            OR: [
-              { publishedAt: { gte: start, lte: end } },
-              { publishedAt: { gte: previousStart, lte: previousEnd } },
-            ],
-          },
-          select: {
-            videoType: true,
-            views: true,
-            publishedAt: true,
-          },
-        },
-        snapshots: {
-          where: {
-            OR: [
-              { snapshotDate: { lte: end } },
-              { snapshotDate: { lte: previousEnd } },
-            ],
-          },
-          orderBy: { snapshotDate: "desc" },
-          select: {
-            snapshotDate: true,
-            totalViews: true,
-          },
-        },
       },
     });
 
-    const rows: ChannelAggregate[] = channels.map((channel) => {
-      let currentPeriodVideosTotal = 0;
-      let currentPeriodVideosLongs = 0;
-      let currentPeriodVideosShorts = 0;
-      let previousPeriodVideosTotal = 0;
-      let previousPeriodVideosLongs = 0;
-      let previousPeriodVideosShorts = 0;
-      let currentPeriodViewsLongs = BigInt(0);
-      let currentPeriodViewsShorts = BigInt(0);
-      let previousPeriodViewsLongs = BigInt(0);
-      let previousPeriodViewsShorts = BigInt(0);
+    const ids = channels.map((channel) => channel.id);
 
-      for (const video of channel.videos) {
-        const publishedAt = new Date(video.publishedAt);
-        const isCurrent = publishedAt >= start && publishedAt <= end;
-        const isPrevious = publishedAt >= previousStart && publishedAt <= previousEnd;
+    // Aggregate videos in DB (avoid loading all rows into memory)
+    const [currentAgg, previousAgg] = ids.length
+      ? await Promise.all([
+          prisma.ytVideo.groupBy({
+            by: ["channelId", "videoType"],
+            where: { channelId: { in: ids }, publishedAt: { gte: start, lte: end } },
+            _count: { _all: true },
+            _sum: { views: true },
+          }),
+          prisma.ytVideo.groupBy({
+            by: ["channelId", "videoType"],
+            where: { channelId: { in: ids }, publishedAt: { gte: previousStart, lte: previousEnd } },
+            _count: { _all: true },
+            _sum: { views: true },
+          }),
+        ])
+      : [[], []];
 
-        if (isCurrent) {
-          currentPeriodVideosTotal += 1;
-          if (video.videoType === "SHORT") {
-            currentPeriodVideosShorts += 1;
-            currentPeriodViewsShorts += video.views;
-          } else if (video.videoType === "LONG") {
-            currentPeriodVideosLongs += 1;
-            currentPeriodViewsLongs += video.views;
-          }
+    const currentByChannel = new Map<
+      string,
+      { videosTotal: number; videosLongs: number; videosShorts: number; viewsLongs: bigint; viewsShorts: bigint }
+    >();
+    const previousByChannel = new Map<
+      string,
+      { videosTotal: number; videosLongs: number; videosShorts: number; viewsLongs: bigint; viewsShorts: bigint }
+    >();
+
+    function applyVideoAgg(
+      target: Map<
+        string,
+        { videosTotal: number; videosLongs: number; videosShorts: number; viewsLongs: bigint; viewsShorts: bigint }
+      >,
+      rows: Array<any>
+    ) {
+      for (const row of rows) {
+        const curr =
+          target.get(row.channelId) || {
+            videosTotal: 0,
+            videosLongs: 0,
+            videosShorts: 0,
+            viewsLongs: BigInt(0),
+            viewsShorts: BigInt(0),
+          };
+
+        const count = Number(row._count?._all || 0);
+        const sumViews: bigint = row._sum?.views ?? BigInt(0);
+
+        curr.videosTotal += count;
+        if (row.videoType === "SHORT") {
+          curr.videosShorts += count;
+          curr.viewsShorts += sumViews;
+        } else if (row.videoType === "LONG") {
+          curr.videosLongs += count;
+          curr.viewsLongs += sumViews;
         }
-
-        if (isPrevious) {
-          previousPeriodVideosTotal += 1;
-          if (video.videoType === "SHORT") {
-            previousPeriodVideosShorts += 1;
-            previousPeriodViewsShorts += video.views;
-          } else if (video.videoType === "LONG") {
-            previousPeriodVideosLongs += 1;
-            previousPeriodViewsLongs += video.views;
-          }
-        }
+        target.set(row.channelId, curr);
       }
+    }
 
-      const currentPeriodViewsTotal = currentPeriodViewsLongs + currentPeriodViewsShorts;
-      const previousPeriodViewsTotal = previousPeriodViewsLongs + previousPeriodViewsShorts;
+    applyVideoAgg(currentByChannel, currentAgg);
+    applyVideoAgg(previousByChannel, previousAgg);
 
-      const latestAtOrBeforeEnd =
-        channel.snapshots.find((snapshot) => new Date(snapshot.snapshotDate) <= end) || null;
-      const latestAtOrBeforePreviousEnd =
-        channel.snapshots.find((snapshot) => new Date(snapshot.snapshotDate) <= previousEnd) || null;
+    // Latest snapshots at/before end boundaries (cheap distinct queries)
+    const [snapAtEnd, snapAtPreviousEnd] = ids.length
+      ? await Promise.all([
+          prisma.ytChannelSnapshot.findMany({
+            where: { channelId: { in: ids }, snapshotDate: { lte: end } },
+            orderBy: { snapshotDate: "desc" },
+            distinct: ["channelId"],
+            select: { channelId: true, totalViews: true },
+          }),
+          prisma.ytChannelSnapshot.findMany({
+            where: { channelId: { in: ids }, snapshotDate: { lte: previousEnd } },
+            orderBy: { snapshotDate: "desc" },
+            distinct: ["channelId"],
+            select: { channelId: true, totalViews: true },
+          }),
+        ])
+      : [[], []];
 
-      const totalViewsCurrent = latestAtOrBeforeEnd?.totalViews ?? channel.totalViews;
-      const totalViewsPrevious = latestAtOrBeforePreviousEnd?.totalViews ?? null;
-      const totalViewsDelta =
-        totalViewsPrevious !== null ? totalViewsCurrent - totalViewsPrevious : null;
+    const snapEndMap = new Map(snapAtEnd.map((s) => [s.channelId, s.totalViews]));
+    const snapPrevMap = new Map(snapAtPreviousEnd.map((s) => [s.channelId, s.totalViews]));
+
+    const rows: ChannelAggregate[] = channels.map((channel) => {
+      const current = currentByChannel.get(channel.id) || {
+        videosTotal: 0,
+        videosLongs: 0,
+        videosShorts: 0,
+        viewsLongs: BigInt(0),
+        viewsShorts: BigInt(0),
+      };
+      const previous = previousByChannel.get(channel.id) || {
+        videosTotal: 0,
+        videosLongs: 0,
+        videosShorts: 0,
+        viewsLongs: BigInt(0),
+        viewsShorts: BigInt(0),
+      };
+
+      const currentViewsTotal = current.viewsLongs + current.viewsShorts;
+      const previousViewsTotal = previous.viewsLongs + previous.viewsShorts;
+
+      const totalViewsCurrent = snapEndMap.get(channel.id) ?? channel.totalViews;
+      const totalViewsPrevious = snapPrevMap.get(channel.id) ?? null;
+      const totalViewsDelta = totalViewsPrevious !== null ? totalViewsCurrent - totalViewsPrevious : null;
 
       return {
         id: channel.id,
@@ -271,19 +308,20 @@ export async function GET(req: NextRequest) {
         subscribers: toStringBigInt(channel.subscribers),
         totalViewsCurrent: toStringBigInt(totalViewsCurrent),
         totalViewsPrevious: totalViewsPrevious ? toStringBigInt(totalViewsPrevious) : null,
-        totalViewsDelta: totalViewsDelta ? toStringBigInt(totalViewsDelta) : totalViewsDelta === BigInt(0) ? "0" : null,
-        currentPeriodVideosTotal,
-        currentPeriodVideosLongs,
-        currentPeriodVideosShorts,
-        previousPeriodVideosTotal,
-        previousPeriodVideosLongs,
-        previousPeriodVideosShorts,
-        currentPeriodViewsLongs: toStringBigInt(currentPeriodViewsLongs),
-        currentPeriodViewsShorts: toStringBigInt(currentPeriodViewsShorts),
-        currentPeriodViewsTotal: toStringBigInt(currentPeriodViewsTotal),
-        previousPeriodViewsLongs: toStringBigInt(previousPeriodViewsLongs),
-        previousPeriodViewsShorts: toStringBigInt(previousPeriodViewsShorts),
-        previousPeriodViewsTotal: toStringBigInt(previousPeriodViewsTotal),
+        totalViewsDelta:
+          totalViewsDelta === null ? null : toStringBigInt(totalViewsDelta),
+        currentPeriodVideosTotal: current.videosTotal,
+        currentPeriodVideosLongs: current.videosLongs,
+        currentPeriodVideosShorts: current.videosShorts,
+        previousPeriodVideosTotal: previous.videosTotal,
+        previousPeriodVideosLongs: previous.videosLongs,
+        previousPeriodVideosShorts: previous.videosShorts,
+        currentPeriodViewsLongs: toStringBigInt(current.viewsLongs),
+        currentPeriodViewsShorts: toStringBigInt(current.viewsShorts),
+        currentPeriodViewsTotal: toStringBigInt(currentViewsTotal),
+        previousPeriodViewsLongs: toStringBigInt(previous.viewsLongs),
+        previousPeriodViewsShorts: toStringBigInt(previous.viewsShorts),
+        previousPeriodViewsTotal: toStringBigInt(previousViewsTotal),
         currentRank: 0,
         previousRank: null,
         rankDelta: null,

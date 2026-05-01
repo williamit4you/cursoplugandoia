@@ -8,12 +8,14 @@ export const ChartScene: React.FC<{
   backgroundColor?: string;
   textColor?: string;
   chartColor?: string;
+  fontFamily?: string;
 }> = ({
   title = "Crescimento",
   dataPoints = [{ label: "A", value: 30 }, { label: "B", value: 80 }, { label: "C", value: 100 }],
   backgroundColor = "#111111",
   textColor = "#ffffff",
-  chartColor = "#00e676"
+  chartColor = "#00e676",
+  fontFamily
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -36,6 +38,7 @@ export const ChartScene: React.FC<{
           textAlign: "center",
           marginBottom: 80,
           textTransform: "uppercase",
+          fontFamily: fontFamily || "Impact, Arial Black, sans-serif",
           transform: `translateY(${interpolate(titleProgress, [0, 1], [-50, 0])}px)`,
           opacity: titleProgress,
         }}
@@ -69,7 +72,7 @@ export const ChartScene: React.FC<{
                   boxShadow: `0 0 30px ${chartColor}80`,
                 }}
               />
-              <div style={{ color: textColor, fontSize: 36, fontWeight: 800, marginTop: 30, opacity: barProgress }}>
+              <div style={{ color: textColor, fontSize: 36, fontWeight: 800, marginTop: 30, opacity: barProgress, fontFamily: fontFamily || "Impact, Arial Black, sans-serif" }}>
                 {dp.label}
               </div>
             </div>

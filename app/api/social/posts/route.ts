@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 
     const page = Math.max(1, parseIntSafe(searchParams.get("page"), 1));
     const pageSize = Math.min(
-      100,
+      500,
       Math.max(5, parseIntSafe(searchParams.get("pageSize"), 20))
     );
 
@@ -92,4 +92,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

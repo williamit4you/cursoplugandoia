@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
       autoPublishStory: body.autoPublishStory ?? false,
       autoPublishTikTok: body.autoPublishTikTok ?? false,
       autoPublishLinkedIn: body.autoPublishLinkedIn ?? false,
+      autoPublishYouTube: body.autoPublishYouTube ?? false,
     };
 
     const config = existing
