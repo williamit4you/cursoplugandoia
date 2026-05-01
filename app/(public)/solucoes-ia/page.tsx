@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getOrCreateCrmSettings } from "@/lib/crmSettings";
+import { buildWhatsAppHref } from "@/lib/crm";
 
 const services = [
   {
@@ -31,7 +33,15 @@ const benefits = [
   "Escalabilidade com IA sem depender de gambiarra",
 ];
 
-export default function SolucoesIaPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SolucoesIaPage() {
+  const crmSettings = await getOrCreateCrmSettings();
+  const whatsappHref = crmSettings.whatsappEnabled
+    ? buildWhatsAppHref(crmSettings.whatsappNumber, crmSettings.whatsappDefaultMessage)
+    : "https://wa.me/";
+  const whatsappLabel = crmSettings.whatsappDisplayLabel || "Falar sobre o projeto";
+
   return (
     <main style={{ minHeight: "100vh", background: "linear-gradient(180deg, #f8fafc 0%, #ecfeff 100%)", color: "#0f172a" }}>
       <section style={{ maxWidth: 1180, margin: "0 auto", padding: "72px 24px 40px" }}>
@@ -56,7 +66,7 @@ export default function SolucoesIaPage() {
             </p>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 28 }}>
               <Link
-                href="https://wa.me/"
+                href={whatsappHref}
                 style={{
                   textDecoration: "none",
                   background: "#facc15",
@@ -66,7 +76,7 @@ export default function SolucoesIaPage() {
                   borderRadius: 14,
                 }}
               >
-                Falar sobre o projeto
+                {whatsappLabel}
               </Link>
               <Link
                 href="/noticias"

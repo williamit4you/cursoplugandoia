@@ -11,6 +11,37 @@ enum VideoAspectRatio {
   LANDSCAPE_16_9
 }
 
+enum CrmLeadStage {
+  LEAD
+  CONTACTED
+  PROPOSAL_SENT
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum CrmActivityType {
+  CALL
+  WHATSAPP
+  EMAIL
+  MEETING
+  TASK
+  NOTE
+  SYSTEM
+}
+
+enum CrmActivityDirection {
+  INBOUND
+  OUTBOUND
+  INTERNAL
+}
+
+enum CrmTaskStatus {
+  OPEN
+  DONE
+  CANCELED
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -19,6 +50,11 @@ model User {
   name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  crmOwnedContacts CrmContact[]  @relation("CrmContactOwner")
+  crmTasks         CrmTask[]     @relation("CrmTaskAssignee")
+  crmActivities    CrmActivity[] @relation("CrmActivityAuthor")
+  crmSettings      CrmSettings[] @relation("CrmDefaultAssignee")
 }
 
 model Post {
@@ -178,6 +214,122 @@ model Lead {
   name      String?
   source    String?  // Ref do Post (Slug) para saber onde o lead foi captado
   createdAt DateTime @default(now())
+}
+
+model CrmSettings {
+  id                     String   @id @default(cuid())
+  whatsappEnabled        Boolean  @default(false)
+  whatsappDisplayLabel   String   @default("Falar no WhatsApp")
+  whatsappNumber         String?
+  whatsappDefaultMessage String   @default("Olá! Quero falar sobre automação, agentes de IA e WhatsApp.")
+  evolutionEnabled       Boolean  @default(false)
+  evolutionBaseUrl       String?
+  evolutionApiKey        String?
+  evolutionInstanceName  String?
+  evolutionWebhookSecret String?
+  openAiModel            String   @default("gpt-4o-mini")
+  assistantEnabled       Boolean  @default(true)
+  assistantScope         String   @default("Automação com n8n, agentes de IA, RAG, WhatsApp, Evolution API, integrações e implantação comercial.")
+  assistantSystemPrompt  String   @default("Você é um atendente comercial da Plugando IA. Tire dúvidas apenas sobre automação, n8n, agentes de IA, RAG, WhatsApp, Evolution API, integrações, implantação e consultoria. Se o assunto sair desse escopo, recuse com educação, explique o escopo atendido e convide o lead a voltar ao tema comercial.")
+  defaultAssigneeUserId  String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  defaultAssignee        User?    @relation("CrmDefaultAssignee", fields: [defaultAssigneeUserId], references: [id])
+}
+
+model CrmContact {
+  id              String       @id @default(cuid())
+  name            String?
+  phone           String       @unique
+  email           String?      @unique
+  company         String?
+  source          String?
+  interestService String?
+  notes           String?
+  stage           CrmLeadStage @default(LEAD)
+  lastContactAt   DateTime?
+  ownerUserId     String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  owner           User?              @relation("CrmContactOwner", fields: [ownerUserId], references: [id])
+  activities      CrmActivity[]
+  tasks           CrmTask[]
+  conversations   CrmConversation[]
+
+  @@index([stage])
+  @@index([ownerUserId])
+  @@index([createdAt])
+}
+
+model CrmActivity {
+  id           String               @id @default(cuid())
+  contactId    String
+  type         CrmActivityType
+  direction    CrmActivityDirection @default(INTERNAL)
+  subject      String?
+  content      String
+  happenedAt   DateTime             @default(now())
+  createdAt    DateTime             @default(now())
+  authorUserId String?
+  metadataJson String               @default("{}")
+
+  contact      CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  author       User?      @relation("CrmActivityAuthor", fields: [authorUserId], references: [id])
+
+  @@index([contactId, happenedAt])
+  @@index([type])
+}
+
+model CrmTask {
+  id               String        @id @default(cuid())
+  contactId        String
+  title            String
+  description      String?
+  status           CrmTaskStatus @default(OPEN)
+  dueAt            DateTime?
+  completedAt      DateTime?
+  assignedToUserId String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  contact          CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  assignedTo       User?      @relation("CrmTaskAssignee", fields: [assignedToUserId], references: [id])
+
+  @@index([contactId, status])
+  @@index([assignedToUserId])
+}
+
+model CrmConversation {
+  id               String   @id @default(cuid())
+  contactId        String
+  channel          String   @default("WHATSAPP")
+  status           String   @default("OPEN")
+  externalThreadId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  contact          CrmContact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages         CrmMessage[]
+
+  @@index([contactId, updatedAt])
+}
+
+model CrmMessage {
+  id                 String               @id @default(cuid())
+  conversationId     String
+  role               String
+  direction          CrmActivityDirection @default(INTERNAL)
+  content            String
+  model              String?
+  externalMessageId  String?
+  guardrailTriggered Boolean              @default(false)
+  createdAt          DateTime             @default(now())
+
+  conversation       CrmConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }
 
 model PipelineLog {

@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       create: { platform: "MOTOR_TRIGGER", isActive: true }
     });
 
-    return NextResponse.json({ success: true, message: "Flagged Trigger set to True" });
+    return NextResponse.json({ success: true, message: "Manual scrape test queued" });
   } catch (error) {
     return NextResponse.json({ error: "Failed to trigger" }, { status: 500 });
   }

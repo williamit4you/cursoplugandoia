@@ -111,7 +111,7 @@ export default function ScrapersTable({ initialData }: { initialData: any[] }) {
     setPipelineLogs([]);
     setIsRunning(true);
     setShowMonitor(true);
-    setTriggerStatus({ state: "info", message: "📡 Motor ativado! Monitorando em tempo real..." });
+    setTriggerStatus({ state: "info", message: "🧪 Teste manual disparado! Monitorando o scraping em tempo real..." });
 
     const res = await fetch(`/api/worker/trigger`, { method: "POST" });
     if (!res.ok) {
@@ -157,7 +157,7 @@ export default function ScrapersTable({ initialData }: { initialData: any[] }) {
           onClick={handleTrigger}
           disabled={isRunning}
         >
-          {isRunning ? "⏳ Processando..." : "🤖 Capturar Notícias Agora"}
+          {isRunning ? "⏳ Testando scraping..." : "🧪 Testar scraping agora"}
         </Button>
         {pipelineLogs.length > 0 && !showMonitor && (
           <Button variant="text" size="small" onClick={() => setShowMonitor(true)}>

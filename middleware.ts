@@ -1,21 +1,27 @@
-import { withAuth } from "next-auth/middleware"
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-// Protege todas as rotas que começarem por /admin/ (exceto login)
-export default withAuth({
-  callbacks: {
-    authorized({ req, token }) {
-      const path = req.nextUrl.pathname;
-      if (path.startsWith("/admin") && !path.startsWith("/admin/login")) {
-        return !!token;
-      }
-      return true;
-    },
-  },
-  pages: {
-    signIn: "/admin/login",
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  const isAdminArea = pathname.startsWith("/admin") && !pathname.startsWith("/admin/login");
+  const isCrmArea = pathname.startsWith("/crm") && !pathname.startsWith("/crm/login");
+
+  if (!isAdminArea && !isCrmArea) {
+    return NextResponse.next();
   }
-})
+
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  if (token) {
+    return NextResponse.next();
+  }
+
+  const loginPath = isCrmArea ? "/crm/login" : "/admin/login";
+  const url = new URL(loginPath, req.url);
+  url.searchParams.set("callbackUrl", pathname);
+  return NextResponse.redirect(url);
+}
 
 export const config = {
-  matcher: ["/admin/:path*"],
-}
+  matcher: ["/admin/:path*", "/crm/:path*"],
+};
