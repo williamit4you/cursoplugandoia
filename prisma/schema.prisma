@@ -125,6 +125,7 @@ model SocialPost {
 model CodeVideoProject {
   id               String           @id @default(cuid())
   status           String           @default("DRAFT") // DRAFT | GENERATING | READY | RENDERING | DONE | FAILED
+  projectType      String           @default("GENERIC") // GENERIC | PRODUCT_AD
 
   // Entrada do usuário
   ideaPrompt       String
@@ -140,6 +141,8 @@ model CodeVideoProject {
   title            String?
   description      String?
   narrationText    String?
+  promptPreview    String?
+  metadataJson     String           @default("{}")
 
   // Plano do vídeo (JSON serializado, validado no backend)
   videoSpecJson    String           @default("{}")

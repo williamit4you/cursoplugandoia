@@ -1,0 +1,4 @@
+ALTER TABLE "CodeVideoProject"
+ADD COLUMN "projectType" TEXT NOT NULL DEFAULT 'GENERIC',
+ADD COLUMN "promptPreview" TEXT,
+ADD COLUMN "metadataJson" TEXT NOT NULL DEFAULT '{}';

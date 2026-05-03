@@ -1,7 +1,19 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, AppBar, Toolbar, Typography, Button } from "@mui/material";
+import {
+  AppBar,
+  Box,
+  Button,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Toolbar,
+  Typography,
+} from "@mui/material";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import ArticleIcon from "@mui/icons-material/Article";
 import LinkIcon from "@mui/icons-material/Link";
@@ -12,6 +24,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import CodeIcon from "@mui/icons-material/Code";
 import QuizIcon from "@mui/icons-material/Quiz";
 import YouTubeIcon from "@mui/icons-material/YouTube";
+import CampaignIcon from "@mui/icons-material/Campaign";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 
@@ -20,7 +33,6 @@ const drawerWidth = 240;
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // Ocultar layout de sidebar na rota de login
   if (pathname === "/admin/login") {
     return <>{children}</>;
   }
@@ -33,6 +45,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Fila de Stories", icon: <VideoCameraBackIcon />, path: "/admin/social" },
     { text: "Calendário Social", icon: <VideoCameraBackIcon />, path: "/admin/social/calendar" },
     { text: "Vídeos com código", icon: <CodeIcon />, path: "/admin/video-code" },
+    { text: "Propagandas", icon: <CampaignIcon />, path: "/admin/propagandas" },
     { text: "Perguntas → vídeos", icon: <QuizIcon />, path: "/admin/video-questions" },
     { text: "YT Analytics", icon: <YouTubeIcon />, path: "/admin/youtube-analytics" },
     { text: "Config. Scraper", icon: <SettingsIcon />, path: "/admin/scraper-config" },
@@ -46,7 +59,11 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Painel Gerencial AI
           </Typography>
-          <Button color="inherit" onClick={() => signOut({ callbackUrl: "/admin/login" })} startIcon={<LogoutIcon />}>
+          <Button
+            color="inherit"
+            onClick={() => signOut({ callbackUrl: "/admin/login" })}
+            startIcon={<LogoutIcon />}
+          >
             Sair
           </Button>
         </Toolbar>

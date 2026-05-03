@@ -29,6 +29,7 @@ export async function PATCH(req: NextRequest, ctx: { params: { id: string } }) {
     const data: any = {};
 
     if (body?.status != null) data.status = String(body.status);
+    if (body?.projectType != null) data.projectType = String(body.projectType);
     if (body?.ideaPrompt != null) data.ideaPrompt = String(body.ideaPrompt);
     if (body?.aspectRatio != null) {
       const aspectRatio = String(body.aspectRatio);
@@ -54,6 +55,8 @@ export async function PATCH(req: NextRequest, ctx: { params: { id: string } }) {
     if (body?.title != null) data.title = String(body.title);
     if (body?.description != null) data.description = String(body.description);
     if (body?.narrationText != null) data.narrationText = String(body.narrationText);
+    if (body?.promptPreview != null) data.promptPreview = body.promptPreview ? String(body.promptPreview) : null;
+    if (body?.metadataJson != null) data.metadataJson = String(body.metadataJson);
     if (body?.videoSpecJson != null) data.videoSpecJson = String(body.videoSpecJson);
 
     if (body?.audioUrl != null) data.audioUrl = body.audioUrl ? String(body.audioUrl) : null;

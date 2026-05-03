@@ -17,10 +17,13 @@ export async function GET() {
       select: {
         id: true,
         status: true,
+        projectType: true,
         ideaPrompt: true,
         aspectRatio: true,
         videoDurationSec: true,
         title: true,
+        promptPreview: true,
+        metadataJson: true,
         createdAt: true,
         updatedAt: true,
         videoUrl: true,
@@ -42,6 +45,15 @@ export async function POST(req: NextRequest) {
     const videoDurationSec = Number(body?.videoDurationSec ?? 30);
     const ttsVoice = String(body?.ttsVoice ?? "pt-BR-AntonioNeural").trim();
     const ttsSpeed = String(body?.ttsSpeed ?? "+5%").trim();
+    const projectType = String(body?.projectType ?? "GENERIC").trim();
+    const title = body?.title != null ? String(body.title).trim() : null;
+    const description = body?.description != null ? String(body.description).trim() : null;
+    const metadataJson =
+      body?.metadataJson == null
+        ? "{}"
+        : typeof body.metadataJson === "string"
+          ? body.metadataJson
+          : JSON.stringify(body.metadataJson);
 
     if (!ideaPrompt) {
       return NextResponse.json({ error: "ideaPrompt is required" }, { status: 400 });
@@ -55,14 +67,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid aspectRatio" }, { status: 400 });
     }
 
+    if (projectType !== "GENERIC" && projectType !== "PRODUCT_AD") {
+      return NextResponse.json({ error: "Invalid projectType" }, { status: 400 });
+    }
+
     const project = await prisma.codeVideoProject.create({
       data: {
+        projectType,
         ideaPrompt,
         aspectRatio: aspectRatio as any,
         videoDurationSec,
         ttsVoice,
         ttsSpeed,
         useExternalMedia: Boolean(body?.useExternalMedia ?? false),
+        title,
+        description,
+        metadataJson,
       },
     });
 
