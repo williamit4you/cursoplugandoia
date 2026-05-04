@@ -33,6 +33,7 @@ type Metadata = {
   targetAudience?: string;
   productUrl?: string;
   ctaText?: string;
+  youtubeTags?: string;
   primaryBgColor?: string;
   primaryTextColor?: string;
   assets?: Array<{
@@ -256,7 +257,7 @@ export default function PropagandaDetailPage() {
               </div>
               <div className="md:col-span-2">
                 <label className="mb-2 block text-xs font-black uppercase tracking-wider text-gray-500">
-                  Descrição comercial
+                  Descrição comercial / descrição do YouTube
                 </label>
                 <textarea
                   value={metadata.productDescription || ""}
@@ -316,6 +317,20 @@ export default function PropagandaDetailPage() {
                   className="min-h-[100px] w-full rounded-2xl border-gray-200 bg-gray-50 px-4 py-3 text-gray-900"
                 />
               </div>
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-xs font-black uppercase tracking-wider text-gray-500">
+                  Tags para YouTube
+                </label>
+                <textarea
+                  value={metadata.youtubeTags || ""}
+                  onChange={(e) => setMetadata((current) => ({ ...current, youtubeTags: e.target.value }))}
+                  className="min-h-[90px] w-full rounded-2xl border-gray-200 bg-gray-50 px-4 py-3 text-gray-900"
+                  placeholder="smart tv, tv 4k, televisao, oferta..."
+                />
+                <div className="mt-2 text-xs font-semibold text-gray-400">
+                  Separadas por virgula, prontas para SEO do YouTube.
+                </div>
+              </div>
             </div>
           </div>
 
@@ -348,7 +363,11 @@ export default function PropagandaDetailPage() {
                 </label>
                 <textarea
                   value={project.description || ""}
-                  onChange={(e) => setProject((current) => (current ? { ...current, description: e.target.value } : current))}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setProject((current) => (current ? { ...current, description: value } : current));
+                    setMetadata((current) => ({ ...current, productDescription: value }));
+                  }}
                   className="min-h-[140px] w-full rounded-2xl border-gray-200 bg-gray-50 px-4 py-3 text-gray-900"
                 />
               </div>

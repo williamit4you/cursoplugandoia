@@ -19,6 +19,7 @@ type ProductAdMetadata = {
   targetAudience?: string;
   productUrl?: string;
   ctaText?: string;
+  youtubeTags?: string;
   primaryBgColor?: string;
   primaryTextColor?: string;
   assets?: Array<{
@@ -223,6 +224,78 @@ function coerceScenes(scenes: any[], videoDurationSec: number) {
   return safe;
 }
 
+function productAssetUrls(metadata: ProductAdMetadata) {
+  return (Array.isArray(metadata.assets) ? metadata.assets : [])
+    .map((asset) => String(asset?.url ?? "").trim())
+    .filter((url) => /^https?:\/\//i.test(url));
+}
+
+function compactSceneTitle(value: unknown, fallback: string) {
+  const text = String(value ?? fallback).replace(/\s+/g, " ").trim();
+  if (text.length <= 48) return text;
+  return `${text.slice(0, 45).trim()}...`;
+}
+
+function normalizeProductAdScenes(scenes: any[], metadata: ProductAdMetadata, fallbackTitle: string) {
+  const assets = productAssetUrls(metadata);
+  const allowedAssetUrls = new Set(assets);
+  let assetIndex = 0;
+
+  const normalized = scenes.map((scene, index) => {
+    const props = { ...(scene.props ?? {}) };
+    delete props.overlays;
+
+    if (scene.sceneTemplate === "RetentionScene") {
+      const modelUrl = String(props.url ?? "").trim();
+      const shouldReplaceUrl = assets.length > 0 && (!modelUrl || !allowedAssetUrls.has(modelUrl));
+      if (shouldReplaceUrl) {
+        props.url = assets[assetIndex % assets.length];
+        assetIndex += 1;
+      }
+      props.title = compactSceneTitle(props.title, metadata.productName || fallbackTitle);
+    }
+
+    if (index === 0 && scene.sceneTemplate === "TitleScene") {
+      props.title = compactSceneTitle(props.title, metadata.productName || fallbackTitle);
+      props.subtitle = compactSceneTitle(
+        props.subtitle,
+        metadata.ctaText || "Link com desconto na descricao"
+      );
+    }
+
+    return { ...scene, props };
+  });
+
+  if (assets.length === 0) return normalized;
+
+  const retentionCount = normalized.filter((scene) => scene.sceneTemplate === "RetentionScene").length;
+  const targetCount = Math.min(3, Math.max(2, assets.length));
+  if (retentionCount >= targetCount) return normalized;
+
+  const insertionDuration = Math.max(2, Math.round((normalized[1]?.durationSec ?? 3) || 3));
+  const extraScenes = Array.from({ length: targetCount - retentionCount }, (_, extraIndex) => ({
+    id: `product-showcase-${extraIndex + 1}`,
+    sceneTemplate: "RetentionScene",
+    durationSec: insertionDuration,
+    props: {
+      url: assets[(assetIndex + extraIndex) % assets.length],
+      title: compactSceneTitle(metadata.productName || fallbackTitle, fallbackTitle),
+    },
+  }));
+
+  return [normalized[0], ...extraScenes, ...normalized.slice(1)].filter(Boolean);
+}
+
+function normalizeYoutubeTags(value: unknown) {
+  const raw = Array.isArray(value) ? value.join(", ") : String(value ?? "");
+  return raw
+    .split(/[,;\n]/)
+    .map((tag) => tag.replace(/^#+/, "").replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .slice(0, 20)
+    .join(", ");
+}
+
 export async function POST(req: NextRequest) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -261,7 +334,7 @@ export async function POST(req: NextRequest) {
         : "Seu objetivo é criar roteiros e planos de cena que prendam a atenção do início ao fim.",
       "Você deve responder APENAS com um JSON válido.",
       isProductAd
-        ? "Saída obrigatória: title, description, narrationText, ctaText, scenes."
+        ? "Saída obrigatória: title, description, commercialDescription, productUseCases, targetAudience, youtubeTags, narrationText, ctaText, scenes."
         : "Saída obrigatória: title, description, narrationText, scenes.",
       "Cada scene deve ter: sceneTemplate, durationSec, props.",
       `sceneTemplate permitido: ${Array.from(ALLOWED_TEMPLATES).join(", ")}.`,
@@ -279,12 +352,21 @@ export async function POST(req: NextRequest) {
             "Reforce em pontos estratégicos que o link do produto com desconto especial está na descrição do vídeo.",
             "Use gatilhos mentais com moderação: oportunidade, praticidade, conforto, economia e desejo.",
             "Quando houver assets do usuário, priorize-os nas scenes do tipo RetentionScene.",
+            "Nao use emojis, setas gigantes, icones aleatorios ou elementos que nao tenham relacao direta com o produto.",
+            "Evite cenas com fundo chapado e texto solto. Sempre que houver imagem ou video do produto, use essa midia como base visual.",
+            "Nao use midia externa quando houver assets enviados pelo usuario, exceto se for claramente complementar e coerente com o produto.",
+            "Textos visuais devem ser curtos: no maximo 6 palavras por title/subtitle e no maximo 4 bullets por cena.",
+            "Crie commercialDescription pronta para colar na descricao do YouTube, com texto vendedor, beneficios, CTA e o link do produto se existir.",
+            "Crie productUseCases e targetAudience mesmo quando o usuario nao informar esses campos, inferindo com seguranca a partir do titulo e detalhes tecnicos.",
+            "Crie youtubeTags como string unica com 12 a 20 tags em portugues separadas por virgula, focadas em SEO do YouTube Shorts.",
           ]
         : []),
     ].join("\n");
 
+    const uploadedAssets = Array.isArray(metadata.assets) ? metadata.assets : [];
+
     let pexelsAssets = "";
-    if (project.useExternalMedia) {
+    if (project.useExternalMedia && (!isProductAd || uploadedAssets.length === 0)) {
       const query = isProductAd
         ? metadata.productName || project.title || project.ideaPrompt
         : project.ideaPrompt;
@@ -296,7 +378,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const uploadedAssets = Array.isArray(metadata.assets) ? metadata.assets : [];
     const uploadedAssetsText =
       uploadedAssets.length > 0
         ? "\nASSETS ENVIADOS PELO USUÁRIO (priorize estes em props.url):\n" +
@@ -309,11 +390,11 @@ export async function POST(req: NextRequest) {
       ? [
           "TIPO_DE_PROJETO: PRODUCT_AD",
           `PRODUTO: ${metadata.productName || project.title || "Produto sem nome"}`,
-          `DESCRICAO_COMERCIAL: ${metadata.productDescription || project.description || ""}`,
+          `DESCRICAO_COMERCIAL_EXISTENTE: ${metadata.productDescription || project.description || ""}`,
           `DETALHES_TECNICOS: ${metadata.productTechnicalDetails || ""}`,
-          `USOS_RECOMENDADOS: ${metadata.productUseCases || ""}`,
-          `PUBLICO_ALVO: ${metadata.targetAudience || ""}`,
-          `LINK_DO_PRODUTO: ${metadata.productUrl || ""}`,
+          `USOS_RECOMENDADOS_EXISTENTES: ${metadata.productUseCases || ""}`,
+          `PUBLICO_ALVO_EXISTENTE: ${metadata.targetAudience || ""}`,
+          `LINK_DE_COMISSAO_DO_PRODUTO: ${metadata.productUrl || ""}`,
           `CTA_PREFERENCIAL: ${metadata.ctaText || "O link do produto com desconto especial está na descrição do vídeo."}`,
           `FORMATO: ${formatHint}`,
           `DURACAO_TOTAL_SEGUNDOS: ${project.videoDurationSec}`,
@@ -324,6 +405,12 @@ export async function POST(req: NextRequest) {
           "Gere um roteiro de propaganda com 4 a 8 cenas curtas.",
           "Comece com um gancho de venda, mostre benefícios, contexto de uso e feche com CTA forte.",
           "Inclua pelo menos 2 scenes do tipo RetentionScene se houver assets disponíveis.",
+          "Use os assets enviados na ordem recebida para mostrar o produto de verdade.",
+          "Se houver assets enviados, nao coloque imagens genericas de outros produtos ou objetos.",
+          "Evite overlays decorativos. Nada de emojis, setas ou stickers sem funcao comercial clara.",
+          "Se DESCRICAO_COMERCIAL_EXISTENTE, USOS_RECOMENDADOS_EXISTENTES ou PUBLICO_ALVO_EXISTENTE estiverem vazios, preencha esses campos na saida.",
+          "A description e a commercialDescription devem servir como descricao do YouTube e conter o link de comissao quando informado.",
+          "Retorne youtubeTags como texto separado por virgulas, sem hashtags e sem quebras de linha.",
           "O resultado deve parecer um vendedor profissional apresentando o produto.",
         ].join("\n")
       : [
@@ -375,11 +462,21 @@ export async function POST(req: NextRequest) {
     }
 
     const title = String(parsed.title ?? "").trim();
-    const description = String(parsed.description ?? "").trim();
+    const commercialDescription = String(
+      parsed.commercialDescription ?? parsed.description ?? metadata.productDescription ?? ""
+    ).trim();
+    const description = commercialDescription || String(parsed.description ?? "").trim();
+    const generatedUseCases = String(parsed.productUseCases ?? metadata.productUseCases ?? "").trim();
+    const generatedTargetAudience = String(parsed.targetAudience ?? metadata.targetAudience ?? "").trim();
+    const youtubeTags = normalizeYoutubeTags(parsed.youtubeTags ?? metadata.youtubeTags ?? "");
     const narrationText = String(parsed.narrationText ?? "").trim();
     const theme = buildTheme(project.id, metadata);
+    const rawScenes = coerceScenes(parsed.scenes ?? [], project.videoDurationSec);
+    const productSafeScenes = isProductAd
+      ? normalizeProductAdScenes(rawScenes, metadata, title || project.title || "Produto")
+      : rawScenes;
     const scenes = decorateScenesWithTheme(
-      coerceScenes(parsed.scenes ?? [], project.videoDurationSec),
+      coerceScenes(productSafeScenes, project.videoDurationSec),
       theme
     );
 
@@ -404,6 +501,10 @@ export async function POST(req: NextRequest) {
         promptPreview: user,
         metadataJson: JSON.stringify({
           ...metadata,
+          productDescription: commercialDescription || metadata.productDescription || "",
+          productUseCases: generatedUseCases || metadata.productUseCases || "",
+          targetAudience: generatedTargetAudience || metadata.targetAudience || "",
+          youtubeTags,
           ctaText: String(parsed.ctaText ?? metadata.ctaText ?? "").trim() || metadata.ctaText,
         }),
         videoSpecJson: JSON.stringify(videoSpec, null, 2),

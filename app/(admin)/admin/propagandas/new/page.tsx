@@ -76,24 +76,23 @@ export default function NewPropagandaPage() {
     try {
       const ideaPrompt = [
         `Crie uma propaganda curta e vendedora para o produto "${productName}".`,
-        productDescription && `Descrição: ${productDescription}`,
         productTechnicalDetails && `Detalhes técnicos: ${productTechnicalDetails}`,
-        productUseCases && `Usos indicados: ${productUseCases}`,
-        targetAudience && `Público-alvo: ${targetAudience}`,
-        productUrl && `Link do produto: ${productUrl}`,
-        `CTA obrigatório: ${ctaText}`,
+        productUrl && `Link de comissao do produto: ${productUrl}`,
+        `CTA obrigatorio: ${ctaText}`,
+        "Crie a descricao comercial, os usos recomendados, o publico-alvo e tags para YouTube separadas por virgula.",
       ]
         .filter(Boolean)
         .join("\n");
 
       const metadata = {
         productName,
-        productDescription,
+        productDescription: "",
         productTechnicalDetails,
-        productUseCases,
-        targetAudience,
+        productUseCases: "",
+        targetAudience: "",
         productUrl,
         ctaText,
+        youtubeTags: "",
         primaryBgColor,
         primaryTextColor,
         assets,
@@ -105,7 +104,7 @@ export default function NewPropagandaPage() {
         body: JSON.stringify({
           projectType: "PRODUCT_AD",
           title: productName,
-          description: productDescription,
+          description: "",
           ideaPrompt,
           metadataJson: metadata,
           aspectRatio,
@@ -150,7 +149,7 @@ export default function NewPropagandaPage() {
         </button>
         <h1 className="text-4xl font-black tracking-tight text-gray-900">Criar propaganda</h1>
         <p className="mt-2 text-lg text-gray-500">
-          Envie o produto, as mídias e deixe a IA montar o nosso vendedor em vídeo.
+          Informe título, descrição técnica e link. A IA monta a venda, SEO e roteiro.
         </p>
       </div>
 
@@ -160,78 +159,35 @@ export default function NewPropagandaPage() {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-black uppercase tracking-wider text-gray-700">
-                  Nome do produto
+                  Título / nome do produto
                 </label>
                 <input
                   value={productName}
                   onChange={(e) => setProductName(e.target.value)}
                   className="w-full rounded-2xl border-gray-100 bg-gray-50 px-5 py-4 text-lg font-bold text-gray-900"
-                  placeholder="Ex.: Cadeira Office Ergonômica Premium"
+                  placeholder="Ex.: Smart TV 50 polegadas 4K"
                 />
               </div>
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-black uppercase tracking-wider text-gray-700">
-                  Descrição comercial
-                </label>
-                <textarea
-                  value={productDescription}
-                  onChange={(e) => setProductDescription(e.target.value)}
-                  className="min-h-[140px] w-full rounded-2xl border-gray-100 bg-gray-50 px-5 py-4 text-gray-900"
-                  placeholder="Descreva o produto como você venderia para o cliente."
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-black uppercase tracking-wider text-gray-700">
-                  Detalhes técnicos e materiais
+                  Descrição técnica do produto
                 </label>
                 <textarea
                   value={productTechnicalDetails}
                   onChange={(e) => setProductTechnicalDetails(e.target.value)}
-                  className="min-h-[140px] w-full rounded-2xl border-gray-100 bg-gray-50 px-5 py-4 text-gray-900"
-                  placeholder="Material, dimensões, potência, recursos, acabamento, garantia..."
-                />
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-black uppercase tracking-wider text-gray-700">
-                  Onde pode ser usado
-                </label>
-                <textarea
-                  value={productUseCases}
-                  onChange={(e) => setProductUseCases(e.target.value)}
-                  className="min-h-[140px] w-full rounded-2xl border-gray-100 bg-gray-50 px-5 py-4 text-gray-900"
-                  placeholder="Casa, escritório, quarto, sala, home office..."
-                />
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-black uppercase tracking-wider text-gray-700">
-                  Público-alvo
-                </label>
-                <textarea
-                  value={targetAudience}
-                  onChange={(e) => setTargetAudience(e.target.value)}
-                  className="min-h-[140px] w-full rounded-2xl border-gray-100 bg-gray-50 px-5 py-4 text-gray-900"
-                  placeholder="Quem mais tende a comprar esse produto?"
+                  className="min-h-[210px] w-full rounded-2xl border-gray-100 bg-gray-50 px-5 py-4 text-gray-900"
+                  placeholder="Cole aqui as especificações: modelo, tamanho, material, recursos, medidas, potência, compatibilidades, garantia, etc."
                 />
               </div>
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-black uppercase tracking-wider text-gray-700">
-                  Link do produto
+                  Link de comissão / afiliado
                 </label>
                 <input
                   value={productUrl}
                   onChange={(e) => setProductUrl(e.target.value)}
                   className="w-full rounded-2xl border-gray-100 bg-gray-50 px-5 py-4 text-gray-900"
                   placeholder="https://..."
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-black uppercase tracking-wider text-gray-700">
-                  CTA obrigatório
-                </label>
-                <textarea
-                  value={ctaText}
-                  onChange={(e) => setCtaText(e.target.value)}
-                  className="min-h-[100px] w-full rounded-2xl border-gray-100 bg-gray-50 px-5 py-4 text-gray-900"
                 />
               </div>
             </div>
@@ -380,15 +336,21 @@ export default function NewPropagandaPage() {
           </div>
 
           <div className="rounded-3xl bg-gradient-to-br from-emerald-600 to-emerald-800 p-6 text-white shadow-xl shadow-emerald-100">
-            <h3 className="text-xl font-black">Fluxo em 2 etapas</h3>
+            <h3 className="text-xl font-black">A IA completa o resto</h3>
             <p className="mt-3 text-sm leading-relaxed text-emerald-50">
-              Primeiro vamos gerar o roteiro vendedor, a narração e o JSON do vídeo. Depois você revisa e manda renderizar.
+              Ao gerar roteiro, ela cria descrição comercial para YouTube, usos, público-alvo, tags SEO, narração e cenas.
             </p>
           </div>
 
           <button
             onClick={createProject}
-            disabled={loading || uploading || productName.trim().length === 0 || productDescription.trim().length === 0}
+            disabled={
+              loading ||
+              uploading ||
+              productName.trim().length === 0 ||
+              productTechnicalDetails.trim().length === 0 ||
+              productUrl.trim().length === 0
+            }
             className="flex w-full items-center justify-center gap-3 rounded-2xl bg-emerald-600 px-8 py-4 text-lg font-black text-white shadow-xl shadow-emerald-100 transition-all hover:-translate-y-1 hover:bg-emerald-700 disabled:opacity-50"
           >
             {loading ? "Criando propaganda..." : "Gerar propaganda"}
