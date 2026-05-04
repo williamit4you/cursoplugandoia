@@ -129,6 +129,13 @@ export default function MercadoLivrePage() {
     return Boolean(config.affiliateUrlTemplate?.trim() || config.affiliateLinkMode === "AFF_ID_PARAM");
   }, [config]);
 
+  const templateHasDynamicToken = useMemo(() => {
+    if (!config?.affiliateUrlTemplate?.trim()) return true;
+    return ["{{url}}", "{{permalink}}", "{{encodedUrl}}", "{{itemId}}", "{{tag}}"].some((token) =>
+      config.affiliateUrlTemplate?.includes(token)
+    );
+  }, [config?.affiliateUrlTemplate]);
+
   const loadConfig = async () => {
     setLoading(true);
     try {
@@ -486,6 +493,12 @@ export default function MercadoLivrePage() {
               placeholder="Ex.: https://...{{encodedUrl}}..."
               sx={{ mb: 2 }}
             />
+            {!templateHasDynamicToken && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Esse parece ser um link afiliado fixo de um unico produto. Para automatizar varios produtos,
+                o template precisa ter pelo menos um token, como {"{{encodedUrl}}"} ou {"{{url}}"}.
+              </Alert>
+            )}
             <TextField
               label="Cookie/Token do Link Builder (guardado, nao usado no MVP)"
               fullWidth

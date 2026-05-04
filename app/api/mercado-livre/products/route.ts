@@ -45,7 +45,6 @@ export async function GET(req: NextRequest) {
     const products = await searchMercadoLivreProducts(config, {
       limit,
       queryOverride,
-      accessToken: config.accessToken,
     });
 
     const items = products.map((product) => {

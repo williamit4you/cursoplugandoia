@@ -9,6 +9,7 @@ import {
   refreshMercadoLivreAccessToken,
   searchMercadoLivreProducts,
   shouldRefreshMercadoLivreToken,
+  isMercadoLivreAffiliateTemplateDynamic,
   type MercadoLivreProduct,
 } from "@/lib/mercadoLivreAffiliate";
 
@@ -134,9 +135,22 @@ export async function POST(req: NextRequest) {
     }
 
     const maxProducts = Math.min(24, Math.max(1, Number(config.maxProductsPerRun || 8)));
+    if (
+      config.affiliateLinkMode === "MANUAL_TEMPLATE" &&
+      config.affiliateUrlTemplate &&
+      !isMercadoLivreAffiliateTemplateDynamic(config.affiliateUrlTemplate)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "O template de URL afiliada precisa conter {{url}}, {{encodedUrl}}, {{itemId}} ou {{tag}}. Um link meli.la fixo vale apenas para um produto.",
+        },
+        { status: 400 }
+      );
+    }
+
     const candidates = await searchMercadoLivreProducts(config, {
       limit: Math.min(50, maxProducts * 3),
-      accessToken: config.accessToken,
     });
 
     const existing = await prisma.mercadoLivreAffiliatePick.findMany({

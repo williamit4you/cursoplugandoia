@@ -193,6 +193,13 @@ function appendQueryParam(url: string, key: string, value: string) {
   }
 }
 
+export function isMercadoLivreAffiliateTemplateDynamic(template: string | null | undefined) {
+  const value = String(template || "");
+  return ["{{url}}", "{{permalink}}", "{{encodedUrl}}", "{{itemId}}", "{{tag}}"].some((token) =>
+    value.includes(token)
+  );
+}
+
 export function buildMercadoLivreAffiliateUrl(
   product: Pick<MercadoLivreProduct, "id" | "permalink">,
   config: MercadoLivreAffiliateConfigLike
@@ -203,6 +210,15 @@ export function buildMercadoLivreAffiliateUrl(
   const mode = String(config.affiliateLinkMode || "MANUAL_TEMPLATE").trim();
 
   if (template) {
+    if (!isMercadoLivreAffiliateTemplateDynamic(template)) {
+      return {
+        url: permalink,
+        mode: "INVALID_STATIC_TEMPLATE",
+        warning:
+          "Template afiliado sem tokens dinamicos. O sistema usou o permalink comum para nao apontar todos os produtos para o mesmo link.",
+      };
+    }
+
     const url = template
       .replaceAll("{{url}}", permalink)
       .replaceAll("{{permalink}}", permalink)
