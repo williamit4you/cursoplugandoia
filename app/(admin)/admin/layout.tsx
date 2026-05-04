@@ -25,6 +25,7 @@ import CodeIcon from "@mui/icons-material/Code";
 import QuizIcon from "@mui/icons-material/Quiz";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import CampaignIcon from "@mui/icons-material/Campaign";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 
@@ -46,6 +47,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Calendário Social", icon: <VideoCameraBackIcon />, path: "/admin/social/calendar" },
     { text: "Vídeos com código", icon: <CodeIcon />, path: "/admin/video-code" },
     { text: "Propagandas", icon: <CampaignIcon />, path: "/admin/propagandas" },
+    { text: "Mercado Livre", icon: <ShoppingCartIcon />, path: "/admin/mercado-livre" },
     { text: "Perguntas → vídeos", icon: <QuizIcon />, path: "/admin/video-questions" },
     { text: "YT Analytics", icon: <YouTubeIcon />, path: "/admin/youtube-analytics" },
     { text: "Config. Scraper", icon: <SettingsIcon />, path: "/admin/scraper-config" },

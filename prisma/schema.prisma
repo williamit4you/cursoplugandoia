@@ -392,6 +392,58 @@ model ScraperRun {
   aiUsageLogs    AiUsageLog[]
 }
 
+model MercadoLivreAffiliateConfig {
+  id                   String    @id @default(cuid())
+  isEnabled            Boolean   @default(false)
+  siteId               String    @default("MLB")
+  searchTerms          String    @default("[\"ofertas\"]")
+  categoryIds          String    @default("[]")
+  minPrice             Float?
+  maxPrice             Float?
+  sort                 String    @default("relevance")
+  maxProductsPerRun    Int       @default(8)
+  postIntervalHours    Int       @default(2)
+  preferredPlatforms   String    @default("[\"YOUTUBE\",\"INSTAGRAM\",\"TIKTOK\"]")
+  autoGenerateScript   Boolean   @default(true)
+  autoRenderVideo      Boolean   @default(false)
+  autoEnqueueSocial    Boolean   @default(true)
+  affiliateLinkMode    String    @default("MANUAL_TEMPLATE")
+  affiliateTag         String?
+  affiliateUrlTemplate String?
+  linkBuilderCookie    String?
+  appId                String?
+  clientSecret         String?
+  accessToken          String?
+  refreshToken         String?
+  tokenExpiresAt       DateTime?
+  lastRunAt            DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+model MercadoLivreAffiliatePick {
+  id                  String    @id @default(cuid())
+  mercadoLivreItemId  String    @unique
+  title               String
+  price               Float?
+  currencyId          String?
+  permalink           String
+  affiliateUrl        String?
+  thumbnailUrl        String?
+  categoryId          String?
+  status              String    @default("SELECTED")
+  scheduledBaseAt     DateTime?
+  codeVideoProjectId  String?
+  errorMessage        String?
+  metadataJson        String    @default("{}")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([codeVideoProjectId])
+}
+
 model AiUsageLog {
   id               String      @id @default(cuid())
   runId            String?

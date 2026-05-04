@@ -23,6 +23,75 @@ function safeJsonParse(text: string) {
   }
 }
 
+function normalizeSocialPlatforms(value: unknown) {
+  const allowed = new Set(["YOUTUBE", "INSTAGRAM", "TIKTOK"]);
+  const raw = Array.isArray(value) ? value : [];
+  const platforms = raw
+    .map((item) => String(item || "").toUpperCase())
+    .filter((item) => allowed.has(item));
+  return platforms.length > 0 ? Array.from(new Set(platforms)) : [];
+}
+
+function buildProductAdSocialSummary(project: any, metadata: any) {
+  const productName = String(metadata?.productName || project.title || "Produto recomendado").trim();
+  const description = String(project.description || metadata?.productDescription || "").trim();
+  const cta = String(metadata?.ctaText || "Confira pelo link na descricao.").trim();
+  const link = String(metadata?.productUrl || metadata?.mercadoLivre?.affiliateUrl || "").trim();
+  return [productName, description, cta, link ? `Link: ${link}` : ""]
+    .filter(Boolean)
+    .join("\n\n")
+    .slice(0, 4500);
+}
+
+async function enqueueProductAdSocialPosts(project: any, videoUrl: string) {
+  if (project.projectType !== "PRODUCT_AD") return;
+
+  const metadata = safeJsonParse(project.metadataJson || "{}") || {};
+  const mercadoLivre = metadata?.mercadoLivre;
+  if (!mercadoLivre || mercadoLivre.autoScheduleSocial !== true) return;
+
+  const platforms = normalizeSocialPlatforms(mercadoLivre.platforms);
+  if (platforms.length === 0) return;
+
+  const scheduledTo = mercadoLivre.scheduledTo ? new Date(mercadoLivre.scheduledTo) : null;
+  const hasValidSchedule = scheduledTo && Number.isFinite(scheduledTo.getTime());
+  const summary = buildProductAdSocialSummary(project, metadata);
+
+  for (const platform of platforms) {
+    const socialPlatform = platform === "INSTAGRAM" ? "META" : platform;
+    const postType = "REEL";
+
+    const existing = await prisma.socialPost.findFirst({
+      where: {
+        codeVideoProjectId: project.id,
+        platform: socialPlatform,
+        postType,
+        status: { not: "FAILED" },
+      },
+    });
+    if (existing) continue;
+
+    await prisma.socialPost.create({
+      data: {
+        postId: null,
+        codeVideoProjectId: project.id,
+        summary,
+        videoUrl,
+        status: hasValidSchedule ? "SCHEDULED" : "DRAFT",
+        scheduledTo: hasValidSchedule ? scheduledTo : null,
+        platform: socialPlatform,
+        postType,
+        log: `[${new Date().toLocaleTimeString("pt-BR")}] Enfileirado pela rotina Mercado Livre`,
+      },
+    });
+  }
+
+  await prisma.mercadoLivreAffiliatePick.updateMany({
+    where: { codeVideoProjectId: project.id },
+    data: { status: "SCHEDULED", errorMessage: null },
+  });
+}
+
 function totalDurationInSeconds(videoSpec: any) {
   const scenes = Array.isArray(videoSpec?.scenes) ? videoSpec.scenes : [];
   const sum = scenes.reduce((acc: number, s: any) => acc + (Number(s?.durationSec) || 0), 0);
@@ -274,6 +343,8 @@ export async function POST(req: NextRequest) {
       where: { id: projectId },
       data: { status: "DONE", videoUrl, errorMessage: null },
     });
+
+    await enqueueProductAdSocialPosts(updated, videoUrl);
 
     return NextResponse.json(updated);
   } catch (error: any) {
