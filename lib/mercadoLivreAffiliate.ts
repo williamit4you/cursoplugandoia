@@ -85,7 +85,11 @@ export function mercadoLivreAuthHost(siteId: string | null | undefined) {
   }
 }
 
-export function mercadoLivreRedirectUri(req: Request) {
+export function mercadoLivreRedirectUri(req: Request, originOverride?: string | null) {
+  if (originOverride && /^https?:\/\/[^/]+$/i.test(originOverride)) {
+    return `${originOverride}/api/mercado-livre/callback`;
+  }
+
   const host = req.headers.get("host") || "localhost:3000";
   const forwardedProto = req.headers.get("x-forwarded-proto");
   const protocol = forwardedProto || (host.includes("localhost") ? "http" : "https");

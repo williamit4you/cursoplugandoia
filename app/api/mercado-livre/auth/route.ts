@@ -11,6 +11,18 @@ export const runtime = "nodejs";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
+function normalizeOrigin(value: string | null) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    if (url.hostname === "0.0.0.0") return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
 function base64Url(buffer: Buffer) {
   return buffer
     .toString("base64")
@@ -37,7 +49,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const redirectUri = mercadoLivreRedirectUri(req);
+    const requestedOrigin = normalizeOrigin(req.nextUrl.searchParams.get("origin"));
+    const forwardedHost = req.headers.get("x-forwarded-host");
+    const forwardedProto = req.headers.get("x-forwarded-proto") || "https";
+    const forwardedOrigin = forwardedHost ? normalizeOrigin(`${forwardedProto}://${forwardedHost}`) : null;
+    const redirectOrigin = requestedOrigin || forwardedOrigin;
+    const redirectUri = mercadoLivreRedirectUri(req, redirectOrigin);
     const state = randomBase64Url(24);
     const codeVerifier = randomBase64Url(48);
     const codeChallenge = sha256Base64Url(codeVerifier);
@@ -66,6 +83,15 @@ export async function GET(req: NextRequest) {
       path: "/",
       maxAge: 10 * 60,
     });
+    if (redirectOrigin) {
+      res.cookies.set("ml_oauth_origin", redirectOrigin, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure,
+        path: "/",
+        maxAge: 10 * 60,
+      });
+    }
 
     return res;
   } catch (error: any) {

@@ -258,7 +258,7 @@ export default function MercadoLivrePage() {
   const authMercadoLivre = async () => {
     const saved = await save(false);
     if (!saved) return;
-    window.location.href = "/api/mercado-livre/auth";
+    window.location.href = `/api/mercado-livre/auth?origin=${encodeURIComponent(window.location.origin)}`;
   };
 
   if (loading || !config) {
