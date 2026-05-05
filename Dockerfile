@@ -56,7 +56,6 @@ COPY components ./components
 COPY lib ./lib
 COPY prisma ./prisma
 COPY public ./public
-COPY remotion ./remotion
 COPY middleware.ts ./middleware.ts
 COPY next-env.d.ts ./next-env.d.ts
 COPY next.config.js ./next.config.js
@@ -75,7 +74,6 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 RUN apk add --no-cache \
-    ffmpeg \
     chromium \
     nss \
     freetype \
@@ -99,16 +97,9 @@ RUN chown nextjs:nodejs .next
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/remotion ./remotion
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/execa ./node_modules/execa
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/which ./node_modules/which
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/cross-spawn ./node_modules/cross-spawn
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/path-key ./node_modules/path-key
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/shebang-command ./node_modules/shebang-command
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/shebang-regex ./node_modules/shebang-regex
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/isexe ./node_modules/isexe
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 USER nextjs
