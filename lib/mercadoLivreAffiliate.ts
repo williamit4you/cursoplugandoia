@@ -504,6 +504,7 @@ export async function searchMercadoLivreProducts(
     categoryOverride?: string | null;
     excludeIds?: string[];
     randomize?: boolean;
+    requestTimeoutMs?: number;
   } = {}
 ) {
   const siteId = String(config.siteId || "MLB").trim() || "MLB";
@@ -539,6 +540,7 @@ export async function searchMercadoLivreProducts(
   }
 
   const failures: string[] = [];
+  const requestTimeoutMs = Math.min(20000, Math.max(3000, Number(options.requestTimeoutMs || 8000)));
   const headerVariants: Array<{ label: string; headers: Record<string, string> }> = [];
   if (options.accessToken) {
     headerVariants.push({
@@ -565,14 +567,22 @@ export async function searchMercadoLivreProducts(
     let ok = false;
 
     for (const variant of headerVariants) {
-      const res = await fetch(url, { headers: variant.headers, cache: "no-store" });
-      data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        ok = true;
-        break;
+      try {
+        const res = await fetch(url, {
+          headers: variant.headers,
+          cache: "no-store",
+          signal: AbortSignal.timeout(requestTimeoutMs),
+        });
+        data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          ok = true;
+          break;
+        }
+        failures.push(`${variant.label}: HTTP ${res.status} ${data?.message || data?.error || ""}`.trim());
+        if (res.status !== 401 && res.status !== 403) break;
+      } catch (error: any) {
+        failures.push(`${variant.label}: ${error?.name === "TimeoutError" ? `timeout ${requestTimeoutMs}ms` : error?.message || "fetch error"}`);
       }
-      failures.push(`${variant.label}: HTTP ${res.status} ${data?.message || data?.error || ""}`.trim());
-      if (res.status !== 401 && res.status !== 403) break;
     }
 
     if (!ok) {

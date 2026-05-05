@@ -7,4 +7,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.log
-
+.agent
+.github
+.remotion-temp
+docs
+scratch
+worker
+README.md
+test_pg.js
+tsconfig.tsbuildinfo

@@ -1,26 +1,8 @@
-FROM node:20-alpine AS base
-
-# Install system dependencies for Remotion
-# We need ffmpeg for video encoding, and chromium + fonts for rendering frames
-RUN apk add --no-cache \
-    ffmpeg \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    libc6-compat
-
-# Tell Remotion/Puppeteer where the browser is
-ENV REMOTION_CHROME_BIN=/usr/bin/chromium-browser
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-
-# Install dependencies only when needed
-FROM base AS deps
+FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
+RUN apk add --no-cache libc6-compat
+
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 RUN \
   if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
@@ -29,15 +11,14 @@ RUN \
   else echo "Lockfile not found." && exit 1; \
   fi
 
-
-# Rebuild the source code only when needed
-FROM base AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Aumentar memória para o build do Next.js evitar erro de OOM
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+RUN apk add --no-cache libc6-compat
 
-# --- INÍCIO DA CORREÇÃO ---
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NEXT_TELEMETRY_DISABLED=1
+
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
 
@@ -56,7 +37,6 @@ ENV ADMIN_EMAIL=$ADMIN_EMAIL
 ARG ADMIN_PASSWORD
 ENV ADMIN_PASSWORD=$ADMIN_PASSWORD
 
-# --- VARIÁVEIS DO MINIO ADICIONADAS AQUI ---
 ARG MINIO_ENDPOINT
 ENV MINIO_ENDPOINT=$MINIO_ENDPOINT
 
@@ -71,12 +51,27 @@ ENV MINIO_BUCKET_NAME=$MINIO_BUCKET_NAME
 
 ARG MINIO_PUBLIC_URL
 ENV MINIO_PUBLIC_URL=$MINIO_PUBLIC_URL
-# --- FIM DA CORREÇÃO ---
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY --from=deps /app/package.json ./package.json
+COPY --from=deps /app/package-lock.json* ./package-lock.json*
+COPY --from=deps /app/yarn.lock* ./yarn.lock*
+COPY --from=deps /app/pnpm-lock.yaml* ./pnpm-lock.yaml*
 
-# 1. Gera o Prisma Client antes do Build
+COPY app ./app
+COPY components ./components
+COPY lib ./lib
+COPY prisma ./prisma
+COPY public ./public
+COPY remotion ./remotion
+COPY middleware.ts ./middleware.ts
+COPY next-env.d.ts ./next-env.d.ts
+COPY next.config.js ./next.config.js
+COPY postcss.config.js ./postcss.config.js
+COPY prisma.config.ts ./prisma.config.ts
+COPY tailwind.config.ts ./tailwind.config.ts
+COPY tsconfig.json ./tsconfig.json
+
 RUN npx prisma generate
 
 RUN \
@@ -86,33 +81,44 @@ RUN \
   else echo "Lockfile not found." && exit 1; \
   fi
 
-# Production image, copy all the files and run next
-FROM base AS runner
+RUN \
+  if [ -f yarn.lock ]; then yarn install --frozen-lockfile --production=true; \
+  elif [ -f package-lock.json ]; then npm prune --omit=dev; \
+  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm prune --prod; \
+  else echo "Lockfile not found." && exit 1; \
+  fi
+
+FROM node:20-alpine AS runner
 WORKDIR /app
 
+RUN apk add --no-cache \
+    ffmpeg \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    libc6-compat
+
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV REMOTION_CHROME_BIN=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
 
-# Set the correct permission for prerender cache
 RUN mkdir .next
 RUN chown nextjs:nodejs .next
 
-# Automatically leverage output traces to reduce image size
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
 COPY --from=builder --chown=nextjs:nodejs /app/remotion ./remotion
-
-# --- A GARANTIA DEFINITIVA ---
-# 1. Copia o Prisma Client e a Engine (o standalone SEMPRE esquece de copiar a engine)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-
-# 2. Copia explicitamente os pacotes que o Remotion precisa para rodar o vídeo
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/execa ./node_modules/execa
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/which ./node_modules/which
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/cross-spawn ./node_modules/cross-spawn
@@ -120,8 +126,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/path-key ./node_modu
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/shebang-command ./node_modules/shebang-command
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/shebang-regex ./node_modules/shebang-regex
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/isexe ./node_modules/isexe
-
-# Fallback: garante `node_modules` completo no runtime (evita faltar deps transitivas em produção).
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 USER nextjs

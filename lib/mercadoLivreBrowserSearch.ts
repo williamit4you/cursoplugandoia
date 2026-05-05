@@ -13,6 +13,10 @@ type BrowserSearchOptions = {
   categoryOverride?: string | null;
   excludeIds?: string[];
   randomize?: boolean;
+  maxTargets?: number;
+  gotoTimeoutMs?: number;
+  settleDelayMs?: number;
+  waitForAnchorsTimeoutMs?: number;
 };
 
 function dynamicRequire(moduleName: string) {
@@ -116,6 +120,13 @@ export async function searchMercadoLivreProductsWithBrowser(
     ? [options.categoryOverride]
     : parseJsonStringArray(config.categoryIds, DEFAULT_MERCADO_LIVRE_CATEGORY_IDS);
   const excluded = new Set((options.excludeIds || []).map((item) => String(item)));
+  const maxTargets = Math.min(10, Math.max(1, Number(options.maxTargets || 10)));
+  const gotoTimeoutMs = Math.min(45000, Math.max(5000, Number(options.gotoTimeoutMs || 45000)));
+  const settleDelayMs = Math.min(10000, Math.max(0, Number(options.settleDelayMs || 4500)));
+  const waitForAnchorsTimeoutMs = Math.min(
+    15000,
+    Math.max(1000, Number(options.waitForAnchorsTimeoutMs || 10000))
+  );
 
   const browser = await puppeteer.launch({
     executablePath,
@@ -149,14 +160,14 @@ export async function searchMercadoLivreProductsWithBrowser(
 
     const targetsToUse = options.randomize ? shuffleMercadoLivreList(searchTargets) : searchTargets;
 
-    for (const target of targetsToUse.slice(0, 10)) {
+    for (const target of targetsToUse.slice(0, maxTargets)) {
       const url = buildSearchUrl(siteId, target.term, target.category);
-      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout: gotoTimeoutMs });
 
       // Mercado Livre sometimes serves a JS challenge first. Give it a moment to set cookies and redirect.
-      await new Promise((resolve) => setTimeout(resolve, 4500));
+      await new Promise((resolve) => setTimeout(resolve, settleDelayMs));
       try {
-        await page.waitForSelector("a[href]", { timeout: 10000 });
+        await page.waitForSelector("a[href]", { timeout: waitForAnchorsTimeoutMs });
       } catch {
         // continue to extraction; the page may still have anchors
       }

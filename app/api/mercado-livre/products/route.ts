@@ -11,6 +11,8 @@ import {
 import { searchMercadoLivreProductsWithBrowser } from "@/lib/mercadoLivreBrowserSearch";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
@@ -60,6 +62,7 @@ export async function GET(req: NextRequest) {
         accessToken: config.accessToken,
         excludeIds: usedIds,
         randomize: true,
+        requestTimeoutMs: 7000,
       });
     } catch (error: any) {
       apiError = error?.message || "API search failed";
@@ -69,6 +72,10 @@ export async function GET(req: NextRequest) {
           queryOverride,
           excludeIds: usedIds,
           randomize: true,
+          maxTargets: 2,
+          gotoTimeoutMs: 12000,
+          settleDelayMs: 1800,
+          waitForAnchorsTimeoutMs: 2500,
         });
         source = "browser";
       } catch (browserErr: any) {
