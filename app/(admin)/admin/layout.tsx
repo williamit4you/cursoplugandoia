@@ -26,6 +26,7 @@ import QuizIcon from "@mui/icons-material/Quiz";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import StorefrontIcon from "@mui/icons-material/Storefront";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 
@@ -52,6 +53,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "YT Analytics", icon: <YouTubeIcon />, path: "/admin/youtube-analytics" },
     { text: "Config. Scraper", icon: <SettingsIcon />, path: "/admin/scraper-config" },
     { text: "Config. Perguntas", icon: <SettingsIcon />, path: "/admin/video-questions-config" },
+    { text: "Shopee", icon: <StorefrontIcon />, path: "/admin/shopee" },
   ];
 
   return (

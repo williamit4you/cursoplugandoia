@@ -444,6 +444,53 @@ model MercadoLivreAffiliatePick {
   @@index([codeVideoProjectId])
 }
 
+model ShopeeAffiliateConfig {
+  id                 String   @id @default(cuid())
+  isEnabled          Boolean  @default(false)
+  site               String   @default("br") // br, mx, co, cl, etc (public endpoints)
+  domain             String   @default("shopee.com.br")
+  searchTerms        String   @default("[\"ofertas\"]")
+  minPrice           Float?
+  maxPrice           Float?
+  maxProductsPerRun  Int      @default(8)
+  postIntervalHours  Int      @default(2)
+  preferredPlatforms String   @default("[\"YOUTUBE\",\"INSTAGRAM\",\"TIKTOK\"]")
+  autoGenerateScript Boolean  @default(true)
+  autoRenderVideo    Boolean  @default(false)
+  autoEnqueueSocial  Boolean  @default(true)
+
+  // Shopee Open Platform credentials (Partner ID / Key).
+  // NOTE: These are NOT required for public product scraping endpoints, but kept for future automation.
+  appId              String?
+  clientSecret       String?
+
+  lastRunAt          DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model ShopeeAffiliatePick {
+  id                String   @id @default(cuid())
+  shopeeItemId      String   @unique
+  title             String
+  price             Float?
+  currencyId        String?
+  permalink         String
+  affiliateUrl      String?
+  thumbnailUrl      String?
+  status            String   @default("SELECTED")
+  scheduledBaseAt   DateTime?
+  codeVideoProjectId String?
+  errorMessage      String?
+  metadataJson      String   @default("{}")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([codeVideoProjectId])
+}
+
 model AiUsageLog {
   id               String      @id @default(cuid())
   runId            String?

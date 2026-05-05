@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
     }
 
     const queryOverride = req.nextUrl.searchParams.get("q");
+    const forceBrowserFallback = req.nextUrl.searchParams.get("forceBrowser") === "1";
     const limit = Number(req.nextUrl.searchParams.get("limit") || config.maxProductsPerRun || 1);
     const searchLimit = Math.min(24, Math.max(limit * 5, 8));
     const used = await prisma.mercadoLivreAffiliatePick.findMany({
@@ -66,6 +67,25 @@ export async function GET(req: NextRequest) {
       });
     } catch (error: any) {
       apiError = error?.message || "API search failed";
+
+      const apiErrorLower = String(apiError || "").toLowerCase();
+      const looksForbidden =
+        apiErrorLower.includes("http 401") ||
+        apiErrorLower.includes("http 403") ||
+        apiErrorLower.includes("forbidden");
+      if (looksForbidden && !forceBrowserFallback) {
+        return NextResponse.json(
+          {
+            error:
+              "O Mercado Livre bloqueou a busca oficial (403/401). Para evitar derrubar o servico tentando Chromium (alto custo), o fallback via navegador foi desativado para este erro. Se quiser tentar mesmo assim, use ?forceBrowser=1.",
+            apiError,
+            browserError: null,
+            code: "MERCADO_LIVRE_SEARCH_FORBIDDEN",
+          },
+          { status: 502 }
+        );
+      }
+
       try {
         products = await searchMercadoLivreProductsWithBrowser(config, {
           limit: searchLimit,

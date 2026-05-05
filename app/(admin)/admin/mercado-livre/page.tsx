@@ -70,6 +70,46 @@ const DEFAULT_CATEGORY_LINES = [
   "MLB407134 - Ferramentas",
 ];
 
+async function readJsonResponse(res: Response): Promise<{
+  data: any | null;
+  text: string;
+  contentType: string;
+}> {
+  const contentType = res.headers.get("content-type") || "";
+  const text = await res.text();
+
+  if (contentType.toLowerCase().includes("application/json")) {
+    try {
+      return { data: JSON.parse(text || "null"), text, contentType };
+    } catch {
+      return { data: null, text, contentType };
+    }
+  }
+
+  // Some proxies (e.g. EasyPanel) return HTML on upstream failures.
+  // Try JSON anyway, but keep the raw text for a better error message.
+  try {
+    return { data: JSON.parse(text || "null"), text, contentType };
+  } catch {
+    return { data: null, text, contentType };
+  }
+}
+
+function buildNonJsonApiError(res: Response, contentType: string, text: string) {
+  const snippet = String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160);
+  const ct = contentType ? `content-type: ${contentType}` : "content-type desconhecido";
+  const extra =
+    snippet && snippet.includes("<!DOCTYPE html")
+      ? " (parece uma pagina HTML do proxy/servidor, nao JSON)"
+      : snippet
+        ? ` (resposta: ${snippet})`
+        : "";
+  return new Error(`API retornou ${res.status} ${res.statusText} (${ct})${extra}.`);
+}
+
 function Grid({
   container,
   xs,
@@ -265,8 +305,11 @@ export default function MercadoLivrePage() {
           refreshNow,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Falha ao salvar");
+      const { data, text, contentType } = await readJsonResponse(res);
+      if (!data && contentType && !contentType.toLowerCase().includes("application/json")) {
+        throw buildNonJsonApiError(res, contentType, text);
+      }
+      if (!res.ok) throw new Error(data?.error || `Falha ao salvar (HTTP ${res.status})`);
       setConfig(data);
       setMessage({ type: "success", text: "Configuracao Mercado Livre salva." });
       return true;
@@ -284,8 +327,11 @@ export default function MercadoLivrePage() {
     setMessage(null);
     try {
       const res = await fetch("/api/mercado-livre/products", { cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Falha ao consultar produtos");
+      const { data, text, contentType } = await readJsonResponse(res);
+      if (!data && contentType && !contentType.toLowerCase().includes("application/json")) {
+        throw buildNonJsonApiError(res, contentType, text);
+      }
+      if (!res.ok) throw new Error(data?.error || `Falha ao consultar produtos (HTTP ${res.status})`);
       setProducts(data.items || []);
       setMessage({ type: "info", text: `${data.items?.length || 0} produto(s) encontrados.` });
     } catch (error: any) {
@@ -309,8 +355,11 @@ export default function MercadoLivrePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ force: true }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Falha ao rodar rotina");
+      const { data, text, contentType } = await readJsonResponse(res);
+      if (!data && contentType && !contentType.toLowerCase().includes("application/json")) {
+        throw buildNonJsonApiError(res, contentType, text);
+      }
+      if (!res.ok) throw new Error(data?.error || `Falha ao rodar rotina (HTTP ${res.status})`);
       setRunResult(data);
       setMessage({
         type: "success",
@@ -342,8 +391,11 @@ export default function MercadoLivrePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ urls: manualLinksText }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Falha ao importar links");
+      const { data, text, contentType } = await readJsonResponse(res);
+      if (!data && contentType && !contentType.toLowerCase().includes("application/json")) {
+        throw buildNonJsonApiError(res, contentType, text);
+      }
+      if (!res.ok) throw new Error(data?.error || `Falha ao importar links (HTTP ${res.status})`);
       setRunResult(data);
       setMessage({ type: "success", text: `${data.created || 0} propaganda(s) criada(s) a partir dos links.` });
     } catch (error: any) {
