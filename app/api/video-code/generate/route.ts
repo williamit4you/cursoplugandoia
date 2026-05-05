@@ -230,6 +230,14 @@ function productAssetUrls(metadata: ProductAdMetadata) {
     .filter((url) => /^https?:\/\//i.test(url));
 }
 
+function looksLikeRenderableMediaUrl(value: string) {
+  const url = value.trim();
+  if (!/^https?:\/\//i.test(url)) return false;
+  if (/meli\.la/i.test(url)) return false;
+  if (/\/(p|up)\/MLB|produto\.mercadolivre|\/MLB-?\d+/i.test(url)) return false;
+  return /\.(jpg|jpeg|png|webp|gif|mp4|webm|mov)(\?|$)/i.test(url) || /\/uploads\//i.test(url);
+}
+
 function compactSceneTitle(value: unknown, fallback: string) {
   const text = String(value ?? fallback).replace(/\s+/g, " ").trim();
   if (text.length <= 48) return text;
@@ -251,6 +259,8 @@ function normalizeProductAdScenes(scenes: any[], metadata: ProductAdMetadata, fa
       if (shouldReplaceUrl) {
         props.url = assets[assetIndex % assets.length];
         assetIndex += 1;
+      } else if (assets.length === 0 && modelUrl && !looksLikeRenderableMediaUrl(modelUrl)) {
+        props.url = "";
       }
       props.title = compactSceneTitle(props.title, metadata.productName || fallbackTitle);
     }

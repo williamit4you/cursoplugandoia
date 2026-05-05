@@ -18,6 +18,7 @@ import {
   type MercadoLivreProduct,
 } from "@/lib/mercadoLivreAffiliate";
 import { searchMercadoLivreProductsWithBrowser } from "@/lib/mercadoLivreBrowserSearch";
+import { prepareMercadoLivreProductAssets, type MercadoLivrePreparedAsset } from "@/lib/mercadoLivreProductAssets";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -72,6 +73,7 @@ function buildMetadata(params: {
   scheduledTo: Date;
   platforms: string[];
   autoScheduleSocial: boolean;
+  assets: MercadoLivrePreparedAsset[];
 }) {
   const { product, affiliateUrl, affiliateMode, affiliateWarning, scheduledTo, platforms } = params;
   const price = formatMercadoLivrePrice(product);
@@ -97,9 +99,7 @@ function buildMetadata(params: {
     youtubeTags: "",
     primaryBgColor: "#1d4ed8",
     primaryTextColor: "#ffffff",
-    assets: product.thumbnailUrl
-      ? [{ url: product.thumbnailUrl, kind: "IMAGE", name: `${product.id}.jpg` }]
-      : [],
+    assets: params.assets,
     mercadoLivre: {
       itemId: product.id,
       permalink: product.permalink,
@@ -311,6 +311,7 @@ export async function POST(req: NextRequest) {
     for (const [index, product] of selected.entries()) {
       const affiliate = await resolveMercadoLivreAffiliateUrl(product, activeConfig);
       if (affiliate.updatedCookie) activeConfig.linkBuilderCookie = affiliate.updatedCookie;
+      const productAssets = await prepareMercadoLivreProductAssets(product, 4);
       const scheduledTo = addHours(startAt, index * intervalHours);
       const metadata = buildMetadata({
         product,
@@ -320,6 +321,7 @@ export async function POST(req: NextRequest) {
         scheduledTo,
         platforms,
         autoScheduleSocial: Boolean(config.autoEnqueueSocial),
+        assets: productAssets,
       });
 
       const project = await prisma.codeVideoProject.create({
@@ -355,6 +357,7 @@ export async function POST(req: NextRequest) {
             affiliateMode: affiliate.mode,
             affiliateWarning: affiliate.warning,
             platforms,
+            assetCount: productAssets.length,
           }),
         },
         update: {
@@ -373,6 +376,7 @@ export async function POST(req: NextRequest) {
             affiliateMode: affiliate.mode,
             affiliateWarning: affiliate.warning,
             platforms,
+            assetCount: productAssets.length,
           }),
         },
       });
@@ -384,6 +388,7 @@ export async function POST(req: NextRequest) {
         scheduledTo,
         affiliateUrl: affiliate.url,
         affiliateWarning: affiliate.warning,
+        assetCount: productAssets.length,
       };
 
       if (config.autoGenerateScript) {

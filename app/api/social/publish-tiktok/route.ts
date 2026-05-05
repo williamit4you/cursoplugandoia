@@ -46,6 +46,9 @@ export async function POST(req: NextRequest) {
     await prisma.socialPost.update({
       where: { id: socialPostId },
       data: {
+        status: "POSTED",
+        postedAt: new Date(),
+        postUrl: publishId ? `tiktok:${publishId}` : undefined,
         log: socialPost.log ? `${socialPost.log}\n${logEntry}` : logEntry,
       },
     });

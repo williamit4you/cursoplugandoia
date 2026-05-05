@@ -135,7 +135,7 @@ export default function MercadoLivrePage() {
   const [config, setConfig] = useState<Config | null>(null);
   const [searchTermsText, setSearchTermsText] = useState("");
   const [categoryIdsText, setCategoryIdsText] = useState("");
-  const [platforms, setPlatforms] = useState<string[]>(["YOUTUBE", "INSTAGRAM", "TIKTOK"]);
+  const [platforms, setPlatforms] = useState<string[]>(["YOUTUBE", "INSTAGRAM"]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState(false);
@@ -146,6 +146,7 @@ export default function MercadoLivrePage() {
   const [runResult, setRunResult] = useState<any | null>(null);
   const [redirectUri, setRedirectUri] = useState("");
   const [manualLinksText, setManualLinksText] = useState("");
+  const [nowMs, setNowMs] = useState(Date.now());
 
   const affiliateReady = useMemo(() => {
     if (!config) return false;
@@ -163,12 +164,34 @@ export default function MercadoLivrePage() {
     );
   }, [config?.affiliateUrlTemplate]);
 
-  const nextRunText = useMemo(() => {
-    if (!config?.lastRunAt) return "Assim que o cron chamar";
+  const nextRunAtMs = useMemo(() => {
+    if (!config?.lastRunAt) return null;
     const lastRun = new Date(config.lastRunAt).getTime();
-    if (!Number.isFinite(lastRun)) return "Assim que o cron chamar";
-    return new Date(lastRun + Number(config.postIntervalHours || 3) * 60 * 60 * 1000).toLocaleString("pt-BR");
+    if (!Number.isFinite(lastRun)) return null;
+    return lastRun + Number(config.postIntervalHours || 3) * 60 * 60 * 1000;
   }, [config?.lastRunAt, config?.postIntervalHours]);
+
+  const nextRunText = useMemo(() => {
+    if (!nextRunAtMs) return "Na proxima chamada do cron";
+    return new Date(nextRunAtMs).toLocaleString("pt-BR");
+  }, [nextRunAtMs]);
+
+  const remainingText = useMemo(() => {
+    if (!nextRunAtMs) return "Pronto para rodar";
+    const diff = nextRunAtMs - nowMs;
+    if (diff <= 0) return "Pronto para rodar";
+    const totalMinutes = Math.ceil(diff / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours <= 0) return `${minutes} min`;
+    return `${hours}h ${String(minutes).padStart(2, "0")}min`;
+  }, [nextRunAtMs, nowMs]);
+
+  const lastRunText = useMemo(() => {
+    if (!config?.lastRunAt) return "Ainda nao rodou";
+    const lastRun = new Date(config.lastRunAt);
+    return Number.isFinite(lastRun.getTime()) ? lastRun.toLocaleString("pt-BR") : "Ainda nao rodou";
+  }, [config?.lastRunAt]);
 
   const loadConfig = async () => {
     setLoading(true);
@@ -189,6 +212,11 @@ export default function MercadoLivrePage() {
 
   useEffect(() => {
     loadConfig();
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 30000);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -358,7 +386,9 @@ export default function MercadoLivrePage() {
           <Chip color={config.isEnabled ? "success" : "default"} label={config.isEnabled ? "Rotina ativa" : "Rotina pausada"} />
           <Chip label={`${config.maxProductsPerRun} produto por rodada`} />
           <Chip label={`A cada ${config.postIntervalHours}h`} />
-          <Chip label={`Proxima: ${nextRunText}`} />
+          <Chip label={`Ultima: ${lastRunText}`} />
+          <Chip color={remainingText === "Pronto para rodar" ? "warning" : "info"} label={`Falta: ${remainingText}`} />
+          <Chip label={`Proxima coleta: ${nextRunText}`} />
           <Chip label={`Saida: ${platforms.join(", ") || "nenhuma"}`} />
         </Box>
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, mt: 2 }}>

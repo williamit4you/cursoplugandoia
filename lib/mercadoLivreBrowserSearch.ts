@@ -60,6 +60,20 @@ function normalizeUrl(value: string) {
   }
 }
 
+function normalizeImageUrl(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (!/^https?:$/i.test(url.protocol)) return null;
+    if (!/mlstatic\.com|mercadolivre\.com|mercadolibre\.com/i.test(url.hostname)) return null;
+    if (/\.svg(\?|$)/i.test(url.pathname)) return null;
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 function extractIdFromUrl(url: string) {
   const match = url.match(/\bMLB-?(\d{6,})\b/i);
   return match ? `MLB${match[1]}` : `BROWSER-${Buffer.from(url).toString("base64url").slice(0, 24)}`;
@@ -183,7 +197,12 @@ export async function searchMercadoLivreProductsWithBrowser(
           const img = card?.querySelector<HTMLImageElement>("img");
           const title = ownText(titleNode || null) || anchor.getAttribute("title") || anchor.getAttribute("aria-label") || "";
           const priceText = ownText(priceNode || null);
-          const thumbnailUrl = img?.currentSrc || img?.src || null;
+          const thumbnailUrl =
+            img?.currentSrc ||
+            img?.src ||
+            img?.getAttribute("data-src") ||
+            img?.getAttribute("data-original") ||
+            null;
 
           if (title.length >= 8) {
             items.push({ title, href, priceText, thumbnailUrl });
@@ -209,7 +228,7 @@ export async function searchMercadoLivreProductsWithBrowser(
           price,
           currencyId: "BRL",
           permalink,
-          thumbnailUrl: item.thumbnailUrl,
+          thumbnailUrl: normalizeImageUrl(item.thumbnailUrl),
           categoryId: target.category || null,
           soldQuantity: null,
           condition: null,
@@ -227,6 +246,94 @@ export async function searchMercadoLivreProductsWithBrowser(
     }
 
     return (options.randomize ? shuffleMercadoLivreList(products) : products).slice(0, limit);
+  } finally {
+    await browser.close();
+  }
+}
+
+export async function getMercadoLivreProductImageUrlsWithBrowser(productUrl: string, limit = 4): Promise<string[]> {
+  const executablePath = await firstExistingExecutable();
+  if (!executablePath) return [];
+
+  const puppeteer = dynamicRequire("puppeteer-core");
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-blink-features=AutomationControlled",
+    ],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1365, height: 900 });
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    );
+    await page.setExtraHTTPHeaders({
+      "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+    });
+
+    await page.goto(productUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+
+    const urls = await page.evaluate(() => {
+      const values: string[] = [];
+      const push = (value: string | null | undefined) => {
+        if (value) values.push(value);
+      };
+
+      push(document.querySelector<HTMLMetaElement>("meta[property='og:image']")?.content);
+      push(document.querySelector<HTMLMetaElement>("meta[name='twitter:image']")?.content);
+
+      for (const script of Array.from(document.querySelectorAll<HTMLScriptElement>("script[type='application/ld+json']"))) {
+        try {
+          const parsed = JSON.parse(script.textContent || "{}");
+          const image = parsed?.image;
+          if (Array.isArray(image)) image.forEach((item) => push(String(item || "")));
+          else push(String(image || ""));
+        } catch {
+          // ignore malformed json-ld
+        }
+      }
+
+      const selectors = [
+        "img.ui-pdp-image",
+        "figure img",
+        "[class*='gallery'] img",
+        "[class*='pdp'] img",
+        "img[src*='mlstatic']",
+      ];
+      for (const img of Array.from(document.querySelectorAll<HTMLImageElement>(selectors.join(",")))) {
+        push(img.currentSrc);
+        push(img.src);
+        push(img.getAttribute("data-src"));
+        push(img.getAttribute("data-original"));
+        const srcset = img.getAttribute("srcset") || "";
+        for (const part of srcset.split(",")) {
+          push(part.trim().split(/\s+/)[0]);
+        }
+      }
+
+      return values;
+    });
+
+    const seen = new Set<string>();
+    const normalized: string[] = [];
+    for (const url of urls) {
+      const imageUrl = normalizeImageUrl(url);
+      if (!imageUrl || seen.has(imageUrl)) continue;
+      seen.add(imageUrl);
+      normalized.push(imageUrl);
+      if (normalized.length >= limit) break;
+    }
+
+    return normalized;
+  } catch {
+    return [];
   } finally {
     await browser.close();
   }
