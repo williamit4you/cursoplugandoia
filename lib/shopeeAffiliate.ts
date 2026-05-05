@@ -144,6 +144,10 @@ export async function fetchShopeeItemDetail(params: {
   const url = new URL(`https://${params.domain}/api/v4/item/get`);
   url.searchParams.set("shopid", String(params.shopId));
   url.searchParams.set("itemid", String(params.itemId));
+  const signal =
+    typeof (AbortSignal as any)?.timeout === "function"
+      ? (AbortSignal as any).timeout(requestTimeoutMs)
+      : undefined;
 
   const res = await fetch(url, {
     headers: {
@@ -153,12 +157,24 @@ export async function fetchShopeeItemDetail(params: {
       "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
     },
     cache: "no-store",
-    signal: AbortSignal.timeout(requestTimeoutMs),
+    signal,
   });
 
-  const data = await res.json().catch(() => ({}));
+  const contentType = res.headers.get("content-type") || "";
+  const rawText = await res.text();
+  let data: any = null;
+  try {
+    data = rawText ? JSON.parse(rawText) : {};
+  } catch {
+    data = {};
+  }
   if (!res.ok) {
-    throw new Error(`Shopee item detail failed. HTTP ${res.status} ${data?.error_msg || ""}`.trim());
+    throw new Error(
+      `Shopee item detail failed. HTTP ${res.status} (${contentType || "no content-type"}) ${data?.error_msg || ""}`.trim()
+    );
+  }
+  if (!/application\/json/i.test(contentType)) {
+    throw new Error(`Shopee item detail non-JSON response (${contentType || "no content-type"})`);
   }
 
   const item = data?.data?.item || data?.data || {};
@@ -203,6 +219,10 @@ export async function searchShopeeProducts(
   url.searchParams.set("version", "2");
 
   const requestTimeoutMs = Math.min(20000, Math.max(3000, Number(options.requestTimeoutMs || 8000)));
+  const signal =
+    typeof (AbortSignal as any)?.timeout === "function"
+      ? (AbortSignal as any).timeout(requestTimeoutMs)
+      : undefined;
 
   const res = await fetch(url, {
     headers: {
@@ -212,12 +232,24 @@ export async function searchShopeeProducts(
       "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
     },
     cache: "no-store",
-    signal: AbortSignal.timeout(requestTimeoutMs),
+    signal,
   });
 
-  const data = await res.json().catch(() => ({}));
+  const contentType = res.headers.get("content-type") || "";
+  const rawText = await res.text();
+  let data: any = null;
+  try {
+    data = rawText ? JSON.parse(rawText) : {};
+  } catch {
+    data = {};
+  }
   if (!res.ok) {
-    throw new Error(`Shopee search failed. HTTP ${res.status} ${data?.error_msg || ""}`.trim());
+    throw new Error(
+      `Shopee search failed. HTTP ${res.status} (${contentType || "no content-type"}) ${data?.error_msg || ""}`.trim()
+    );
+  }
+  if (!/application\/json/i.test(contentType)) {
+    throw new Error(`Shopee search non-JSON response (${contentType || "no content-type"})`);
   }
 
   const items = Array.isArray(data?.items) ? data.items : Array.isArray(data?.data?.items) ? data.data.items : [];
@@ -266,4 +298,3 @@ export async function searchShopeeProducts(
 
   return enriched;
 }
-

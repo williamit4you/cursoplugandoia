@@ -91,6 +91,7 @@ RUN if [ "$INSTALL_CHROMIUM" = "1" ]; then \
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 ENV REMOTION_CHROME_BIN=/usr/bin/chromium-browser
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 

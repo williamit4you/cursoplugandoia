@@ -19,6 +19,10 @@ async function getConfig() {
 
 export async function GET(req: NextRequest) {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({ error: "DATABASE_URL is not configured" }, { status: 500 });
+    }
+
     const config = await getConfig();
     if (!config) {
       return NextResponse.json({ error: "Shopee config not found" }, { status: 404 });
@@ -33,7 +37,7 @@ export async function GET(req: NextRequest) {
       queryOverride,
       randomize: true,
       requestTimeoutMs: 9000,
-      enrichDetails: true,
+      enrichDetails: req.nextUrl.searchParams.get("enrich") === "0" ? false : true,
     });
 
     const items = products.slice(0, Math.max(1, limit));
@@ -52,4 +56,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-
