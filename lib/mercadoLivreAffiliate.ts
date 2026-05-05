@@ -12,6 +12,7 @@ export type MercadoLivreAffiliateConfigLike = {
   affiliateLinkMode?: string | null;
   affiliateTag?: string | null;
   affiliateUrlTemplate?: string | null;
+  linkBuilderCookie?: string | null;
   appId?: string | null;
   clientSecret?: string | null;
   accessToken?: string | null;
@@ -43,6 +44,47 @@ export type MercadoLivreTokenExchange = MercadoLivreTokenRefresh & {
   scope?: string;
 };
 
+export const DEFAULT_MERCADO_LIVRE_SEARCH_TERMS = ["ofertas"];
+
+export const DEFAULT_MERCADO_LIVRE_CATEGORY_PRESETS = [
+  { id: "MLB1648", name: "Informatica", searchTerm: "informatica" },
+  { id: "MLB1051", name: "Celulares e Telefones", searchTerm: "celulares telefones" },
+  { id: "MLB1000", name: "Eletronicos, Audio e Video", searchTerm: "eletronicos audio video" },
+  { id: "MLB1144", name: "Games", searchTerm: "games consoles" },
+  { id: "MLB5726", name: "Eletrodomesticos", searchTerm: "eletrodomesticos" },
+  { id: "MLB1574", name: "Casa, Moveis e Decoracao", searchTerm: "casa moveis decoracao" },
+  { id: "MLB1276", name: "Esportes e Fitness", searchTerm: "esportes fitness" },
+  { id: "MLB1246", name: "Beleza e Cuidado Pessoal", searchTerm: "beleza cuidado pessoal" },
+  { id: "MLB1132", name: "Brinquedos e Hobbies", searchTerm: "brinquedos hobbies" },
+  { id: "MLB407134", name: "Ferramentas", searchTerm: "ferramentas" },
+];
+
+export const DEFAULT_MERCADO_LIVRE_CATEGORY_IDS = DEFAULT_MERCADO_LIVRE_CATEGORY_PRESETS.map(
+  (item) => item.id
+);
+
+export function mercadoLivreCategorySearchTerm(categoryId: string | null | undefined) {
+  const category = DEFAULT_MERCADO_LIVRE_CATEGORY_PRESETS.find(
+    (item) => item.id.toUpperCase() === String(categoryId || "").toUpperCase()
+  );
+  return category?.searchTerm || "";
+}
+
+export function shuffleMercadoLivreList<T>(items: T[]) {
+  const copy = [...items];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+  return copy;
+}
+
+export function rotateMercadoLivreList<T>(items: T[], startIndex: number) {
+  if (items.length === 0) return [];
+  const normalized = ((startIndex % items.length) + items.length) % items.length;
+  return [...items.slice(normalized), ...items.slice(0, normalized)];
+}
+
 export function parseJsonStringArray(value: unknown, fallback: string[] = []) {
   if (Array.isArray(value)) {
     return value.map((item) => String(item).trim()).filter(Boolean);
@@ -64,13 +106,13 @@ export function parseJsonStringArray(value: unknown, fallback: string[] = []) {
   return fallback;
 }
 
-export function normalizeMercadoLivrePlatforms(value: unknown) {
+export function normalizeMercadoLivrePlatforms(value: unknown, fallback = ["YOUTUBE", "INSTAGRAM", "TIKTOK"]) {
   const allowed = new Set(["YOUTUBE", "INSTAGRAM", "TIKTOK"]);
-  const parsed = parseJsonStringArray(value, ["YOUTUBE", "INSTAGRAM", "TIKTOK"]);
+  const parsed = parseJsonStringArray(value, fallback);
   const normalized = parsed
     .map((item) => item.toUpperCase())
     .filter((item) => allowed.has(item));
-  return normalized.length > 0 ? Array.from(new Set(normalized)) : ["YOUTUBE", "INSTAGRAM", "TIKTOK"];
+  return normalized.length > 0 ? Array.from(new Set(normalized)) : fallback;
 }
 
 export function mercadoLivreAuthHost(siteId: string | null | undefined) {
@@ -200,6 +242,185 @@ export function isMercadoLivreAffiliateTemplateDynamic(template: string | null |
   );
 }
 
+function mergeCookieStrings(currentCookie: string, setCookieHeaders: string[]) {
+  const cookieMap = new Map<string, string>();
+
+  for (const part of currentCookie.split(";")) {
+    const [key, ...valueParts] = part.trim().split("=");
+    if (key && valueParts.length > 0) cookieMap.set(key, valueParts.join("="));
+  }
+
+  for (const setCookie of setCookieHeaders) {
+    const cookiePart = setCookie.split(";")[0] || "";
+    const [key, ...valueParts] = cookiePart.trim().split("=");
+    if (key && valueParts.length > 0) cookieMap.set(key, valueParts.join("="));
+  }
+
+  return Array.from(cookieMap.entries())
+    .map(([key, value]) => `${key}=${value}`)
+    .join("; ");
+}
+
+function getCookieValue(cookie: string, key: string) {
+  for (const part of cookie.split(";")) {
+    const [cookieKey, ...valueParts] = part.trim().split("=");
+    if (cookieKey === key) return valueParts.join("=");
+  }
+  return "";
+}
+
+function collectStringValues(value: unknown, out: string[] = []) {
+  if (typeof value === "string") {
+    out.push(value);
+    return out;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectStringValues(item, out);
+    return out;
+  }
+  if (value && typeof value === "object") {
+    for (const item of Object.values(value)) collectStringValues(item, out);
+  }
+  return out;
+}
+
+function pickAffiliateLinkFromResponse(data: unknown, originalUrl: string) {
+  const strings = collectStringValues(data);
+  const normalizedOriginal = originalUrl.replace(/\/+$/, "");
+  const candidates = strings
+    .map((item) => item.trim())
+    .filter((item) => /^https?:\/\//i.test(item))
+    .filter((item) => item.replace(/\/+$/, "") !== normalizedOriginal);
+
+  return (
+    candidates.find((item) => /meli\.la/i.test(item)) ||
+    candidates.find((item) => /mercadolivre\.com\.br|mercadolibre\.com/i.test(item)) ||
+    null
+  );
+}
+
+export async function createMercadoLivreAffiliateLink(params: {
+  productUrl: string;
+  tag?: string | null;
+  cookie?: string | null;
+}) {
+  const cookie = String(params.cookie || "").trim();
+  const tag = String(params.tag || "").trim();
+  const productUrl = String(params.productUrl || "").trim();
+
+  if (!cookie) {
+    return { url: productUrl, updatedCookie: null, warning: "Cookie do Link Builder nao configurado." };
+  }
+  if (!tag) {
+    return { url: productUrl, updatedCookie: null, warning: "Etiqueta/tag de afiliado nao configurada." };
+  }
+
+  const bootstrapRes = await fetch("https://www.mercadolivre.com.br/afiliados/linkbuilder", {
+    method: "GET",
+    headers: {
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      cookie,
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+    },
+    redirect: "manual",
+  });
+
+  const headers = bootstrapRes.headers as Headers & { getSetCookie?: () => string[] };
+  const singleSetCookie = bootstrapRes.headers.get("set-cookie");
+  const setCookie =
+    typeof headers.getSetCookie === "function"
+      ? headers.getSetCookie()
+      : singleSetCookie
+        ? [singleSetCookie]
+        : [];
+  const updatedCookie = mergeCookieStrings(cookie, setCookie);
+  const csrfToken = decodeURIComponent(getCookieValue(updatedCookie, "_csrf"));
+
+  const res = await fetch("https://www.mercadolivre.com.br/affiliate-program/api/v2/affiliates/createLink", {
+    method: "POST",
+    headers: {
+      accept: "application/json, text/plain, */*",
+      "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+      "content-type": "application/json",
+      origin: "https://www.mercadolivre.com.br",
+      referer: "https://www.mercadolivre.com.br/afiliados/linkbuilder",
+      "sec-fetch-dest": "empty",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-site": "same-origin",
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+      "x-csrf-token": csrfToken,
+      cookie: updatedCookie,
+    },
+    body: JSON.stringify({ urls: [productUrl], tag }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const message = data?.message || data?.error || `HTTP ${res.status}`;
+    return {
+      url: productUrl,
+      updatedCookie,
+      warning: `Link Builder Mercado Livre falhou: ${message}`,
+      status: res.status,
+    };
+  }
+
+  const affiliateUrl = pickAffiliateLinkFromResponse(data, productUrl);
+  if (!affiliateUrl) {
+    return {
+      url: productUrl,
+      updatedCookie,
+      warning: "Link Builder respondeu, mas nao encontrei o link gerado na resposta.",
+      raw: data,
+    };
+  }
+
+  return { url: affiliateUrl, updatedCookie, warning: null as string | null, raw: data };
+}
+
+export async function resolveMercadoLivreAffiliateUrl(
+  product: Pick<MercadoLivreProduct, "id" | "permalink">,
+  config: MercadoLivreAffiliateConfigLike
+) {
+  const fallback = buildMercadoLivreAffiliateUrl(product, config);
+  const cookie = String(config.linkBuilderCookie || "").trim();
+
+  if (!cookie) return { ...fallback, updatedCookie: null as string | null };
+
+  const generated = await createMercadoLivreAffiliateLink({
+    productUrl: product.permalink,
+    tag: config.affiliateTag,
+    cookie,
+  });
+
+  if (!generated.warning) {
+    return {
+      url: generated.url,
+      mode: "LINK_BUILDER",
+      warning: null as string | null,
+      updatedCookie: generated.updatedCookie,
+    };
+  }
+
+  if (fallback.mode !== "RAW_PERMALINK" && fallback.mode !== "INVALID_STATIC_TEMPLATE") {
+    return {
+      ...fallback,
+      mode: `LINK_BUILDER_FALLBACK_${fallback.mode}`,
+      warning: `${generated.warning} Usando fallback configurado: ${fallback.mode}.`,
+      updatedCookie: generated.updatedCookie,
+    };
+  }
+
+  return {
+    url: product.permalink,
+    mode: "LINK_BUILDER_FALLBACK",
+    warning: generated.warning,
+    updatedCookie: generated.updatedCookie,
+  };
+}
+
 export function buildMercadoLivreAffiliateUrl(
   product: Pick<MercadoLivreProduct, "id" | "permalink">,
   config: MercadoLivreAffiliateConfigLike
@@ -227,6 +448,14 @@ export function buildMercadoLivreAffiliateUrl(
       .replaceAll("{{tag}}", encodeURIComponent(tag));
 
     return { url, mode: "TEMPLATE", warning: null as string | null };
+  }
+
+  if (mode === "LINK_BUILDER") {
+    return {
+      url: permalink,
+      mode: "LINK_BUILDER_NOT_CONFIGURED",
+      warning: "Cookie do Link Builder nao configurado. O sistema usou o permalink comum do produto.",
+    };
   }
 
   if (mode === "AFF_ID_PARAM" && tag) {
@@ -268,19 +497,29 @@ function normalizeProduct(raw: any): MercadoLivreProduct | null {
 
 export async function searchMercadoLivreProducts(
   config: MercadoLivreAffiliateConfigLike,
-  options: { limit?: number; accessToken?: string | null; queryOverride?: string | null } = {}
+  options: {
+    limit?: number;
+    accessToken?: string | null;
+    queryOverride?: string | null;
+    categoryOverride?: string | null;
+    excludeIds?: string[];
+    randomize?: boolean;
+  } = {}
 ) {
   const siteId = String(config.siteId || "MLB").trim() || "MLB";
   const limit = Math.min(50, Math.max(1, Number(options.limit || config.maxProductsPerRun || 8)));
   const terms = options.queryOverride
     ? [options.queryOverride]
-    : parseJsonStringArray(config.searchTerms, ["ofertas"]);
-  const categories = parseJsonStringArray(config.categoryIds, []);
+    : parseJsonStringArray(config.searchTerms, DEFAULT_MERCADO_LIVRE_SEARCH_TERMS);
+  const categories = options.categoryOverride
+    ? [options.categoryOverride]
+    : parseJsonStringArray(config.categoryIds, DEFAULT_MERCADO_LIVRE_CATEGORY_IDS);
   const products: MercadoLivreProduct[] = [];
   const seen = new Set<string>();
+  const excluded = new Set((options.excludeIds || []).map((item) => String(item)));
   const requests: URL[] = [];
 
-  const termsToUse = terms.length > 0 ? terms : ["ofertas"];
+  const termsToUse = terms.length > 0 ? terms : DEFAULT_MERCADO_LIVRE_SEARCH_TERMS;
   const categoriesToUse = categories.length > 0 ? categories : [""];
 
   for (const term of termsToUse) {
@@ -299,20 +538,53 @@ export async function searchMercadoLivreProducts(
     }
   }
 
-  for (const url of requests.slice(0, 8)) {
-    const headers: Record<string, string> = { accept: "application/json" };
-    if (options.accessToken) headers.Authorization = `Bearer ${options.accessToken}`;
+  const failures: string[] = [];
+  const headerVariants: Array<{ label: string; headers: Record<string, string> }> = [];
+  if (options.accessToken) {
+    headerVariants.push({
+      label: "token+user-agent",
+      headers: {
+        accept: "application/json",
+        "user-agent": "PlugandoIA/1.0 (+https://plugandoia.cloud)",
+        authorization: `Bearer ${options.accessToken}`,
+      },
+    });
+  }
+  headerVariants.push({
+    label: "public+user-agent",
+    headers: {
+      accept: "application/json",
+      "user-agent": "PlugandoIA/1.0 (+https://plugandoia.cloud)",
+    },
+  });
 
-    const res = await fetch(url, { headers, cache: "no-store" });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data?.message || data?.error || `Mercado Livre search failed (${res.status})`);
+  const requestsToUse = options.randomize ? shuffleMercadoLivreList(requests) : requests;
+
+  for (const url of requestsToUse.slice(0, 8)) {
+    let data: any = null;
+    let ok = false;
+
+    for (const variant of headerVariants) {
+      const res = await fetch(url, { headers: variant.headers, cache: "no-store" });
+      data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        ok = true;
+        break;
+      }
+      failures.push(`${variant.label}: HTTP ${res.status} ${data?.message || data?.error || ""}`.trim());
+      if (res.status !== 401 && res.status !== 403) break;
+    }
+
+    if (!ok) {
+      throw new Error(
+        `Mercado Livre search failed. ${Array.from(new Set(failures)).slice(-6).join(" | ")}`
+      );
     }
 
     const results = Array.isArray(data?.results) ? data.results : [];
     for (const raw of results) {
       const product = normalizeProduct(raw);
-      if (!product || seen.has(product.id)) continue;
+      if (!product || seen.has(product.id) || excluded.has(product.id)) continue;
       seen.add(product.id);
       products.push(product);
       if (products.length >= limit * 3) break;
@@ -320,9 +592,11 @@ export async function searchMercadoLivreProducts(
     if (products.length >= limit * 3) break;
   }
 
-  return products
-    .sort((a, b) => (b.soldQuantity || 0) - (a.soldQuantity || 0))
-    .slice(0, limit);
+  const ordered = options.randomize
+    ? shuffleMercadoLivreList(products)
+    : products.sort((a, b) => (b.soldQuantity || 0) - (a.soldQuantity || 0));
+
+  return ordered.slice(0, limit);
 }
 
 export function formatMercadoLivrePrice(product: MercadoLivreProduct) {

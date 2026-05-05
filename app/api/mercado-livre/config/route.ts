@@ -3,6 +3,8 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import {
+  DEFAULT_MERCADO_LIVRE_CATEGORY_IDS,
+  DEFAULT_MERCADO_LIVRE_SEARCH_TERMS,
   normalizeMercadoLivrePlatforms,
   parseJsonStringArray,
   refreshMercadoLivreAccessToken,
@@ -36,8 +38,16 @@ async function getOrCreateConfig() {
 
   return prisma.mercadoLivreAffiliateConfig.create({
     data: {
-      searchTerms: JSON.stringify(["ofertas", "casa inteligente", "eletronicos"]),
-      preferredPlatforms: JSON.stringify(["YOUTUBE", "INSTAGRAM", "TIKTOK"]),
+      isEnabled: true,
+      searchTerms: JSON.stringify(DEFAULT_MERCADO_LIVRE_SEARCH_TERMS),
+      categoryIds: JSON.stringify(DEFAULT_MERCADO_LIVRE_CATEGORY_IDS),
+      maxProductsPerRun: 1,
+      postIntervalHours: 3,
+      preferredPlatforms: JSON.stringify(["YOUTUBE", "INSTAGRAM"]),
+      autoGenerateScript: true,
+      autoRenderVideo: true,
+      autoEnqueueSocial: true,
+      affiliateLinkMode: "LINK_BUILDER",
     },
   });
 }
@@ -60,18 +70,18 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const existing = await getOrCreateConfig();
 
-    const preferredPlatforms = normalizeMercadoLivrePlatforms(body.preferredPlatforms);
+    const preferredPlatforms = normalizeMercadoLivrePlatforms(body.preferredPlatforms, ["YOUTUBE", "INSTAGRAM"]);
 
     const updateData = {
       isEnabled: Boolean(body.isEnabled ?? false),
       siteId: String(body.siteId || "MLB").trim() || "MLB",
-      searchTerms: jsonArrayText(body.searchTerms, ["ofertas"]),
-      categoryIds: jsonArrayText(body.categoryIds, []),
+      searchTerms: jsonArrayText(body.searchTerms, DEFAULT_MERCADO_LIVRE_SEARCH_TERMS),
+      categoryIds: jsonArrayText(body.categoryIds, DEFAULT_MERCADO_LIVRE_CATEGORY_IDS),
       minPrice: numberOrNull(body.minPrice),
       maxPrice: numberOrNull(body.maxPrice),
       sort: String(body.sort || "relevance").trim() || "relevance",
-      maxProductsPerRun: intInRange(body.maxProductsPerRun, 8, 1, 24),
-      postIntervalHours: intInRange(body.postIntervalHours, 2, 1, 24),
+      maxProductsPerRun: intInRange(body.maxProductsPerRun, 1, 1, 24),
+      postIntervalHours: intInRange(body.postIntervalHours, 3, 1, 24),
       preferredPlatforms: JSON.stringify(preferredPlatforms),
       autoGenerateScript: Boolean(body.autoGenerateScript ?? true),
       autoRenderVideo: Boolean(body.autoRenderVideo ?? false),
