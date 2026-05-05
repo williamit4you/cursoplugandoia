@@ -242,7 +242,22 @@ export async function searchMercadoLivreProductsWithBrowser(
     }
 
     if (products.length === 0) {
-      throw new Error("Busca via navegador nao encontrou produtos. Pode haver challenge, login ou mudanca no HTML do Mercado Livre.");
+      let debug = "";
+      try {
+        const pageInfo = await page.evaluate(() => ({
+          title: document.title || "",
+          robots: document.querySelector<HTMLMetaElement>("meta[name='robots']")?.content || "",
+          hasCaptcha:
+            Boolean(document.querySelector("[data-sitekey]")) ||
+            /captcha|robot|verifica/i.test(document.body?.innerText || ""),
+        }));
+        debug = ` title="${String(pageInfo.title).slice(0, 80)}" robots="${String(pageInfo.robots).slice(0, 80)}" captcha=${pageInfo.hasCaptcha}`;
+      } catch {
+        // ignore debug failure
+      }
+      throw new Error(
+        `Busca via navegador nao encontrou produtos. Pode haver challenge, login ou mudanca no HTML do Mercado Livre.${debug ? " Debug:" + debug : ""}`
+      );
     }
 
     return (options.randomize ? shuffleMercadoLivreList(products) : products).slice(0, limit);

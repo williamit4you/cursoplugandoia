@@ -63,6 +63,8 @@ export default function SocialPostsDashboard() {
   const [total, setTotal] = useState(0);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
+  const [groupByVideo, setGroupByVideo] = useState(true);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -79,6 +81,54 @@ export default function SocialPostsDashboard() {
     () => Math.max(1, Math.ceil(total / pageSize)),
     [total, pageSize]
   );
+
+  const groupedRows = useMemo(() => {
+    if (!groupByVideo) return [];
+    const map = new Map<string, any>();
+    for (const p of posts) {
+      const key = String(p.codeVideoProjectId || p.videoUrl || p.id);
+      const row = map.get(key);
+      if (!row) {
+        map.set(key, {
+          id: key,
+          summary: p.summary,
+          videoUrl: p.videoUrl,
+          createdAt: p.createdAt,
+          scheduledTo: p.scheduledTo,
+          postedAt: p.postedAt,
+          items: [p],
+        });
+        continue;
+      }
+      row.items.push(p);
+      if (p.createdAt && (!row.createdAt || new Date(p.createdAt) < new Date(row.createdAt))) row.createdAt = p.createdAt;
+      if (p.scheduledTo && (!row.scheduledTo || new Date(p.scheduledTo) < new Date(row.scheduledTo))) row.scheduledTo = p.scheduledTo;
+      if (p.postedAt && (!row.postedAt || new Date(p.postedAt) > new Date(row.postedAt))) row.postedAt = p.postedAt;
+      if (!row.videoUrl && p.videoUrl) row.videoUrl = p.videoUrl;
+    }
+    return Array.from(map.values());
+  }, [posts, groupByVideo]);
+
+  const groupPlatformBadges = (items: any[]) => {
+    const order = ["YOUTUBE", "META", "TIKTOK", "LINKEDIN"];
+    const sorted = [...items].sort((a, b) => {
+      const ai = order.indexOf(String(a.platform || "META").toUpperCase());
+      const bi = order.indexOf(String(b.platform || "META").toUpperCase());
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+        {sorted.map((p) => (
+          <div key={p.id} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 900, color: "#0f172a" }}>
+              {String(p.platform || "META").toUpperCase()} {String(p.postType || "REEL").toUpperCase()}
+            </span>
+            <StatusBadge status={p.status} />
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   const fetchPosts = async () => {
     const qs = new URLSearchParams({
@@ -553,6 +603,23 @@ export default function SocialPostsDashboard() {
             </span>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <label
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 12,
+                fontWeight: 900,
+                color: "#0f172a",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={groupByVideo}
+                onChange={(e) => setGroupByVideo(e.target.checked)}
+              />
+              Agrupar por vÃ­deo
+            </label>
             <select
               value={pageSize}
               onChange={(e) => {
@@ -622,7 +689,18 @@ export default function SocialPostsDashboard() {
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#f9fafb" }}>
+                {groupByVideo ? (
+                  <tr style={{ background: "#f9fafb" }}>
+                    <th style={thStyle}>Item</th>
+                    <th style={thStyle}>Plataformas</th>
+                    <th style={thStyle}>Agendado</th>
+                    <th style={thStyle}>Criado</th>
+                    <th style={thStyle}>Publicado</th>
+                    <th style={thStyle}>Links</th>
+                    <th style={thStyle}>Detalhes</th>
+                  </tr>
+                ) : (
+                  <tr style={{ background: "#f9fafb" }}>
                   <th style={thStyle}>Item</th>
                   <th style={thStyle}>
                     <button
@@ -687,9 +765,71 @@ export default function SocialPostsDashboard() {
                   <th style={thStyle}>Detalhes</th>
                   <th style={thStyle}>Ações</th>
                 </tr>
+                )}
               </thead>
               <tbody>
-                {posts.map((p) => {
+                {groupByVideo ? (
+                  groupedRows.map((g: any) => {
+                    const items = Array.isArray(g.items) ? g.items : [];
+                    const hasAnyProcessing = items.some(
+                      (p: any) => p.status === "PROCESSING_MEDIA" || p.status === "PUBLISHING"
+                    );
+
+                    return (
+                      <tr
+                        key={g.id}
+                        style={{ background: hasAnyProcessing ? "#fffbeb" : "white" }}
+                      >
+                        <td style={{ ...tdStyle, minWidth: 260, maxWidth: 360 }}>
+                          <div style={{ fontWeight: 800, color: "#111827", lineHeight: 1.4 }}>
+                            {String(g.summary || "").slice(0, 110) || "Sem resumo"}
+                          </div>
+                          <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>
+                            {g.videoUrl ? "VÃ­deo gerado" : "Sem vÃ­deo"} Â· {items.length} plataforma(s)
+                          </div>
+                        </td>
+                        <td style={{ ...tdStyle, minWidth: 260 }}>
+                          {groupPlatformBadges(items)}
+                        </td>
+                        <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                          {formatDateTime(g.scheduledTo)}
+                        </td>
+                        <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                          {formatDateTime(g.createdAt)}
+                        </td>
+                        <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                          {formatDateTime(g.postedAt)}
+                        </td>
+                        <td style={tdStyle}>
+                          {g.videoUrl ? (
+                            <a href={g.videoUrl} target="_blank" rel="noreferrer" style={{ color: "#1d4ed8", fontWeight: 900, textDecoration: "none" }}>
+                              vÃ­deo
+                            </a>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td style={tdStyle}>
+                          <button
+                            onClick={() => setSelectedGroup(g)}
+                            style={{
+                              padding: "8px 12px",
+                              borderRadius: 10,
+                              border: "1px solid #d1d5db",
+                              background: "white",
+                              cursor: "pointer",
+                              fontSize: 12,
+                              fontWeight: 900,
+                            }}
+                          >
+                            Ver detalhes
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  posts.map((p) => {
                   const isProcessing =
                     p.status === "PROCESSING_MEDIA" || p.status === "PUBLISHING";
                   const hasRetryPending = !!retryTimers.current[p.id];
@@ -949,12 +1089,158 @@ export default function SocialPostsDashboard() {
                       </td>
                     </tr>
                   );
-                })}
+                })
+                )}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {selectedGroup && (
+        <div
+          onClick={() => setSelectedGroup(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            display: "flex",
+            justifyContent: "flex-end",
+            zIndex: 60,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(620px, 100%)",
+              height: "100%",
+              background: "white",
+              padding: 24,
+              overflowY: "auto",
+              boxShadow: "-12px 0 32px rgba(15, 23, 42, 0.18)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div style={{ fontWeight: 900, fontSize: 16, color: "#0f172a" }}>
+                Detalhes do vÃ­deo
+              </div>
+              <button
+                onClick={() => setSelectedGroup(null)}
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 999,
+                  border: "1px solid #e2e8f0",
+                  background: "white",
+                  cursor: "pointer",
+                  fontWeight: 900,
+                }}
+              >
+                Ã—
+              </button>
+            </div>
+
+            <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>Resumo</div>
+              <div style={{ color: "#0f172a", lineHeight: 1.6 }}>
+                {String(selectedGroup.summary || "").trim() || "Sem resumo"}
+              </div>
+              {selectedGroup.videoUrl && (
+                <a
+                  href={selectedGroup.videoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ display: "inline-block", marginTop: 10, color: "#1d4ed8", fontWeight: 900, textDecoration: "none" }}
+                >
+                  Abrir vÃ­deo final
+                </a>
+              )}
+            </div>
+
+            <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+              {(Array.isArray(selectedGroup.items) ? selectedGroup.items : []).map((p: any) => (
+                <div key={p.id} style={{ padding: 14, borderRadius: 12, border: "1px solid #e2e8f0" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                    <div style={{ fontWeight: 900, color: "#0f172a" }}>
+                      {String(p.platform || "META").toUpperCase()} {String(p.postType || "REEL").toUpperCase()}
+                    </div>
+                    <StatusBadge status={p.status} />
+                  </div>
+                  <div style={{ marginTop: 8, fontSize: 12, color: "#64748b" }}>
+                    Agendado: <strong style={{ color: "#0f172a" }}>{formatDateTime(p.scheduledTo)}</strong>
+                  </div>
+                  <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {p.postUrl && (
+                      <a href={p.postUrl} target="_blank" rel="noreferrer" style={{ color: "#1d4ed8", fontWeight: 900, textDecoration: "none" }}>
+                        Abrir publicado
+                      </a>
+                    )}
+                    {p.videoUrl && (
+                      <a href={p.videoUrl} target="_blank" rel="noreferrer" style={{ color: "#1d4ed8", fontWeight: 900, textDecoration: "none" }}>
+                        Abrir vÃ­deo
+                      </a>
+                    )}
+                  </div>
+                  <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {String(p.platform || "META").toUpperCase() === "YOUTUBE" ? (
+                      <button
+                        onClick={() => handlePublishYouTube(p.id)}
+                        disabled={loadingId === p.id + "-youtube"}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: 10,
+                          border: "none",
+                          background: loadingId === p.id + "-youtube" ? "#d1d5db" : "#ef4444",
+                          color: "white",
+                          cursor: loadingId === p.id + "-youtube" ? "not-allowed" : "pointer",
+                          fontSize: 12,
+                          fontWeight: 900,
+                        }}
+                      >
+                        {loadingId === p.id + "-youtube" ? "Enviandoâ€¦" : "Publicar YouTube"}
+                      </button>
+                    ) : String(p.platform || "META").toUpperCase() === "TIKTOK" ? (
+                      <button
+                        onClick={() => handlePublishTikTok(p.id)}
+                        disabled={loadingId === p.id + "-tiktok"}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: 10,
+                          border: "none",
+                          background: loadingId === p.id + "-tiktok" ? "#d1d5db" : "#111827",
+                          color: "white",
+                          cursor: loadingId === p.id + "-tiktok" ? "not-allowed" : "pointer",
+                          fontSize: 12,
+                          fontWeight: 900,
+                        }}
+                      >
+                        {loadingId === p.id + "-tiktok" ? "Enviandoâ€¦" : "Publicar TikTok"}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handlePublish(p.id)}
+                        disabled={loadingId === p.id + "-reels"}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: 10,
+                          border: "none",
+                          background: loadingId === p.id + "-reels" ? "#d1d5db" : "#2563eb",
+                          color: "white",
+                          cursor: loadingId === p.id + "-reels" ? "not-allowed" : "pointer",
+                          fontSize: 12,
+                          fontWeight: 900,
+                        }}
+                      >
+                        {loadingId === p.id + "-reels" ? "Enviandoâ€¦" : "Publicar Meta"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedPost && (
         <div

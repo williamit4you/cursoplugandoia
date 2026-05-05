@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
     let products;
     let source = "api";
     let apiError: string | null = null;
+    let browserError: string | null = null;
     try {
       products = await searchMercadoLivreProducts(config, {
         limit: searchLimit,
@@ -62,13 +63,28 @@ export async function GET(req: NextRequest) {
       });
     } catch (error: any) {
       apiError = error?.message || "API search failed";
-      products = await searchMercadoLivreProductsWithBrowser(config, {
-        limit: searchLimit,
-        queryOverride,
-        excludeIds: usedIds,
-        randomize: true,
-      });
-      source = "browser";
+      try {
+        products = await searchMercadoLivreProductsWithBrowser(config, {
+          limit: searchLimit,
+          queryOverride,
+          excludeIds: usedIds,
+          randomize: true,
+        });
+        source = "browser";
+      } catch (browserErr: any) {
+        browserError = browserErr?.message || "Browser search failed";
+        // Give a clear, actionable error instead of a generic 500.
+        return NextResponse.json(
+          {
+            error:
+              "Nao foi possivel buscar produtos no Mercado Livre agora. A API oficial falhou e a busca via navegador tambem nao retornou resultados (provavel bloqueio/WAF/challenge ou falta de Chrome no servidor).",
+            apiError,
+            browserError,
+            code: "MERCADO_LIVRE_SEARCH_UNAVAILABLE",
+          },
+          { status: 502 }
+        );
+      }
     }
 
     const activeConfig = { ...config };
@@ -91,7 +107,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ items, source, apiError });
+    return NextResponse.json({ items, source, apiError, browserError });
   } catch (error: any) {
     console.error("[api/mercado-livre/products GET]", error);
     const message = String(error?.message || "");

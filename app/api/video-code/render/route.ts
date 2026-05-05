@@ -43,6 +43,16 @@ function buildProductAdSocialSummary(project: any, metadata: any) {
     .slice(0, 4500);
 }
 
+function resolveSocialScheduleTime(rawScheduledTo: Date | null, now = new Date()) {
+  const bufferMinutes = Math.min(
+    6 * 60,
+    Math.max(0, Number(process.env.SOCIAL_SCHEDULE_BUFFER_MINUTES || 45))
+  );
+  const minTime = new Date(now.getTime() + bufferMinutes * 60 * 1000);
+  if (!rawScheduledTo || !Number.isFinite(rawScheduledTo.getTime())) return minTime;
+  return rawScheduledTo > minTime ? rawScheduledTo : minTime;
+}
+
 async function enqueueProductAdSocialPosts(project: any, videoUrl: string) {
   if (project.projectType !== "PRODUCT_AD") return;
 
@@ -53,8 +63,9 @@ async function enqueueProductAdSocialPosts(project: any, videoUrl: string) {
   const platforms = normalizeSocialPlatforms(mercadoLivre.platforms);
   if (platforms.length === 0) return;
 
-  const scheduledTo = mercadoLivre.scheduledTo ? new Date(mercadoLivre.scheduledTo) : null;
-  const hasValidSchedule = scheduledTo && Number.isFinite(scheduledTo.getTime());
+  const rawScheduledTo = mercadoLivre.scheduledTo ? new Date(mercadoLivre.scheduledTo) : null;
+  const scheduledTo = resolveSocialScheduleTime(rawScheduledTo);
+  const hasValidSchedule = Boolean(scheduledTo && Number.isFinite(scheduledTo.getTime()));
   const summary = buildProductAdSocialSummary(project, metadata);
 
   for (const platform of platforms) {
