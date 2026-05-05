@@ -195,6 +195,32 @@ async function ensureBucket(bucketName: string) {
   }
 }
 
+function externalRenderServiceUrl() {
+  const value = String(process.env.VIDEO_RENDER_SERVICE_URL || "").trim();
+  return value ? value.replace(/\/+$/, "") : "";
+}
+
+async function renderWithExternalService(params: {
+  projectId: string;
+  project: any;
+  videoSpec: any;
+}) {
+  const baseUrl = externalRenderServiceUrl();
+  if (!baseUrl) return null;
+
+  const res = await fetch(`${baseUrl}/render`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+    signal: AbortSignal.timeout(1000 * 60 * 20),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || `Render service failed (HTTP ${res.status})`);
+  }
+  return data;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -213,6 +239,34 @@ export async function POST(req: NextRequest) {
       where: { id: projectId },
       data: { status: "RENDERING", errorMessage: null },
     });
+
+    const externalResult = await renderWithExternalService({
+      projectId,
+      project: {
+        aspectRatio: project.aspectRatio,
+        fps: project.fps,
+        narrationText: project.narrationText,
+        audioUrl: project.audioUrl,
+        ttsVoice: project.ttsVoice,
+        ttsSpeed: project.ttsSpeed,
+      },
+      videoSpec,
+    });
+    if (externalResult?.videoUrl) {
+      const updated = await prisma.codeVideoProject.update({
+        where: { id: projectId },
+        data: {
+          status: "DONE",
+          videoUrl: externalResult.videoUrl,
+          audioUrl: externalResult.audioUrl || project.audioUrl,
+          renderProgress: 100,
+          errorMessage: null,
+        },
+      });
+
+      await enqueueProductAdSocialPosts(updated, externalResult.videoUrl);
+      return NextResponse.json(updated);
+    }
 
     const bucketName = process.env.MINIO_BUCKET_NAME || "uploads";
     const publicBase = process.env.MINIO_PUBLIC_URL;
@@ -281,11 +335,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const { bundle } = dynamicRequire("@remotion/bundler") as typeof import("@remotion/bundler");
-    const { getCompositions, renderMedia } = dynamicRequire("@remotion/renderer") as typeof import("@remotion/renderer");
+    const { bundle } = dynamicRequire("@remotion/bundler") as any;
+    const { getCompositions, renderMedia } = dynamicRequire("@remotion/renderer") as any;
 
     const entryPoint = path.resolve(process.cwd(), "remotion", "index.ts");
-    const bundleLocation = await bundle({ entryPoint, webpackOverride: (c) => c });
+    const bundleLocation = await bundle({ entryPoint, webpackOverride: (c: any) => c });
 
     // --- CORRIGIDO: Puxa o caminho do Chromium e passa direto nas funções
     const browserPath = process.env.REMOTION_CHROME_BIN || undefined;
@@ -296,7 +350,7 @@ export async function POST(req: NextRequest) {
     });
 
     const compositionId = project.aspectRatio === "LANDSCAPE_16_9" ? "VideoLandscape" : "VideoPortrait";
-    const comp = compositions.find((c) => c.id === compositionId);
+    const comp = compositions.find((c: any) => c.id === compositionId);
     if (!comp) {
       await prisma.codeVideoProject.update({
         where: { id: projectId },

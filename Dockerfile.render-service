@@ -1,0 +1,32 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache \
+    ffmpeg \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    libc6-compat
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV REMOTION_CHROME_BIN=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
+COPY render-service/package.json ./render-service/package.json
+COPY render-service/tsconfig.json ./render-service/tsconfig.json
+
+WORKDIR /app/render-service
+RUN npm install
+
+WORKDIR /app
+COPY render-service ./render-service
+COPY remotion ./remotion
+
+EXPOSE 3010
+
+CMD ["npx", "tsx", "render-service/src/server.ts"]
