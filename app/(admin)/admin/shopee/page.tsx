@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 import SearchIcon from "@mui/icons-material/Search";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 
 type Config = {
   id: string;
@@ -122,6 +123,8 @@ export default function ShopeeAdminPage() {
   const [searchTermsText, setSearchTermsText] = useState("[\"ofertas\"]");
   const [platforms, setPlatforms] = useState<string[]>(["YOUTUBE", "INSTAGRAM"]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [running, setRunning] = useState(false);
+  const [runResult, setRunResult] = useState<any | null>(null);
 
   const platformsText = useMemo(() => JSON.stringify(platforms), [platforms]);
 
@@ -209,6 +212,36 @@ export default function ShopeeAdminPage() {
       setMessage({ type: "error", text: error?.message || "Falha ao consultar produtos" });
     } finally {
       setPreviewing(false);
+    }
+  };
+
+  const runRoutine = async () => {
+    const ok = await save();
+    if (!ok) return;
+    setRunning(true);
+    setRunResult(null);
+    setMessage({
+      type: "info",
+      text: "Rotina Shopee iniciada. Se gerar roteiro ou render, pode demorar alguns minutos.",
+    });
+    try {
+      const res = await fetch("/api/shopee/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force: true }),
+      });
+      const { data, text, contentType } = await readJsonResponse(res);
+      if (!data && contentType && !contentType.toLowerCase().includes("application/json")) {
+        throw buildNonJsonApiError(res, contentType, text);
+      }
+      if (!res.ok) throw new Error(data?.error || "Falha ao rodar rotina");
+      setRunResult(data);
+      setMessage({ type: "success", text: `Rotina finalizada: ${data.created || 0} item(ns) criado(s).` });
+      await loadConfig();
+    } catch (error: any) {
+      setMessage({ type: "error", text: error?.message || "Falha ao rodar rotina" });
+    } finally {
+      setRunning(false);
     }
   };
 
@@ -385,13 +418,30 @@ export default function ShopeeAdminPage() {
               >
                 Consultar próximo produto
               </Button>
+              <Button
+                variant="outlined"
+                startIcon={<PlayArrowIcon />}
+                disabled={running || saving}
+                onClick={runRoutine}
+              >
+                Rodar rotina agora
+              </Button>
             </Box>
           </Box>
         </Box>
       </Paper>
 
+      {runResult ? (
+        <Paper sx={{ p: 2 }}>
+          <Typography sx={{ fontWeight: 900, mb: 1 }}>5. Resultado da rotina</Typography>
+          <Typography sx={{ opacity: 0.75, fontSize: 13, whiteSpace: "pre-wrap" }}>
+            {JSON.stringify(runResult, null, 2)}
+          </Typography>
+        </Paper>
+      ) : null}
+
       <Paper sx={{ p: 2 }}>
-        <Typography sx={{ fontWeight: 900, mb: 1 }}>4. Preview produtos</Typography>
+        <Typography sx={{ fontWeight: 900, mb: 1 }}>6. Preview produtos</Typography>
         {products.length === 0 ? (
           <Typography sx={{ opacity: 0.75 }}>Nenhum produto carregado ainda.</Typography>
         ) : (

@@ -53,13 +53,13 @@ async function enqueueProductAdSocialPosts(project: any, videoUrl: string) {
   if (project.projectType !== "PRODUCT_AD") return;
 
   const metadata = safeJsonParse(project.metadataJson || "{}") || {};
-  const mercadoLivre = metadata?.mercadoLivre;
-  if (!mercadoLivre || mercadoLivre.autoScheduleSocial !== true) return;
+  const scheduleConfig = metadata?.mercadoLivre || metadata?.shopee;
+  if (!scheduleConfig || scheduleConfig.autoScheduleSocial !== true) return;
 
-  const platforms = normalizeSocialPlatforms(mercadoLivre.platforms);
+  const platforms = normalizeSocialPlatforms(scheduleConfig.platforms);
   if (platforms.length === 0) return;
 
-  const rawScheduledTo = mercadoLivre.scheduledTo ? new Date(mercadoLivre.scheduledTo) : null;
+  const rawScheduledTo = scheduleConfig.scheduledTo ? new Date(scheduleConfig.scheduledTo) : null;
   const scheduledTo = resolveSocialScheduleTime(rawScheduledTo);
   const hasValidSchedule = Boolean(scheduledTo && Number.isFinite(scheduledTo.getTime()));
   const summary = buildProductAdSocialSummary(project, metadata);
@@ -88,15 +88,24 @@ async function enqueueProductAdSocialPosts(project: any, videoUrl: string) {
         scheduledTo: hasValidSchedule ? scheduledTo : null,
         platform: socialPlatform,
         postType,
-        log: `[${new Date().toLocaleTimeString("pt-BR")}] Enfileirado pela rotina Mercado Livre`,
+        log: `[${new Date().toLocaleTimeString("pt-BR")}] Enfileirado pela rotina ${metadata?.mercadoLivre ? "Mercado Livre" : "Shopee"}`,
       },
     });
   }
 
-  await prisma.mercadoLivreAffiliatePick.updateMany({
-    where: { codeVideoProjectId: project.id },
-    data: { status: "SCHEDULED", errorMessage: null },
-  });
+  if (metadata?.mercadoLivre) {
+    await prisma.mercadoLivreAffiliatePick.updateMany({
+      where: { codeVideoProjectId: project.id },
+      data: { status: "SCHEDULED", errorMessage: null },
+    });
+  }
+
+  if (metadata?.shopee) {
+    await prisma.shopeeAffiliatePick.updateMany({
+      where: { codeVideoProjectId: project.id },
+      data: { status: "SCHEDULED", errorMessage: null },
+    });
+  }
 }
 
 function externalRenderServiceUrl() {

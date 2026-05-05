@@ -145,14 +145,19 @@ async function searchProductsForRoutine(params: {
     return { products, source: "api", apiError: null as string | null };
   } catch (error: any) {
     const apiError = error?.message || "API search failed";
-    const products = await searchMercadoLivreProductsWithBrowser(config, {
-      limit,
-      categoryOverride: categoryId,
-      queryOverride: term,
-      excludeIds,
-      randomize: true,
-    });
-    return { products, source: "browser", apiError };
+    try {
+      const products = await searchMercadoLivreProductsWithBrowser(config, {
+        limit,
+        categoryOverride: categoryId,
+        queryOverride: term,
+        excludeIds,
+        randomize: true,
+      });
+      return { products, source: "browser", apiError };
+    } catch (browserErr: any) {
+      const browserError = browserErr?.message || "Browser search failed";
+      throw new Error(`${apiError} | browserFallback: ${browserError}`);
+    }
   }
 }
 

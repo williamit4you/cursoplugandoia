@@ -73,14 +73,21 @@ RUN npm prune --omit=dev
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    libc6-compat
+ARG INSTALL_CHROMIUM=0
+RUN if [ "$INSTALL_CHROMIUM" = "1" ]; then \
+      apk add --no-cache \
+        chromium \
+        nss \
+        freetype \
+        harfbuzz \
+        ca-certificates \
+        ttf-freefont \
+        libc6-compat ; \
+    else \
+      apk add --no-cache \
+        ca-certificates \
+        libc6-compat ; \
+    fi
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
