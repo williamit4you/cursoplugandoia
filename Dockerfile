@@ -3,13 +3,8 @@ WORKDIR /app
 
 RUN apk add --no-cache libc6-compat
 
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
-RUN \
-  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i --frozen-lockfile; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+COPY package.json package-lock.json ./
+RUN npm ci
 
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -54,9 +49,7 @@ ENV MINIO_PUBLIC_URL=$MINIO_PUBLIC_URL
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./package.json
-COPY --from=deps /app/package-lock.json* ./package-lock.json*
-COPY --from=deps /app/yarn.lock* ./yarn.lock*
-COPY --from=deps /app/pnpm-lock.yaml* ./pnpm-lock.yaml*
+COPY --from=deps /app/package-lock.json ./package-lock.json
 
 COPY app ./app
 COPY components ./components
@@ -74,19 +67,9 @@ COPY tsconfig.json ./tsconfig.json
 
 RUN npx prisma generate
 
-RUN \
-  if [ -f yarn.lock ]; then yarn run build; \
-  elif [ -f package-lock.json ]; then npm run build; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+RUN npm run build
 
-RUN \
-  if [ -f yarn.lock ]; then yarn install --frozen-lockfile --production=true; \
-  elif [ -f package-lock.json ]; then npm prune --omit=dev; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm prune --prod; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+RUN npm prune --omit=dev
 
 FROM node:20-alpine AS runner
 WORKDIR /app
