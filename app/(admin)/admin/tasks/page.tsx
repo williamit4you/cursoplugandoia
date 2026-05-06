@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Box, Button, Chip, MenuItem, Paper, TextField, Typography } from "@mui/material";
 import Link from "next/link";
 
 type TaskListItem = {
@@ -82,101 +81,176 @@ export default function TasksPage() {
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 900 }}>Tasks</Typography>
-          <Typography sx={{ opacity: 0.8, mt: 1 }}>
-            Cadastro central das automações. Tudo novo no sistema deve nascer por aqui.
-          </Typography>
-        </Box>
-        <Button component={Link} href="/admin/tasks/new" variant="contained">Nova Task</Button>
-      </Box>
+    <div className="space-y-8 animate-in">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 text-indigo-400">
+            <div className="w-8 h-1 bg-indigo-500 rounded-full" />
+            <span className="text-xs font-black uppercase tracking-widest">Automation Engine</span>
+          </div>
+          <h1 className="text-4xl font-black text-white tracking-tight">Tasks</h1>
+          <p className="text-slate-400 text-sm max-w-xl">
+            Gerencie as automações do sistema. Novos fluxos de IA devem ser configurados aqui.
+          </p>
+        </div>
+        <Link 
+          href="/admin/tasks/new"
+          className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl transition-all shadow-xl shadow-indigo-500/20 active:scale-95 text-center whitespace-nowrap"
+        >
+          Nova Task
+        </Link>
+      </div>
 
-      {message ? <Alert severity={message.type}>{message.text}</Alert> : null}
+      {/* Message Alert */}
+      {message && (
+        <div className={`p-4 rounded-2xl border ${
+          message.type === "success" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
+          message.type === "error" ? "bg-red-500/10 border-red-500/20 text-red-400" :
+          "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
+        }`}>
+          <p className="text-sm font-bold">{message.text}</p>
+        </div>
+      )}
 
-      <Paper sx={{ p: 2 }}>
-        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
-          <Box sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}>
-            <TextField fullWidth label="Busca" value={q} onChange={(e) => setQ(e.target.value)} />
-          </Box>
-          <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
-            <TextField select fullWidth label="Tipo" value={type} onChange={(e) => setType(e.target.value)}>
-              <MenuItem value="ALL">Todos</MenuItem>
+      {/* Filters Section */}
+      <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+          <div className="md:col-span-6">
+            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-1">Busca</label>
+            <input 
+              type="text" 
+              placeholder="Nome ou slug..."
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+              value={q} 
+              onChange={(e) => setQ(e.target.value)} 
+            />
+          </div>
+          <div className="md:col-span-3">
+            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-1">Tipo</label>
+            <select 
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all appearance-none"
+              value={type} 
+              onChange={(e) => setType(e.target.value)}
+            >
+              <option value="ALL">Todos os Tipos</option>
               {["NEWS_VIDEO", "QA_VIDEO", "MERCADO_LIVRE_VIDEO", "SHOPEE_VIDEO"].map((item) => (
-                <MenuItem key={item} value={item}>{item}</MenuItem>
+                <option key={item} value={item}>{item}</option>
               ))}
-            </TextField>
-          </Box>
-          <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
-            <TextField select fullWidth label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
-              <MenuItem value="ALL">Todos</MenuItem>
+            </select>
+          </div>
+          <div className="md:col-span-3">
+            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-1">Status</label>
+            <select 
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all appearance-none"
+              value={status} 
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="ALL">Qualquer Status</option>
               {["DRAFT", "ACTIVE", "PAUSED", "ARCHIVED"].map((item) => (
-                <MenuItem key={item} value={item}>{item}</MenuItem>
+                <option key={item} value={item}>{item}</option>
               ))}
-            </TextField>
-          </Box>
-        </Box>
-        <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
-          <Button variant="contained" onClick={load} disabled={loading}>Aplicar filtros</Button>
-          <Button variant="outlined" onClick={() => { setQ(""); setType("ALL"); setStatus("ALL"); }}>Limpar</Button>
-        </Box>
-      </Paper>
+            </select>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <button 
+            onClick={load} 
+            disabled={loading}
+            className="px-5 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50"
+          >
+            {loading ? "Carregando..." : "Aplicar Filtros"}
+          </button>
+          <button 
+            onClick={() => { setQ(""); setType("ALL"); setStatus("ALL"); }}
+            className="px-5 py-2 text-slate-400 hover:text-white text-sm font-bold rounded-xl transition-colors"
+          >
+            Limpar
+          </button>
+        </div>
+      </div>
 
-      <Paper sx={{ p: 0, overflow: "hidden" }}>
-        <Box sx={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      {/* Tasks Table */}
+      <div className="glass-panel rounded-2xl overflow-hidden border border-white/5">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr style={{ background: "rgba(255,255,255,0.04)" }}>
-                {["Nome", "Tipo", "Status", "Último run", "Próxima execução", "Ações"].map((label) => (
-                  <th key={label} style={{ textAlign: "left", padding: 16, fontSize: 12 }}>{label}</th>
-                ))}
+              <tr className="bg-white/5 text-[10px] uppercase tracking-widest text-slate-400 font-black">
+                <th className="px-6 py-4">Task Info</th>
+                <th className="px-6 py-4">Tipo</th>
+                <th className="px-6 py-4">Status / Power</th>
+                <th className="px-6 py-4">Última Execução</th>
+                <th className="px-6 py-4">Próxima</th>
+                <th className="px-6 py-4 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-white/5 text-sm">
               {items.map((item) => (
-                <tr key={item.id} style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                  <td style={{ padding: 16 }}>
-                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                      <Link href={`/admin/tasks/${item.id}`} style={{ fontWeight: 800 }}>
+                <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <Link href={`/admin/tasks/${item.id}`} className="font-bold text-slate-200 group-hover:text-white transition-colors">
                         {item.name}
                       </Link>
-                      <Typography sx={{ opacity: 0.65, fontSize: 12 }}>{item.slug}</Typography>
-                    </Box>
+                      <span className="text-[10px] text-slate-500 font-mono mt-1">{item.slug}</span>
+                    </div>
                   </td>
-                  <td style={{ padding: 16 }}>{item.type}</td>
-                  <td style={{ padding: 16 }}>
-                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                      <Chip label={item.status} size="small" color={item.status === "ACTIVE" ? "success" : "default"} />
-                      <Chip label={item.isEnabled ? "ON" : "OFF"} size="small" variant="outlined" />
-                    </Box>
+                  <td className="px-6 py-4">
+                    <span className="text-[10px] font-black text-indigo-400 tracking-tighter bg-indigo-500/5 px-2 py-1 rounded border border-indigo-500/10">
+                      {item.type}
+                    </span>
                   </td>
-                  <td style={{ padding: 16 }}>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase
+                        ${item.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-400" : "bg-slate-500/10 text-slate-400"}`}>
+                        {item.status}
+                      </span>
+                      <span className={`w-2 h-2 rounded-full ${item.isEnabled ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-slate-400 text-xs font-mono">
                     {item.runs?.[0]?.createdAt ? new Date(item.runs[0].createdAt).toLocaleString("pt-BR") : "—"}
                   </td>
-                  <td style={{ padding: 16 }}>
+                  <td className="px-6 py-4 text-slate-400 text-xs font-mono">
                     {item.nextRunAt ? new Date(item.nextRunAt).toLocaleString("pt-BR") : "—"}
                   </td>
-                  <td style={{ padding: 16 }}>
-                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                      <Button size="small" variant="outlined" component={Link} href={`/admin/tasks/${item.id}`}>Editar</Button>
-                      <Button size="small" variant="outlined" onClick={() => runTask(item.id)}>Executar</Button>
-                      <Button size="small" color="error" onClick={() => deleteTask(item.id)}>Excluir</Button>
-                    </Box>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Link 
+                        href={`/admin/tasks/${item.id}`}
+                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-black rounded-lg transition-all"
+                      >
+                        EDITAR
+                      </Link>
+                      <button 
+                        onClick={() => runTask(item.id)}
+                        className="px-3 py-1.5 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 text-[10px] font-black rounded-lg transition-all active:scale-95"
+                      >
+                        RUN NOW
+                      </button>
+                      <button 
+                        onClick={() => deleteTask(item.id)}
+                        className="px-3 py-1.5 hover:bg-red-500/10 text-red-500/60 hover:text-red-500 text-[10px] font-black rounded-lg transition-all"
+                      >
+                        DELETE
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
-              {!loading && items.length === 0 ? (
+              {!loading && items.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ padding: 24, textAlign: "center", opacity: 0.7 }}>
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500 italic">
                     Nenhuma task encontrada.
                   </td>
                 </tr>
-              ) : null}
+              )}
             </tbody>
           </table>
-        </Box>
-      </Paper>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 }
+

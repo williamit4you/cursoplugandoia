@@ -38,9 +38,23 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Visão Geral</h1>
-      <DashboardMetrics stats={stats} />
+    <div className="space-y-10 pb-20">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-indigo-400">Bem-vindo de volta,</p>
+          <h1 className="text-4xl font-black text-white tracking-tight">Visão Geral</h1>
+        </div>
+        
+        <div className="flex items-center gap-2 text-slate-400 text-sm font-medium glass px-4 py-2 rounded-xl border-white/5">
+           <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+           {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+        </div>
+      </header>
+
+      <section>
+        <DashboardMetrics stats={stats} />
+      </section>
     </div>
   )
 }
+

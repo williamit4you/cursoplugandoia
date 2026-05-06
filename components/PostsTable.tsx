@@ -1,10 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, Paper, Button, Chip,
-} from "@mui/material";
 import Link from "next/link";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -38,7 +34,6 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
   const handleLinkedIn = async (id: string) => {
     setLoadingId(id + "-linkedin");
     try {
-      // 1. Buscar o socialPostId associado ao post
       const sp = await fetch(`/api/posts/${id}/social-post`);
       if (!sp.ok) {
         toast.error("Este post ainda não tem vídeo gerado para publicar no LinkedIn.");
@@ -46,7 +41,6 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
       }
       const { socialPostId } = await sp.json();
 
-      // 2. Publicar no LinkedIn
       const res = await fetch("/api/social/publish-linkedin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -87,129 +81,134 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
   };
 
   return (
-    <>
-      <ToastContainer position="top-right" />
-      <Button
-        component={Link}
-        href="/admin/posts/new"
-        variant="contained"
-        color="primary"
-        sx={{ mb: 2 }}
-      >
-        Nova Notícia
-      </Button>
+    <div className="space-y-6 animate-in">
+      <ToastContainer theme="dark" />
+      
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          <div className="w-1.5 h-5 bg-indigo-500 rounded-full" />
+          Lista de Notícias
+        </h2>
+        <Link 
+          href="/admin/posts/new"
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+        >
+          Nova Notícia
+        </Link>
+      </div>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 700 }}>Título</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Capa</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Visualizações</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Data</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {posts.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} align="center">
-                  Nenhuma notícia encontrada.
-                </TableCell>
-              </TableRow>
-            )}
-            {posts.map((item) => (
-              <TableRow key={item.id} hover>
-                {/* Título */}
-                <TableCell sx={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {item.title}
-                </TableCell>
+      <div className="glass-panel rounded-2xl overflow-hidden border border-white/5">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-white/5 text-[10px] uppercase tracking-widest text-slate-400 font-black">
+                <th className="px-6 py-4">Título</th>
+                <th className="px-6 py-4 text-center">Capa</th>
+                <th className="px-6 py-4 text-center">Status</th>
+                <th className="px-6 py-4 text-center">Views</th>
+                <th className="px-6 py-4 text-center">Data</th>
+                <th className="px-6 py-4 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-sm">
+              {posts.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500 italic">
+                    Nenhuma notícia encontrada.
+                  </td>
+                </tr>
+              )}
+              {posts.map((item) => (
+                <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
+                  {/* Título */}
+                  <td className="px-6 py-4 max-w-md">
+                    <div className="font-bold text-slate-200 group-hover:text-white transition-colors truncate">
+                      {item.title}
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5 truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                      {item.id}
+                    </div>
+                  </td>
 
-                {/* Capa */}
-                <TableCell sx={{ minWidth: 90 }}>
-                  {item.coverImage ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={item.coverImage}
-                      alt="capa"
-                      style={{ width: 64, height: 40, objectFit: "cover", borderRadius: 4, display: "block" }}
-                    />
-                  ) : (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      disabled={loadingId === item.id + "-cover"}
-                      onClick={() => handleFetchCover(item.id)}
-                      sx={{ fontSize: 10, textTransform: "none", minWidth: 0, px: 1 }}
+                  {/* Capa */}
+                  <td className="px-6 py-4">
+                    <div className="flex justify-center">
+                      {item.coverImage ? (
+                        <img
+                          src={item.coverImage}
+                          alt="capa"
+                          className="w-16 h-10 object-cover rounded-lg ring-1 ring-white/10 shadow-lg"
+                        />
+                      ) : (
+                        <button
+                          disabled={loadingId === item.id + "-cover"}
+                          onClick={() => handleFetchCover(item.id)}
+                          className="px-3 py-1 bg-white/5 hover:bg-white/10 text-[10px] font-black text-slate-300 rounded-lg transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          {loadingId === item.id + "-cover" ? "⏳" : "🖼️ PEXELS"}
+                        </button>
+                      )}
+                    </div>
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-6 py-4 text-center">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight
+                      ${item.status === "PUBLISHED" 
+                        ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20" 
+                        : "bg-slate-500/10 text-slate-400 ring-1 ring-slate-500/20"}`}
                     >
-                      {loadingId === item.id + "-cover" ? "⏳" : "🖼️ Pexels"}
-                    </Button>
-                  )}
-                </TableCell>
+                      {item.status}
+                    </span>
+                  </td>
 
-                {/* Status */}
-                <TableCell>
-                  <Chip
-                    label={item.status}
-                    color={item.status === "PUBLISHED" ? "success" : "default"}
-                    size="small"
-                  />
-                </TableCell>
+                  {/* Views */}
+                  <td className="px-6 py-4 text-center font-mono font-bold text-indigo-400">
+                    {item.views ?? 0}
+                  </td>
 
-                {/* Views */}
-                <TableCell>{item.views ?? 0}</TableCell>
+                  {/* Data */}
+                  <td className="px-6 py-4 text-center text-slate-400 text-xs">
+                    {new Date(item.createdAt).toLocaleDateString("pt-BR")}
+                  </td>
 
-                {/* Data */}
-                <TableCell>{new Date(item.createdAt).toLocaleDateString("pt-BR")}</TableCell>
-
-                {/* Ações */}
-                <TableCell>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                    <Button
-                      component={Link}
-                      href={`/admin/posts/${item.id}`}
-                      size="small"
-                      variant="outlined"
-                      sx={{ textTransform: "none" }}
-                    >
-                      ✏️ Editar
-                    </Button>
-
-                    {item.status !== "PUBLISHED" && (
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="success"
-                        disabled={loadingId === item.id + "-site"}
-                        onClick={() => handlePublish(item.id)}
-                        sx={{ textTransform: "none" }}
+                  {/* Ações */}
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Link
+                        href={`/admin/posts/${item.id}`}
+                        className="p-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors"
+                        title="Editar"
                       >
-                        {loadingId === item.id + "-site" ? "⏳" : "🌐 Site"}
-                      </Button>
-                    )}
+                        ✏️
+                      </Link>
 
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      disabled={loadingId === item.id + "-linkedin"}
-                      onClick={() => handleLinkedIn(item.id)}
-                      sx={{
-                        textTransform: "none",
-                        borderColor: "#0A66C2",
-                        color: "#0A66C2",
-                        "&:hover": { borderColor: "#0A66C2", background: "#e8f0fe" },
-                      }}
-                    >
-                      {loadingId === item.id + "-linkedin" ? "⏳" : "💼 LinkedIn"}
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </>
+                      {item.status !== "PUBLISHED" && (
+                        <button
+                          disabled={loadingId === item.id + "-site"}
+                          onClick={() => handlePublish(item.id)}
+                          className="px-3 py-1 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 text-[10px] font-black rounded-lg transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          {loadingId === item.id + "-site" ? "⏳" : "PUBLISH"}
+                        </button>
+                      )}
+
+                      <button
+                        disabled={loadingId === item.id + "-linkedin"}
+                        onClick={() => handleLinkedIn(item.id)}
+                        className="px-3 py-1 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-[10px] font-black rounded-lg transition-all active:scale-95 disabled:opacity-50 border border-blue-500/20"
+                      >
+                        {loadingId === item.id + "-linkedin" ? "⏳" : "LINKEDIN"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 }
+

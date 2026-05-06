@@ -54,13 +54,16 @@ async function handleStep(params: {
 
   if (stepKey === "COLLECT_SOURCE") {
     if (task.type === "SHOPEE_VIDEO") {
+      const config = await prisma.shopeeAffiliateConfig.findFirst();
+      if (!config) throw new Error("Shopee config not found. Configure /admin/shopee primeiro.");
+
       const keyword = getFirstSearchTerm(sourceConfig);
       const minPrice = Number(sourceConfig.minPrice ?? 10);
       const minCommissionRate = Number(sourceConfig.minCommissionRate ?? 5);
       const minSales = Number(sourceConfig.minSales ?? 100);
       const limit = Math.min(50, Math.max(1, Number(sourceConfig.limit ?? 20)));
 
-      const items = await searchShopeeAffiliateProducts(task, {
+      const rawItems = await searchShopeeAffiliateProducts(config, {
         keyword,
         limit,
         listType: 2,
@@ -71,6 +74,28 @@ async function handleStep(params: {
         enrichDetails: true,
         timeoutMs: 15000,
       });
+
+      const items: any[] = [];
+      const { generateShopeeAffiliateShortLink } = await import("@/lib/shopee/openApi");
+
+      for (const product of rawItems) {
+        let affiliateUrl = product.offerLink || null;
+        if (!affiliateUrl && product.originUrl) {
+          try {
+            affiliateUrl = await generateShopeeAffiliateShortLink({
+              config,
+              originUrl: product.originUrl,
+              timeoutMs: 8000,
+            });
+          } catch (err) {
+            console.error("Failed to generate short link for shopee product", err);
+          }
+        }
+        items.push({
+          ...product,
+          affiliateUrl,
+        });
+      }
 
       return {
         output: {
@@ -141,6 +166,37 @@ async function handleStep(params: {
       };
     }
 
+    if (task.type === "NEWS_VIDEO") {
+      const posts = await prisma.post.findMany({
+        where: { status: "PUBLISHED" },
+        orderBy: { createdAt: "desc" },
+        take: 3,
+      });
+      if (posts.length === 0) throw new Error("Nenhum post publicado encontrado para News Video.");
+      return {
+        output: { source: "post-database", count: posts.length, items: posts },
+        summary: `News: ${posts.length} artigo(s) coletados`,
+      };
+    }
+
+    if (task.type === "QA_VIDEO") {
+      const question = await prisma.videoQuestion.findFirst({
+        where: { status: "PENDING" },
+        orderBy: { createdAt: "asc" },
+      });
+      if (!question) throw new Error("Nenhuma VideoQuestion PENDING encontrada.");
+      
+      await prisma.videoQuestion.update({
+        where: { id: question.id },
+        data: { status: "PROCESSING", startedAt: new Date() },
+      });
+      
+      return {
+        output: { source: "video-question", count: 1, items: [question] },
+        summary: `QA: Pergunta selecionada (${question.id})`,
+      };
+    }
+
     return { output: { source: "noop", reason: `No adapter yet for task type ${task.type}` } };
   }
 
@@ -175,6 +231,64 @@ async function handleStep(params: {
       String(first.originUrl || first.productLink || first.permalink || "").trim() || null;
     const description = String(first.description || "").trim() || null;
     const images = Array.isArray(first.imageUrls) ? first.imageUrls : Array.isArray(first.images) ? first.images : [];
+
+    if (task.type === "NEWS_VIDEO") {
+      const ideaPrompt = [
+        "Crie um vídeo viral de notícias resumindo os seguintes artigos:",
+        ...items.map((post: any, idx: number) => `Notícia ${idx + 1}:\nTítulo: ${post.title}\nResumo: ${post.summary}`),
+      ].join("\n\n");
+      
+      const project = await prisma.codeVideoProject.create({
+        data: {
+          projectType: "GENERIC",
+          ideaPrompt,
+          aspectRatio: "PORTRAIT_9_16",
+          videoDurationSec: 30, // Or get from creativeConfig
+          ttsVoice: "pt-BR-AntonioNeural",
+          useExternalMedia: true,
+          title: "Giro de Notícias",
+          metadataJson: JSON.stringify({
+             sourcePosts: items.map((i: any) => i.id)
+          })
+        }
+      });
+      const bundle = await prisma.automationAssetBundle.create({
+        data: { taskId: task.id, taskRunId: run.id, title: "Giro de Notícias", codeVideoProjectId: project.id }
+      });
+      return { output: { ok: true, assetBundleId: bundle.id, codeVideoProjectId: project.id }, summary: `Assets: News Video` };
+    }
+
+    if (task.type === "QA_VIDEO") {
+      const question = items[0];
+      const ideaPrompt = [
+        "Gere um vídeo respondendo a essa dúvida do público:",
+        `Pergunta: ${question.questionText}`,
+        "Seja informativo e use tom dinâmico."
+      ].join("\n");
+      
+      const project = await prisma.codeVideoProject.create({
+        data: {
+          projectType: "GENERIC",
+          ideaPrompt,
+          aspectRatio: "PORTRAIT_9_16",
+          videoDurationSec: 30,
+          ttsVoice: "pt-BR-AntonioNeural",
+          useExternalMedia: true,
+          title: "Dúvida do Público",
+          metadataJson: JSON.stringify({ questionId: question.id })
+        }
+      });
+      
+      await prisma.videoQuestion.update({
+        where: { id: question.id },
+        data: { codeVideoProjectId: project.id }
+      });
+
+      const bundle = await prisma.automationAssetBundle.create({
+        data: { taskId: task.id, taskRunId: run.id, title: "QA Video", codeVideoProjectId: project.id }
+      });
+      return { output: { ok: true, assetBundleId: bundle.id, codeVideoProjectId: project.id }, summary: `Assets: QA Video` };
+    }
 
     const ideaPrompt = [
       `Crie uma propaganda curta e vendedora para o produto "${title}".`,
