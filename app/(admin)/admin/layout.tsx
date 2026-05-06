@@ -27,6 +27,9 @@ import YouTubeIcon from "@mui/icons-material/YouTube";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import StorefrontIcon from "@mui/icons-material/Storefront";
+import ChecklistIcon from "@mui/icons-material/Checklist";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import EventIcon from "@mui/icons-material/Event";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 
@@ -54,6 +57,9 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Config. Scraper", icon: <SettingsIcon />, path: "/admin/scraper-config" },
     { text: "Config. Perguntas", icon: <SettingsIcon />, path: "/admin/video-questions-config" },
     { text: "Shopee", icon: <StorefrontIcon />, path: "/admin/shopee" },
+    { text: "Tasks", icon: <ChecklistIcon />, path: "/admin/tasks" },
+    { text: "ExecuÃ§Ãµes", icon: <PlayArrowIcon />, path: "/admin/task-runs" },
+    { text: "Agendamentos", icon: <EventIcon />, path: "/admin/schedules" },
   ];
 
   return (

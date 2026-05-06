@@ -42,6 +42,43 @@ enum CrmTaskStatus {
   CANCELED
 }
 
+enum AutomationTaskType {
+  NEWS_VIDEO
+  QA_VIDEO
+  MERCADO_LIVRE_VIDEO
+  SHOPEE_VIDEO
+}
+
+enum AutomationTaskStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum AutomationTriggerType {
+  MANUAL
+  SCHEDULED
+  RETRY
+}
+
+enum AutomationRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  PARTIAL
+  CANCELED
+}
+
+enum AutomationStepStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -120,6 +157,14 @@ model SocialPost {
   post        Post?    @relation(fields: [postId], references: [id])
   codeVideoProjectId String?
   codeVideoProject   CodeVideoProject? @relation(fields: [codeVideoProjectId], references: [id])
+
+  automationTaskId    String?
+  automationTask      AutomationTask? @relation(fields: [automationTaskId], references: [id], onDelete: SetNull)
+  automationTaskRunId String?
+  automationTaskRun   AutomationTaskRun? @relation(fields: [automationTaskRunId], references: [id], onDelete: SetNull)
+
+  @@index([automationTaskId])
+  @@index([automationTaskRunId])
 }
 
 model CodeVideoProject {
@@ -158,6 +203,7 @@ model CodeVideoProject {
   log              String?
 
   socialPosts      SocialPost[]
+  automationAssetBundles AutomationAssetBundle[]
   question         VideoQuestion?
 
   createdAt        DateTime         @default(now())
@@ -488,6 +534,113 @@ model ShopeeAffiliatePick {
 
   @@index([createdAt])
   @@index([status])
+  @@index([codeVideoProjectId])
+}
+
+model AutomationTask {
+  id                  String                @id @default(cuid())
+  name                String
+  slug                String                @unique
+  type                AutomationTaskType
+  status              AutomationTaskStatus  @default(DRAFT)
+  isEnabled           Boolean               @default(true)
+  timezone            String                @default("America/Sao_Paulo")
+  cronExpression      String?
+  runIntervalMinutes  Int?
+  maxRunsPerDay       Int?
+  priority            Int                   @default(100)
+  sourceConfigJson    String                @default("{}")
+  creativeConfigJson  String                @default("{}")
+  publishConfigJson   String                @default("{}")
+  executionConfigJson String                @default("{}")
+  creativeTemplateId  String?
+  lastRunAt           DateTime?
+  nextRunAt           DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  runs                AutomationTaskRun[]
+  socialPosts          SocialPost[]
+  assetBundles         AutomationAssetBundle[]
+
+  @@index([status])
+  @@index([isEnabled])
+  @@index([type])
+  @@index([nextRunAt])
+}
+
+model AutomationTaskRun {
+  id                 String                  @id @default(cuid())
+  taskId             String
+  task               AutomationTask          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  triggerType        AutomationTriggerType
+  status             AutomationRunStatus     @default(PENDING)
+  startedAt          DateTime?
+  finishedAt         DateTime?
+  summary            String?
+  errorMessage       String?
+  inputSnapshotJson  String                  @default("{}")
+  outputSnapshotJson String                  @default("{}")
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  steps              AutomationTaskStepRun[]
+  socialPosts         SocialPost[]
+  assetBundle         AutomationAssetBundle?
+
+  @@index([taskId, createdAt])
+  @@index([status])
+}
+
+model AutomationTaskStepRun {
+  id           String                @id @default(cuid())
+  taskRunId    String
+  taskRun      AutomationTaskRun     @relation(fields: [taskRunId], references: [id], onDelete: Cascade)
+  stepKey      String
+  stepOrder    Int
+  status       AutomationStepStatus  @default(PENDING)
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  inputJson    String                @default("{}")
+  outputJson   String                @default("{}")
+  errorMessage String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  @@index([taskRunId, stepOrder])
+  @@index([status])
+}
+
+model AutomationAssetBundle {
+  id                 String   @id @default(cuid())
+  taskId             String
+  task               AutomationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskRunId          String   @unique
+  taskRun            AutomationTaskRun @relation(fields: [taskRunId], references: [id], onDelete: Cascade)
+
+  title              String?
+  description        String?
+  technicalDetails   String?
+  scriptText         String?
+  ctaText            String?
+
+  sourceItemsJson    String   @default("{}")
+  imagesJson         String   @default("[]")
+  videosJson         String   @default("[]")
+  metadataJson       String   @default("{}")
+
+  affiliateUrl       String?
+  productUrl         String?
+  thumbUrl           String?
+  finalVideoUrl      String?
+
+  codeVideoProjectId String?
+  codeVideoProject   CodeVideoProject? @relation(fields: [codeVideoProjectId], references: [id], onDelete: SetNull)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([taskId, createdAt])
   @@index([codeVideoProjectId])
 }
 
