@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Alert, Box, Chip, Paper, Typography } from "@mui/material";
 import { Button } from "@mui/material";
+import { useRouter } from "next/navigation";
 
 type TaskRunItem = {
   id: string;
@@ -28,10 +29,14 @@ type TaskRunItem = {
 };
 
 export default function TaskRunsPage() {
+  const router = useRouter();
   const [items, setItems] = useState<TaskRunItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+
+  const isShopeeCredentialError = (text: string | null | undefined) =>
+    Boolean(text && text.includes("Shopee Affiliate API credentials are missing"));
 
   useEffect(() => {
     const load = async () => {
@@ -85,6 +90,18 @@ export default function TaskRunsPage() {
       </Box>
 
       {message ? <Alert severity="error">{message}</Alert> : null}
+      {isShopeeCredentialError(message) ? (
+        <Alert
+          severity="warning"
+          action={
+            <Button color="inherit" size="small" onClick={() => router.push("/admin/shopee")}>
+              Configurar Shopee
+            </Button>
+          }
+        >
+          Esse erro nao e do fluxo da task: faltam credenciais da API de afiliados da Shopee. Va em Admin / Shopee e preencha/salve AppID e Secret (ou configure via env).
+        </Alert>
+      ) : null}
 
       <Paper sx={{ p: 0, overflow: "hidden" }}>
         <Box sx={{ overflowX: "auto" }}>

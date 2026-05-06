@@ -25,8 +25,10 @@ function mergeJson(a: unknown, b: unknown) {
 
 function getFirstSearchTerm(sourceConfig: JsonObject) {
   const terms = Array.isArray(sourceConfig.searchTerms) ? sourceConfig.searchTerms : [];
-  const first = String(terms[0] || "").trim();
-  return first || "ofertas";
+  const cleaned = terms.map((t) => String(t || "").trim()).filter(Boolean);
+  if (cleaned.length === 0) return "ofertas";
+  if (cleaned.length === 1) return cleaned[0] || "ofertas";
+  return cleaned[Math.floor(Math.random() * cleaned.length)] || cleaned[0] || "ofertas";
 }
 
 function parsePlatforms(publishConfig: JsonObject) {
@@ -293,11 +295,16 @@ async function handleStep(params: {
     const created: Array<{ id: string; platform: string }> = [];
     const timeZone = String(task.timezone || "America/Sao_Paulo").trim() || "America/Sao_Paulo";
     const timeSlots = parsedTimeSlotsFromConfig(publishConfig);
+    const baseline = (() => {
+      const d = new Date();
+      d.setSeconds(0, 0);
+      return new Date(d.getTime() + 60_000);
+    })();
     const scheduleTimes = computeNextScheduleTimes({
       timeZone,
       slots: timeSlots,
       count: platforms.length,
-      from: new Date(),
+      from: baseline,
     });
 
     for (const [index, platform] of platforms.entries()) {
