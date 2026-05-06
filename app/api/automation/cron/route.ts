@@ -5,8 +5,9 @@ export const runtime = "nodejs";
 export const maxDuration = 900;
 
 function baseUrl(req: NextRequest) {
-  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
   const host = req.headers.get("host") || "localhost:3000";
+  const forwardedProto = req.headers.get("x-forwarded-proto");
+  const protocol = forwardedProto || (host.includes("localhost") ? "http" : "https");
   return `${protocol}://${host}`;
 }
 

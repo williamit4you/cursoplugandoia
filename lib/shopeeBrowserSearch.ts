@@ -1,0 +1,277 @@
+import type { ShopeeAffiliateConfigLike, ShopeeProduct } from "@/lib/shopeeAffiliate";
+import { DEFAULT_SHOPEE_SEARCH_TERMS, parseJsonStringArray, shuffleShopeeList } from "@/lib/shopeeAffiliate";
+
+type BrowserSearchOptions = {
+  limit?: number;
+  queryOverride?: string | null;
+  randomize?: boolean;
+  maxTargets?: number;
+  gotoTimeoutMs?: number;
+  settleDelayMs?: number;
+};
+
+function dynamicRequire(moduleName: string) {
+  // Keep puppeteer-core out of normal Next.js static analysis.
+  // eslint-disable-next-line no-eval
+  const req = eval("require") as (name: string) => any;
+  return req(moduleName);
+}
+
+function executableCandidates() {
+  return [
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    process.env.REMOTION_CHROME_BIN,
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/chromium",
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+  ].filter(Boolean) as string[];
+}
+
+async function firstExistingExecutable() {
+  const fs = await import("fs/promises");
+  for (const candidate of executableCandidates()) {
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      // try next candidate
+    }
+  }
+  return null;
+}
+
+function normalizeDomain(domain: string | null | undefined) {
+  const cleaned = String(domain || "").trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+  return cleaned || "shopee.com.br";
+}
+
+function buildSearchUrl(domain: string, query: string) {
+  return `https://${domain}/search?keyword=${encodeURIComponent(query || "ofertas")}`;
+}
+
+function buildApiSearchUrl(domain: string, keyword: string, limit: number) {
+  const url = new URL(`https://${domain}/api/v4/search/search_items`);
+  url.searchParams.set("by", "relevancy");
+  url.searchParams.set("keyword", keyword);
+  url.searchParams.set("limit", String(Math.min(60, Math.max(1, limit))));
+  url.searchParams.set("newest", "0");
+  url.searchParams.set("order", "desc");
+  url.searchParams.set("page_type", "search");
+  url.searchParams.set("scenario", "PAGE_GLOBAL_SEARCH");
+  url.searchParams.set("version", "2");
+  return url.toString();
+}
+
+function buildApiItemUrl(domain: string, shopId: number, itemId: number) {
+  const url = new URL(`https://${domain}/api/v4/item/get`);
+  url.searchParams.set("shopid", String(shopId));
+  url.searchParams.set("itemid", String(itemId));
+  return url.toString();
+}
+
+function buildImageUrl(site: string, imageId: string) {
+  const normalizedSite = String(site || "br").toLowerCase();
+  const host = normalizedSite === "br" ? "down-br.img.susercontent.com" : `down-${normalizedSite}.img.susercontent.com`;
+  return `https://${host}/file/${encodeURIComponent(imageId)}`;
+}
+
+function normalizeText(value: unknown, max = 180) {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function priceFromRaw(raw: any): number | null {
+  const candidates = [raw?.price, raw?.price_min, raw?.price_max, raw?.price_before_discount];
+  for (const value of candidates) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    const normalized = n / 100000;
+    if (normalized > 0 && normalized < 1_000_000) return Math.round(normalized * 100) / 100;
+    const cents = n / 100;
+    if (cents > 0 && cents < 1_000_000) return Math.round(cents * 100) / 100;
+  }
+  return null;
+}
+
+function normalizeProduct(params: {
+  site: string;
+  domain: string;
+  itemBasic: any;
+  itemDetail?: any | null;
+}): ShopeeProduct | null {
+  const shopId = Number(params.itemBasic?.shopid);
+  const itemId = Number(params.itemBasic?.itemid);
+  if (!Number.isFinite(shopId) || !Number.isFinite(itemId)) return null;
+
+  const title = normalizeText(params.itemBasic?.name || params.itemBasic?.title, 200);
+  if (!title) return null;
+
+  const id = `${shopId}-${itemId}`;
+  const permalink = `https://${params.domain}/product/${shopId}/${itemId}`;
+  const soldQuantity = Number.isFinite(Number(params.itemBasic?.historical_sold))
+    ? Number(params.itemBasic.historical_sold)
+    : null;
+  const ratingStar = Number.isFinite(Number(params.itemBasic?.item_rating?.rating_star))
+    ? Number(params.itemBasic.item_rating.rating_star)
+    : null;
+  const reviewCount = Number.isFinite(Number(params.itemBasic?.item_rating?.rating_count?.[0]))
+    ? Number(params.itemBasic.item_rating.rating_count[0])
+    : null;
+
+  const imageUrls: string[] = [];
+  const primaryImage = String(params.itemBasic?.image || "").trim();
+  if (primaryImage) imageUrls.push(buildImageUrl(params.site, primaryImage));
+
+  const detailImages = Array.isArray(params.itemDetail?.images) ? params.itemDetail.images : [];
+  for (const imageId of detailImages) {
+    const value = String(imageId || "").trim();
+    if (!value) continue;
+    imageUrls.push(buildImageUrl(params.site, value));
+    if (imageUrls.length >= 8) break;
+  }
+
+  return {
+    id,
+    title,
+    price: priceFromRaw(params.itemBasic),
+    currencyId: "BRL",
+    permalink,
+    thumbnailUrl: imageUrls[0] || null,
+    shopId,
+    itemId,
+    soldQuantity,
+    ratingStar,
+    reviewCount,
+    description: params.itemDetail?.description ? normalizeText(params.itemDetail.description, 4000) : null,
+    imageUrls,
+  };
+}
+
+export async function searchShopeeProductsWithBrowser(
+  config: ShopeeAffiliateConfigLike,
+  options: BrowserSearchOptions = {}
+): Promise<ShopeeProduct[]> {
+  const executablePath = await firstExistingExecutable();
+  if (!executablePath) {
+    throw new Error("Chrome/Chromium nao encontrado para busca via navegador.");
+  }
+
+  const puppeteer = dynamicRequire("puppeteer-core");
+  const site = String(config.site || "br").trim().toLowerCase() || "br";
+  const domain = normalizeDomain(config.domain || "shopee.com.br");
+  const limit = Math.min(24, Math.max(1, Number(options.limit || config.maxProductsPerRun || 8)));
+  const terms = options.queryOverride
+    ? [options.queryOverride]
+    : parseJsonStringArray(config.searchTerms, DEFAULT_SHOPEE_SEARCH_TERMS);
+  const keyword = (terms.length > 0 ? terms : DEFAULT_SHOPEE_SEARCH_TERMS)[0] || "ofertas";
+
+  const maxTargets = Math.min(3, Math.max(1, Number(options.maxTargets || 1)));
+  const gotoTimeoutMs = Math.min(45000, Math.max(5000, Number(options.gotoTimeoutMs || 45000)));
+  const settleDelayMs = Math.min(8000, Math.max(0, Number(options.settleDelayMs || 2500)));
+
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-blink-features=AutomationControlled",
+    ],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1365, height: 900 });
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    );
+    await page.setExtraHTTPHeaders({
+      "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+    });
+
+    const targets: string[] = [keyword];
+    const shuffled = shuffleShopeeList(targets).slice(0, maxTargets);
+
+    const products: ShopeeProduct[] = [];
+    const seen = new Set<string>();
+
+    for (const term of shuffled) {
+      await page.goto(buildSearchUrl(domain, term), { waitUntil: "domcontentloaded", timeout: gotoTimeoutMs });
+      if (settleDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, settleDelayMs));
+
+      const search = await page.evaluate(async ({ apiUrl }: { apiUrl: string }) => {
+        try {
+          const res = await fetch(apiUrl, { credentials: "include" });
+          const text = await res.text();
+          let data: any = null;
+          try {
+            data = text ? JSON.parse(text) : {};
+          } catch {
+            data = {};
+          }
+          return { ok: res.ok, status: res.status, data };
+        } catch (err: any) {
+          return { ok: false, status: 0, data: { error: err?.message || "fetch failed" } };
+        }
+      }, { apiUrl: buildApiSearchUrl(domain, term, Math.min(60, Math.max(24, limit * 3))) });
+
+      if (!search?.ok) {
+        throw new Error(`Busca via navegador falhou. HTTP ${search?.status || "?"}`);
+      }
+
+      const items = Array.isArray(search?.data?.items)
+        ? search.data.items
+        : Array.isArray(search?.data?.data?.items)
+          ? search.data.data.items
+          : [];
+
+      for (const raw of items) {
+        const itemBasic = raw?.item_basic || raw;
+        const shopId = Number(itemBasic?.shopid);
+        const itemId = Number(itemBasic?.itemid);
+        if (!Number.isFinite(shopId) || !Number.isFinite(itemId)) continue;
+        const key = `${shopId}-${itemId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        let itemDetail: any = null;
+        try {
+          const detail = await page.evaluate(async ({ itemUrl }: { itemUrl: string }) => {
+            const res = await fetch(itemUrl, { credentials: "include" });
+            const text = await res.text();
+            let data: any = null;
+            try {
+              data = text ? JSON.parse(text) : {};
+            } catch {
+              data = {};
+            }
+            return { ok: res.ok, status: res.status, data };
+          }, { itemUrl: buildApiItemUrl(domain, shopId, itemId) });
+          if (detail?.ok) itemDetail = detail?.data?.data?.item || detail?.data?.data || null;
+        } catch {
+          itemDetail = null;
+        }
+
+        const product = normalizeProduct({ site, domain, itemBasic, itemDetail });
+        if (!product) continue;
+        products.push(product);
+        if (products.length >= limit) break;
+      }
+
+      if (products.length >= limit) break;
+    }
+
+    if (products.length === 0) {
+      throw new Error("Busca via navegador nao encontrou produtos (possivel challenge/login).");
+    }
+
+    return (options.randomize ? shuffleShopeeList(products) : products).slice(0, limit);
+  } finally {
+    await browser.close();
+  }
+}

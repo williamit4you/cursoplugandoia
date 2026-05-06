@@ -5,12 +5,15 @@ import { Pool } from "pg";
 import {
   DEFAULT_SHOPEE_SEARCH_TERMS,
   parseJsonStringArray,
-  searchShopeeProducts,
   shuffleShopeeList,
-  type ShopeeProduct,
 } from "@/lib/shopeeAffiliate";
 import { normalizeMercadoLivrePlatforms } from "@/lib/mercadoLivreAffiliate";
 import { prepareShopeeProductAssets } from "@/lib/shopeeProductAssets";
+import {
+  generateShopeeAffiliateShortLink,
+  searchShopeeAffiliateProducts,
+  type ShopeeAffiliateProduct,
+} from "@/lib/shopee/openApi";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -23,7 +26,7 @@ function addHours(date: Date, hours: number) {
   return new Date(date.getTime() + hours * 60 * 60 * 1000);
 }
 
-function formatShopeePrice(product: Pick<ShopeeProduct, "price" | "currencyId">) {
+function formatShopeePrice(product: Pick<ShopeeAffiliateProduct, "price" | "currencyId">) {
   if (product.price == null) return "Preco nao informado";
   const currency = product.currencyId || "BRL";
   try {
@@ -33,13 +36,15 @@ function formatShopeePrice(product: Pick<ShopeeProduct, "price" | "currencyId">)
   }
 }
 
-function buildProductPrompt(product: ShopeeProduct) {
+function buildProductPrompt(product: ShopeeAffiliateProduct, affiliateUrl: string) {
   const price = formatShopeePrice(product);
   return [
     `Crie uma propaganda curta e vendedora para o produto "${product.title}".`,
-    `Produto Shopee: ${product.permalink}`,
-    `Link que deve ir na descricao: ${product.permalink}`,
+    `Produto Shopee: ${product.originUrl}`,
+    `Link que deve ir na descricao: ${affiliateUrl}`,
     `Preco atual: ${price}`,
+    product.commissionRate != null ? `Comissao estimada: ${product.commissionRate.toFixed(2)}%` : "",
+    product.estimatedCommission != null ? `Valor estimado de comissao: R$ ${product.estimatedCommission.toFixed(2)}` : "",
     product.soldQuantity != null ? `Vendidos (historico): ${product.soldQuantity}` : "",
     product.ratingStar != null ? `Nota media: ${product.ratingStar}` : "",
     "A descricao precisa convidar o usuario a clicar no link da descricao do video.",
@@ -50,13 +55,14 @@ function buildProductPrompt(product: ShopeeProduct) {
 }
 
 function buildMetadata(params: {
-  product: ShopeeProduct;
+  product: ShopeeAffiliateProduct;
+  affiliateUrl: string;
   scheduledTo: Date;
   platforms: string[];
   autoScheduleSocial: boolean;
   assets: Array<{ url: string; kind?: "IMAGE" | "VIDEO"; name?: string }>;
 }) {
-  const { product, scheduledTo, platforms } = params;
+  const { product, scheduledTo, platforms, affiliateUrl } = params;
   const price = formatShopeePrice(product);
 
   return {
@@ -64,16 +70,19 @@ function buildMetadata(params: {
     productDescription: product.description || "",
     productTechnicalDetails: [
       `Preco atual: ${price}`,
+      product.commissionRate != null ? `Comissao total: ${product.commissionRate.toFixed(2)}%` : "",
+      product.estimatedCommission != null ? `Comissao estimada: R$ ${product.estimatedCommission.toFixed(2)}` : "",
       product.soldQuantity != null ? `Vendidos (historico): ${product.soldQuantity}` : "",
       product.ratingStar != null ? `Nota media: ${product.ratingStar}` : "",
       product.reviewCount != null ? `Avaliacoes: ${product.reviewCount}` : "",
-      `Link do produto: ${product.permalink}`,
+      `Link original do produto: ${product.originUrl}`,
+      `Link afiliado curto: ${affiliateUrl}`,
     ]
       .filter(Boolean)
       .join("\n"),
     productUseCases: "",
     targetAudience: "",
-    productUrl: product.permalink,
+    productUrl: affiliateUrl,
     ctaText: "Confira o produto pelo link na descricao do video.",
     youtubeTags: "",
     primaryBgColor: "#ee4d2d",
@@ -82,7 +91,8 @@ function buildMetadata(params: {
     shopee: {
       itemId: product.itemId,
       shopId: product.shopId,
-      permalink: product.permalink,
+      permalink: product.originUrl,
+      affiliateUrl,
       scheduledTo: scheduledTo.toISOString(),
       platforms,
       autoScheduleSocial: params.autoScheduleSocial,
@@ -101,7 +111,7 @@ async function callProjectAction(req: NextRequest, pathname: string, projectId: 
   return { ok: res.ok, data, error: data?.error || `HTTP ${res.status}` };
 }
 
-async function saveFoundProducts(products: ShopeeProduct[], metadata: Record<string, unknown>) {
+async function saveFoundProducts(products: ShopeeAffiliateProduct[], metadata: Record<string, unknown>) {
   if (products.length === 0) return;
 
   const existing = await prisma.shopeeAffiliatePick.findMany({
@@ -121,7 +131,7 @@ async function saveFoundProducts(products: ShopeeProduct[], metadata: Record<str
         title: product.title,
         price: product.price,
         currencyId: product.currencyId,
-        permalink: product.permalink,
+        permalink: product.originUrl,
         thumbnailUrl: product.thumbnailUrl,
         status: "FOUND",
         metadataJson: JSON.stringify(metadata),
@@ -130,7 +140,7 @@ async function saveFoundProducts(products: ShopeeProduct[], metadata: Record<str
         title: product.title,
         price: product.price,
         currencyId: product.currencyId,
-        permalink: product.permalink,
+        permalink: product.originUrl,
         thumbnailUrl: product.thumbnailUrl,
         status: "FOUND",
         errorMessage: null,
@@ -166,23 +176,31 @@ export async function POST(req: NextRequest) {
     const usedIds = new Set(productsWithVideo.map((item) => item.shopeeItemId));
 
     const searchTerms = shuffleShopeeList(parseJsonStringArray(config.searchTerms, DEFAULT_SHOPEE_SEARCH_TERMS));
-    const selected: ShopeeProduct[] = [];
-    const candidatesById = new Map<string, ShopeeProduct>();
+    const selected: ShopeeAffiliateProduct[] = [];
+    const candidatesById = new Map<string, ShopeeAffiliateProduct>();
     const searchErrors: string[] = [];
 
     for (const term of searchTerms.length > 0 ? searchTerms : DEFAULT_SHOPEE_SEARCH_TERMS) {
       if (selected.length >= maxProducts) break;
       try {
-        const products = await searchShopeeProducts(config, {
-          queryOverride: term,
-          limit: Math.min(24, Math.max(maxProducts * 10, 12)),
-          randomize: true,
-          requestTimeoutMs: 9000,
+        const products = await searchShopeeAffiliateProducts(config, {
+          keyword: term,
+          limit: Math.min(50, Math.max(maxProducts * 10, 20)),
+          listType: 2,
+          sortType: 2,
+          minPrice: config.minPrice ?? 10,
+          minCommissionRate: 5,
+          minSales: 100,
           enrichDetails: true,
+          timeoutMs: 15000,
         });
 
         for (const product of products) candidatesById.set(product.id, product);
-        await saveFoundProducts(products, { source: "public-api", term, foundAt: new Date().toISOString() });
+        await saveFoundProducts(products, {
+          source: "affiliate-open-api",
+          term,
+          foundAt: new Date().toISOString(),
+        });
 
         for (const product of shuffleShopeeList(products)) {
           if (selected.length >= maxProducts) break;
@@ -218,9 +236,16 @@ export async function POST(req: NextRequest) {
     for (const [index, product] of selected.entries()) {
       const scheduledTo = addHours(startAt, index * intervalHours);
       const productAssets = await prepareShopeeProductAssets(product, 4);
+      const affiliateUrl = await generateShopeeAffiliateShortLink({
+        config,
+        originUrl: product.originUrl,
+        subIds: ["admin", "video", product.itemId ? String(product.itemId) : product.id].slice(0, 5),
+        timeoutMs: 15000,
+      });
 
       const metadata = buildMetadata({
         product,
+        affiliateUrl,
         scheduledTo,
         platforms,
         autoScheduleSocial: Boolean(config.autoEnqueueSocial),
@@ -230,7 +255,7 @@ export async function POST(req: NextRequest) {
       const project = await prisma.codeVideoProject.create({
         data: {
           projectType: "PRODUCT_AD",
-          ideaPrompt: buildProductPrompt(product),
+          ideaPrompt: buildProductPrompt(product, affiliateUrl),
           aspectRatio: "PORTRAIT_9_16",
           videoDurationSec: 30,
           ttsVoice: "pt-BR-AntonioNeural",
@@ -249,8 +274,8 @@ export async function POST(req: NextRequest) {
           title: product.title,
           price: product.price,
           currencyId: product.currencyId,
-          permalink: product.permalink,
-          affiliateUrl: null,
+          permalink: product.originUrl,
+          affiliateUrl,
           thumbnailUrl: product.thumbnailUrl,
           status: "PROJECT_CREATED",
           scheduledBaseAt: scheduledTo,
@@ -266,8 +291,8 @@ export async function POST(req: NextRequest) {
           title: product.title,
           price: product.price,
           currencyId: product.currencyId,
-          permalink: product.permalink,
-          affiliateUrl: null,
+          permalink: product.originUrl,
+          affiliateUrl,
           thumbnailUrl: product.thumbnailUrl,
           status: "PROJECT_CREATED",
           scheduledBaseAt: scheduledTo,
@@ -287,7 +312,8 @@ export async function POST(req: NextRequest) {
         projectId: project.id,
         title: product.title,
         scheduledTo,
-        permalink: product.permalink,
+        permalink: product.originUrl,
+        affiliateUrl,
         assetCount: productAssets.length,
       };
 
@@ -330,7 +356,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      source: "public-api",
+      source: "affiliate-open-api",
       found: candidates.length,
       created: results.length,
       skippedExisting,
@@ -341,4 +367,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error?.message || "Failed to run Shopee routine" }, { status: 500 });
   }
 }
-

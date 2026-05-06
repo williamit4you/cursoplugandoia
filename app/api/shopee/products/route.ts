@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { searchShopeeProducts } from "@/lib/shopeeAffiliate";
+import { searchShopeeAffiliateProducts } from "@/lib/shopee/openApi";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,29 +28,38 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Shopee config not found" }, { status: 404 });
     }
 
-    const queryOverride = req.nextUrl.searchParams.get("q");
-    const limit = Number(req.nextUrl.searchParams.get("limit") || config.maxProductsPerRun || 1);
-    const searchLimit = Math.min(24, Math.max(limit * 4, 12));
+    const keyword = String(req.nextUrl.searchParams.get("q") || "").trim() || "ofertas";
+    const limit = Math.min(50, Math.max(1, Number(req.nextUrl.searchParams.get("limit") || 24)));
+    const listType = Number(req.nextUrl.searchParams.get("listType") || 2);
+    const sortType = Number(req.nextUrl.searchParams.get("sortType") || 2);
+    const minPrice = Number(req.nextUrl.searchParams.get("minPrice") || 10);
+    const minCommissionRate = Number(req.nextUrl.searchParams.get("minCommissionRate") || 5);
+    const minSales = Number(req.nextUrl.searchParams.get("minSales") || 100);
+    const enrichDetails = req.nextUrl.searchParams.get("enrich") === "0" ? false : true;
 
-    const products = await searchShopeeProducts(config, {
-      limit: searchLimit,
-      queryOverride,
-      randomize: true,
-      requestTimeoutMs: 9000,
-      enrichDetails: req.nextUrl.searchParams.get("enrich") === "0" ? false : true,
+    const items = await searchShopeeAffiliateProducts(config, {
+      keyword,
+      limit,
+      listType,
+      sortType,
+      minPrice,
+      minCommissionRate,
+      minSales,
+      enrichDetails,
+      timeoutMs: 15000,
     });
 
-    const items = products.slice(0, Math.max(1, limit));
-
-    return NextResponse.json({ items, source: "public-api", apiError: null, browserError: null });
+    return NextResponse.json({
+      items,
+      source: "affiliate-open-api",
+      filters: { keyword, limit, listType, sortType, minPrice, minCommissionRate, minSales },
+    });
   } catch (error: any) {
     console.error("[api/shopee/products GET]", error);
     return NextResponse.json(
       {
-        error:
-          error?.message ||
-          "Nao foi possivel buscar produtos na Shopee agora (possivel bloqueio/WAF ou mudanca de endpoint).",
-        code: "SHOPEE_SEARCH_UNAVAILABLE",
+        error: error?.message || "Nao foi possivel buscar produtos na Shopee agora.",
+        code: "SHOPEE_AFFILIATE_SEARCH_FAILED",
       },
       { status: 502 }
     );

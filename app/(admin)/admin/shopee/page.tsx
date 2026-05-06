@@ -39,16 +39,26 @@ type Config = {
 
 type Product = {
   id: string;
+  itemId: number;
+  shopId: number | null;
   title: string;
   price: number | null;
   currencyId: string | null;
-  permalink: string;
+  originUrl: string;
+  offerLink: string | null;
   thumbnailUrl: string | null;
   soldQuantity: number | null;
   ratingStar: number | null;
   reviewCount: number | null;
   description: string | null;
   imageUrls: string[];
+  commissionRate: number | null;
+  sellerCommissionRate: number | null;
+  shopeeCommissionRate: number | null;
+  estimatedCommission: number | null;
+  priceDiscountRate: number | null;
+  shopName: string | null;
+  shopType: number | null;
 };
 
 const PLATFORM_OPTIONS = [
@@ -106,7 +116,7 @@ function parseArrayText(value: string, fallback: string[] = []) {
 }
 
 function formatPriceBRL(price: number | null | undefined) {
-  if (price == null) return "Preço n/d";
+  if (price == null) return "Preco n/d";
   try {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price);
   } catch {
@@ -121,10 +131,18 @@ export default function ShopeeAdminPage() {
   const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
   const [searchTermsText, setSearchTermsText] = useState("[\"ofertas\"]");
+  const [searchKeyword, setSearchKeyword] = useState("ofertas");
   const [platforms, setPlatforms] = useState<string[]>(["YOUTUBE", "INSTAGRAM"]);
   const [products, setProducts] = useState<Product[]>([]);
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState<any | null>(null);
+  const [linkLoadingId, setLinkLoadingId] = useState<string | null>(null);
+  const [generatedLink, setGeneratedLink] = useState<{
+    productId: string;
+    title: string;
+    originUrl: string;
+    shortLink: string;
+  } | null>(null);
 
   const platformsText = useMemo(() => JSON.stringify(platforms), [platforms]);
 
@@ -141,6 +159,8 @@ export default function ShopeeAdminPage() {
       setConfig(data);
       setSearchTermsText(data.searchTerms || "[\"ofertas\"]");
       setPlatforms(parseArrayText(data.preferredPlatforms, ["YOUTUBE", "INSTAGRAM"]));
+      const firstSearchTerm = parseArrayText(data.searchTerms || "[\"ofertas\"]", ["ofertas"])[0] || "ofertas";
+      setSearchKeyword(firstSearchTerm);
     } catch (error: any) {
       setMessage({ type: "error", text: error?.message || "Falha ao carregar Shopee" });
     } finally {
@@ -158,9 +178,7 @@ export default function ShopeeAdminPage() {
 
   const togglePlatform = (platform: string) => {
     setPlatforms((current) =>
-      current.includes(platform)
-        ? current.filter((item) => item !== platform)
-        : [...current, platform]
+      current.includes(platform) ? current.filter((item) => item !== platform) : [...current, platform]
     );
   };
 
@@ -184,7 +202,7 @@ export default function ShopeeAdminPage() {
       }
       if (!res.ok) throw new Error(data?.error || `Falha ao salvar (HTTP ${res.status})`);
       setConfig(data);
-      setMessage({ type: "success", text: "Configuração Shopee salva." });
+      setMessage({ type: "success", text: "Configuracao Shopee salva." });
       return true;
     } catch (error: any) {
       setMessage({ type: "error", text: error?.message || "Falha ao salvar" });
@@ -199,8 +217,15 @@ export default function ShopeeAdminPage() {
     if (!ok) return;
     setPreviewing(true);
     setMessage(null);
+    setGeneratedLink(null);
     try {
-      const res = await fetch("/api/shopee/products", { cache: "no-store" });
+      const query = new URLSearchParams({
+        q: searchKeyword.trim() || "ofertas",
+        limit: "24",
+        listType: "2",
+        sortType: "2",
+      });
+      const res = await fetch(`/api/shopee/products?${query.toString()}`, { cache: "no-store" });
       const { data, text, contentType } = await readJsonResponse(res);
       if (!data && contentType && !contentType.toLowerCase().includes("application/json")) {
         throw buildNonJsonApiError(res, contentType, text);
@@ -212,6 +237,45 @@ export default function ShopeeAdminPage() {
       setMessage({ type: "error", text: error?.message || "Falha ao consultar produtos" });
     } finally {
       setPreviewing(false);
+    }
+  };
+
+  const generateLink = async (product: Product) => {
+    setLinkLoadingId(product.id);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/shopee/generate-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ originUrl: product.originUrl }),
+      });
+      const { data, text, contentType } = await readJsonResponse(res);
+      if (!data && contentType && !contentType.toLowerCase().includes("application/json")) {
+        throw buildNonJsonApiError(res, contentType, text);
+      }
+      if (!res.ok) throw new Error(data?.error || "Falha ao gerar link");
+
+      setGeneratedLink({
+        productId: product.id,
+        title: product.title,
+        originUrl: product.originUrl,
+        shortLink: data.shortLink,
+      });
+      setMessage({ type: "success", text: "Link curto da Shopee gerado com sucesso." });
+    } catch (error: any) {
+      setMessage({ type: "error", text: error?.message || "Falha ao gerar link" });
+    } finally {
+      setLinkLoadingId(null);
+    }
+  };
+
+  const copyGeneratedLink = async () => {
+    if (!generatedLink?.shortLink) return;
+    try {
+      await navigator.clipboard.writeText(generatedLink.shortLink);
+      setMessage({ type: "success", text: "Link copiado para a area de transferencia." });
+    } catch (error: any) {
+      setMessage({ type: "error", text: error?.message || "Nao foi possivel copiar o link." });
     }
   };
 
@@ -256,7 +320,7 @@ export default function ShopeeAdminPage() {
           Shopee Afiliados
         </Typography>
         <Typography sx={{ opacity: 0.85, mt: 1 }}>
-          Configuração para buscar promoções/produtos na Shopee e preparar conteúdo para vídeo.
+          Configuracao para buscar produtos pela API de afiliados da Shopee e gerar link curto comissionado.
         </Typography>
       </Box>
 
@@ -276,7 +340,7 @@ export default function ShopeeAdminPage() {
       </Paper>
 
       <Paper sx={{ p: 2 }}>
-        <Typography sx={{ fontWeight: 900, mb: 1 }}>2. Configuração</Typography>
+        <Typography sx={{ fontWeight: 900, mb: 1 }}>2. Configuracao</Typography>
         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
           <Box sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}>
             <FormControlLabel
@@ -293,7 +357,7 @@ export default function ShopeeAdminPage() {
           <Box sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}>
             <TextField
               fullWidth
-              label="Domínio Shopee"
+              label="Dominio Shopee"
               value={config.domain || "shopee.com.br"}
               onChange={(e) => patchConfig({ domain: e.target.value })}
               helperText="Ex.: shopee.com.br (sem https://)"
@@ -306,7 +370,7 @@ export default function ShopeeAdminPage() {
               label="Site"
               value={config.site || "br"}
               onChange={(e) => patchConfig({ site: e.target.value })}
-              helperText="Região (br, mx, co, cl...)"
+              helperText="Regiao (br, mx, co, cl...)"
             />
           </Box>
 
@@ -347,16 +411,17 @@ export default function ShopeeAdminPage() {
           <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
             <TextField
               fullWidth
-              label="Preço mínimo (R$)"
+              label="Preco minimo (R$)"
               type="number"
               value={config.minPrice ?? ""}
               onChange={(e) => patchConfig({ minPrice: e.target.value === "" ? null : Number(e.target.value) })}
             />
           </Box>
+
           <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
             <TextField
               fullWidth
-              label="Preço máximo (R$)"
+              label="Preco maximo (R$)"
               type="number"
               value={config.maxPrice ?? ""}
               onChange={(e) => patchConfig({ maxPrice: e.target.value === "" ? null : Number(e.target.value) })}
@@ -369,9 +434,7 @@ export default function ShopeeAdminPage() {
               {PLATFORM_OPTIONS.map((opt) => (
                 <FormControlLabel
                   key={opt.id}
-                  control={
-                    <Checkbox checked={platforms.includes(opt.id)} onChange={() => togglePlatform(opt.id)} />
-                  }
+                  control={<Checkbox checked={platforms.includes(opt.id)} onChange={() => togglePlatform(opt.id)} />}
                   label={opt.label}
                 />
               ))}
@@ -379,11 +442,21 @@ export default function ShopeeAdminPage() {
           </Box>
 
           <Box sx={{ gridColumn: "span 12" }}>
+            <TextField
+              fullWidth
+              label="Busca pontual de produto"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              helperText="Usado na consulta manual abaixo."
+            />
+          </Box>
+
+          <Box sx={{ gridColumn: "span 12" }}>
             <Divider sx={{ my: 1 }} />
             <Typography sx={{ fontWeight: 900, mb: 1 }}>3. Credenciais Shopee (Open Platform)</Typography>
             <Alert severity="info" sx={{ mb: 2 }}>
-              Estas credenciais (Partner ID/Key) são salvas no banco para uso futuro. Para segurança, também pode
-              configurar via env no servidor: <code>SHOPEE_APP_ID</code> e <code>SHOPEE_SECRET_KEY</code>.
+              Configure via env no servidor: <code>SHOPEE_APP_ID</code> e <code>SHOPEE_APP_SECRET</code>. O campo
+              abaixo continua disponivel para salvar no banco e usar no backend.
             </Alert>
           </Box>
 
@@ -395,10 +468,11 @@ export default function ShopeeAdminPage() {
               onChange={(e) => patchConfig({ appId: e.target.value })}
             />
           </Box>
+
           <Box sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}>
             <TextField
               fullWidth
-              label="Senha / Secret Key (Partner Key)"
+              label="Secret / Partner Key"
               type="password"
               value={config.clientSecret || ""}
               onChange={(e) => patchConfig({ clientSecret: e.target.value })}
@@ -408,7 +482,7 @@ export default function ShopeeAdminPage() {
           <Box sx={{ gridColumn: "span 12" }}>
             <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
               <Button variant="contained" startIcon={<SaveIcon />} disabled={saving} onClick={save}>
-                Salvar configuração
+                Salvar configuracao
               </Button>
               <Button
                 variant="outlined"
@@ -416,7 +490,7 @@ export default function ShopeeAdminPage() {
                 disabled={previewing || saving}
                 onClick={previewProducts}
               >
-                Consultar próximo produto
+                Consultar produtos
               </Button>
               <Button
                 variant="outlined"
@@ -433,10 +507,29 @@ export default function ShopeeAdminPage() {
 
       {runResult ? (
         <Paper sx={{ p: 2 }}>
-          <Typography sx={{ fontWeight: 900, mb: 1 }}>5. Resultado da rotina</Typography>
+          <Typography sx={{ fontWeight: 900, mb: 1 }}>4. Resultado da rotina</Typography>
           <Typography sx={{ opacity: 0.75, fontSize: 13, whiteSpace: "pre-wrap" }}>
             {JSON.stringify(runResult, null, 2)}
           </Typography>
+        </Paper>
+      ) : null}
+
+      {generatedLink ? (
+        <Paper sx={{ p: 2 }}>
+          <Typography sx={{ fontWeight: 900, mb: 1 }}>5. Link afiliado gerado</Typography>
+          <Typography sx={{ fontWeight: 700 }}>{generatedLink.title}</Typography>
+          <Typography sx={{ opacity: 0.8, fontSize: 13, mt: 0.5, wordBreak: "break-all" }}>
+            Original: {generatedLink.originUrl}
+          </Typography>
+          <Typography sx={{ mt: 1, wordBreak: "break-all" }}>{generatedLink.shortLink}</Typography>
+          <Box sx={{ display: "flex", gap: 1, mt: 2, flexWrap: "wrap" }}>
+            <Button variant="contained" onClick={copyGeneratedLink}>
+              Copiar link
+            </Button>
+            <Button variant="outlined" onClick={() => window.open(generatedLink.shortLink, "_blank")}>
+              Abrir link curto
+            </Button>
+          </Box>
         </Paper>
       ) : null}
 
@@ -474,34 +567,56 @@ export default function ShopeeAdminPage() {
                       }}
                     />
                   )}
+
                   <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 0.5 }}>
                     <Typography sx={{ fontWeight: 800, lineHeight: 1.2 }} title={product.title}>
                       {product.title}
                     </Typography>
                     <Typography sx={{ opacity: 0.9 }}>{formatPriceBRL(product.price)}</Typography>
+                    <Typography sx={{ opacity: 0.75, fontSize: 13 }}>
+                      Comissao: {product.commissionRate != null ? `${product.commissionRate.toFixed(2)}%` : "n/d"}
+                      {product.estimatedCommission != null
+                        ? ` • estimada: ${formatPriceBRL(product.estimatedCommission)}`
+                        : ""}
+                    </Typography>
                     <Typography sx={{ opacity: 0.7, fontSize: 13 }}>
-                      {product.ratingStar != null ? `⭐ ${product.ratingStar.toFixed(1)}` : "⭐ n/d"}{" "}
-                      {product.reviewCount != null ? `(${product.reviewCount})` : ""}
+                      {product.ratingStar != null ? `★ ${product.ratingStar.toFixed(1)}` : "★ n/d"}
                       {product.soldQuantity != null ? ` • vendidos: ${product.soldQuantity}` : ""}
                     </Typography>
-                    <Button
-                      size="small"
-                      variant="text"
-                      onClick={() => window.open(product.permalink, "_blank")}
-                      sx={{ justifyContent: "flex-start", px: 0 }}
-                    >
-                      Abrir na Shopee
-                    </Button>
+                    {product.shopName ? (
+                      <Typography sx={{ opacity: 0.7, fontSize: 12 }}>Loja: {product.shopName}</Typography>
+                    ) : null}
                   </Box>
                 </Box>
-                {product.description ? (
-                  <Box sx={{ px: 2, pb: 2 }}>
+
+                <Box sx={{ px: 2, pb: 2, display: "flex", flexDirection: "column", gap: 1 }}>
+                  {product.description ? (
                     <Typography sx={{ opacity: 0.75, fontSize: 13 }}>
                       {product.description.slice(0, 240)}
                       {product.description.length > 240 ? "..." : ""}
                     </Typography>
+                  ) : (
+                    <Typography sx={{ opacity: 0.6, fontSize: 13 }}>Sem descricao enriquecida retornada.</Typography>
+                  )}
+
+                  <Typography sx={{ opacity: 0.7, fontSize: 12, wordBreak: "break-word" }}>
+                    URL original: {product.originUrl}
+                  </Typography>
+
+                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => generateLink(product)}
+                      disabled={linkLoadingId === product.id}
+                    >
+                      {linkLoadingId === product.id ? "Gerando link..." : "Gerar Link"}
+                    </Button>
+                    <Button size="small" variant="text" onClick={() => window.open(product.originUrl, "_blank")}>
+                      Abrir na Shopee
+                    </Button>
                   </Box>
-                ) : null}
+                </Box>
               </Box>
             ))}
           </Box>

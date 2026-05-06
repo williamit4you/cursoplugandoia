@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs/promises";
 import { PutObjectCommand, HeadBucketCommand, CreateBucketCommand, PutBucketPolicyCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "./s3";
+import { shopeeBrowserSearch } from "./shopee-search";
 
 type RenderRequest = {
   projectId: string;
@@ -207,6 +208,21 @@ async function renderProject(payload: RenderRequest) {
 const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/health") {
     return json(res, 200, { ok: true, service: "render-service" });
+  }
+
+  if (req.method === "POST" && req.url === "/shopee/search") {
+    try {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(Buffer.from(chunk));
+      const payload = safeJsonParse(Buffer.concat(chunks).toString("utf8")) as any | null;
+      if (!payload) return json(res, 400, { error: "Invalid JSON" });
+
+      const items = await shopeeBrowserSearch(payload);
+      return json(res, 200, { ok: true, items, source: "browser" });
+    } catch (error: any) {
+      console.error("[render-service][shopee/search]", error);
+      return json(res, 502, { ok: false, error: error?.message || "Shopee search failed" });
+    }
   }
 
   if (req.method === "POST" && req.url === "/render") {

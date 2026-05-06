@@ -43,7 +43,7 @@ async function getOrCreateConfig() {
       autoRenderVideo: true,
       autoEnqueueSocial: true,
       appId: process.env.SHOPEE_APP_ID || null,
-      clientSecret: process.env.SHOPEE_SECRET_KEY || null,
+      clientSecret: process.env.SHOPEE_APP_SECRET || process.env.SHOPEE_SECRET_KEY || null,
     },
   });
 }
@@ -93,4 +93,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error?.message || "Failed to save Shopee config" }, { status: 500 });
   }
 }
-

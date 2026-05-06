@@ -11,8 +11,9 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 function publicBaseUrl(req: NextRequest) {
-  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
   const host = req.headers.get("host") || "localhost:3000";
+  const forwardedProto = req.headers.get("x-forwarded-proto");
+  const protocol = forwardedProto || (host.includes("localhost") ? "http" : "https");
   return `${protocol}://${host}`;
 }
 
@@ -59,4 +60,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error?.message || "Falha no cron Shopee" }, { status: 500 });
   }
 }
-
