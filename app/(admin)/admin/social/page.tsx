@@ -7,7 +7,6 @@ import {
   RefreshCcw, 
   ExternalLink, 
   MoreVertical, 
-  Youtube, 
   Instagram, 
   Video, 
   Clock, 
@@ -51,7 +50,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function PlatformIcon({ platform, postType }: { platform: string; postType?: string }) {
   const p = platform.toUpperCase();
-  if (p === "YOUTUBE") return <Youtube className="w-5 h-5 text-rose-500" />;
+  if (p === "YOUTUBE") return <Video className="w-5 h-5 text-rose-500" />;
   if (p === "META" || p === "INSTAGRAM") {
     return postType === "STORY" 
       ? <div className="relative"><Instagram className="w-5 h-5 text-pink-500" /><div className="absolute -top-1 -right-1 w-2 h-2 bg-pink-500 rounded-full border border-slate-900" /></div>
