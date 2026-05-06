@@ -337,10 +337,10 @@ export async function POST(req: NextRequest) {
 
     const system = [
       isProductAd
-        ? "Você é um copywriter e diretor criativo especialista em vídeos curtos de propaganda para vender produtos."
+        ? "Você é um copywriter e diretor criativo especialista em vídeos curtos de propaganda para vender produtos no Instagram Reels e TikTok."
         : "Você é um especialista em vídeos virais e edição de retenção.",
       isProductAd
-        ? "Seu objetivo é criar um vídeo vendedor, claro, persuasivo e visualmente forte, com foco em conversão."
+        ? "Seu objetivo é criar um vídeo ALTAMENTE VENDEDOR, claro, persuasivo e visualmente impactante, com foco máximo em conversão."
         : "Seu objetivo é criar roteiros e planos de cena que prendam a atenção do início ao fim.",
       "Você deve responder APENAS com um JSON válido.",
       isProductAd
@@ -351,24 +351,26 @@ export async function POST(req: NextRequest) {
       `A narração deve preencher aproximadamente ${project.videoDurationSec} segundos, com cerca de ${Math.round(project.videoDurationSec * 2.5)} palavras.`,
       "Use ganchos visuais e textuais fortes nos primeiros 3 segundos.",
       "NarrationText em português (pt-BR), tom energético e natural.",
-      "O narrationText deve conter APENAS o texto que será lido.",
+      "O narrationText deve conter APENAS o texto que será lido em voz alta, sem marcações.",
       "Nunca invente URLs falsas. Se não houver URL válida, deixe props.url vazio.",
       "Mantenha contraste forte entre fundo e texto.",
       "Use TitleScene no início e RetentionScene quando houver mídia real.",
       ...(isProductAd
         ? [
             "O vídeo deve agir como propaganda comercial de produto físico.",
-            "Destaque materiais, acabamento, diferenciais, contexto de uso e benefício real ao cliente.",
+            "REGRA CRÍTICA: NUNCA deixe uma cena com fundo sólido vazio. Toda cena deve ter conteúdo visual relevante.",
+            "REGRA CRÍTICA: Quando houver assets do produto (imagens/vídeos), use-os como fundo (props.url) em TODAS as cenas RetentionScene.",
+            "REGRA CRÍTICA: Distribua os assets do produto ao longo de todo o vídeo — não concentre no início nem no fim.",
+            "Destaque materiais, acabamento, diferenciais técnicos, contexto de uso e benefício REAL e CONCRETO ao cliente.",
+            "Descreva como o produto melhora a vida do comprador: economiza tempo, resolve dor específica, gera conforto, status ou praticidade.",
             "Reforce em pontos estratégicos que o link do produto com desconto especial está na descrição do vídeo.",
-            "Use gatilhos mentais com moderação: oportunidade, praticidade, conforto, economia e desejo.",
-            "Quando houver assets do usuário, priorize-os nas scenes do tipo RetentionScene.",
-            "Nao use emojis, setas gigantes, icones aleatorios ou elementos que nao tenham relacao direta com o produto.",
-            "Evite cenas com fundo chapado e texto solto. Sempre que houver imagem ou video do produto, use essa midia como base visual.",
-            "Nao use midia externa quando houver assets enviados pelo usuario, exceto se for claramente complementar e coerente com o produto.",
-            "Textos visuais devem ser curtos: no maximo 6 palavras por title/subtitle e no maximo 4 bullets por cena.",
-            "Crie commercialDescription pronta para colar na descricao do YouTube, com texto vendedor, beneficios, CTA e o link do produto se existir.",
-            "Crie productUseCases e targetAudience mesmo quando o usuario nao informar esses campos, inferindo com seguranca a partir do titulo e detalhes tecnicos.",
-            "Crie youtubeTags como string unica com 12 a 20 tags em portugues separadas por virgula, focadas em SEO do YouTube Shorts.",
+            "Use gatilhos mentais com moderação: escassez, oportunidade, praticidade, conforto, economia e desejo.",
+            "Textos visuais devem ser curtos e impactantes: no máximo 6 palavras por title/subtitle e no máximo 4 bullets por cena.",
+            "Crie commercialDescription pronta para colar na descrição do YouTube, com texto vendedor, benefícios, CTA e o link do produto se existir.",
+            "Crie productUseCases e targetAudience mesmo quando o usuário não informar, inferindo com segurança a partir do título e detalhes técnicos.",
+            "Crie youtubeTags como string única com 12 a 20 tags em português separadas por vírgula, focadas em SEO do YouTube Shorts.",
+            "Não use emojis, setas gigantes, ícones aleatórios ou elementos sem relação direta com o produto.",
+            "Nao use mídia externa quando houver assets enviados pelo usuário, exceto se for claramente complementar e coerente com o produto.",
           ]
         : []),
     ].join("\n");
@@ -405,23 +407,24 @@ export async function POST(req: NextRequest) {
           `USOS_RECOMENDADOS_EXISTENTES: ${metadata.productUseCases || ""}`,
           `PUBLICO_ALVO_EXISTENTE: ${metadata.targetAudience || ""}`,
           `LINK_DE_COMISSAO_DO_PRODUTO: ${metadata.productUrl || ""}`,
-          `CTA_PREFERENCIAL: ${metadata.ctaText || "O link do produto com desconto especial está na descrição do vídeo."}`,
+          `CTA_PREFERENCIAL: ${metadata.ctaText || "Comente QUERO para receber o link com desconto!"}`,
           `FORMATO: ${formatHint}`,
           `DURACAO_TOTAL_SEGUNDOS: ${project.videoDurationSec}`,
           `CORES_PREFERIDAS: fundo=${metadata.primaryBgColor || "auto"} | texto=${metadata.primaryTextColor || "auto"}`,
           uploadedAssetsText,
           pexelsAssets,
           "",
-          "Gere um roteiro de propaganda com 4 a 8 cenas curtas.",
-          "Comece com um gancho de venda, mostre benefícios, contexto de uso e feche com CTA forte.",
-          "Inclua pelo menos 2 scenes do tipo RetentionScene se houver assets disponíveis.",
-          "Use os assets enviados na ordem recebida para mostrar o produto de verdade.",
-          "Se houver assets enviados, nao coloque imagens genericas de outros produtos ou objetos.",
-          "Evite overlays decorativos. Nada de emojis, setas ou stickers sem funcao comercial clara.",
-          "Se DESCRICAO_COMERCIAL_EXISTENTE, USOS_RECOMENDADOS_EXISTENTES ou PUBLICO_ALVO_EXISTENTE estiverem vazios, preencha esses campos na saida.",
-          "A description e a commercialDescription devem servir como descricao do YouTube e conter o link de comissao quando informado.",
-          "Retorne youtubeTags como texto separado por virgulas, sem hashtags e sem quebras de linha.",
-          "O resultado deve parecer um vendedor profissional apresentando o produto.",
+          `Gere um roteiro de propaganda com 5 a 8 cenas curtas totalizando ${project.videoDurationSec} segundos.`,
+          "Comece com um gancho de venda FORTE nos primeiros 3 segundos (ex: pergunta, afirmação chocante ou promessa clara).",
+          "Mostre benefícios concretos e contexto de uso real do produto.",
+          "Use pelo menos 3 scenes do tipo RetentionScene se houver assets disponíveis, distribuídas ao longo do vídeo.",
+          "Se houver assets enviados, coloque-os em props.url de RetentionScene — NÃO use URLs genéricas ou inventadas.",
+          "NUNCA use BulletListScene ou TitleScene com props.url vazio — isso gera tela preta. Se não houver URL, omita o campo url.",
+          "Finalize com CTA forte e urgente (ex: 'Garanta o seu hoje! Link na descrição!').",
+          "Se DESCRICAO_COMERCIAL_EXISTENTE, USOS_RECOMENDADOS_EXISTENTES ou PUBLICO_ALVO_EXISTENTE estiverem vazios, preencha esses campos na saída.",
+          "A description e a commercialDescription devem conter o link de comissão quando informado.",
+          "Retorne youtubeTags como texto separado por vírgulas, sem hashtags e sem quebras de linha.",
+          "O resultado deve parecer um vendedor profissional e empolgado apresentando o produto.",
         ].join("\n")
       : [
           `IDEIA / TEMA: ${project.ideaPrompt}`,

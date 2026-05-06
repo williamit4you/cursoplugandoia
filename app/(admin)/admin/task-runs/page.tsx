@@ -12,7 +12,9 @@ import {
   XCircle, 
   RefreshCcw,
   Zap,
-  Info
+  Info,
+  Trash2,
+  Ban
 } from "lucide-react";
 
 type TaskRunStep = {
@@ -96,6 +98,33 @@ export default function TaskRunsPage() {
       setError(err?.message || "Falha ao processar execução");
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const cancelRun = async (id: string) => {
+    if (!confirm("Cancelar esta execução? Steps em andamento serão marcados como ignorados.")) return;
+    try {
+      const res = await fetch(`/api/task-runs/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cancel" }),
+      });
+      if (!res.ok) throw new Error("Falha ao cancelar");
+      await load(true);
+    } catch (err: any) {
+      setError(err?.message || "Falha ao cancelar execução");
+    }
+  };
+
+  const deleteRun = async (id: string) => {
+    if (!confirm("Excluir permanentemente esta execução? Esta ação não pode ser desfeita.")) return;
+    try {
+      const res = await fetch(`/api/task-runs/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Falha ao excluir");
+      setExpandedId(null);
+      await load(true);
+    } catch (err: any) {
+      setError(err?.message || "Falha ao excluir execução");
     }
   };
 
@@ -249,6 +278,29 @@ export default function TaskRunsPage() {
                       <tr className="bg-slate-950/50 border-t border-white/5">
                         <td colSpan={6} className="px-6 py-8">
                           <div className="space-y-6">
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-3">
+                              {(item.status === "PENDING" || item.status === "RUNNING") && (
+                                <button
+                                  onClick={() => cancelRun(item.id)}
+                                  className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 text-xs font-bold rounded-xl transition-all duration-200"
+                                >
+                                  <Ban className="w-3.5 h-3.5" />
+                                  Cancelar Execução
+                                </button>
+                              )}
+                              {(item.status === "COMPLETED" || item.status === "FAILED" || item.status === "CANCELED") && (
+                                <button
+                                  onClick={() => deleteRun(item.id)}
+                                  className="flex items-center gap-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 text-xs font-bold rounded-xl transition-all duration-200"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  Excluir Execução
+                                </button>
+                              )}
+                              <span className="text-xs text-slate-600 font-mono">{item.id}</span>
+                            </div>
+
                             {/* Run Summary / Error */}
                             {(item.summary || item.errorMessage) && (
                               <div className={`p-4 rounded-2xl border ${item.errorMessage ? 'bg-rose-500/5 border-rose-500/20 text-rose-300' : 'bg-blue-500/5 border-blue-500/20 text-blue-300'}`}>

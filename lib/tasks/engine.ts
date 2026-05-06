@@ -297,12 +297,18 @@ async function handleStep(params: {
     }
 
     const ideaPrompt = [
-      `Crie uma propaganda curta e vendedora para o produto "${title}".`,
-      productUrl ? `Produto Shopee: ${productUrl}` : "",
-      affiliateUrl ? `Link que deve ir na descricao: ${affiliateUrl}` : "",
-      first.price != null ? `Preco atual: ${first.price}` : "",
-      first.soldQuantity != null ? `Vendidos (historico): ${first.soldQuantity}` : "",
-      "A descricao precisa convidar o usuario a clicar no link da descricao do video.",
+      `Crie uma propaganda curta, profissional e ALTAMENTE vendedora para o produto "${title}".`,
+      productUrl ? `Produto: ${productUrl}` : "",
+      affiliateUrl ? `Link Afiliado (CTA): ${affiliateUrl}` : "",
+      first.price != null ? `Preço: ${first.price}` : "",
+      first.soldQuantity != null ? `Histórico de Vendas: ${first.soldQuantity}` : "",
+      first.rating != null ? `Avaliação: ${first.rating} estrelas` : "",
+      description ? `Detalhes do Produto: ${description}` : "",
+      "\nESTRUTURA DESEJADA:",
+      "1. Gancho inicial impactante (problema ou desejo).",
+      "2. Apresentação das características principais do produto.",
+      "3. Benefícios reais para o usuário.",
+      "4. CTA forte convidando para clicar no link ou comentar 'QUERO'.",
     ]
       .filter(Boolean)
       .join("\n");
@@ -312,7 +318,7 @@ async function handleStep(params: {
         projectType: "PRODUCT_AD",
         ideaPrompt,
         aspectRatio: "PORTRAIT_9_16",
-        videoDurationSec: 30,
+        videoDurationSec: 60, // Aumentado para 60s para anúncios de produto
         ttsVoice: "pt-BR-AntonioNeural",
         ttsSpeed: "+5%",
         useExternalMedia: false,
@@ -321,8 +327,10 @@ async function handleStep(params: {
         metadataJson: JSON.stringify(
           {
             productUrl: affiliateUrl || productUrl,
+            productName: title,
+            productDescription: description,
             shopee: { permalink: productUrl, affiliateUrl },
-            assets: (images || []).slice(0, 6).map((url: string, idx: number) => ({ url, kind: "IMAGE", name: `img-${idx + 1}` })),
+            assets: (images || []).slice(0, 8).map((url: string, idx: number) => ({ url, kind: "IMAGE", name: `img-${idx + 1}` })),
           },
           null,
           2
@@ -409,7 +417,18 @@ async function handleStep(params: {
     }
 
     const bundle = await prisma.automationAssetBundle.findUnique({ where: { taskRunId: run.id } }).catch(() => null);
-    const summary = bundle?.title ? `Video: ${bundle.title}` : `Video ${projectId}`;
+
+    // Monta legenda com CTA e link afiliado quando disponível
+    const affiliateUrl = bundle?.affiliateUrl || null;
+    const productTitle = bundle?.title || null;
+
+    const ctaBlock = affiliateUrl
+      ? `\n\n🔥 Comente "QUERO" para receber o link!\n\n🛒 Compre aqui com desconto:\n${affiliateUrl}`
+      : `\n\n🔥 Link com desconto na descrição!`;
+
+    const summary = productTitle
+      ? `${productTitle}${ctaBlock}`
+      : `Video ${projectId}${ctaBlock}`;
 
     const platforms = parsePlatforms(publishConfig);
     const created: Array<{ id: string; platform: string }> = [];

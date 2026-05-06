@@ -55,7 +55,9 @@ export async function POST(req: NextRequest) {
       data: {
         status: "POSTED",
         postedAt: new Date(),
+        youtubePostedAt: new Date(),
         postUrl,
+        youtubePostUrl: postUrl,
         log: socialPost.log ? `${socialPost.log}\n${logEntry}` : logEntry,
       },
     });

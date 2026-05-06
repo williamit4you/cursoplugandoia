@@ -127,6 +127,8 @@ export async function POST(req: NextRequest) {
       data: {
         status: finalStatus,
         postedAt: finalStatus === "POSTED" ? new Date() : undefined,
+        metaStoryPostedAt: finalStatus === "POSTED" ? new Date() : undefined,
+        metaStoryPostUrl: igId ? `https://www.instagram.com/stories/${igId}` : undefined,
         metaContainerId: null,
       },
     });

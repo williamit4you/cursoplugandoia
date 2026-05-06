@@ -144,12 +144,23 @@ model SocialPost {
   status      String   @default("DRAFT") // DRAFT, SCHEDULED, POSTED, FAILED
   scheduledTo DateTime?
   postedAt    DateTime?
+  youtubePostedAt   DateTime?
+  metaStoryPostedAt DateTime?
+  metaReelPostedAt  DateTime?
+  tiktokPostedAt    DateTime?
+  linkedinPostedAt  DateTime?
+
   platform    String   @default("META")
   postType    String   @default("REEL") // REEL | STORY
   log         String?
   thumbUrl    String?  // URL de thumbnail (MinIO)
   metaContainerId String? // ID do container criado na Meta (para publicação async)
   postUrl     String?  // URL pública da postagem
+  youtubePostUrl    String?
+  metaStoryPostUrl  String?
+  metaReelPostUrl   String?
+  tiktokPostUrl     String?
+  linkedinPostUrl   String?
   views       Int      @default(0) // Visualizações
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

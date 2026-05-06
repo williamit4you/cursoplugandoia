@@ -29,11 +29,26 @@ export async function GET(req: NextRequest) {
     const origin = baseUrl(req);
     const encodedSecret = secret ? `?secret=${encodeURIComponent(secret)}` : "";
 
+    // Processa tasks de automação pendentes (Shopee, Mercado Livre via Task Engine)
+    const taskRuns = await callJson(`${origin}/api/task-runs/cron${encodedSecret}`);
+
+    // Processa cron do Mercado Livre (pipeline legado)
     const mercadoLivre = await callJson(`${origin}/api/mercado-livre/cron${encodedSecret}`);
+
+    // Publica posts sociais agendados cujo horário já passou
     const social = await callJson(`${origin}/api/social/cron${encodedSecret}`);
 
+    const allOk = taskRuns.ok && mercadoLivre.ok && social.ok;
+
+    console.log("[api/automation/cron] Results:", {
+      taskRuns: { ok: taskRuns.ok, status: taskRuns.status },
+      mercadoLivre: { ok: mercadoLivre.ok, status: mercadoLivre.status },
+      social: { ok: social.ok, status: social.status },
+    });
+
     return NextResponse.json({
-      ok: mercadoLivre.ok && social.ok,
+      ok: allOk,
+      taskRuns,
       mercadoLivre,
       social,
     });

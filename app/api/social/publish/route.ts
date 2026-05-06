@@ -134,6 +134,8 @@ export async function POST(req: NextRequest) {
       data: {
         status: finalStatus,
         postedAt: finalStatus === "POSTED" ? new Date() : undefined,
+        metaReelPostedAt: finalStatus === "POSTED" ? new Date() : undefined,
+        metaReelPostUrl: igId ? `https://www.instagram.com/reels/${igId}` : undefined,
         metaContainerId: null, // Reset após publicação
       },
     });

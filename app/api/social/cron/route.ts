@@ -79,7 +79,9 @@ export async function GET(req: NextRequest) {
           ? "/api/social/publish-youtube"
           : post.platform === "TIKTOK"
             ? "/api/social/publish-tiktok"
-            : "/api/social/publish";
+            : post.postType === "STORY"
+              ? "/api/social/publish-story"
+              : "/api/social/publish";
 
       const result = await callPublisher(req, pathname, post.id);
       results.push({ id: post.id, platform: post.platform, ok: result.ok, status: result.status, data: result.data });

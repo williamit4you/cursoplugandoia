@@ -1,86 +1,122 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { 
+  Search, 
+  Filter, 
+  RefreshCcw, 
+  ExternalLink, 
+  MoreVertical, 
+  Youtube, 
+  Instagram, 
+  Video, 
+  Clock, 
+  CheckCircle2, 
+  XCircle, 
+  AlertCircle,
+  Play,
+  Trash2,
+  Calendar,
+  LayoutGrid,
+  List as ListIcon,
+  ChevronDown,
+  ChevronUp,
+  Share2
+} from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Image from "next/image";
 
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; bg: string; color: string; pulse?: boolean }
-> = {
-  DRAFT: { label: "Rascunho", bg: "#f3f4f6", color: "#374151" },
-  SCHEDULED: { label: "Agendado", bg: "#dbeafe", color: "#1d4ed8" },
-  PROCESSING_MEDIA: {
-    label: "Meta Processando",
-    bg: "#fef3c7",
-    color: "#92400e",
-    pulse: true,
-  },
-  PUBLISHING: {
-    label: "Publicando",
-    bg: "#fef3c7",
-    color: "#92400e",
-    pulse: true,
-  },
-  POSTED: { label: "Publicado", bg: "#d1fae5", color: "#065f46" },
-  FAILED: { label: "Falhou", bg: "#fee2e2", color: "#991b1b" },
+// Configuração de Status
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; pulse?: boolean }> = {
+  DRAFT: { label: "Rascunho", color: "text-slate-400 bg-slate-500/10 border-slate-500/20", icon: Clock },
+  SCHEDULED: { label: "Agendado", color: "text-blue-400 bg-blue-500/10 border-blue-500/20", icon: Calendar },
+  PROCESSING_MEDIA: { label: "Meta Processando", color: "text-amber-400 bg-amber-500/10 border-amber-500/20", icon: RefreshCcw, pulse: true },
+  PUBLISHING: { label: "Publicando", color: "text-amber-400 bg-amber-500/10 border-amber-500/20", icon: RefreshCcw, pulse: true },
+  POSTED: { label: "Publicado", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", icon: CheckCircle2 },
+  FAILED: { label: "Falhou", color: "text-rose-400 bg-rose-500/10 border-rose-500/20", icon: XCircle },
 };
 
 function StatusBadge({ status }: { status: string }) {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.DRAFT;
+  const Icon = cfg.icon;
+  
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "3px 10px",
-        borderRadius: 999,
-        fontSize: 12,
-        fontWeight: 800,
-        background: cfg.bg,
-        color: cfg.color,
-        animation: cfg.pulse ? "pulse 1.5s infinite" : "none",
-      }}
-    >
-      <span
-        style={{
-          width: 7,
-          height: 7,
-          borderRadius: "50%",
-          background: cfg.color,
-          flexShrink: 0,
-          animation: cfg.pulse ? "pulse-dot 1.5s infinite" : "none",
-        }}
-      />
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${cfg.color} ${cfg.pulse ? 'animate-pulse' : ''}`}>
+      <Icon className={`w-3.5 h-3.5 ${cfg.pulse ? 'animate-spin' : ''}`} />
       {cfg.label}
     </span>
   );
 }
 
+function PlatformIcon({ platform, postType }: { platform: string; postType?: string }) {
+  const p = platform.toUpperCase();
+  if (p === "YOUTUBE") return <Youtube className="w-5 h-5 text-rose-500" />;
+  if (p === "META" || p === "INSTAGRAM") {
+    return postType === "STORY" 
+      ? <div className="relative"><Instagram className="w-5 h-5 text-pink-500" /><div className="absolute -top-1 -right-1 w-2 h-2 bg-pink-500 rounded-full border border-slate-900" /></div>
+      : <Instagram className="w-5 h-5 text-pink-500" />;
+  }
+  if (p === "TIKTOK") return <Video className="w-5 h-5 text-cyan-400" />;
+  return <Share2 className="w-5 h-5 text-slate-400" />;
+}
+
 export default function SocialPostsDashboard() {
   const [posts, setPosts] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [selectedPost, setSelectedPost] = useState<any | null>(null);
-  const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [groupByVideo, setGroupByVideo] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [sortBy, setSortBy] = useState("createdAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [platformFilter, setPlatformFilter] = useState("ALL");
-  const [postTypeFilter, setPostTypeFilter] = useState("ALL");
   const [q, setQ] = useState("");
 
-  const retryTimers = useRef<Record<string, NodeJS.Timeout>>({});
+  const fetchPosts = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const qs = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+        status: statusFilter,
+        platform: platformFilter,
+        q: q.trim(),
+      });
 
-  const totalPages = useMemo(
-    () => Math.max(1, Math.ceil(total / pageSize)),
-    [total, pageSize]
-  );
+      const res = await fetch(`/api/social/posts?${qs.toString()}`, { cache: "no-store" });
+      if (!res.ok) throw new Error("Falha ao carregar posts");
+      const data = await res.json();
+      setPosts(Array.isArray(data?.items) ? data.items : []);
+      setTotal(data?.total || 0);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [page, pageSize, statusFilter, platformFilter, q]);
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
+
+  // Auto-refresh for processing posts
+  useEffect(() => {
+    const hasActive = posts.some(p => p.status === "PUBLISHING" || p.status === "PROCESSING_MEDIA");
+    if (hasActive) {
+      const timer = setInterval(() => fetchPosts(true), 5000);
+      return () => clearInterval(timer);
+    }
+  }, [posts, fetchPosts]);
+
+  const toggleGroup = (id: string) => {
+    const next = new Set(expandedGroups);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setExpandedGroups(next);
+  };
 
   const groupedRows = useMemo(() => {
     if (!groupByVideo) return [];
@@ -93,1271 +129,341 @@ export default function SocialPostsDashboard() {
           id: key,
           summary: p.summary,
           videoUrl: p.videoUrl,
+          thumbUrl: p.thumbUrl,
           createdAt: p.createdAt,
-          scheduledTo: p.scheduledTo,
-          postedAt: p.postedAt,
           items: [p],
         });
         continue;
       }
       row.items.push(p);
-      if (p.createdAt && (!row.createdAt || new Date(p.createdAt) < new Date(row.createdAt))) row.createdAt = p.createdAt;
-      if (p.scheduledTo && (!row.scheduledTo || new Date(p.scheduledTo) < new Date(row.scheduledTo))) row.scheduledTo = p.scheduledTo;
-      if (p.postedAt && (!row.postedAt || new Date(p.postedAt) > new Date(row.postedAt))) row.postedAt = p.postedAt;
-      if (!row.videoUrl && p.videoUrl) row.videoUrl = p.videoUrl;
     }
     return Array.from(map.values());
   }, [posts, groupByVideo]);
 
-  const groupPlatformBadges = (items: any[]) => {
-    const order = ["YOUTUBE", "META", "TIKTOK", "LINKEDIN"];
-    const sorted = [...items].sort((a, b) => {
-      const ai = order.indexOf(String(a.platform || "META").toUpperCase());
-      const bi = order.indexOf(String(b.platform || "META").toUpperCase());
-      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-    });
-    return (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-        {sorted.map((p) => (
-          <div key={p.id} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 900, color: "#0f172a" }}>
-              {String(p.platform || "META").toUpperCase()} {String(p.postType || "REEL").toUpperCase()}
-            </span>
-            <StatusBadge status={p.status} />
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const fetchPosts = async () => {
-    const qs = new URLSearchParams({
-      page: String(page),
-      pageSize: String(pageSize),
-      sortBy,
-      sortDir,
-      status: statusFilter,
-      platform: platformFilter,
-      postType: postTypeFilter,
-      q: q.trim(),
-    });
-
-    const res = await fetch(`/api/social/posts?${qs.toString()}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    setPosts(Array.isArray(data?.items) ? data.items : []);
-    setTotal(Number(data?.total) || 0);
-  };
-
-  useEffect(() => {
-    fetchPosts();
-    const interval = setInterval(fetchPosts, 15000);
-    const timers = retryTimers.current;
-    return () => {
-      clearInterval(interval);
-      Object.values(timers).forEach(clearTimeout);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize, sortBy, sortDir, statusFilter, platformFilter, postTypeFilter, q]);
-
-  const clearRetry = (id: string) => {
-    if (retryTimers.current[id]) {
-      clearTimeout(retryTimers.current[id]);
-      delete retryTimers.current[id];
+  const handleAction = async (id: string, action: string) => {
+    setLoadingId(id);
+    try {
+      const res = await fetch(`/api/social/posts/${id}/${action}`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Falha na ação");
+      toast.success("Ação realizada com sucesso!");
+      fetchPosts(true);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLoadingId(null);
     }
   };
 
-  const scheduleRetry = (id: string, delayMs: number) => {
-    clearRetry(id);
-    retryTimers.current[id] = setTimeout(() => {
-      handlePublish(id, true);
-    }, delayMs);
-  };
-
-  const handlePublish = async (
-    id: string,
-    isRetry = false,
-    bypassTimeCheck = false
-  ) => {
-    if (!isRetry) setLoadingId(id + "-reels");
+  const retryPublish = async (id: string) => {
+    setLoadingId(id);
     try {
       const res = await fetch("/api/social/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ socialPostId: id, bypassTimeCheck }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (data.timeLimit && !bypassTimeCheck) {
-          const ok = confirm(
-            "⚠️ Limite de 1h não atingido! Postar AGORA e assumir risco de shadowban?"
-          );
-          if (ok) handlePublish(id, false, true);
-          else setLoadingId(null);
-          return;
-        }
-        toast.error(data.error || "Erro ao publicar");
-        setLoadingId(null);
-        return;
-      }
-
-      if (data.phase === 1 || data.stillProcessing) {
-        await fetchPosts();
-        if (!isRetry) {
-          toast.info(
-            "📦 Container criado! Meta processando o vídeo. Verificando automaticamente a cada 30s...",
-            { autoClose: 8000 }
-          );
-        }
-        setLoadingId(null);
-        scheduleRetry(id, 30000);
-        return;
-      }
-
-      if (data.success) {
-        clearRetry(id);
-        toast.success("✅ Reels publicado no Instagram e Facebook!");
-      } else if (data.errors?.length > 0) {
-        clearRetry(id);
-        toast.warning(`⚠️ Publicado parcialmente: ${data.errors.join(" | ")}`);
-      }
-
-      setLoadingId(null);
-      await fetchPosts();
-    } catch {
-      toast.error("Erro de conexão");
-      setLoadingId(null);
-    }
-  };
-
-  const handlePublishStory = async (id: string, isRetry = false) => {
-    if (!isRetry) setLoadingId(id + "-story");
-    try {
-      const res = await fetch("/api/social/publish-story", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ socialPostId: id }),
       });
       const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(data.error || "Erro ao publicar Story");
-        setLoadingId(null);
-        return;
-      }
-
-      if (data.phase === 1 || data.stillProcessing) {
-        await fetchPosts();
-        if (!isRetry) {
-          toast.info(
-            "📦 Container criado! Meta processando o Story. Verificando automaticamente a cada 30s...",
-            { autoClose: 8000 }
-          );
-        }
-        setLoadingId(null);
-        scheduleRetry(id, 30000);
-        return;
-      }
-
-      if (data.success) toast.success("✅ Story de 24h publicado no Instagram e Facebook!");
-      else if (data.errors?.length > 0)
-        toast.warning(`⚠️ Story parcialmente publicado: ${data.errors.join(" | ")}`);
-
-      setLoadingId(null);
-      await fetchPosts();
-    } catch {
-      toast.error("Erro de conexão ao publicar Story");
-      setLoadingId(null);
-    }
-  };
-
-  const handlePublishTikTok = async (id: string) => {
-    setLoadingId(id + "-tiktok");
-    try {
-      const res = await fetch("/api/social/publish-tiktok", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ socialPostId: id }),
-      });
-      const data = await res.json();
-      if (!res.ok) toast.error(data.error || "Erro ao publicar no TikTok");
-      else toast.success("✅ Vídeo enviado ao TikTok com sucesso!");
-    } catch {
-      toast.error("Erro de conexão ao publicar no TikTok");
-    } finally {
-      setLoadingId(null);
-      await fetchPosts();
-    }
-  };
-
-  const handlePublishYouTube = async (id: string) => {
-    setLoadingId(id + "-youtube");
-    try {
-      const res = await fetch("/api/social/publish-youtube", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ socialPostId: id }),
-      });
-      const data = await res.json();
-      if (!res.ok) toast.error(data.error || "Erro ao publicar no YouTube");
-      else toast.success("✅ Vídeo enviado ao YouTube com sucesso!");
-    } catch {
-      toast.error("Erro de conexão ao publicar no YouTube");
-    } finally {
-      setLoadingId(null);
-      await fetchPosts();
-    }
-  };
-
-  const handleRefreshStats = async () => {
-    setLoadingId("refresh-stats");
-    try {
-      const res = await fetch("/api/social/refresh-stats", { method: "POST" });
-      if (res.ok) {
-        toast.success("📈 Estatísticas atualizadas com sucesso!");
-        await fetchPosts();
-      } else {
-        toast.error("Erro ao atualizar estatísticas");
-      }
-    } catch {
-      toast.error("Erro de conexão");
+      if (!res.ok) throw new Error(data.error || "Falha ao publicar");
+      toast.success("Publicação iniciada!");
+      fetchPosts(true);
+    } catch (err: any) {
+      toast.error(err.message);
     } finally {
       setLoadingId(null);
     }
-  };
-
-  const handlePublishSite = async (id: string) => {
-    setLoadingId(id + "-site");
-    try {
-      const res = await fetch("/api/social/publish-site", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ socialPostId: id, publishNow: true }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || "Erro ao publicar no site");
-        return;
-      }
-      toast.success("✅ Publicado no site!");
-      if (data?.slug) window.open(`/noticias/${data.slug}`, "_blank");
-      await fetchPosts();
-    } catch {
-      toast.error("Erro de conexão ao publicar no site");
-    } finally {
-      setLoadingId(null);
-    }
-  };
-
-  const goSort = (field: string) => {
-    if (sortBy === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setSortBy(field);
-      setSortDir("desc");
-    }
-    setPage(1);
-  };
-
-  const sortIcon = (field: string) => {
-    if (sortBy !== field) return "↕";
-    return sortDir === "asc" ? "↑" : "↓";
-  };
-
-  const thStyle: React.CSSProperties = {
-    padding: "10px 12px",
-    textAlign: "left",
-    fontSize: 12,
-    color: "#6b7280",
-    fontWeight: 800,
-    borderBottom: "1px solid #e5e7eb",
-    whiteSpace: "nowrap",
-  };
-
-  const tdStyle: React.CSSProperties = {
-    padding: "10px 12px",
-    borderBottom: "1px solid #f3f4f6",
-    verticalAlign: "top",
-    fontSize: 13,
-    color: "#111827",
-  };
-
-  const formatDateTime = (value?: string | null) =>
-    value ? new Date(value).toLocaleString("pt-BR") : "—";
-
-  const describeFlow = (post: any) => {
-    if (post.status === "POSTED") return "Publicado com sucesso";
-    if (post.status === "PROCESSING_MEDIA") return "Na fila da Meta processando mídia";
-    if (post.status === "PUBLISHING") return "Enviado para publicação";
-    if (post.status === "FAILED") return "Falhou e precisa de ação";
-    if (post.status === "SCHEDULED" && post.scheduledTo) return "Na fila aguardando horário";
-    if (post.status === "DRAFT") return "Gerado e aguardando envio";
-    return "Em processamento";
   };
 
   return (
-    <div style={{ padding: 24, maxWidth: 1300, margin: "0 auto" }}>
-      <style>{`
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-        @keyframes pulse-dot { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.4); } }
-      `}</style>
-      <ToastContainer position="top-right" autoClose={4000} />
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-          gap: 12,
-        }}
-      >
+    <div className="min-h-screen bg-slate-950 text-slate-200 p-6 md:p-10 space-y-8 animate-in fade-in duration-700">
+      <ToastContainer theme="dark" position="bottom-right" />
+      
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>
-            📱 Fila Social
+          <h1 className="text-4xl font-black tracking-tight text-white mb-2 flex items-center gap-3">
+            <Share2 className="w-10 h-10 text-blue-500" />
+            Fila Social
           </h1>
-          <p style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
-            {total} item(ns) · a tela mostra o que foi apenas enfileirado, o que está agendado e o que já foi publicado
+          <p className="text-slate-400 text-lg">
+            Gerencie e monitore as publicações automáticas em todas as redes.
           </p>
         </div>
-        <div style={{ display: "flex", gap: 12 }}>
-          <a
-            href="/admin/social/calendar"
-            style={{
-              padding: "8px 16px",
-              borderRadius: 10,
-              border: "1px solid #2563eb",
-              background: "#eff6ff",
-              color: "#1d4ed8",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 900,
-              textDecoration: "none",
-            }}
+
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => fetchPosts()}
+            className="p-3 bg-slate-900 border border-slate-800 rounded-2xl hover:bg-slate-800 transition-colors"
+            title="Atualizar"
           >
-            🗓️ Ver calendário
-          </a>
-          <button
-            onClick={handleRefreshStats}
-            disabled={loadingId === "refresh-stats"}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 10,
-              border: "1px solid #10b981",
-              background: "#ecfdf5",
-              color: "#047857",
-              cursor: loadingId === "refresh-stats" ? "not-allowed" : "pointer",
-              fontSize: 13,
-              fontWeight: 900,
-            }}
-          >
-            {loadingId === "refresh-stats" ? "⏳..." : "📈 Atualizar Views"}
+            <RefreshCcw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button
-            onClick={fetchPosts}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 10,
-              border: "1px solid #d1d5db",
-              background: "white",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 800,
-            }}
-          >
-            🔄 Atualizar Lista
-          </button>
+          <div className="flex bg-slate-900 p-1 rounded-2xl border border-slate-800">
+            <button 
+              onClick={() => setGroupByVideo(true)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${groupByVideo ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+            >
+              <LayoutGrid className="w-4 h-4" /> Agrupado
+            </button>
+            <button 
+              onClick={() => setGroupByVideo(false)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${!groupByVideo ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+            >
+              <ListIcon className="w-4 h-4" /> Lista
+            </button>
+          </div>
         </div>
       </div>
 
-      <div
-        style={{
-          background: "#f8fafc",
-          border: "1px solid #e2e8f0",
-          borderRadius: 12,
-          padding: 16,
-          marginBottom: 16,
-          color: "#334155",
-          fontSize: 13,
-          lineHeight: 1.6,
-        }}
-      >
-        <strong style={{ color: "#0f172a" }}>Como ler esta fila:</strong> `Rascunho` significa que o vídeo foi gerado e ainda não foi enviado. `Agendado` significa que já está na fila com horário definido. `Publicado` significa que a rede social já devolveu o link final.
-      </div>
-
-      <div
-        style={{
-          background: "white",
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          padding: 16,
-          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-          marginBottom: 16,
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 160px 160px 160px",
-            gap: 12,
-          }}
-        >
-          <input
+      {/* Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-900/50 p-6 rounded-3xl border border-white/5 backdrop-blur-sm">
+        <div className="relative group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+          <input 
+            type="text"
+            placeholder="Buscar por legenda..."
             value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Buscar (summary / link)…"
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid #d1d5db",
-              fontSize: 13,
-            }}
+            onChange={(e) => setQ(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-800 rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
           />
-          <select
+        </div>
+
+        <div className="relative">
+          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <select 
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid #d1d5db",
-              fontSize: 13,
-            }}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-800 rounded-2xl py-3 pl-12 pr-4 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           >
-            <option value="ALL">Status (todos)</option>
-            {Object.keys(STATUS_CONFIG).map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <select
-            value={platformFilter}
-            onChange={(e) => {
-              setPlatformFilter(e.target.value);
-              setPage(1);
-            }}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid #d1d5db",
-              fontSize: 13,
-            }}
-          >
-            <option value="ALL">Plataforma (todas)</option>
-            <option value="META">META</option>
-            <option value="TIKTOK">TIKTOK</option>
-            <option value="YOUTUBE">YOUTUBE</option>
-            <option value="LINKEDIN">LINKEDIN</option>
-          </select>
-          <select
-            value={postTypeFilter}
-            onChange={(e) => {
-              setPostTypeFilter(e.target.value);
-              setPage(1);
-            }}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid #d1d5db",
-              fontSize: 13,
-            }}
-          >
-            <option value="ALL">Tipo (todos)</option>
-            <option value="REEL">REEL</option>
-            <option value="STORY">STORY</option>
+            <option value="ALL">Todos os Status</option>
+            <option value="DRAFT">Rascunho</option>
+            <option value="SCHEDULED">Agendado</option>
+            <option value="POSTED">Publicado</option>
+            <option value="FAILED">Falhou</option>
           </select>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: 12,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "center",
-              color: "#6b7280",
-              fontSize: 12,
-            }}
+        <div className="relative">
+          <PlatformIcon platform={platformFilter === "ALL" ? "" : platformFilter} />
+          <select 
+            value={platformFilter}
+            onChange={(e) => setPlatformFilter(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-800 rounded-2xl py-3 pl-12 pr-4 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           >
-            <span>
-              Página <strong style={{ color: "#111827" }}>{page}</strong> /{" "}
-              {totalPages}
-            </span>
-            <span>·</span>
-            <span>
-              Total: <strong style={{ color: "#111827" }}>{total}</strong>
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <label
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: 12,
-                fontWeight: 900,
-                color: "#0f172a",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={groupByVideo}
-                onChange={(e) => setGroupByVideo(e.target.checked)}
-              />
-              Agrupar por vÃ­deo
-            </label>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setPage(1);
-              }}
-              style={{
-                padding: "8px 10px",
-                borderRadius: 10,
-                border: "1px solid #d1d5db",
-                fontSize: 13,
-              }}
-            >
-              {[10, 20, 30, 50, 100].map((n) => (
-                <option key={n} value={n}>
-                  {n}/página
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 10,
-                border: "1px solid #d1d5db",
-                background: page <= 1 ? "#f3f4f6" : "white",
-                cursor: page <= 1 ? "not-allowed" : "pointer",
-                fontSize: 13,
-                fontWeight: 800,
-              }}
-            >
-              ← Anterior
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 10,
-                border: "1px solid #d1d5db",
-                background: page >= totalPages ? "#f3f4f6" : "white",
-                cursor: page >= totalPages ? "not-allowed" : "pointer",
-                fontSize: 13,
-                fontWeight: 800,
-              }}
-            >
-              Próxima →
-            </button>
-          </div>
+            <option value="ALL">Todas as Plataformas</option>
+            <option value="META">Meta (IG/FB)</option>
+            <option value="YOUTUBE">YouTube</option>
+            <option value="TIKTOK">TikTok</option>
+          </select>
+        </div>
+
+        <div className="flex items-center justify-end text-sm text-slate-500 font-medium">
+          {total} postagens encontradas
         </div>
       </div>
 
-      <div
-        style={{
-          background: "white",
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          overflow: "hidden",
-        }}
-      >
-        {posts.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>
-            Nenhum item encontrado com os filtros atuais.
+      {/* Main Content */}
+      <div className="space-y-4">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-32 space-y-4">
+            <RefreshCcw className="w-12 h-12 text-blue-500 animate-spin" />
+            <p className="text-slate-400 font-medium">Carregando fila...</p>
+          </div>
+        ) : groupByVideo ? (
+          /* Agrupado por Vídeo */
+          <div className="space-y-6">
+            {groupedRows.map(group => (
+              <div key={group.id} className="bg-slate-900 border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+                <div className="p-6 flex items-start gap-6">
+                  {/* Thumbnail */}
+                  <div className="relative w-32 h-44 bg-slate-950 rounded-2xl overflow-hidden shrink-0 border border-white/5 group">
+                    {group.thumbUrl ? (
+                      <Image src={group.thumbUrl} alt="Thumbnail" fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Video className="w-8 h-8 text-slate-800" />
+                      </div>
+                    )}
+                    <button 
+                      onClick={() => window.open(group.videoUrl, '_blank')}
+                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                    >
+                      <Play className="w-8 h-8 text-white fill-current" />
+                    </button>
+                  </div>
+
+                  {/* Content Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-white truncate max-w-xl mb-1">{group.summary}</h3>
+                        <div className="flex items-center gap-3 text-sm text-slate-500">
+                          <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {new Date(group.createdAt).toLocaleString('pt-BR')}</span>
+                          <span className="w-1 h-1 bg-slate-700 rounded-full" />
+                          <span className="font-mono text-xs uppercase tracking-wider">{group.id.slice(0, 8)}...</span>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => toggleGroup(group.id)}
+                        className="p-2 hover:bg-slate-800 rounded-xl transition-colors"
+                      >
+                        {expandedGroups.has(group.id) ? <ChevronUp /> : <ChevronDown />}
+                      </button>
+                    </div>
+
+                    {/* Quick Status Badges */}
+                    <div className="flex flex-wrap gap-4 pt-2 border-t border-white/5 mt-4">
+                      {group.items.map((p: any) => (
+                        <div key={p.id} className="flex items-center gap-2 bg-slate-950/50 p-2 pr-4 rounded-2xl border border-white/5">
+                          <PlatformIcon platform={p.platform} postType={p.postType} />
+                          <span className="text-xs font-bold text-slate-300 uppercase">{p.postType || 'REEL'}</span>
+                          <StatusBadge status={p.status} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expanded Details */}
+                {expandedGroups.has(group.id) && (
+                  <div className="bg-slate-950/50 border-t border-white/5 p-6 space-y-4">
+                    <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                      <ListIcon className="w-4 h-4" /> Detalhes das Publicações
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {group.items.map((p: any) => (
+                        <div key={p.id} className="bg-slate-900/50 border border-white/5 p-4 rounded-2xl flex items-center justify-between group">
+                          <div className="flex items-center gap-4">
+                            <PlatformIcon platform={p.platform} postType={p.postType} />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-white tracking-wide">{p.platform} {p.postType}</span>
+                                <StatusBadge status={p.status} />
+                              </div>
+                              <p className="text-xs text-slate-500 mt-1">
+                                {p.scheduledTo ? `Agendado: ${new Date(p.scheduledTo).toLocaleString('pt-BR')}` : 'Não agendado'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {p.status === 'FAILED' && (
+                              <button 
+                                onClick={() => retryPublish(p.id)}
+                                className="p-2 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-all"
+                                title="Repetir"
+                              >
+                                <RefreshCcw className="w-4 h-4" />
+                              </button>
+                            )}
+                            {p.postUrl && (
+                              <a 
+                                href={p.postUrl} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="p-2 bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg transition-all"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            )}
+                            <button className="p-2 hover:bg-slate-800 rounded-lg text-slate-500">
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                {groupByVideo ? (
-                  <tr style={{ background: "#f9fafb" }}>
-                    <th style={thStyle}>Item</th>
-                    <th style={thStyle}>Plataformas</th>
-                    <th style={thStyle}>Agendado</th>
-                    <th style={thStyle}>Criado</th>
-                    <th style={thStyle}>Publicado</th>
-                    <th style={thStyle}>Links</th>
-                    <th style={thStyle}>Detalhes</th>
-                  </tr>
-                ) : (
-                  <tr style={{ background: "#f9fafb" }}>
-                  <th style={thStyle}>Item</th>
-                  <th style={thStyle}>
-                    <button
-                      onClick={() => goSort("status")}
-                      style={{ all: "unset", cursor: "pointer" }}
-                    >
-                      Status {sortIcon("status")}
-                    </button>
-                  </th>
-                  <th style={thStyle}>
-                    <button
-                      onClick={() => goSort("postType")}
-                      style={{ all: "unset", cursor: "pointer" }}
-                    >
-                      Tipo {sortIcon("postType")}
-                    </button>
-                  </th>
-                  <th style={thStyle}>
-                    <button
-                      onClick={() => goSort("scheduledTo")}
-                      style={{ all: "unset", cursor: "pointer" }}
-                    >
-                      Agendado {sortIcon("scheduledTo")}
-                    </button>
-                  </th>
-                  <th style={thStyle}>
-                    <button
-                      onClick={() => goSort("platform")}
-                      style={{ all: "unset", cursor: "pointer" }}
-                    >
-                      Plataforma {sortIcon("platform")}
-                    </button>
-                  </th>
-                  <th style={thStyle}>
-                    <button
-                      onClick={() => goSort("views")}
-                      style={{ all: "unset", cursor: "pointer" }}
-                    >
-                      Views {sortIcon("views")}
-                    </button>
-                  </th>
-                  <th style={thStyle}>
-                    Fluxo
-                  </th>
-                  <th style={thStyle}>
-                    <button
-                      onClick={() => goSort("createdAt")}
-                      style={{ all: "unset", cursor: "pointer" }}
-                    >
-                      Criado {sortIcon("createdAt")}
-                    </button>
-                  </th>
-                  <th style={thStyle}>
-                    <button
-                      onClick={() => goSort("postedAt")}
-                      style={{ all: "unset", cursor: "pointer" }}
-                    >
-                      Publicado {sortIcon("postedAt")}
-                    </button>
-                  </th>
-                  <th style={thStyle}>Links</th>
-                  <th style={thStyle}>Detalhes</th>
-                  <th style={thStyle}>Ações</th>
-                </tr>
-                )}
-              </thead>
-              <tbody>
-                {groupByVideo ? (
-                  groupedRows.map((g: any) => {
-                    const items = Array.isArray(g.items) ? g.items : [];
-                    const hasAnyProcessing = items.some(
-                      (p: any) => p.status === "PROCESSING_MEDIA" || p.status === "PUBLISHING"
-                    );
+          /* Lista Simples (Bento style) */
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {posts.map(post => (
+              <div key={post.id} className="bg-slate-900 border border-white/5 rounded-3xl p-6 hover:border-blue-500/30 transition-all group shadow-xl">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-slate-950 rounded-2xl border border-white/5">
+                      <PlatformIcon platform={post.platform} postType={post.postType} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white uppercase tracking-wider">{post.platform}</h3>
+                      <p className="text-xs text-slate-500">{post.postType || 'REEL'}</p>
+                    </div>
+                  </div>
+                  <StatusBadge status={post.status} />
+                </div>
+                
+                <p className="text-slate-300 text-sm line-clamp-3 mb-6 min-h-[60px]">
+                  {post.summary}
+                </p>
 
-                    return (
-                      <tr
-                        key={g.id}
-                        style={{ background: hasAnyProcessing ? "#fffbeb" : "white" }}
+                <div className="flex items-center justify-between pt-6 border-t border-white/5">
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <Calendar className="w-3.5 h-3.5" />
+                    {new Date(post.createdAt).toLocaleDateString('pt-BR')}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {post.postUrl && (
+                      <a 
+                        href={post.postUrl} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-xl transition-all"
                       >
-                        <td style={{ ...tdStyle, minWidth: 260, maxWidth: 360 }}>
-                          <div style={{ fontWeight: 800, color: "#111827", lineHeight: 1.4 }}>
-                            {String(g.summary || "").slice(0, 110) || "Sem resumo"}
-                          </div>
-                          <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>
-                            {g.videoUrl ? "VÃ­deo gerado" : "Sem vÃ­deo"} Â· {items.length} plataforma(s)
-                          </div>
-                        </td>
-                        <td style={{ ...tdStyle, minWidth: 260 }}>
-                          {groupPlatformBadges(items)}
-                        </td>
-                        <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                          {formatDateTime(g.scheduledTo)}
-                        </td>
-                        <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                          {formatDateTime(g.createdAt)}
-                        </td>
-                        <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                          {formatDateTime(g.postedAt)}
-                        </td>
-                        <td style={tdStyle}>
-                          {g.videoUrl ? (
-                            <a href={g.videoUrl} target="_blank" rel="noreferrer" style={{ color: "#1d4ed8", fontWeight: 900, textDecoration: "none" }}>
-                              vÃ­deo
-                            </a>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                        <td style={tdStyle}>
-                          <button
-                            onClick={() => setSelectedGroup(g)}
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: 10,
-                              border: "1px solid #d1d5db",
-                              background: "white",
-                              cursor: "pointer",
-                              fontSize: 12,
-                              fontWeight: 900,
-                            }}
-                          >
-                            Ver detalhes
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  posts.map((p) => {
-                  const isProcessing =
-                    p.status === "PROCESSING_MEDIA" || p.status === "PUBLISHING";
-                  const hasRetryPending = !!retryTimers.current[p.id];
+                        <ExternalLink className="w-5 h-5" />
+                      </a>
+                    )}
+                    <button className="p-2 text-slate-500 hover:bg-slate-800 rounded-xl transition-all">
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
-                  return (
-                    <tr
-                      key={p.id}
-                      style={{ background: isProcessing ? "#fffbeb" : "white" }}
-                    >
-                      <td style={{ ...tdStyle, minWidth: 260, maxWidth: 320 }}>
-                        <div style={{ fontWeight: 800, color: "#111827", lineHeight: 1.4 }}>
-                          {String(p.summary || "").slice(0, 110) || "Sem resumo"}
-                        </div>
-                        <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>
-                          {p.videoUrl ? "Vídeo gerado" : "Sem vídeo"} · {p.platform || "META"} · {p.postType || "REEL"}
-                        </div>
-                      </td>
-                      <td style={tdStyle}>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 6,
-                          }}
-                        >
-                          <StatusBadge status={p.status} />
-                          {hasRetryPending && (
-                            <span
-                              style={{
-                                fontSize: 11,
-                                color: "#1d4ed8",
-                                fontWeight: 800,
-                              }}
-                            >
-                              ↻ retry agendado
-                            </span>
-                          )}
-                          {p.metaContainerId && (
-                            <span
-                              style={{
-                                fontSize: 11,
-                                color: "#9ca3af",
-                                fontFamily: "monospace",
-                              }}
-                            >
-                              {String(p.metaContainerId).slice(0, 10)}…
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td style={tdStyle}>{p.postType || "REEL"}</td>
-                      <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                        {formatDateTime(p.scheduledTo)}
-                      </td>
-                      <td style={tdStyle}>{p.platform || "META"}</td>
-                      <td
-                        style={{
-                          ...tdStyle,
-                          fontFamily: "monospace",
-                          color: "#065f46",
-                          fontWeight: 900,
-                        }}
-                      >
-                        {p.views !== undefined
-                          ? Number(p.views).toLocaleString("pt-BR")
-                          : "-"}
-                      </td>
-                      <td style={{ ...tdStyle, minWidth: 180, color: "#475569" }}>
-                        {describeFlow(p)}
-                      </td>
-                      <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                        {formatDateTime(p.createdAt)}
-                      </td>
-                      <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                        {formatDateTime(p.postedAt)}
-                      </td>
-                      <td style={tdStyle}>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 6,
-                          }}
-                        >
-                          {p.postUrl && (
-                            <a
-                              href={p.postUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{
-                                fontSize: 12,
-                                color: "#4f46e5",
-                                fontWeight: 900,
-                                textDecoration: "none",
-                              }}
-                            >
-                              Abrir post
-                            </a>
-                          )}
-                          {p.videoUrl && (
-                            <a
-                              href={p.videoUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{
-                                fontSize: 12,
-                                color: "#4f46e5",
-                                fontWeight: 900,
-                                textDecoration: "none",
-                              }}
-                            >
-                              Abrir vídeo
-                            </a>
-                          )}
-                        </div>
-                      </td>
-                      <td style={tdStyle}>
-                        <button
-                          onClick={() => setSelectedPost(p)}
-                          style={{
-                            padding: "8px 12px",
-                            borderRadius: 10,
-                            border: "1px solid #cbd5e1",
-                            background: "white",
-                            color: "#1e293b",
-                            cursor: "pointer",
-                            fontSize: 12,
-                            fontWeight: 900,
-                          }}
-                        >
-                          Ver detalhes
-                        </button>
-                      </td>
-                      <td style={{ ...tdStyle, width: 230 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {isProcessing && (
-                            <button
-                              onClick={() => handlePublish(p.id)}
-                              disabled={loadingId === p.id + "-reels"}
-                              style={{
-                                padding: "8px 12px",
-                                borderRadius: 10,
-                                border: "1px solid #d97706",
-                                background: "white",
-                                color: "#b45309",
-                                cursor: "pointer",
-                                fontSize: 12,
-                                fontWeight: 900,
-                              }}
-                            >
-                              Checar Meta agora
-                            </button>
-                          )}
-
-                          {!isProcessing && p.status !== "POSTED" && (
-                            <button
-                              onClick={() => handlePublish(p.id)}
-                              disabled={loadingId === p.id + "-reels"}
-                              style={{
-                                padding: "8px 12px",
-                                borderRadius: 10,
-                                border: "none",
-                                background:
-                                  loadingId === p.id + "-reels" ? "#d1d5db" : "#4f46e5",
-                                color: "white",
-                                cursor:
-                                  loadingId === p.id + "-reels" ? "not-allowed" : "pointer",
-                                fontSize: 12,
-                                fontWeight: 900,
-                              }}
-                            >
-                              {loadingId === p.id + "-reels" ? "Aguarde…" : "Meta Reels"}
-                            </button>
-                          )}
-
-                          {!isProcessing && p.status !== "POSTED" && (
-                            <button
-                              onClick={() => handlePublishStory(p.id)}
-                              disabled={loadingId === p.id + "-story"}
-                              style={{
-                                padding: "8px 12px",
-                                borderRadius: 10,
-                                border: "1px solid #7c3aed",
-                                background: "white",
-                                color: "#7c3aed",
-                                cursor:
-                                  loadingId === p.id + "-story" ? "not-allowed" : "pointer",
-                                fontSize: 12,
-                                fontWeight: 900,
-                              }}
-                            >
-                              {loadingId === p.id + "-story" ? "Aguarde…" : "Meta Story"}
-                            </button>
-                          )}
-
-                          {!isProcessing && (
-                            <button
-                              onClick={() => handlePublishTikTok(p.id)}
-                              disabled={loadingId === p.id + "-tiktok"}
-                              style={{
-                                padding: "8px 12px",
-                                borderRadius: 10,
-                                border: "none",
-                                background:
-                                  loadingId === p.id + "-tiktok" ? "#d1d5db" : "#111827",
-                                color: "white",
-                                cursor:
-                                  loadingId === p.id + "-tiktok" ? "not-allowed" : "pointer",
-                                fontSize: 12,
-                                fontWeight: 900,
-                              }}
-                            >
-                              {loadingId === p.id + "-tiktok" ? "Enviando…" : "TikTok"}
-                            </button>
-                          )}
-
-                          {!isProcessing && (
-                            <button
-                              onClick={() => handlePublishYouTube(p.id)}
-                              disabled={loadingId === p.id + "-youtube"}
-                              style={{
-                                padding: "8px 12px",
-                                borderRadius: 10,
-                                border: "none",
-                                background:
-                                  loadingId === p.id + "-youtube" ? "#d1d5db" : "#ef4444",
-                                color: "white",
-                                cursor:
-                                  loadingId === p.id + "-youtube" ? "not-allowed" : "pointer",
-                                fontSize: 12,
-                                fontWeight: 900,
-                              }}
-                            >
-                              {loadingId === p.id + "-youtube" ? "Enviando…" : "YouTube"}
-                            </button>
-                          )}
-
-                          {!isProcessing && (
-                            <button
-                              onClick={() => handlePublishSite(p.id)}
-                              disabled={loadingId === p.id + "-site"}
-                              style={{
-                                padding: "8px 12px",
-                                borderRadius: 10,
-                                border: "1px solid #111827",
-                                background: loadingId === p.id + "-site" ? "#f3f4f6" : "white",
-                                color: "#111827",
-                                cursor: loadingId === p.id + "-site" ? "not-allowed" : "pointer",
-                                fontSize: 12,
-                                fontWeight: 900,
-                              }}
-                            >
-                              {loadingId === p.id + "-site" ? "Publicando…" : "Publicar no site"}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-                )}
-              </tbody>
-            </table>
+        {/* Empty State */}
+        {!loading && posts.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-32 space-y-6 bg-slate-900/30 rounded-3xl border border-dashed border-slate-800">
+            <div className="p-6 bg-slate-900 rounded-full border border-slate-800">
+              <AlertCircle className="w-12 h-12 text-slate-700" />
+            </div>
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-white mb-2">Nenhum post encontrado</h3>
+              <p className="text-slate-500 max-w-xs mx-auto">
+                Tente ajustar os filtros ou aguarde as próximas automações.
+              </p>
+            </div>
           </div>
         )}
       </div>
 
-      {selectedGroup && (
-        <div
-          onClick={() => setSelectedGroup(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
-            display: "flex",
-            justifyContent: "flex-end",
-            zIndex: 60,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "min(620px, 100%)",
-              height: "100%",
-              background: "white",
-              padding: 24,
-              overflowY: "auto",
-              boxShadow: "-12px 0 32px rgba(15, 23, 42, 0.18)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-              <div style={{ fontWeight: 900, fontSize: 16, color: "#0f172a" }}>
-                Detalhes do vÃ­deo
-              </div>
-              <button
-                onClick={() => setSelectedGroup(null)}
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 999,
-                  border: "1px solid #e2e8f0",
-                  background: "white",
-                  cursor: "pointer",
-                  fontWeight: 900,
-                }}
-              >
-                Ã—
-              </button>
-            </div>
-
-            <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>Resumo</div>
-              <div style={{ color: "#0f172a", lineHeight: 1.6 }}>
-                {String(selectedGroup.summary || "").trim() || "Sem resumo"}
-              </div>
-              {selectedGroup.videoUrl && (
-                <a
-                  href={selectedGroup.videoUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ display: "inline-block", marginTop: 10, color: "#1d4ed8", fontWeight: 900, textDecoration: "none" }}
-                >
-                  Abrir vÃ­deo final
-                </a>
-              )}
-            </div>
-
-            <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
-              {(Array.isArray(selectedGroup.items) ? selectedGroup.items : []).map((p: any) => (
-                <div key={p.id} style={{ padding: 14, borderRadius: 12, border: "1px solid #e2e8f0" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                    <div style={{ fontWeight: 900, color: "#0f172a" }}>
-                      {String(p.platform || "META").toUpperCase()} {String(p.postType || "REEL").toUpperCase()}
-                    </div>
-                    <StatusBadge status={p.status} />
-                  </div>
-                  <div style={{ marginTop: 8, fontSize: 12, color: "#64748b" }}>
-                    Agendado: <strong style={{ color: "#0f172a" }}>{formatDateTime(p.scheduledTo)}</strong>
-                  </div>
-                  <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {p.postUrl && (
-                      <a href={p.postUrl} target="_blank" rel="noreferrer" style={{ color: "#1d4ed8", fontWeight: 900, textDecoration: "none" }}>
-                        Abrir publicado
-                      </a>
-                    )}
-                    {p.videoUrl && (
-                      <a href={p.videoUrl} target="_blank" rel="noreferrer" style={{ color: "#1d4ed8", fontWeight: 900, textDecoration: "none" }}>
-                        Abrir vÃ­deo
-                      </a>
-                    )}
-                  </div>
-                  <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {String(p.platform || "META").toUpperCase() === "YOUTUBE" ? (
-                      <button
-                        onClick={() => handlePublishYouTube(p.id)}
-                        disabled={loadingId === p.id + "-youtube"}
-                        style={{
-                          padding: "8px 12px",
-                          borderRadius: 10,
-                          border: "none",
-                          background: loadingId === p.id + "-youtube" ? "#d1d5db" : "#ef4444",
-                          color: "white",
-                          cursor: loadingId === p.id + "-youtube" ? "not-allowed" : "pointer",
-                          fontSize: 12,
-                          fontWeight: 900,
-                        }}
-                      >
-                        {loadingId === p.id + "-youtube" ? "Enviandoâ€¦" : "Publicar YouTube"}
-                      </button>
-                    ) : String(p.platform || "META").toUpperCase() === "TIKTOK" ? (
-                      <button
-                        onClick={() => handlePublishTikTok(p.id)}
-                        disabled={loadingId === p.id + "-tiktok"}
-                        style={{
-                          padding: "8px 12px",
-                          borderRadius: 10,
-                          border: "none",
-                          background: loadingId === p.id + "-tiktok" ? "#d1d5db" : "#111827",
-                          color: "white",
-                          cursor: loadingId === p.id + "-tiktok" ? "not-allowed" : "pointer",
-                          fontSize: 12,
-                          fontWeight: 900,
-                        }}
-                      >
-                        {loadingId === p.id + "-tiktok" ? "Enviandoâ€¦" : "Publicar TikTok"}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handlePublish(p.id)}
-                        disabled={loadingId === p.id + "-reels"}
-                        style={{
-                          padding: "8px 12px",
-                          borderRadius: 10,
-                          border: "none",
-                          background: loadingId === p.id + "-reels" ? "#d1d5db" : "#2563eb",
-                          color: "white",
-                          cursor: loadingId === p.id + "-reels" ? "not-allowed" : "pointer",
-                          fontSize: 12,
-                          fontWeight: 900,
-                        }}
-                      >
-                        {loadingId === p.id + "-reels" ? "Enviandoâ€¦" : "Publicar Meta"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Pagination */}
+      <div className="flex items-center justify-between bg-slate-900/50 p-6 rounded-3xl border border-white/5">
+        <div className="text-sm text-slate-500">
+          Página <span className="text-white font-bold">{page}</span> de {Math.ceil(total / pageSize)}
         </div>
-      )}
-
-      {selectedPost && (
-        <div
-          onClick={() => setSelectedPost(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
-            display: "flex",
-            justifyContent: "flex-end",
-            zIndex: 50,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "min(520px, 100%)",
-              height: "100%",
-              background: "white",
-              padding: 24,
-              overflowY: "auto",
-              boxShadow: "-12px 0 32px rgba(15, 23, 42, 0.18)",
-            }}
+        <div className="flex gap-2">
+          <button 
+            disabled={page === 1}
+            onClick={() => setPage(p => p - 1)}
+            className="px-6 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-800 transition-all"
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "#0f172a" }}>Detalhes do item</h2>
-                <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: 13 }}>
-                  Aqui fica claro se o conteúdo está só na fila, agendado ou já publicado.
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedPost(null)}
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 999,
-                  border: "1px solid #e2e8f0",
-                  background: "white",
-                  cursor: "pointer",
-                  fontWeight: 900,
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            <div style={{ display: "grid", gap: 14 }}>
-              <div style={{ padding: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>Resumo</div>
-                <div style={{ color: "#0f172a", lineHeight: 1.6 }}>{selectedPost.summary || "Sem resumo"}</div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div style={{ padding: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>Status</div>
-                  <div style={{ marginTop: 8 }}><StatusBadge status={selectedPost.status} /></div>
-                </div>
-                <div style={{ padding: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>Fluxo</div>
-                  <div style={{ marginTop: 8, color: "#0f172a", fontWeight: 700 }}>{describeFlow(selectedPost)}</div>
-                </div>
-                <div style={{ padding: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>Plataforma</div>
-                  <div style={{ marginTop: 8, color: "#0f172a", fontWeight: 700 }}>{selectedPost.platform || "META"}</div>
-                </div>
-                <div style={{ padding: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>Tipo</div>
-                  <div style={{ marginTop: 8, color: "#0f172a", fontWeight: 700 }}>{selectedPost.postType || "REEL"}</div>
-                </div>
-                <div style={{ padding: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>Criado em</div>
-                  <div style={{ marginTop: 8, color: "#0f172a", fontWeight: 700 }}>{formatDateTime(selectedPost.createdAt)}</div>
-                </div>
-                <div style={{ padding: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>Agendado para</div>
-                  <div style={{ marginTop: 8, color: "#0f172a", fontWeight: 700 }}>{formatDateTime(selectedPost.scheduledTo)}</div>
-                </div>
-                <div style={{ padding: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>Publicado em</div>
-                  <div style={{ marginTop: 8, color: "#0f172a", fontWeight: 700 }}>{formatDateTime(selectedPost.postedAt)}</div>
-                </div>
-                <div style={{ padding: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>Views</div>
-                  <div style={{ marginTop: 8, color: "#0f172a", fontWeight: 700 }}>{Number(selectedPost.views || 0).toLocaleString("pt-BR")}</div>
-                </div>
-              </div>
-
-              {selectedPost.postUrl && (
-                <a href={selectedPost.postUrl} target="_blank" rel="noreferrer" style={{ color: "#1d4ed8", fontWeight: 800, textDecoration: "none" }}>
-                  Abrir link publicado
-                </a>
-              )}
-              {selectedPost.videoUrl && (
-                <a href={selectedPost.videoUrl} target="_blank" rel="noreferrer" style={{ color: "#1d4ed8", fontWeight: 800, textDecoration: "none" }}>
-                  Abrir vídeo final
-                </a>
-              )}
-
-              <div style={{ padding: 14, borderRadius: 12, background: "#0f172a", border: "1px solid #1e293b" }}>
-                <div style={{ fontSize: 12, color: "#cbd5e1", marginBottom: 8 }}>Log técnico</div>
-                <pre
-                  style={{
-                    whiteSpace: "pre-wrap",
-                    color: "#e2e8f0",
-                    fontSize: 12,
-                    lineHeight: 1.6,
-                    margin: 0,
-                    fontFamily: "Consolas, Monaco, monospace",
-                  }}
-                >
-                  {selectedPost.log || "Sem log registrado."}
-                </pre>
-              </div>
-            </div>
-          </div>
+            Anterior
+          </button>
+          <button 
+            disabled={page >= Math.ceil(total / pageSize)}
+            onClick={() => setPage(p => p + 1)}
+            className="px-6 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-500 transition-all"
+          >
+            Próximo
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
