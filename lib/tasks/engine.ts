@@ -49,8 +49,9 @@ async function handleStep(params: {
   publishConfig: JsonObject;
   executionConfig: JsonObject;
   origin?: string;
+  currentOutputSnapshot?: JsonObject; // Added this
 }): Promise<{ output: JsonObject; summary?: string }> {
-  const { task, run, stepKey, sourceConfig, publishConfig, origin } = params;
+  const { task, run, stepKey, sourceConfig, publishConfig, origin, currentOutputSnapshot } = params;
 
   if (stepKey === "COLLECT_SOURCE") {
     if (task.type === "SHOPEE_VIDEO") {
@@ -63,6 +64,8 @@ async function handleStep(params: {
       const minSales = Number(sourceConfig.minSales ?? 100);
       const limit = Math.min(50, Math.max(1, Number(sourceConfig.limit ?? 20)));
 
+      console.log(`[ENGINE:SHOPEE] Starting collection for keyword: "${keyword}"`, { minPrice, minCommissionRate, minSales, limit });
+
       const rawItems = await searchShopeeAffiliateProducts(config, {
         keyword,
         limit,
@@ -74,6 +77,8 @@ async function handleStep(params: {
         enrichDetails: true,
         timeoutMs: 15000,
       });
+
+      console.log(`[ENGINE:SHOPEE] Collection finished. Found ${rawItems.length} items after filtering.`);
 
       const items: any[] = [];
       const { generateShopeeAffiliateShortLink } = await import("@/lib/shopee/openApi");
@@ -216,11 +221,12 @@ async function handleStep(params: {
       };
     }
 
-    const outputSnapshot = safeJsonParse<JsonObject>(run.outputSnapshotJson, {});
+    const outputSnapshot = currentOutputSnapshot || safeJsonParse<JsonObject>(run.outputSnapshotJson, {});
     const collected = outputSnapshot.COLLECT_SOURCE as any;
     const items = Array.isArray(collected?.items) ? collected.items : [];
     const first = items[0] || null;
     if (!first) {
+      console.error(`[ENGINE:PREPARE_ASSETS] No items found in COLLECT_SOURCE snapshot for run ${run.id}. Snapshot:`, JSON.stringify(collected, null, 2));
       throw new Error("Sem itens coletados para montar assets.");
     }
 
@@ -346,7 +352,7 @@ async function handleStep(params: {
   }
 
   if (stepKey === "RENDER_VIDEO") {
-    const outputSnapshot = safeJsonParse<JsonObject>(run.outputSnapshotJson, {});
+    const outputSnapshot = currentOutputSnapshot || safeJsonParse<JsonObject>(run.outputSnapshotJson, {});
     const prepared = outputSnapshot.PREPARE_ASSETS as any;
     const projectId = String(prepared?.codeVideoProjectId || "").trim();
     if (!projectId) {
@@ -393,7 +399,7 @@ async function handleStep(params: {
   }
 
   if (stepKey === "CREATE_PUBLISH_SCHEDULES") {
-    const outputSnapshot = safeJsonParse<JsonObject>(run.outputSnapshotJson, {});
+    const outputSnapshot = currentOutputSnapshot || safeJsonParse<JsonObject>(run.outputSnapshotJson, {});
     const renderInfo = outputSnapshot.RENDER_VIDEO as any;
     const prepared = outputSnapshot.PREPARE_ASSETS as any;
     const projectId = String(prepared?.codeVideoProjectId || "").trim() || null;
@@ -502,6 +508,7 @@ export async function processNextPendingAutomationRun(params: { runId?: string; 
         publishConfig,
         executionConfig,
         origin: params.origin,
+        currentOutputSnapshot: outputSnapshot, // Pass the fresh snapshot
       });
 
       if (stepResult.summary) summaryParts.push(stepResult.summary);

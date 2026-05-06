@@ -1,5 +1,8 @@
-import http from "http";
 import path from "path";
+import { config } from "dotenv";
+config({ path: path.resolve(process.cwd(), "..", ".env") });
+
+import http from "http";
 import fs from "fs/promises";
 import { PutObjectCommand, HeadBucketCommand, CreateBucketCommand, PutBucketPolicyCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "./s3";
@@ -45,12 +48,25 @@ function totalDurationInFramesFromSpec(videoSpec: any, fps: number) {
 
 async function ensureBucket(bucketName: string) {
   try {
+    console.log(`[render-service] Checking bucket: ${bucketName}`);
     await s3Client.send(new HeadBucketCommand({ Bucket: bucketName }));
+    console.log(`[render-service] Bucket ${bucketName} exists.`);
   } catch (headErr: any) {
-    if (headErr.name === "NotFound" || headErr.$metadata?.httpStatusCode === 404) {
-      await s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
+    const statusCode = headErr.$metadata?.httpStatusCode;
+    console.log(`[render-service] HeadBucket status for ${bucketName}:`, statusCode);
+    
+    // Se for 404, tentamos criar. Se for 403 ou 400, assumimos que o bucket existe
+    // mas não temos permissão de "Head" ou o provedor não suporta esse comando.
+    if (statusCode === 404) {
+      console.log(`[render-service] Bucket not found. Creating: ${bucketName}`);
+      try {
+        await s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
+      } catch (createErr: any) {
+        console.error(`[render-service] CreateBucket failed:`, createErr.message);
+        // Se falhar a criação mas o erro for que já existe, ignoramos
+      }
     } else {
-      throw headErr;
+      console.log(`[render-service] Proceeding despite HeadBucket status ${statusCode} (assuming bucket exists)`);
     }
   }
 
@@ -136,13 +152,13 @@ async function renderProject(payload: RenderRequest) {
     });
 
     const audioKey = `code-video-audio-${projectId}.mp3`;
+    console.log(`[render-service] Uploading audio: ${audioKey} to ${bucketName}`);
     await s3Client.send(
       new PutObjectCommand({
         Bucket: bucketName,
         Key: audioKey,
         Body: mp3,
         ContentType: "audio/mpeg",
-        ACL: "public-read",
       })
     );
     audioUrl = `${publicBase}/${audioKey}`;
@@ -187,14 +203,13 @@ async function renderProject(payload: RenderRequest) {
 
   const buffer = await fs.readFile(localMp4);
   const key = `code-video-${projectId}.mp4`;
-
+  console.log(`[render-service] Uploading video: ${key} to ${bucketName}`);
   await s3Client.send(
     new PutObjectCommand({
       Bucket: bucketName,
       Key: key,
       Body: buffer,
       ContentType: "video/mp4",
-      ACL: "public-read",
     })
   );
 
@@ -235,7 +250,8 @@ const server = http.createServer(async (req, res) => {
       const response = await renderProject(payload);
       return json(res, 200, response);
     } catch (error: any) {
-      console.error("[render-service]", error);
+      console.error("[render-service] S3 ERROR:", error);
+      if (error.$metadata) console.error("[render-service] S3 METADATA:", error.$metadata);
       return json(res, 500, { error: error?.message || "Render failed" });
     }
   }

@@ -9,6 +9,7 @@
     "@aws-sdk/client-s3": "^3.1032.0",
     "@remotion/bundler": "^4.0.0",
     "@remotion/renderer": "^4.0.0",
+    "dotenv": "^17.4.2",
     "puppeteer-core": "^24.9.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

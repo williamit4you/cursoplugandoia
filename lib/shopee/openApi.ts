@@ -288,13 +288,24 @@ export async function searchShopeeAffiliateProducts(
   });
 
   const nodes = Array.isArray(data.productOfferV2?.nodes) ? data.productOfferV2?.nodes || [] : [];
-  const filtered = nodes
+  console.log(`[SHOPEE_API] Received ${nodes.length} nodes from API for keyword "${keyword}"`);
+
+  const normalized = nodes
     .map((raw) => normalizeOfferNode({ domain, raw }))
-    .filter((item): item is ShopeeAffiliateProduct => Boolean(item))
-    .filter((item) => (item.price ?? 0) > minPrice)
-    .filter((item) => (item.commissionRate ?? 0) >= minCommissionRate)
-    .filter((item) => (item.soldQuantity ?? 0) > minSales)
-    .slice(0, pageSize);
+    .filter((item): item is ShopeeAffiliateProduct => Boolean(item));
+  
+  console.log(`[SHOPEE_API] Normalized: ${normalized.length} products`);
+
+  const priceFiltered = normalized.filter((item) => (item.price ?? 0) >= minPrice);
+  console.log(`[SHOPEE_API] After price filter (>= ${minPrice}): ${priceFiltered.length}`);
+
+  const commFiltered = priceFiltered.filter((item) => (item.commissionRate ?? 0) >= minCommissionRate);
+  console.log(`[SHOPEE_API] After commission filter (>= ${minCommissionRate}%): ${commFiltered.length}`);
+
+  const salesFiltered = commFiltered.filter((item) => (item.soldQuantity ?? 0) >= minSales);
+  console.log(`[SHOPEE_API] After sales filter (>= ${minSales}): ${salesFiltered.length}`);
+
+  const filtered = salesFiltered.slice(0, pageSize);
 
   if (!params.enrichDetails) return filtered;
 
