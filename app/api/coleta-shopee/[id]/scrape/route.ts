@@ -39,6 +39,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const data = await response.json();
 
+    if (!data?.titulo || (!data?.descricao && !data?.detalhes)) {
+      throw new Error("Scraping retornou dados insuficientes para salvar.");
+    }
+
     // Salva resultado no banco
     const updated = await prisma.coletaDadosShoppe.update({
       where: { id: coleta.id },
@@ -48,7 +52,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         detalhes: data.detalhes,
         aiPromptVendas: data.aiPromptVendas,
         status: "COMPLETED",
+        errorMessage: null,
         linksMedia: {
+          deleteMany: {},
           create: (data.linksMedia || []).map((m: any) => ({
             tipo: m.tipo,
             urlMinio: m.url,

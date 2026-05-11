@@ -1,7 +1,6 @@
 /**
- * shopee-scrape.ts
- * Scraping de produto Shopee usando o Chromium já instalado no render-service.
- * Substitui o uso de Playwright no worker Python.
+ * Shopee product scraping using the Chromium already bundled with render-service.
+ * This is the active scraping path used by the admin panel.
  */
 
 export type ScrapedMedia = {
@@ -15,6 +14,12 @@ export type ShopeeScrapedProduct = {
   detalhes: string;
   aiPromptVendas: string;
   linksMedia: ScrapedMedia[];
+};
+
+type JsonLdProduct = {
+  name?: string;
+  description?: string;
+  image?: string | string[];
 };
 
 function dynamicRequire(moduleName: string) {
@@ -47,16 +52,10 @@ async function firstExistingExecutable(): Promise<string> {
       // try next
     }
   }
-  throw new Error(
-    "Chrome/Chromium não encontrado. Verifique PUPPETEER_EXECUTABLE_PATH ou REMOTION_CHROME_BIN."
-  );
+  throw new Error("Chrome/Chromium nao encontrado. Verifique PUPPETEER_EXECUTABLE_PATH ou REMOTION_CHROME_BIN.");
 }
 
-async function uploadToMinio(
-  fileBuffer: Buffer,
-  key: string,
-  contentType: string
-): Promise<string> {
+async function uploadToMinio(fileBuffer: Buffer, key: string, contentType: string): Promise<string> {
   const { S3Client, PutObjectCommand } = dynamicRequire("@aws-sdk/client-s3");
   const endpoint = process.env.MINIO_INTERNAL_ENDPOINT || process.env.MINIO_ENDPOINT;
   const publicUrl = process.env.MINIO_PUBLIC_URL;
@@ -88,10 +87,7 @@ async function uploadToMinio(
   return `${publicUrl.replace(/\/+$/, "")}/${key}`;
 }
 
-async function generateSalesScript(
-  titulo: string,
-  descricao: string
-): Promise<string> {
+async function generateSalesScript(titulo: string, descricao: string, detalhes: string): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return "";
 
@@ -103,15 +99,19 @@ async function generateSalesScript(
     messages: [
       {
         role: "system",
-        content: `Você é um especialista em marketing digital e copy de vendas.
-Crie um script de vendas curto e persuasivo para um produto da Shopee.
-Use gatilhos mentais para um vendedor falar em vídeo (estilo Reels/TikTok).
-OBRIGATÓRIO: O script DEVE terminar com uma variação de: "Para ter acesso ao produto, o link está na bio!".
-Responda APENAS com JSON: {"script_vendas": "seu texto aqui"}`,
+        content:
+          'Voce e um especialista em marketing digital e copy de vendas.\n' +
+          "Crie um script de vendas curto e persuasivo para um produto da Shopee.\n" +
+          "Use gatilhos mentais para um vendedor falar em video estilo Reels ou TikTok.\n" +
+          'Obrigatorio: o script deve terminar com uma variacao de "Para ter acesso ao produto, o link esta na bio!".\n' +
+          'Responda apenas com JSON: {"script_vendas":"seu texto aqui"}',
       },
       {
         role: "user",
-        content: `Título: ${titulo}\nDescrição: ${descricao.slice(0, 1000)}`,
+        content:
+          `Titulo: ${titulo}\n` +
+          `Descricao: ${descricao.slice(0, 1500)}\n` +
+          `Detalhes do Produto: ${detalhes.slice(0, 1500)}`,
       },
     ],
   });
@@ -128,7 +128,6 @@ Responda APENAS com JSON: {"script_vendas": "seu texto aqui"}`,
     const data = await res.json();
     const text = String(data?.choices?.[0]?.message?.content ?? "").trim();
 
-    // Extract JSON from the response
     const start = text.indexOf("{");
     const end = text.lastIndexOf("}");
     if (start === -1 || end === -1) return text;
@@ -139,9 +138,7 @@ Responda APENAS com JSON: {"script_vendas": "seu texto aqui"}`,
   }
 }
 
-export async function scrapeShopeeProduct(
-  productUrl: string
-): Promise<ShopeeScrapedProduct> {
+export async function scrapeShopeeProduct(productUrl: string): Promise<ShopeeScrapedProduct> {
   const executablePath = await firstExistingExecutable();
   const puppeteer = dynamicRequire("puppeteer-core");
 
@@ -162,6 +159,7 @@ export async function scrapeShopeeProduct(
 
   let titulo = "";
   let descricao = "";
+  let detalhes = "";
   let imageUrls: string[] = [];
   let videoUrl: string | null = null;
 
@@ -176,64 +174,209 @@ export async function scrapeShopeeProduct(
     });
 
     await page.goto(productUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await new Promise((r) => setTimeout(r, 3000));
+    await page.waitForSelector("body", { timeout: 10000 });
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    // Extract page data
     const pageData = await page.evaluate(() => {
-      // Title
+      const normalizeText = (value: string | null | undefined) =>
+        String(value || "")
+          .replace(/\u00a0/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+
+      const cleanShopeeText = (value: string | null | undefined) => {
+        let text = normalizeText(value);
+        text = text.replace(/\|\s*Shopee\s+Brasil.*$/i, "").trim();
+        return text;
+      };
+
+      const parseJsonLdProducts = () => {
+        const products: JsonLdProduct[] = [];
+        const scripts = Array.from(
+          document.querySelectorAll('script[type="application/ld+json"]')
+        ) as HTMLScriptElement[];
+
+        const visit = (node: any) => {
+          if (!node) return;
+          if (Array.isArray(node)) {
+            node.forEach(visit);
+            return;
+          }
+          if (typeof node !== "object") return;
+
+          const type = String(node["@type"] || "").toLowerCase();
+          if (type === "product") {
+            products.push(node);
+          }
+
+          for (const value of Object.values(node)) visit(value);
+        };
+
+        for (const script of scripts) {
+          try {
+            visit(JSON.parse(script.textContent || ""));
+          } catch {
+            // ignore malformed blocks
+          }
+        }
+
+        return products;
+      };
+
+      const looksLikeProductImage = (src: string) =>
+        /^https?:\/\//i.test(src) && /susercontent\.com|shopee/i.test(src);
+
+      const findSectionContent = (sectionNames: string[]) => {
+        const wanted = new Set(sectionNames.map((item) => item.toLowerCase()));
+        const elements = Array.from(document.querySelectorAll("h1, h2, h3, h4, div, span, p, label"));
+
+        for (const element of elements) {
+          const heading = normalizeText(element.textContent);
+          if (!heading || !wanted.has(heading.toLowerCase())) continue;
+
+          const candidates: Element[] = [];
+          if (element.parentElement) candidates.push(element.parentElement);
+          if (element.nextElementSibling) candidates.push(element.nextElementSibling);
+          if (element.parentElement?.nextElementSibling) candidates.push(element.parentElement.nextElementSibling);
+
+          for (const candidate of candidates) {
+            const text = normalizeText(candidate.textContent);
+            if (!text || text.length <= heading.length) continue;
+            const withoutHeading = normalizeText(text.replace(heading, ""));
+            if (withoutHeading) return withoutHeading;
+          }
+        }
+
+        return "";
+      };
+
+      const collectDetailLines = () => {
+        const detailLines = new Set<string>();
+        const elements = Array.from(document.querySelectorAll("div, li, tr"));
+
+        for (const element of elements) {
+          const text = normalizeText(element.textContent);
+          if (!text || text.length < 4 || text.length > 240) continue;
+
+          const looksLikePair =
+            /:\s*\S/.test(text) ||
+            /\b(origem|material|genero|estilo|tipo|modelo|marca|categoria|estoque|enviado de|comprimento|altura|largura|peso)\b/i.test(
+              text
+            );
+
+          if (!looksLikePair) continue;
+          detailLines.add(text);
+          if (detailLines.size >= 12) break;
+        }
+
+        return Array.from(detailLines).join("\n");
+      };
+
+      const jsonLdProduct = parseJsonLdProducts()[0] || {};
+
       const titleEl =
         document.querySelector("div[class*='page-product'] h1") ||
         document.querySelector("h1") ||
         document.querySelector("[class*='product-name']");
-      const title = titleEl?.textContent?.trim() || document.title || "";
+      const metaTitle =
+        document.querySelector('meta[property="og:title"]')?.getAttribute("content") ||
+        document.title ||
+        "";
+      const title = cleanShopeeText(titleEl?.textContent || jsonLdProduct.name || metaTitle);
 
-      // Description
+      const metaDescription =
+        document.querySelector('meta[name="description"]')?.getAttribute("content") ||
+        document.querySelector('meta[property="og:description"]')?.getAttribute("content") ||
+        "";
+      const descSection = findSectionContent(["Descricao do produto", "Descricao", "Product Description"]);
       const descEl =
         document.querySelector("div[class*='product-detail']") ||
         document.querySelector("div[style*='white-space: pre-wrap']") ||
         document.querySelector("[class*='product-description']");
-      const desc = descEl?.textContent?.trim() || "";
+      const desc = cleanShopeeText(
+        descSection || descEl?.textContent || jsonLdProduct.description || metaDescription
+      );
 
-      // Images from picture tags (thumbnail gallery)
-      const imgEls = Array.from(document.querySelectorAll("picture img")) as HTMLImageElement[];
-      const images = [...new Set(imgEls.map((img) => img.src).filter((src) => src.startsWith("http")))];
+      const detailsSection = findSectionContent([
+        "Detalhes do Produto",
+        "Caracteristicas do Produto",
+        "Especificacoes",
+        "Informacoes do Produto",
+      ]);
+      const detailLines = collectDetailLines();
+      const details = cleanShopeeText(detailsSection || detailLines);
 
-      // Video
+      const imageSet = new Set<string>();
+      const addImage = (src: string | null | undefined) => {
+        const value = String(src || "").trim();
+        if (looksLikeProductImage(value)) imageSet.add(value);
+      };
+
+      const imgEls = Array.from(document.querySelectorAll("picture img, img")) as HTMLImageElement[];
+      for (const img of imgEls) {
+        addImage(img.currentSrc);
+        addImage(img.src);
+      }
+
+      const ldImages = Array.isArray(jsonLdProduct.image)
+        ? jsonLdProduct.image
+        : jsonLdProduct.image
+          ? [jsonLdProduct.image]
+          : [];
+      for (const image of ldImages) addImage(String(image));
+
       const videoEl = document.querySelector("video") as HTMLVideoElement | null;
       const video = videoEl?.src && videoEl.src.startsWith("http") ? videoEl.src : null;
 
-      return { title, desc, images, video };
+      return {
+        title,
+        desc,
+        details,
+        images: Array.from(imageSet),
+        video,
+      };
     });
 
     titulo = pageData.title;
     descricao = pageData.desc;
+    detalhes = pageData.details;
     imageUrls = pageData.images.slice(0, 8);
     videoUrl = pageData.video;
 
-    console.log(`[shopee-scrape] Título: ${titulo.slice(0, 60)}`);
-    console.log(`[shopee-scrape] Imagens: ${imageUrls.length} | Vídeo: ${videoUrl ? "sim" : "não"}`);
+    console.log(`[shopee-scrape] Titulo: ${titulo.slice(0, 60)}`);
+    console.log(`[shopee-scrape] Imagens: ${imageUrls.length} | Video: ${videoUrl ? "sim" : "nao"}`);
   } finally {
     await browser.close();
   }
 
-  // Download and upload media to MinIO
+  if (!titulo || (!descricao && !detalhes)) {
+    throw new Error("Scraping retornou dados insuficientes da Shopee.");
+  }
+
   const linksMedia: ScrapedMedia[] = [];
   const ts = Date.now();
 
-  for (let i = 0; i < Math.min(5, imageUrls.length); i++) {
+  for (let i = 0; i < Math.min(5, imageUrls.length); i += 1) {
     const imgUrl = imageUrls[i];
     try {
       const res = await fetch(imgUrl, { signal: AbortSignal.timeout(20000) });
       if (!res.ok) continue;
 
+      const contentType = (res.headers.get("content-type") || "").toLowerCase();
       const buf = Buffer.from(await res.arrayBuffer());
-      const ext = imgUrl.includes(".png") ? "png" : imgUrl.includes(".webp") ? "webp" : "jpg";
-      const key = `shopee/images/shopee_img_${ts}_${i}.${ext}`;
-      const minioUrl = await uploadToMinio(buf, key, `image/${ext}`);
+      const ext =
+        contentType.includes("png") || imgUrl.includes(".png")
+          ? "png"
+          : contentType.includes("webp") || imgUrl.includes(".webp")
+            ? "webp"
+            : contentType.includes("gif") || imgUrl.includes(".gif")
+              ? "gif"
+              : "jpg";
+      const minioUrl = await uploadToMinio(buf, `shopee/images/shopee_img_${ts}_${i}.${ext}`, `image/${ext}`);
       linksMedia.push({ tipo: "IMAGE", url: minioUrl });
       console.log(`[shopee-scrape] Imagem ${i + 1} enviada: ${minioUrl}`);
-    } catch (e) {
-      console.error(`[shopee-scrape] Erro na imagem ${i}:`, e);
+    } catch (error) {
+      console.error(`[shopee-scrape] Erro na imagem ${i}:`, error);
     }
   }
 
@@ -242,24 +385,22 @@ export async function scrapeShopeeProduct(
       const res = await fetch(videoUrl, { signal: AbortSignal.timeout(60000) });
       if (res.ok) {
         const buf = Buffer.from(await res.arrayBuffer());
-        const key = `shopee/videos/shopee_vid_${ts}.mp4`;
-        const minioUrl = await uploadToMinio(buf, key, "video/mp4");
+        const minioUrl = await uploadToMinio(buf, `shopee/videos/shopee_vid_${ts}.mp4`, "video/mp4");
         linksMedia.push({ tipo: "VIDEO", url: minioUrl });
-        console.log(`[shopee-scrape] Vídeo enviado: ${minioUrl}`);
+        console.log(`[shopee-scrape] Video enviado: ${minioUrl}`);
       }
-    } catch (e) {
-      console.error("[shopee-scrape] Erro no vídeo:", e);
+    } catch (error) {
+      console.error("[shopee-scrape] Erro no video:", error);
     }
   }
 
-  // Generate AI sales script
   console.log("[shopee-scrape] Gerando script de vendas com IA...");
-  const aiPromptVendas = await generateSalesScript(titulo, descricao);
+  const aiPromptVendas = await generateSalesScript(titulo, descricao, detalhes);
 
   return {
     titulo,
     descricao,
-    detalhes: descricao.slice(0, 500),
+    detalhes,
     aiPromptVendas,
     linksMedia,
   };
