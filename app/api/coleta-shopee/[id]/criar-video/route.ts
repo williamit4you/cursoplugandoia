@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const PYTHON_API_URL = process.env.WORKER_FASTAPI_BASE_URL || process.env.FASTAPI_URL || "http://localhost:8000";
-
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const { id } = params;
 
@@ -68,11 +66,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (pipRadius)   workerForm.append("pip_radius",   String(pipRadius));
 
   try {
-    const baseUrl = PYTHON_API_URL.replace(/\/gerar-video\/?$/, "");
-    const workerRes = await fetch(`${baseUrl}/gerar-video-tiktok`, {
+    const baseUrl = (process.env.WORKER_FASTAPI_BASE_URL || process.env.FASTAPI_URL || "http://127.0.0.1:8000")
+      .trim()
+      .replace(/\/+$/, "")
+      .replace(/\/gerar-video$/, "");
+    
+    const targetUrl = `${baseUrl}/gerar-video-tiktok`;
+    console.log(`[criar-video] Calling python worker: ${targetUrl}`);
+
+    const workerRes = await fetch(targetUrl, {
       method: "POST",
       body: workerForm,
-      // Renderização pode demorar bastante dependendo da duração
       signal: AbortSignal.timeout(600_000), // 10 min
     });
 

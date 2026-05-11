@@ -27,6 +27,7 @@ cd worker
 
 # Instale os requisitos (caso não estejam)
 pip install -r requirements.txt
+playwright install chromium
 
 # Inicie a API do vídeo (Uvicorn)
 uvicorn video:app --host 0.0.0.0 --port 80

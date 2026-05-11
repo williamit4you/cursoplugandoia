@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const PYTHON_API_URL = process.env.WORKER_FASTAPI_BASE_URL || process.env.FASTAPI_URL || "http://localhost:8000";
-
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
     const coleta = await prisma.coletaDadosShoppe.findUnique({
@@ -22,11 +20,18 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const formData = new FormData();
     formData.append("url", coleta.url);
 
-    const response = await fetch(`${PYTHON_API_URL.replace("/gerar-video", "")}/scraping-shopee`, {
+    const baseUrl = (process.env.WORKER_FASTAPI_BASE_URL || process.env.FASTAPI_URL || "http://127.0.0.1:8000")
+      .trim()
+      .replace(/\/+$/, "")
+      .replace(/\/gerar-video$/, "");
+    
+    const targetUrl = `${baseUrl}/scraping-shopee`;
+    console.log(`[scrape] Calling python worker: ${targetUrl}`);
+
+    const response = await fetch(targetUrl, {
       method: "POST",
       body: formData,
-      // No timeout or long timeout since playwright might take 30-60s
-      signal: AbortSignal.timeout(120000) 
+      signal: AbortSignal.timeout(180000) // 3 min
     });
 
     if (!response.ok) {
