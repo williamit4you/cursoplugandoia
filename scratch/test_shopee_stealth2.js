@@ -1,4 +1,10 @@
-const puppeteer = require('../render-service/node_modules/puppeteer-core');
+const { addExtra } = require('../render-service/node_modules/puppeteer-extra');
+const StealthPlugin = require('../render-service/node_modules/puppeteer-extra-plugin-stealth');
+const puppeteerCore = require('../render-service/node_modules/puppeteer-core');
+
+const puppeteer = addExtra(puppeteerCore);
+puppeteer.use(StealthPlugin());
+
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -46,35 +52,23 @@ function extractVideoUrlFromInfo(info) {
   }
   if (typeof info !== "object") return "";
 
-  const preferredKeys = [
-    "video_url",
-    "play_url",
-    "url",
-    "src",
-    "mp4",
-    "default_play_url",
-    "default_format",
-    "play_addr",
-  ];
+  const preferredKeys = ["video_url", "play_url", "url", "src", "mp4", "default_play_url", "default_format", "play_addr"];
 
   for (const key of preferredKeys) {
     if (!(key in info)) continue;
     const candidate = extractVideoUrlFromInfo(info[key]);
     if (candidate) return candidate;
   }
-
   for (const [key, value] of Object.entries(info)) {
     if (/url|src|play|mp4/i.test(key)) {
       const candidate = extractVideoUrlFromInfo(value);
       if (candidate) return candidate;
     }
   }
-
   for (const value of Object.values(info)) {
     const candidate = extractVideoUrlFromInfo(value);
     if (candidate) return candidate;
   }
-
   return "";
 }
 
@@ -88,22 +82,23 @@ function extractApiVideoUrl(item) {
 }
 
 async function run() {
+  const ids = parseIdsFromProductUrl(url);
+  const apiUrl = `https://shopee.com.br/api/v4/item/get?shopid=${ids.shopId}&itemid=${ids.itemId}`;
+  
   const execPath = await getExecutable();
+  
+  // Stealth + non-headless usually works best for Datadome
   const browser = await puppeteer.launch({
     executablePath: execPath,
-    headless: false,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
+    headless: false, 
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--window-size=1280,800']
   });
 
   try {
     const page = await browser.newPage();
-    await page.evaluateOnNewDocument(() => {
-        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-    });
-    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36");
-
+    
+    // We can also try intercepting the request
     let apiData = null;
-
     page.on('response', async (response) => {
       const reqUrl = response.url();
       if (reqUrl.includes('/api/v4/item/get')) {
@@ -112,20 +107,38 @@ async function run() {
           const json = JSON.parse(text);
           if (json.data && !json.error) {
              apiData = json;
-             console.log("Intercepted valid /api/v4/item/get response!");
+             console.log("Intercepted valid /api/v4/item/get response from Shopee frontend!");
           }
         } catch(e) {}
       }
     });
 
     console.log("Going to Shopee product page...");
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
-    // Wait a bit to ensure all requests are completed
-    await new Promise(r => setTimeout(r, 5000));
+    console.log("Waiting for Datadome/Cloudflare to clear and page to load...");
+    await new Promise(r => setTimeout(r, 8000));
 
     if (!apiData) {
-        console.error("Failed to intercept /api/v4/item/get response.");
+        console.log("Did not intercept frontend request, trying manual fetch via page.evaluate...");
+        const result = await page.evaluate(async (requestUrl) => {
+          try {
+            const res = await fetch(requestUrl, { credentials: "omit" }); // Shopee sometimes blocks same-origin
+            return { ok: res.ok, status: res.status, text: await res.text() };
+          } catch (err) {
+            return { error: err.message };
+          }
+        }, apiUrl);
+
+        if (result.text) {
+           const json = JSON.parse(result.text);
+           if (json.data && !json.error) apiData = json;
+           else console.log("Manual fetch returned error:", json.error || result.text.substring(0,200));
+        }
+    }
+
+    if (!apiData) {
+        console.error("Failed to get API data through interception and manual fetch.");
         return;
     }
 
@@ -155,6 +168,7 @@ async function run() {
     });
 
   } finally {
+    await new Promise(r => setTimeout(r, 2000));
     await browser.close();
   }
 }

@@ -459,7 +459,11 @@ async function generateSalesScript(titulo: string, descricao: string, detalhes: 
 
 export async function scrapeShopeeProduct(productUrl: string): Promise<ShopeeScrapedProduct> {
   const executablePath = await firstExistingExecutable();
-  const puppeteer = dynamicRequire("puppeteer-core");
+  const puppeteerExtra = dynamicRequire("puppeteer-extra");
+  const StealthPlugin = dynamicRequire("puppeteer-extra-plugin-stealth");
+  const puppeteerCore = dynamicRequire("puppeteer-core");
+  const puppeteer = puppeteerExtra.addExtra(puppeteerCore);
+  puppeteer.use(StealthPlugin());
   const domain = normalizeDomainFromUrl(productUrl);
   const parsedIds = parseIdsFromProductUrl(productUrl);
 
@@ -567,6 +571,13 @@ export async function scrapeShopeeProduct(productUrl: string): Promise<ShopeeScr
     }
 
     videoUrl = extractApiVideoUrl(itemApiData) || (await firstVideoSrc(page, "video")) || null;
+    if (!videoUrl) {
+      const mp4Match = html.match(/https?:\/\/[^\s"'<>]+\.mp4[^\s"'<>]*/i);
+      if (mp4Match) {
+        videoUrl = mp4Match[0].replace(/\\+$/, '');
+        console.log("[shopee-scrape] Video encontrado via regex no HTML:", videoUrl);
+      }
+    }
 
     if (!itemApiData && blockingReason) {
       throw new Error(blockingReason);
