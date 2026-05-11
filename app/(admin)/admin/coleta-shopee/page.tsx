@@ -15,6 +15,7 @@ import MovieIcon from "@mui/icons-material/Movie";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import EditIcon from "@mui/icons-material/Edit";
 
 export default function ColetaShopeePage() {
   const [coletas, setColetas] = useState<any[]>([]);
@@ -22,9 +23,12 @@ export default function ColetaShopeePage() {
   const [url, setUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Modal de detalhes
+  // Modal de detalhes / edição
   const [selectedColeta, setSelectedColeta] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editFields, setEditFields] = useState<any>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
   // Modal de criação de vídeo TikTok
   const [videoModalOpen, setVideoModalOpen] = useState(false);
@@ -84,7 +88,34 @@ export default function ColetaShopeePage() {
 
   const handleViewDetails = (coleta: any) => {
     setSelectedColeta(coleta);
+    setEditFields({
+      titulo: coleta.titulo || "",
+      descricao: coleta.descricao || "",
+      detalhes: coleta.detalhes || "",
+      aiPromptVendas: coleta.aiPromptVendas || "",
+    });
+    setSaveMsg(null);
     setIsModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedColeta) return;
+    setIsSaving(true);
+    setSaveMsg(null);
+    try {
+      const res = await fetch(`/api/coleta-shopee/${selectedColeta.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editFields),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Erro ao salvar");
+      setSaveMsg("✅ Salvo com sucesso!");
+      loadColetas();
+    } catch (e: any) {
+      setSaveMsg("❌ " + e.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // ── Vídeo TikTok ──────────────────────────────────────────────
@@ -235,6 +266,11 @@ export default function ColetaShopeePage() {
                 </TableCell>
                 <TableCell className="border-white/10 text-right">
                   <div className="flex gap-2 justify-end">
+                    <Tooltip title="Ver / Editar dados coletados">
+                      <IconButton size="small" onClick={() => handleViewDetails(c)} className="text-indigo-400 hover:bg-indigo-400/10">
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                     <Button size="small" variant="contained" color="primary"
                       className="bg-indigo-600 hover:bg-indigo-700"
                       startIcon={c.status === "SCRAPING" ? <CircularProgress size={14} color="inherit" /> : <PlayArrowIcon />}
@@ -255,52 +291,172 @@ export default function ColetaShopeePage() {
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                </      {/* ── Modal Detalhes / Edição ── */}
+      <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="xl" fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: "#0d1526",
+            border: "1px solid rgba(99,102,241,0.25)",
+            color: "#e2e8f0",
+            borderRadius: 2,
+            maxHeight: "90vh",
+          }
+        }}>
 
-      {/* ── Modal Detalhes ── */}
-      <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="md" fullWidth
-        sx={{ "& .MuiDialog-paper": { bgcolor: "#0f172a", borderColor: "rgba(255,255,255,0.1)", color: "#e2e8f0", borderWidth: 1, borderStyle: "solid" } }}>
-        <DialogTitle className="border-b border-white/10">Detalhes do Produto</DialogTitle>
-        <DialogContent className="pt-6 space-y-4">
+        {/* Header */}
+        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid rgba(255,255,255,0.08)", bgcolor: "rgba(99,102,241,0.06)" }}>
+          <Box className="flex items-center gap-2 mb-1">
+            <EditIcon sx={{ color: "#818cf8", fontSize: 18 }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#e2e8f0" }}>
+              Dados Coletados — Editar
+            </Typography>
+            {selectedColeta && (
+              <Chip size="small" label={selectedColeta.status} variant="outlined"
+                color={selectedColeta.status === "COMPLETED" ? "success" : selectedColeta.status === "FAILED" ? "error" : "default"}
+                sx={{ ml: "auto", fontSize: 11 }} />
+            )}
+          </Box>
           {selectedColeta && (
-            <>
-              <Typography variant="h6" className="font-bold text-indigo-400">{selectedColeta.titulo}</Typography>
-              <Typography variant="body2" className="text-slate-400 whitespace-pre-wrap">{selectedColeta.detalhes}</Typography>
-              {selectedColeta.aiPromptVendas && (
-                <div className="mt-4 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
-                  <Typography variant="subtitle2" className="text-indigo-300 font-bold mb-2">🤖 Script de Vendas (AI)</Typography>
-                  <Typography variant="body2" className="text-slate-300 whitespace-pre-wrap italic">&quot;{selectedColeta.aiPromptVendas}&quot;</Typography>
-                </div>
-              )}
-              <div className="mt-6">
-                <Typography variant="subtitle1" className="font-bold text-slate-200 mb-4">Mídias Coletadas (ordem TikTok: vídeo → imagens)</Typography>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {sortedMedia(selectedColeta.linksMedia).map((media: any, idx: number) => (
-                    <div key={media.id} className="relative rounded-lg overflow-hidden border border-white/10 bg-black aspect-square flex items-center justify-center">
-                      {media.tipo === "VIDEO"
-                        ? <video src={media.urlMinio} controls className="w-full h-full object-cover" />
-                        : <img src={media.urlMinio} alt="Media" className="w-full h-full object-cover" />}
-                      <div className="absolute top-2 left-2 flex gap-1">
-                        <Chip size="small" label={`#${idx + 1}`} className="bg-black/60 text-white text-xs" />
-                        <Chip size="small" label={media.tipo} color={media.tipo === "VIDEO" ? "secondary" : "default"} className="bg-black/50 backdrop-blur-sm" />
-                      </div>
-                    </div>
-                  ))}
-                  {(!selectedColeta.linksMedia || selectedColeta.linksMedia.length === 0) && (
-                    <Typography variant="body2" className="text-slate-500 col-span-full">Nenhuma mídia disponível.</Typography>
-                  )}
-                </div>
-              </div>
+            <Typography variant="caption" sx={{ color: "#64748b", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              🔗 {selectedColeta.url}
+            </Typography>
+          )}
+        </Box>
+
+        <DialogContent sx={{ p: 0, overflow: "hidden" }}>
+          {selectedColeta && (
+            <div style={{ display: "flex", flexDirection: "row", height: "100%", minHeight: 480 }}>
+              {/* ── Coluna esquerda: campos de texto ── */}
+              <Box sx={{
+                flex: "0 0 55%",
+                p: 3,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                borderRight: "1px solid rgba(255,255,255,0.07)",
+              }}>
+                <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase" }}>
+                  📝 Informações do Produto
+                </Typography>
+
+                <TextField fullWidth label="Título do Produto" variant="filled" size="small"
+                  value={editFields.titulo}
+                  onChange={e => setEditFields((p: any) => ({ ...p, titulo: e.target.value }))}
+                  sx={{
+                    "& .MuiFilledInput-root": { bgcolor: "rgba(255,255,255,0.04)", color: "#f1f5f9", borderRadius: 1 },
+                    "& .MuiFilledInput-root:hover": { bgcolor: "rgba(255,255,255,0.07)" },
+                    "& .MuiFilledInput-root:before": { borderColor: "rgba(255,255,255,0.1)" },
+                    "& .MuiInputLabel-root": { color: "#64748b" },
+                    "& .MuiInputLabel-root.Mui-focused": { color: "#818cf8" },
+                  }} />
+
+                <TextField fullWidth multiline rows={5} label="Descrição Completa" variant="filled" size="small"
+                  value={editFields.descricao}
+                  onChange={e => setEditFields((p: any) => ({ ...p, descricao: e.target.value }))}
+                  sx={{
+                    "& .MuiFilledInput-root": { bgcolor: "rgba(255,255,255,0.04)", color: "#cbd5e1", borderRadius: 1 },
+                    "& .MuiFilledInput-root:hover": { bgcolor: "rgba(255,255,255,0.07)" },
+                    "& .MuiFilledInput-root:before": { borderColor: "rgba(255,255,255,0.1)" },
+                    "& .MuiInputLabel-root": { color: "#64748b" },
+                  }} />
+
+                <TextField fullWidth multiline rows={3} label="Detalhes (resumo)" variant="filled" size="small"
+                  value={editFields.detalhes}
+                  onChange={e => setEditFields((p: any) => ({ ...p, detalhes: e.target.value }))}
+                  sx={{
+                    "& .MuiFilledInput-root": { bgcolor: "rgba(255,255,255,0.04)", color: "#cbd5e1", borderRadius: 1 },
+                    "& .MuiFilledInput-root:hover": { bgcolor: "rgba(255,255,255,0.07)" },
+                    "& .MuiFilledInput-root:before": { borderColor: "rgba(255,255,255,0.1)" },
+                    "& .MuiInputLabel-root": { color: "#64748b" },
+                  }} />
+
+                <Box sx={{ bgcolor: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 1.5, p: 1.5 }}>
+                  <Typography variant="caption" sx={{ color: "#818cf8", fontWeight: 700, display: "block", mb: 1 }}>
+                    🤖 Script de Vendas (IA)
+                  </Typography>
+                  <TextField fullWidth multiline rows={7} variant="filled" size="small"
+                    placeholder="Cole ou edite o script de vendas gerado pela IA..."
+                    value={editFields.aiPromptVendas}
+                    onChange={e => setEditFields((p: any) => ({ ...p, aiPromptVendas: e.target.value }))}
+                    sx={{
+                      "& .MuiFilledInput-root": { bgcolor: "rgba(99,102,241,0.08)", color: "#a5b4fc", fontStyle: "italic", fontSize: 13, borderRadius: 1 },
+                      "& .MuiFilledInput-root:hover": { bgcolor: "rgba(99,102,241,0.12)" },
+                      "& .MuiFilledInput-root:before": { borderColor: "rgba(99,102,241,0.3)" },
+                    }} />
+                </Box>
+
+                {saveMsg && (
+                  <Box sx={{
+                    p: 1.5, borderRadius: 1,
+                    bgcolor: saveMsg.startsWith("✅") ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)",
+                    border: saveMsg.startsWith("✅") ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(239,68,68,0.3)",
+                  }}>
+                    <Typography variant="body2" sx={{ color: saveMsg.startsWith("✅") ? "#4ade80" : "#f87171" }}>
+                      {saveMsg}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+
+              {/* ── Coluna direita: mídias ── */}
+              <Box sx={{ flex: "0 0 45%", p: 3, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
+                <Box className="flex items-center justify-between">
+                  <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase" }}>
+                    🎬 Mídias Coletadas
+                  </Typography>
+                  <Chip size="small"
+                    label={`${selectedColeta.linksMedia?.length || 0} arquivo(s)`}
+                    sx={{ bgcolor: "rgba(255,255,255,0.06)", color: "#94a3b8", fontSize: 11 }} />
+                </Box>
+
+                {(!selectedColeta.linksMedia || selectedColeta.linksMedia.length === 0) ? (
+                  <Box sx={{
+                    flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                    bgcolor: "rgba(239,68,68,0.05)", border: "1px dashed rgba(239,68,68,0.25)", borderRadius: 2, p: 4, textAlign: "center",
+                  }}>
+                    <Typography sx={{ fontSize: 32, mb: 1 }}>📭</Typography>
+                    <Typography variant="body2" sx={{ color: "#f87171", fontWeight: 600 }}>Nenhuma mídia coletada</Typography>
+                    <Typography variant="caption" sx={{ color: "#64748b", mt: 0.5 }}>Execute o scraping para baixar imagens e vídeos do produto</Typography>
+                  </Box>
+                ) : (
+                  <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+                    {sortedMedia(selectedColeta.linksMedia).map((media: any, idx: number) => (
+                      <Box key={media.id} sx={{
+                        position: "relative", borderRadius: 1.5, overflow: "hidden",
+                        border: media.tipo === "VIDEO" ? "2px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.1)",
+                        bgcolor: "#000", aspectRatio: "1 / 1",
+                      }}>
+                        {media.tipo === "VIDEO"
+                          ? <video src={media.urlMinio} controls style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          : <img src={media.urlMinio} alt="Media" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                        <Box sx={{ position: "absolute", top: 4, left: 4, display: "flex", gap: 0.5 }}>
+                          <Chip size="small" label={`#${idx + 1}`} sx={{ height: 16, fontSize: 9, bgcolor: "rgba(0,0,0,0.75)", color: "white" }} />
+                          <Chip size="small" label={media.tipo === "VIDEO" ? "🎬" : "🖼️"}
+                            sx={{ height: 16, fontSize: 9, bgcolor: media.tipo === "VIDEO" ? "rgba(167,139,250,0.8)" : "rgba(0,0,0,0.75)", color: "white" }} />
+                        </Box>
+                        <IconButton size="small" href={media.urlMinio} target="_blank"
+                          sx={{ position: "absolute", bottom: 4, right: 4, bgcolor: "rgba(0,0,0,0.7)", color: "white", p: 0.4, "&:hover": { bgcolor: "rgba(99,102,241,0.8)" } }}>
+                          <OpenInNewIcon sx={{ fontSize: 13 }} />
+                        </IconButton>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Box>
             </>
           )}
         </DialogContent>
-        <DialogActions className="border-t border-white/10 p-4">
-          <Button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">Fechar</Button>
+
+        <DialogActions sx={{ px: 3, py: 2, borderTop: "1px solid rgba(255,255,255,0.08)", gap: 1.5 }}>
+          <Button onClick={() => setIsModalOpen(false)} sx={{ color: "#64748b", "&:hover": { color: "#94a3b8" } }}>
+            Fechar
+          </Button>
+          <Button variant="contained" onClick={handleSaveEdit} disabled={isSaving}
+            startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <CheckCircleIcon />}
+            sx={{ bgcolor: "#6366f1", "&:hover": { bgcolor: "#4f46e5" }, px: 3 }}>
+            {isSaving ? "Salvando…" : "Salvar Alterações"}
+          </Button>
         </DialogActions>
       </Dialog>
 
