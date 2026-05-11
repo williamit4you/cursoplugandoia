@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const PYTHON_API_URL = process.env.FASTAPI_URL || "http://localhost:8000";
+const PYTHON_API_URL = process.env.WORKER_FASTAPI_BASE_URL || process.env.FASTAPI_URL || "http://localhost:8000";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {

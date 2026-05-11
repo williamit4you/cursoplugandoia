@@ -159,19 +159,34 @@ export default function ColetaShopeePage() {
 
       {/* Cadastrar URL */}
       <Card className="bg-white/5 border border-white/10 backdrop-blur-md">
-        <CardContent className="flex items-center gap-4">
-          <TextField
-            fullWidth size="small" variant="outlined"
-            placeholder="Cole a URL do produto da Shopee aqui..."
-            value={url} onChange={e => setUrl(e.target.value)} disabled={isSubmitting}
-            sx={{ input: { color: "#f1f5f9" }, "& .MuiOutlinedInput-root": { "& fieldset": { borderColor: "rgba(255,255,255,0.2)" }, "&:hover fieldset": { borderColor: "rgba(255,255,255,0.3)" }, "&.Mui-focused fieldset": { borderColor: "#6366f1" } } }}
-          />
-          <Button variant="contained" color="primary"
-            startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
-            onClick={handleAddUrl} disabled={!url || isSubmitting}
-            className="bg-indigo-600 hover:bg-indigo-700 whitespace-nowrap">
-            Cadastrar URL
-          </Button>
+        <CardContent className="flex flex-col gap-3">
+          <Typography variant="subtitle1" className="font-semibold text-slate-200">
+            1. Insira o Link do Produto
+          </Typography>
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
+            <TextField
+              fullWidth size="medium" variant="outlined"
+              placeholder="Cole a URL do produto da Shopee aqui (ex: https://shopee.com.br/...)"
+              value={url} onChange={e => setUrl(e.target.value)} disabled={isSubmitting}
+              sx={{ 
+                bgcolor: "rgba(0,0,0,0.2)", 
+                borderRadius: 1, 
+                input: { color: "#f1f5f9" }, 
+                "& .MuiOutlinedInput-root": { 
+                  "& fieldset": { borderColor: "rgba(255,255,255,0.2)" }, 
+                  "&:hover fieldset": { borderColor: "rgba(255,255,255,0.3)" }, 
+                  "&.Mui-focused fieldset": { borderColor: "#6366f1" } 
+                } 
+              }}
+            />
+            <Button variant="contained" color="primary" size="large"
+              startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
+              onClick={handleAddUrl} disabled={!url || isSubmitting}
+              sx={{ minWidth: 200 }}
+              className="bg-indigo-600 hover:bg-indigo-700 whitespace-nowrap h-[56px] shadow-lg">
+              Cadastrar Produto
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
