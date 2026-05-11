@@ -11,31 +11,39 @@ Responsável pelo painel administrativo, banco de dados (Prisma) e endpoints das
 npm run dev
 ```
 
-## 2. Render Service (Remotion)
-Responsável por processar a renderização dos vídeos com código (Remotion) e exportar os arquivos `.mp4`.
+## 2. Render Service (Remotion + Chromium + Scraping Shopee)
+Responsável por:
+- Renderização dos vídeos com código (Remotion)
+- **Scraping de produtos Shopee** via Puppeteer (usa o Chromium instalado neste container)
+- Busca Shopee via navegador
+
+> ⚠️ **Este é o único serviço que precisa de Chromium.** Não instale Chrome no Python worker.
+
 ```bash
 # No diretório render-service
 cd render-service
 npm start
 ```
 
-## 3. Worker (Python FastAPI + Daemons)
-Responsável pela infraestrutura de TTS (Text-to-Speech), scrapers antigos de notícias, FastAPI para renderização legado de vídeo.
+Em Docker/Easypanel, a variável `VIDEO_RENDER_SERVICE_URL` deve apontar para este serviço (porta 3010).
+
+## 3. Worker (Python FastAPI)
+Responsável apenas por TTS (Text-to-Speech), geração de vídeo com MoviePy e composição TikTok (PiP).
+O Chromium **NÃO é necessário** aqui.
+
 ```bash
 # No diretório worker
 cd worker
 
 # Instale os requisitos (caso não estejam)
 pip install -r requirements.txt
-playwright install chromium
 
 # Inicie a API do vídeo (Uvicorn)
 uvicorn video:app --host 0.0.0.0 --port 80
-
-# (Em outro terminal) Inicie os daemons se necessário
-python scraper.py
-python questions_daemon.py
 ```
 
 > [!TIP]
-> **Fluxo da Automação de Tarefas:** Quando o Next.js executa a cron (`api/automation/cron`), a Engine de Tarefas (`lib/tasks/engine.ts`) dita o fluxo. O Render Service Node.js serve como motor principal de vídeos curtos atualmente.
+> **Arquitetura do Scraping Shopee:**
+> `Next.js API` → `render-service:3010/shopee/scrape` → Puppeteer usa `/usr/bin/chromium-browser` já instalado no Docker do render-service → MinIO + OpenAI
+> 
+> **Fluxo da Automação de Vídeos:** `Next.js cron` → `engine.ts` → `render-service:3010/render` → Remotion + Worker Python TTS

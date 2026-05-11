@@ -7,6 +7,7 @@ import fs from "fs/promises";
 import { PutObjectCommand, HeadBucketCommand, CreateBucketCommand, PutBucketPolicyCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "./s3";
 import { shopeeBrowserSearch } from "./shopee-search";
+import { scrapeShopeeProduct } from "./shopee-scrape";
 
 type RenderRequest = {
   projectId: string;
@@ -253,6 +254,21 @@ const server = http.createServer(async (req, res) => {
       console.error("[render-service] S3 ERROR:", error);
       if (error.$metadata) console.error("[render-service] S3 METADATA:", error.$metadata);
       return json(res, 500, { error: error?.message || "Render failed" });
+    }
+  }
+
+  if (req.method === "POST" && req.url === "/shopee/scrape") {
+    try {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(Buffer.from(chunk));
+      const payload = safeJsonParse(Buffer.concat(chunks).toString("utf8")) as { url?: string } | null;
+      if (!payload?.url) return json(res, 400, { error: "url is required" });
+
+      const result = await scrapeShopeeProduct(payload.url);
+      return json(res, 200, result);
+    } catch (error: any) {
+      console.error("[render-service][shopee/scrape]", error);
+      return json(res, 500, { error: error?.message || "Scrape failed" });
     }
   }
 
