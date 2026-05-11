@@ -1,7 +1,6 @@
 import { CreateBucketCommand, HeadBucketCommand, PutBucketPolicyCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import s3Client from "@/lib/s3";
 import type { MercadoLivreProduct } from "@/lib/mercadoLivreAffiliate";
-import { getMercadoLivreProductImageUrlsWithBrowser } from "@/lib/mercadoLivreBrowserSearch";
 
 export type MercadoLivrePreparedAsset = {
   url: string;
@@ -90,7 +89,21 @@ export async function prepareMercadoLivreProductAssets(
 
   if (looksLikeImageUrl(product.thumbnailUrl)) candidates.add(String(product.thumbnailUrl));
 
-  const browserImages = await getMercadoLivreProductImageUrlsWithBrowser(product.permalink, limit);
+  const renderServiceUrl = (process.env.VIDEO_RENDER_SERVICE_URL || "http://127.0.0.1:3010").trim().replace(/\/+$/, "");
+  const targetUrl = `${renderServiceUrl}/mercadolivre/images`;
+  let browserImages: string[] = [];
+  try {
+    const res = await fetch(targetUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: product.permalink, limit }),
+      signal: AbortSignal.timeout(60000),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && Array.isArray(data?.urls)) browserImages = data.urls;
+  } catch {
+    browserImages = [];
+  }
   for (const image of browserImages) {
     if (looksLikeImageUrl(image)) candidates.add(image);
     if (candidates.size >= limit) break;

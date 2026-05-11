@@ -11,14 +11,8 @@ const nextConfig = {
     // mas mantemos false para garantir qualidade, a menos que o OOM persista.
     ignoreBuildErrors: false,
   },
-  experimental: {
-    outputFileTracingIncludes: {
-      "/**/*": [
-        "./node_modules/puppeteer-core/**/*",
-        "./node_modules/puppeteer/**/*"
-      ],
-    },
-  },
+  // Nao force incluir Puppeteer no build do Next.
+  // Chromium/Puppeteer rodam no render-service (processador) para manter builds/dev leves.
 };
 
 module.exports = nextConfig;

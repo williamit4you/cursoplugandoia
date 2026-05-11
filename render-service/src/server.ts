@@ -8,6 +8,7 @@ import { PutObjectCommand, HeadBucketCommand, CreateBucketCommand, PutBucketPoli
 import { s3Client } from "./s3";
 import { shopeeBrowserSearch } from "./shopee-search";
 import { scrapeShopeeProduct } from "./shopee-scrape";
+import { mercadoLivreBrowserImages, mercadoLivreBrowserSearch } from "./mercadolivre-search";
 
 type RenderRequest = {
   projectId: string;
@@ -269,6 +270,36 @@ const server = http.createServer(async (req, res) => {
     } catch (error: any) {
       console.error("[render-service][shopee/scrape]", error);
       return json(res, 500, { error: error?.message || "Scrape failed" });
+    }
+  }
+
+  if (req.method === "POST" && req.url === "/mercadolivre/search") {
+    try {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(Buffer.from(chunk));
+      const payload = safeJsonParse(Buffer.concat(chunks).toString("utf8")) as any | null;
+      if (!payload) return json(res, 400, { error: "Invalid JSON" });
+
+      const items = await mercadoLivreBrowserSearch(payload);
+      return json(res, 200, { ok: true, items, source: "browser" });
+    } catch (error: any) {
+      console.error("[render-service][mercadolivre/search]", error);
+      return json(res, 502, { ok: false, error: error?.message || "Mercado Livre browser search failed" });
+    }
+  }
+
+  if (req.method === "POST" && req.url === "/mercadolivre/images") {
+    try {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(Buffer.from(chunk));
+      const payload = safeJsonParse(Buffer.concat(chunks).toString("utf8")) as any | null;
+      if (!payload?.url) return json(res, 400, { error: "url is required" });
+
+      const urls = await mercadoLivreBrowserImages(payload);
+      return json(res, 200, { ok: true, urls, source: "browser" });
+    } catch (error: any) {
+      console.error("[render-service][mercadolivre/images]", error);
+      return json(res, 502, { ok: false, error: error?.message || "Mercado Livre browser images failed" });
     }
   }
 

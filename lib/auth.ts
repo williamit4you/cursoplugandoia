@@ -13,21 +13,43 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("E-mail e senha são obrigatórios.")
+          throw new Error("E-mail e senha sÃ£o obrigatÃ³rios.")
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
-        })
+        const inputEmail = String(credentials.email || "").trim().toLowerCase()
+        const inputPassword = String(credentials.password || "")
+
+        let user: any = null
+        try {
+          user = await prisma.user.findUnique({
+            where: { email: inputEmail }
+          })
+        } catch (err: any) {
+          // Dev fallback: allow ADMIN_EMAIL/ADMIN_PASSWORD when DB is unreachable.
+          if (process.env.NODE_ENV !== "production") {
+            const adminEmail = String(process.env.ADMIN_EMAIL || "").trim().toLowerCase()
+            const adminPassword = String(process.env.ADMIN_PASSWORD || "")
+            if (adminEmail && adminPassword && inputEmail === adminEmail && inputPassword === adminPassword) {
+              return {
+                id: "env-admin",
+                email: adminEmail,
+                name: "Admin",
+                role: "ADMIN"
+              }
+            }
+          }
+
+          throw new Error(err?.message || "Falha ao conectar no banco para autenticar.")
+        }
 
         if (!user || !user.password) {
-          throw new Error("Credenciais inválidas.")
+          throw new Error("Credenciais invÃ¡lidas.")
         }
 
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
+        const isPasswordValid = await bcrypt.compare(inputPassword, user.password)
 
         if (!isPasswordValid) {
-          throw new Error("Credenciais inválidas.")
+          throw new Error("Credenciais invÃ¡lidas.")
         }
 
         return {
@@ -49,17 +71,17 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (token) {
-        (session.user as any).role = token.role as string;
-        (session.user as any).id = token.id as string;
+        ;(session.user as any).role = token.role as string
+        ;(session.user as any).id = token.id as string
       }
       return session
     }
   },
   pages: {
-    signIn: "/admin/login",
+    signIn: "/admin/login"
   },
   session: {
-    strategy: "jwt",
+    strategy: "jwt"
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET
 }

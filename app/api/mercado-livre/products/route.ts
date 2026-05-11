@@ -8,7 +8,6 @@ import {
   searchMercadoLivreProducts,
   shouldRefreshMercadoLivreToken,
 } from "@/lib/mercadoLivreAffiliate";
-import { searchMercadoLivreProductsWithBrowser } from "@/lib/mercadoLivreBrowserSearch";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -87,16 +86,33 @@ export async function GET(req: NextRequest) {
       }
 
       try {
-        products = await searchMercadoLivreProductsWithBrowser(config, {
-          limit: searchLimit,
-          queryOverride,
-          excludeIds: usedIds,
-          randomize: true,
-          maxTargets: 2,
-          gotoTimeoutMs: 12000,
-          settleDelayMs: 1800,
-          waitForAnchorsTimeoutMs: 2500,
+        const renderServiceUrl = (process.env.VIDEO_RENDER_SERVICE_URL || "http://127.0.0.1:3010")
+          .trim()
+          .replace(/\/+$/, "");
+        const targetUrl = `${renderServiceUrl}/mercadolivre/search`;
+        const browserRes = await fetch(targetUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            siteId: config.siteId,
+            searchTerms: config.searchTerms ? JSON.parse(String(config.searchTerms)) : null,
+            categoryIds: config.categoryIds ? JSON.parse(String(config.categoryIds)) : null,
+            minPrice: config.minPrice,
+            maxPrice: config.maxPrice,
+            limit: searchLimit,
+            queryOverride,
+            excludeIds: usedIds,
+            randomize: true,
+            maxTargets: 2,
+            gotoTimeoutMs: 12000,
+            settleDelayMs: 1800,
+            waitForAnchorsTimeoutMs: 2500,
+          }),
+          signal: AbortSignal.timeout(60000),
         });
+        const browserJson = await browserRes.json().catch(() => ({}));
+        if (!browserRes.ok) throw new Error(browserJson?.error || `HTTP ${browserRes.status}`);
+        products = Array.isArray(browserJson?.items) ? browserJson.items : [];
         source = "browser";
       } catch (browserErr: any) {
         browserError = browserErr?.message || "Browser search failed";

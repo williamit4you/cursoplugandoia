@@ -17,7 +17,6 @@ import {
   isMercadoLivreAffiliateTemplateDynamic,
   type MercadoLivreProduct,
 } from "@/lib/mercadoLivreAffiliate";
-import { searchMercadoLivreProductsWithBrowser } from "@/lib/mercadoLivreBrowserSearch";
 import { prepareMercadoLivreProductAssets, type MercadoLivrePreparedAsset } from "@/lib/mercadoLivreProductAssets";
 
 export const dynamic = "force-dynamic";
@@ -130,7 +129,7 @@ async function searchProductsForRoutine(params: {
   term: string;
   limit: number;
   excludeIds: string[];
-}) {
+}): Promise<{ products: MercadoLivreProduct[]; source: "api" | "browser"; apiError: string | null }> {
   const { config, categoryId, term, limit, excludeIds } = params;
 
   try {
@@ -142,17 +141,48 @@ async function searchProductsForRoutine(params: {
       excludeIds,
       randomize: true,
     });
-    return { products, source: "api", apiError: null as string | null };
+    return { products, source: "api", apiError: null };
   } catch (error: any) {
     const apiError = error?.message || "API search failed";
     try {
-      const products = await searchMercadoLivreProductsWithBrowser(config, {
-        limit,
-        categoryOverride: categoryId,
-        queryOverride: term,
-        excludeIds,
-        randomize: true,
+      const renderServiceUrl = (process.env.VIDEO_RENDER_SERVICE_URL || "http://127.0.0.1:3010")
+        .trim()
+        .replace(/\/+$/, "");
+      const targetUrl = `${renderServiceUrl}/mercadolivre/search`;
+
+      let searchTerms: any = null;
+      let categoryIds: any = null;
+      try {
+        searchTerms = config.searchTerms ? JSON.parse(String(config.searchTerms)) : null;
+      } catch {
+        searchTerms = null;
+      }
+      try {
+        categoryIds = config.categoryIds ? JSON.parse(String(config.categoryIds)) : null;
+      } catch {
+        categoryIds = null;
+      }
+
+      const browserRes = await fetch(targetUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          siteId: config.siteId,
+          searchTerms,
+          categoryIds,
+          minPrice: config.minPrice,
+          maxPrice: config.maxPrice,
+          limit,
+          queryOverride: term,
+          categoryOverride: categoryId,
+          excludeIds,
+          randomize: true,
+        }),
+        signal: AbortSignal.timeout(60000),
       });
+      const browserJson = await browserRes.json().catch(() => ({}));
+      if (!browserRes.ok) throw new Error(browserJson?.error || `HTTP ${browserRes.status}`);
+      const products = (Array.isArray(browserJson?.items) ? browserJson.items : []) as MercadoLivreProduct[];
       return { products, source: "browser", apiError };
     } catch (browserErr: any) {
       const browserError = browserErr?.message || "Browser search failed";
