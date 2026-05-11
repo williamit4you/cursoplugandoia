@@ -853,6 +853,8 @@ model ColetaDadosShoppe {
   aiPromptVendas   String?
   status           String   @default("PENDING") // PENDING, SCRAPING, COMPLETED, FAILED
   errorMessage     String?
+  videoFinalUrl    String?  // URL do vídeo TikTok gerado (MinIO)
+  videoStatus      String?  // RENDERING, COMPLETED, FAILED
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
