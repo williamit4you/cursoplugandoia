@@ -22,6 +22,325 @@ type JsonLdProduct = {
   image?: string | string[];
 };
 
+type ShopeeItemApiResponse = {
+  ok: boolean;
+  status: number;
+  data: any;
+};
+
+function normalizeText(value: string | null | undefined) {
+  return String(value || "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function cleanShopeeText(value: string | null | undefined) {
+  return normalizeText(value).replace(/\|\s*Shopee\s+Brasil.*$/i, "").trim();
+}
+
+function decodeHtml(value: string) {
+  return value
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
+function stripHtml(value: string) {
+  return normalizeText(decodeHtml(value).replace(/<[^>]+>/g, " "));
+}
+
+function detectShopeeBlockingState(html: string) {
+  const text = stripHtml(html).toLowerCase();
+  if (
+    text.includes("pagina indisponivel") ||
+    text.includes("faça login e tente novamente") ||
+    text.includes("faca login e tente novamente") ||
+    text.includes("algo deu errado")
+  ) {
+    return "Shopee bloqueou esta pagina para acesso anonimo ou exige login.";
+  }
+  return "";
+}
+
+function extractMetaContent(html: string, attr: "name" | "property", key: string) {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`<meta[^>]+${attr}=["']${escaped}["'][^>]+content=["']([^"']*)["']`, "i");
+  const match = html.match(regex);
+  return match ? decodeHtml(match[1]) : "";
+}
+
+function extractJsonLdProducts(html: string): JsonLdProduct[] {
+  const blocks = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
+  const products: JsonLdProduct[] = [];
+
+  const visit = (node: any) => {
+    if (!node) return;
+    if (Array.isArray(node)) {
+      node.forEach(visit);
+      return;
+    }
+    if (typeof node !== "object") return;
+    if (String(node["@type"] || "").toLowerCase() === "product") {
+      products.push(node);
+    }
+    for (const value of Object.values(node)) visit(value);
+  };
+
+  for (const block of blocks) {
+    const jsonMatch = block.match(/>([\s\S]*?)<\/script>/i);
+    if (!jsonMatch) continue;
+    try {
+      visit(JSON.parse(jsonMatch[1]));
+    } catch {
+      // ignore malformed json-ld
+    }
+  }
+
+  return products;
+}
+
+function extractSectionByHeading(html: string, headings: string[]) {
+  for (const heading of headings) {
+    const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`${escaped}[\\s\\S]{0,300}?<div[^>]*>([\\s\\S]{20,2500}?)<\\/div>`, "i");
+    const match = html.match(regex);
+    if (match) {
+      const text = stripHtml(match[1]);
+      if (text) return text;
+    }
+  }
+  return "";
+}
+
+function normalizeDomainFromUrl(productUrl: string) {
+  try {
+    return new URL(productUrl).hostname || "shopee.com.br";
+  } catch {
+    return "shopee.com.br";
+  }
+}
+
+function parseIdsFromProductUrl(productUrl: string) {
+  const itemMatch = productUrl.match(/-i\.(\d+)\.(\d+)/i);
+  if (itemMatch) {
+    return {
+      shopId: Number(itemMatch[1]),
+      itemId: Number(itemMatch[2]),
+    };
+  }
+
+  const productMatch = productUrl.match(/\/product\/(\d+)\/(\d+)/i);
+  if (productMatch) {
+    return {
+      shopId: Number(productMatch[1]),
+      itemId: Number(productMatch[2]),
+    };
+  }
+
+  return null;
+}
+
+function buildApiItemUrl(domain: string, shopId: number, itemId: number) {
+  const url = new URL(`https://${domain}/api/v4/item/get`);
+  url.searchParams.set("shopid", String(shopId));
+  url.searchParams.set("itemid", String(itemId));
+  return url.toString();
+}
+
+function buildImageUrl(domain: string, imageId: string) {
+  const normalizedDomain = normalizeDomainFromUrl(`https://${domain}`);
+  const match = normalizedDomain.match(/shopee\.com(?:\.(\w+))?$/i);
+  const site = (match?.[1] || "br").toLowerCase();
+  const host = site === "br" ? "down-br.img.susercontent.com" : `down-${site}.img.susercontent.com`;
+  return `https://${host}/file/${encodeURIComponent(imageId)}`;
+}
+
+function collectTextFragments(node: unknown, out: string[]) {
+  if (!node) return;
+  if (typeof node === "string") {
+    const normalized = cleanShopeeText(node);
+    if (normalized) out.push(normalized);
+    return;
+  }
+  if (Array.isArray(node)) {
+    for (const value of node) collectTextFragments(value, out);
+    return;
+  }
+  if (typeof node !== "object") return;
+  for (const value of Object.values(node as Record<string, unknown>)) {
+    collectTextFragments(value, out);
+  }
+}
+
+function buildDetalhesFromApi(item: any) {
+  const parts: string[] = [];
+
+  const itemAttributes = Array.isArray(item?.item_attributes) ? item.item_attributes : [];
+  for (const attr of itemAttributes) {
+    const name = cleanShopeeText(attr?.name || attr?.display_name || "");
+    const value = cleanShopeeText(attr?.value || attr?.display_value || "");
+    if (name && value) parts.push(`${name}: ${value}`);
+  }
+
+  const tierVariations = Array.isArray(item?.tier_variations) ? item.tier_variations : [];
+  for (const variation of tierVariations) {
+    const name = cleanShopeeText(variation?.name || "");
+    const options = Array.isArray(variation?.options)
+      ? variation.options.map((value: unknown) => cleanShopeeText(String(value || ""))).filter(Boolean)
+      : [];
+    if (name && options.length > 0) parts.push(`${name}: ${options.join(", ")}`);
+  }
+
+  if (parts.length === 0) {
+    const fragments: string[] = [];
+    collectTextFragments(item?.specification, fragments);
+    collectTextFragments(item?.product_attributes, fragments);
+    collectTextFragments(item?.attributes, fragments);
+    return cleanShopeeText(fragments.join(" | "));
+  }
+
+  return cleanShopeeText(parts.join(" | "));
+}
+
+function extractApiImageUrls(domain: string, item: any) {
+  const images: string[] = [];
+  const add = (value: unknown) => {
+    const str = String(value || "").trim();
+    if (!str) return;
+    if (/^https?:\/\//i.test(str)) {
+      images.push(str);
+      return;
+    }
+    images.push(buildImageUrl(domain, str));
+  };
+
+  add(item?.image);
+
+  const list = Array.isArray(item?.images) ? item.images : [];
+  for (const image of list) add(image);
+
+  return Array.from(new Set(images.filter(Boolean)));
+}
+
+function extractVideoUrlFromInfo(info: any): string {
+  if (!info) return "";
+  if (typeof info === "string") {
+    return /^https?:\/\//i.test(info) ? info : "";
+  }
+  if (Array.isArray(info)) {
+    for (const value of info) {
+      const candidate = extractVideoUrlFromInfo(value);
+      if (candidate) return candidate;
+    }
+    return "";
+  }
+  if (typeof info !== "object") return "";
+
+  const preferredKeys = [
+    "video_url",
+    "play_url",
+    "url",
+    "src",
+    "mp4",
+    "default_play_url",
+    "default_format",
+    "play_addr",
+  ];
+
+  for (const key of preferredKeys) {
+    if (!(key in info)) continue;
+    const candidate = extractVideoUrlFromInfo(info[key]);
+    if (candidate) return candidate;
+  }
+
+  for (const [key, value] of Object.entries(info)) {
+    if (/url|src|play|mp4/i.test(key)) {
+      const candidate = extractVideoUrlFromInfo(value);
+      if (candidate) return candidate;
+    }
+  }
+
+  for (const value of Object.values(info)) {
+    const candidate = extractVideoUrlFromInfo(value);
+    if (candidate) return candidate;
+  }
+
+  return "";
+}
+
+function extractApiVideoUrl(item: any) {
+  const videoList = Array.isArray(item?.video_info_list) ? item.video_info_list : [];
+  for (const videoInfo of videoList) {
+    const candidate = extractVideoUrlFromInfo(videoInfo);
+    if (candidate) return candidate;
+  }
+  return "";
+}
+
+async function firstTextContent(page: any, selector: string) {
+  try {
+    const elements = await page.$$(selector);
+    if (!elements.length) return "";
+    const value = await elements[0].evaluate((element: Element) => element.textContent || "");
+    return cleanShopeeText(value);
+  } catch {
+    return "";
+  }
+}
+
+async function firstVideoSrc(page: any, selector: string) {
+  try {
+    const elements = await page.$$(selector);
+    if (!elements.length) return "";
+    const value = await elements[0].evaluate((element: Element) => {
+      const video = element as HTMLVideoElement;
+      return video.src || "";
+    });
+    return String(value || "");
+  } catch {
+    return "";
+  }
+}
+
+async function fetchJsonViaPage(page: any, url: string): Promise<ShopeeItemApiResponse> {
+  try {
+    return await page.evaluate(async (requestUrl: string) => {
+      try {
+        const res = await fetch(requestUrl, {
+          credentials: "include",
+          headers: {
+            accept: "application/json",
+          },
+        });
+        const text = await res.text();
+        let data: any = null;
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          data = { rawText: text };
+        }
+        return { ok: res.ok, status: res.status, data };
+      } catch (error: any) {
+        return {
+          ok: false,
+          status: 0,
+          data: { error: error?.message || "fetch failed" },
+        };
+      }
+    }, url);
+  } catch (error: any) {
+    return {
+      ok: false,
+      status: 0,
+      data: { error: error?.message || "page evaluate failed" },
+    };
+  }
+}
+
 function dynamicRequire(moduleName: string) {
   // eslint-disable-next-line no-eval
   const req = eval("require") as (name: string) => any;
@@ -141,6 +460,8 @@ async function generateSalesScript(titulo: string, descricao: string, detalhes: 
 export async function scrapeShopeeProduct(productUrl: string): Promise<ShopeeScrapedProduct> {
   const executablePath = await firstExistingExecutable();
   const puppeteer = dynamicRequire("puppeteer-core");
+  const domain = normalizeDomainFromUrl(productUrl);
+  const parsedIds = parseIdsFromProductUrl(productUrl);
 
   console.log(`[shopee-scrape] Iniciando scraping de: ${productUrl}`);
   console.log(`[shopee-scrape] Usando Chrome: ${executablePath}`);
@@ -162,6 +483,7 @@ export async function scrapeShopeeProduct(productUrl: string): Promise<ShopeeScr
   let detalhes = "";
   let imageUrls: string[] = [];
   let videoUrl: string | null = null;
+  let itemApiData: any = null;
 
   try {
     const page = await browser.newPage();
@@ -177,180 +499,92 @@ export async function scrapeShopeeProduct(productUrl: string): Promise<ShopeeScr
     await page.waitForSelector("body", { timeout: 10000 });
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    const pageData = await page.evaluate(() => {
-      const normalizeText = (value: string | null | undefined) =>
-        String(value || "")
-          .replace(/\u00a0/g, " ")
-          .replace(/\s+/g, " ")
-          .trim();
-
-      const cleanShopeeText = (value: string | null | undefined) => {
-        let text = normalizeText(value);
-        text = text.replace(/\|\s*Shopee\s+Brasil.*$/i, "").trim();
-        return text;
-      };
-
-      const parseJsonLdProducts = () => {
-        const products: JsonLdProduct[] = [];
-        const scripts = Array.from(
-          document.querySelectorAll('script[type="application/ld+json"]')
-        ) as HTMLScriptElement[];
-
-        const visit = (node: any) => {
-          if (!node) return;
-          if (Array.isArray(node)) {
-            node.forEach(visit);
-            return;
-          }
-          if (typeof node !== "object") return;
-
-          const type = String(node["@type"] || "").toLowerCase();
-          if (type === "product") {
-            products.push(node);
-          }
-
-          for (const value of Object.values(node)) visit(value);
-        };
-
-        for (const script of scripts) {
-          try {
-            visit(JSON.parse(script.textContent || ""));
-          } catch {
-            // ignore malformed blocks
-          }
-        }
-
-        return products;
-      };
-
-      const looksLikeProductImage = (src: string) =>
-        /^https?:\/\//i.test(src) && /susercontent\.com|shopee/i.test(src);
-
-      const findSectionContent = (sectionNames: string[]) => {
-        const wanted = new Set(sectionNames.map((item) => item.toLowerCase()));
-        const elements = Array.from(document.querySelectorAll("h1, h2, h3, h4, div, span, p, label"));
-
-        for (const element of elements) {
-          const heading = normalizeText(element.textContent);
-          if (!heading || !wanted.has(heading.toLowerCase())) continue;
-
-          const candidates: Element[] = [];
-          if (element.parentElement) candidates.push(element.parentElement);
-          if (element.nextElementSibling) candidates.push(element.nextElementSibling);
-          if (element.parentElement?.nextElementSibling) candidates.push(element.parentElement.nextElementSibling);
-
-          for (const candidate of candidates) {
-            const text = normalizeText(candidate.textContent);
-            if (!text || text.length <= heading.length) continue;
-            const withoutHeading = normalizeText(text.replace(heading, ""));
-            if (withoutHeading) return withoutHeading;
-          }
-        }
-
-        return "";
-      };
-
-      const collectDetailLines = () => {
-        const detailLines = new Set<string>();
-        const elements = Array.from(document.querySelectorAll("div, li, tr"));
-
-        for (const element of elements) {
-          const text = normalizeText(element.textContent);
-          if (!text || text.length < 4 || text.length > 240) continue;
-
-          const looksLikePair =
-            /:\s*\S/.test(text) ||
-            /\b(origem|material|genero|estilo|tipo|modelo|marca|categoria|estoque|enviado de|comprimento|altura|largura|peso)\b/i.test(
-              text
-            );
-
-          if (!looksLikePair) continue;
-          detailLines.add(text);
-          if (detailLines.size >= 12) break;
-        }
-
-        return Array.from(detailLines).join("\n");
-      };
-
-      const jsonLdProduct = parseJsonLdProducts()[0] || {};
-
-      const titleEl =
-        document.querySelector("div[class*='page-product'] h1") ||
-        document.querySelector("h1") ||
-        document.querySelector("[class*='product-name']");
-      const metaTitle =
-        document.querySelector('meta[property="og:title"]')?.getAttribute("content") ||
-        document.title ||
-        "";
-      const title = cleanShopeeText(titleEl?.textContent || jsonLdProduct.name || metaTitle);
-
-      const metaDescription =
-        document.querySelector('meta[name="description"]')?.getAttribute("content") ||
-        document.querySelector('meta[property="og:description"]')?.getAttribute("content") ||
-        "";
-      const descSection = findSectionContent(["Descricao do produto", "Descricao", "Product Description"]);
-      const descEl =
-        document.querySelector("div[class*='product-detail']") ||
-        document.querySelector("div[style*='white-space: pre-wrap']") ||
-        document.querySelector("[class*='product-description']");
-      const desc = cleanShopeeText(
-        descSection || descEl?.textContent || jsonLdProduct.description || metaDescription
-      );
-
-      const detailsSection = findSectionContent([
-        "Detalhes do Produto",
-        "Caracteristicas do Produto",
-        "Especificacoes",
-        "Informacoes do Produto",
-      ]);
-      const detailLines = collectDetailLines();
-      const details = cleanShopeeText(detailsSection || detailLines);
-
-      const imageSet = new Set<string>();
-      const addImage = (src: string | null | undefined) => {
-        const value = String(src || "").trim();
-        if (looksLikeProductImage(value)) imageSet.add(value);
-      };
-
-      const imgEls = Array.from(document.querySelectorAll("picture img, img")) as HTMLImageElement[];
-      for (const img of imgEls) {
-        addImage(img.currentSrc);
-        addImage(img.src);
+    if (parsedIds) {
+      const itemApi = await fetchJsonViaPage(page, buildApiItemUrl(domain, parsedIds.shopId, parsedIds.itemId));
+      if (itemApi.ok) {
+        itemApiData = itemApi.data?.data?.item || itemApi.data?.data || null;
+        console.log(
+          `[shopee-scrape] item/get OK para shopId=${parsedIds.shopId} itemId=${parsedIds.itemId} | video_info_list=${Array.isArray(itemApiData?.video_info_list) ? itemApiData.video_info_list.length : 0}`
+        );
+      } else {
+        console.warn(`[shopee-scrape] item/get falhou: HTTP ${itemApi.status} ${itemApi.data?.error || ""}`.trim());
       }
+    } else {
+      console.warn("[shopee-scrape] Nao foi possivel extrair shopId/itemId da URL.");
+    }
 
-      const ldImages = Array.isArray(jsonLdProduct.image)
-        ? jsonLdProduct.image
-        : jsonLdProduct.image
-          ? [jsonLdProduct.image]
-          : [];
-      for (const image of ldImages) addImage(String(image));
+    const html = await page.content();
+    const pageTitle = await page.title();
+    const blockingReason = detectShopeeBlockingState(html);
 
-      const videoEl = document.querySelector("video") as HTMLVideoElement | null;
-      const video = videoEl?.src && videoEl.src.startsWith("http") ? videoEl.src : null;
+    const headingTitle = await firstTextContent(page, "div[class*='page-product'] h1, h1, [class*='product-name']");
+    const metaTitle = extractMetaContent(html, "property", "og:title");
+    const jsonLdProduct = extractJsonLdProducts(html)[0] || {};
+    titulo = cleanShopeeText(itemApiData?.name || headingTitle || jsonLdProduct.name || metaTitle || pageTitle);
 
-      return {
-        title,
-        desc,
-        details,
-        images: Array.from(imageSet),
-        video,
-      };
-    });
+    const descFromDom = await firstTextContent(
+      page,
+      "div[class*='product-detail'], div[style*='white-space: pre-wrap'], [class*='product-description']"
+    );
+    const metaDescription =
+      extractMetaContent(html, "name", "description") || extractMetaContent(html, "property", "og:description");
+    const descSection = extractSectionByHeading(html, ["Descricao do produto", "Descricao", "Product Description"]);
+    descricao = cleanShopeeText(
+      itemApiData?.description || descFromDom || descSection || jsonLdProduct.description || metaDescription
+    );
 
-    titulo = pageData.title;
-    descricao = pageData.desc;
-    detalhes = pageData.details;
-    imageUrls = pageData.images.slice(0, 8);
-    videoUrl = pageData.video;
+    const detailsSection = extractSectionByHeading(html, [
+      "Detalhes do Produto",
+      "Caracteristicas do Produto",
+      "Especificacoes",
+      "Informacoes do Produto",
+    ]);
+    detalhes = cleanShopeeText(buildDetalhesFromApi(itemApiData) || detailsSection);
+
+    imageUrls = extractApiImageUrls(domain, itemApiData);
+    if (imageUrls.length === 0) {
+      imageUrls = await page.$$eval("picture img, img", (elements) =>
+        Array.from(
+          new Set(
+            elements
+              .map((element) => {
+                const image = element as HTMLImageElement;
+                return image.currentSrc || image.src || "";
+              })
+              .filter((src) => /^https?:\/\//i.test(src) && /susercontent\.com|shopee/i.test(src))
+          )
+        )
+      );
+    }
+
+    const jsonLdImages = Array.isArray(jsonLdProduct.image)
+      ? jsonLdProduct.image
+      : jsonLdProduct.image
+        ? [jsonLdProduct.image]
+        : [];
+    if (jsonLdImages.length > 0) {
+      imageUrls = Array.from(new Set([...imageUrls, ...jsonLdImages.map((image) => String(image).trim())]));
+    }
+
+    videoUrl = extractApiVideoUrl(itemApiData) || (await firstVideoSrc(page, "video")) || null;
+
+    if (!itemApiData && blockingReason) {
+      throw new Error(blockingReason);
+    }
 
     console.log(`[shopee-scrape] Titulo: ${titulo.slice(0, 60)}`);
-    console.log(`[shopee-scrape] Imagens: ${imageUrls.length} | Video: ${videoUrl ? "sim" : "nao"}`);
+    console.log(
+      `[shopee-scrape] Imagens: ${imageUrls.length} | Video: ${videoUrl ? "sim" : "nao"} | API item/get: ${itemApiData ? "sim" : "nao"}`
+    );
   } finally {
     await browser.close();
   }
 
   if (!titulo || (!descricao && !detalhes)) {
     throw new Error("Scraping retornou dados insuficientes da Shopee.");
+  }
+  if (!videoUrl) {
+    throw new Error("Shopee nao retornou video do produto via item/get nem pela pagina.");
   }
 
   const linksMedia: ScrapedMedia[] = [];
@@ -382,7 +616,14 @@ export async function scrapeShopeeProduct(productUrl: string): Promise<ShopeeScr
 
   if (videoUrl) {
     try {
-      const res = await fetch(videoUrl, { signal: AbortSignal.timeout(60000) });
+      const res = await fetch(videoUrl, {
+        headers: {
+          referer: `https://${domain}/`,
+          "user-agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        },
+        signal: AbortSignal.timeout(60000),
+      });
       if (res.ok) {
         const buf = Buffer.from(await res.arrayBuffer());
         const minioUrl = await uploadToMinio(buf, `shopee/videos/shopee_vid_${ts}.mp4`, "video/mp4");
@@ -392,6 +633,10 @@ export async function scrapeShopeeProduct(productUrl: string): Promise<ShopeeScr
     } catch (error) {
       console.error("[shopee-scrape] Erro no video:", error);
     }
+  }
+
+  if (!linksMedia.some((item) => item.tipo === "VIDEO")) {
+    throw new Error("A Shopee indicou um video, mas o download/upload para o MinIO falhou.");
   }
 
   console.log("[shopee-scrape] Gerando script de vendas com IA...");

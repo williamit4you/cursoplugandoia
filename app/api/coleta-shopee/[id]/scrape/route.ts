@@ -42,6 +42,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (!data?.titulo || (!data?.descricao && !data?.detalhes)) {
       throw new Error("Scraping retornou dados insuficientes para salvar.");
     }
+    if (!Array.isArray(data?.linksMedia) || !data.linksMedia.some((m: any) => m?.tipo === "VIDEO" && m?.url)) {
+      throw new Error("Scraping da Shopee nao retornou video do produto.");
+    }
 
     // Salva resultado no banco
     const updated = await prisma.coletaDadosShoppe.update({
