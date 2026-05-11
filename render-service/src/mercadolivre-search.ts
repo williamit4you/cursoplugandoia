@@ -206,10 +206,10 @@ export async function mercadoLivreBrowserSearch(body: MercadoLivreSearchRequest)
         // continue even if selector times out
       }
 
-      const extracted = await page.evaluate(() => {
-        const anchors = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]"));
-        const items: Array<{ href: string; title: string; priceText: string; thumbnailUrl: string }> = [];
-        const push = (href: string, title: string, priceText: string, thumbnailUrl: string) => {
+      const extracted = await page.evaluate(`(() => {
+        const anchors = Array.from(document.querySelectorAll("a[href]"));
+        const items = [];
+        const push = (href, title, priceText, thumbnailUrl) => {
           if (!href || !title) return;
           items.push({ href, title, priceText, thumbnailUrl });
         };
@@ -217,26 +217,26 @@ export async function mercadoLivreBrowserSearch(body: MercadoLivreSearchRequest)
         for (const a of anchors) {
           const href = a.href || "";
           if (!href) continue;
-          if (!/\/MLB-?\d+/i.test(href)) continue;
+          if (!/\\/MLB-?\\d+/i.test(href)) continue;
           const title =
-            a.querySelector<HTMLElement>("[class*='title']")?.textContent ||
+            a.querySelector("[class*='title']")?.textContent ||
             a.getAttribute("title") ||
             a.textContent ||
             "";
           const priceText =
-            a.querySelector<HTMLElement>("[class*='price']")?.textContent ||
-            a.closest("article")?.querySelector<HTMLElement>("[class*='price']")?.textContent ||
+            a.querySelector("[class*='price']")?.textContent ||
+            a.closest("article")?.querySelector("[class*='price']")?.textContent ||
             "";
           const img =
-            a.querySelector<HTMLImageElement>("img") ||
-            a.closest("article")?.querySelector<HTMLImageElement>("img") ||
+            a.querySelector("img") ||
+            a.closest("article")?.querySelector("img") ||
             null;
           const thumbnailUrl = img?.currentSrc || img?.src || img?.getAttribute("data-src") || "";
           push(href, String(title || "").trim(), String(priceText || "").trim(), String(thumbnailUrl || "").trim());
         }
 
         return items;
-      });
+      })()`);
 
       for (const item of extracted) {
         const permalink = normalizeUrl(item.href);
@@ -272,13 +272,13 @@ export async function mercadoLivreBrowserSearch(body: MercadoLivreSearchRequest)
     if (products.length === 0) {
       let debug = "";
       try {
-        const pageInfo = await page.evaluate(() => ({
+        const pageInfo = await page.evaluate(`(() => ({
           title: document.title || "",
-          robots: document.querySelector<HTMLMetaElement>("meta[name='robots']")?.content || "",
+          robots: document.querySelector("meta[name='robots']")?.content || "",
           hasCaptcha:
             Boolean(document.querySelector("[data-sitekey]")) ||
             /captcha|robot|verifica/i.test(document.body?.innerText || ""),
-        }));
+        }))()`);
         debug = ` title="${String(pageInfo.title).slice(0, 80)}" robots="${String(pageInfo.robots).slice(0, 80)}" captcha=${pageInfo.hasCaptcha}`;
       } catch {
         // ignore
@@ -326,21 +326,21 @@ export async function mercadoLivreBrowserImages(body: MercadoLivreImagesRequest)
     await page.goto(body.url, { waitUntil: "domcontentloaded", timeout: 45000 });
     await new Promise((resolve) => setTimeout(resolve, 2500));
 
-    const urls = await page.evaluate(() => {
-      const values: string[] = [];
-      const push = (value: string | null | undefined) => {
+    const urls = await page.evaluate(`(() => {
+      const values = [];
+      const push = (value) => {
         if (value) values.push(value);
       };
 
-      push(document.querySelector<HTMLMetaElement>("meta[property='og:image']")?.content);
-      push(document.querySelector<HTMLMetaElement>("meta[name='twitter:image']")?.content);
+      push(document.querySelector("meta[property='og:image']")?.content);
+      push(document.querySelector("meta[name='twitter:image']")?.content);
 
       for (const script of Array.from(
-        document.querySelectorAll<HTMLScriptElement>("script[type='application/ld+json']")
+        document.querySelectorAll("script[type='application/ld+json']")
       )) {
         try {
           const parsed = JSON.parse(script.textContent || "{}");
-          const image = (parsed as any)?.image;
+          const image = parsed?.image;
           if (Array.isArray(image)) image.forEach((item) => push(String(item || "")));
           else push(String(image || ""));
         } catch {
@@ -355,19 +355,19 @@ export async function mercadoLivreBrowserImages(body: MercadoLivreImagesRequest)
         "[class*='pdp'] img",
         "img[src*='mlstatic']",
       ];
-      for (const img of Array.from(document.querySelectorAll<HTMLImageElement>(selectors.join(",")))) {
+      for (const img of Array.from(document.querySelectorAll(selectors.join(",")))) {
         push(img.currentSrc);
         push(img.src);
         push(img.getAttribute("data-src"));
         push(img.getAttribute("data-original"));
         const srcset = img.getAttribute("srcset") || "";
         for (const part of srcset.split(",")) {
-          push(part.trim().split(/\s+/)[0]);
+          push(part.trim().split(/\\s+/)[0]);
         }
       }
 
       return values;
-    });
+    })()`);
 
     const seen = new Set<string>();
     const normalized: string[] = [];
