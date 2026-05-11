@@ -6,8 +6,7 @@ import {
   Filter, 
   RefreshCcw, 
   ExternalLink, 
-  MoreVertical, 
-  Instagram, 
+  MoreVertical,
   Video, 
   Clock, 
   CheckCircle2, 
@@ -53,8 +52,8 @@ function PlatformIcon({ platform, postType }: { platform: string; postType?: str
   if (p === "YOUTUBE") return <Video className="w-5 h-5 text-rose-500" />;
   if (p === "META" || p === "INSTAGRAM") {
     return postType === "STORY" 
-      ? <div className="relative"><Instagram className="w-5 h-5 text-pink-500" /><div className="absolute -top-1 -right-1 w-2 h-2 bg-pink-500 rounded-full border border-slate-900" /></div>
-      : <Instagram className="w-5 h-5 text-pink-500" />;
+      ? <div className="relative"><Share2 className="w-5 h-5 text-pink-500" /><div className="absolute -top-1 -right-1 w-2 h-2 bg-pink-500 rounded-full border border-slate-900" /></div>
+      : <Share2 className="w-5 h-5 text-pink-500" />;
   }
   if (p === "TIKTOK") return <Video className="w-5 h-5 text-cyan-400" />;
   return <Share2 className="w-5 h-5 text-slate-400" />;

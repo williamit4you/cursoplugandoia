@@ -839,3 +839,35 @@ model YtAiReport {
 
   @@index([channelId, createdAt])
 }
+
+// ═══════════════════════════════════════════════════════════════
+// Shopee Scraper Module
+// ═══════════════════════════════════════════════════════════════
+
+model ColetaDadosShoppe {
+  id               String   @id @default(cuid())
+  url              String   @unique
+  titulo           String?
+  detalhes         String?
+  descricao        String?
+  aiPromptVendas   String?
+  status           String   @default("PENDING") // PENDING, SCRAPING, COMPLETED, FAILED
+  errorMessage     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  linksMedia       LinksVideosImagens[]
+}
+
+model LinksVideosImagens {
+  id               String   @id @default(cuid())
+  coletaId         String
+  coleta           ColetaDadosShoppe @relation(fields: [coletaId], references: [id], onDelete: Cascade)
+  tipo             String   // "VIDEO" ou "IMAGE"
+  urlMinio         String
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([coletaId])
+}
