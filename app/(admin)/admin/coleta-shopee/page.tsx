@@ -276,7 +276,7 @@ export default function ColetaShopeePage() {
   const firstProductMedia = videoColeta ? sortedMedia(videoColeta.linksMedia)[0] : null;
   const selectedVideoMedia = selectedColeta?.linksMedia ? sortedMedia(selectedColeta.linksMedia).find((item) => item.tipo === "VIDEO") || null : null;
 
-  const videoStatusColor = (status?: string) =>
+  const videoStatusColor = (status?: string | null) =>
     status === "COMPLETED" ? "success" : status === "RENDERING" ? "warning" : status === "FAILED" ? "error" : "default";
 
   const fieldSx = {
