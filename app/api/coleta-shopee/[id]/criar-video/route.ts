@@ -2,13 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import s3Client from "@/lib/s3";
-import { Agent } from "undici";
-
-const workerHttpAgent = new Agent({
-  headersTimeout: 600_000,
-  bodyTimeout: 600_000,
-  connectTimeout: 30_000,
-});
 
 type ColetaMedia = {
   id: string;
@@ -68,7 +61,6 @@ async function processTikTokVideoJob(params: {
   const workerRes = await fetch(targetUrl, {
     method: "POST",
     body: workerForm,
-    dispatcher: workerHttpAgent,
     signal: AbortSignal.timeout(600_000),
   });
 
