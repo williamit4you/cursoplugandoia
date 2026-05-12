@@ -1,12 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Agent } from "undici";
-
-const workerHttpAgent = new Agent({
-  headersTimeout: 600_000,
-  bodyTimeout: 600_000,
-  connectTimeout: 30_000,
-});
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const { id } = params;
@@ -94,7 +87,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const workerRes = await fetch(targetUrl, {
       method: "POST",
       body: workerForm,
-      dispatcher: workerHttpAgent,
       signal: AbortSignal.timeout(600_000), // 10 min
     });
 
