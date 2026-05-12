@@ -81,6 +81,21 @@ function parseShopeeIdsFromUrl(productUrl: string) {
   return null;
 }
 
+function deriveShopeeTitleFromUrl(productUrl: string) {
+  try {
+    const pathname = new URL(productUrl).pathname;
+    const slug = pathname.split("/").filter(Boolean).pop() || "";
+    const cleaned = slug
+      .replace(/-i\.\d+\.\d+.*$/i, "")
+      .replace(/[-_]+/g, " ")
+      .trim();
+
+    return cleaned || "Produto Shopee";
+  } catch {
+    return "Produto Shopee";
+  }
+}
+
 function buildShopeeItemApiUrl(domain: string, shopId: number, itemId: number) {
   const url = new URL(`https://${domain}/api/v4/item/get`);
   url.searchParams.set("shopid", String(shopId));
@@ -421,10 +436,11 @@ const server = http.createServer(async (req, res) => {
             const structured = await fetchShopeeStructuredDetails(payload.url);
             const rawTitulo = cleanShopeeText(raw?.titulo || "");
             const structuredTitulo = cleanShopeeText(structured?.titulo || "");
-            const titulo =
+            const tituloExtraido =
               rawTitulo && rawTitulo.toLowerCase() !== "shopee__domain"
                 ? rawTitulo
                 : structuredTitulo;
+            const titulo = tituloExtraido || deriveShopeeTitleFromUrl(payload.url);
             const descricao = cleanShopeeText(structured?.descricao || raw?.descricao || "");
             const detalhes = cleanShopeeText(structured?.detalhes || "");
             const videoRawUrl = raw?.videoRawUrl || null;
@@ -432,7 +448,7 @@ const server = http.createServer(async (req, res) => {
 
             console.log(`[render-service][shopee/scrape] curl_cffi found: title="${titulo}" video=${!!videoRawUrl} images=${imageRawUrls.length}`);
 
-            if (titulo && (videoRawUrl || imageRawUrls.length > 0)) {
+            if (videoRawUrl || imageRawUrls.length > 0) {
               // Worker found media — now upload everything to MinIO using render-service credentials
               const ts = Date.now();
               const linksMedia: Array<{ tipo: "IMAGE" | "VIDEO"; url: string }> = [];
