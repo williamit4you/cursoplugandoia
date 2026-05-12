@@ -1,6 +1,27 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+function deriveTitleFromUrl(url: string) {
+  try {
+    const pathname = new URL(url).pathname;
+    const slug = pathname.split("/").filter(Boolean).pop() || "";
+    const cleaned = slug
+      .replace(/-i\.\d+\.\d+.*$/i, "")
+      .replace(/[-_]+/g, " ")
+      .trim();
+
+    if (!cleaned) return "Produto Shopee";
+
+    return cleaned
+      .split(" ")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  } catch {
+    return "Produto Shopee";
+  }
+}
+
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
     const coleta = await prisma.coletaDadosShoppe.findUnique({
@@ -39,26 +60,48 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const data = await response.json();
 
-    if (!data?.titulo || (!data?.descricao && !data?.detalhes)) {
-      throw new Error("Scraping retornou dados insuficientes para salvar.");
-    }
-    if (!Array.isArray(data?.linksMedia) || !data.linksMedia.some((m: any) => m?.tipo === "VIDEO" && m?.url)) {
-      throw new Error("Scraping da Shopee nao retornou video do produto.");
+    const titulo = String(data?.titulo || "").trim();
+    const descricao = String(data?.descricao || "").trim();
+    const detalhes = String(data?.detalhes || "").trim();
+    const aiPromptVendas = String(data?.aiPromptVendas || "").trim();
+    const linksMedia = Array.isArray(data?.linksMedia)
+      ? data.linksMedia.filter((m: any) => m?.url && (m?.tipo === "IMAGE" || m?.tipo === "VIDEO"))
+      : [];
+
+    const tituloNormalizado =
+      titulo && titulo.toLowerCase() !== "shopee__domain"
+        ? titulo
+        : deriveTitleFromUrl(coleta.url);
+
+    const descricaoNormalizada = descricao || detalhes || "";
+    const detalhesNormalizados = detalhes || descricao || "";
+
+    const hasAnyUsefulData =
+      Boolean(tituloNormalizado || descricaoNormalizada || detalhesNormalizados || aiPromptVendas) ||
+      linksMedia.length > 0;
+
+    if (!hasAnyUsefulData) {
+      throw new Error("Scraping retornou vazio: sem texto e sem midias.");
     }
 
     // Salva resultado no banco
     const updated = await prisma.coletaDadosShoppe.update({
       where: { id: coleta.id },
       data: {
-        titulo: data.titulo,
-        descricao: data.descricao,
-        detalhes: data.detalhes,
-        aiPromptVendas: data.aiPromptVendas,
+        titulo: tituloNormalizado,
+        descricao: descricaoNormalizada || null,
+        detalhes: detalhesNormalizados || null,
+        aiPromptVendas: aiPromptVendas || null,
         status: "COMPLETED",
-        errorMessage: null,
+        errorMessage:
+          linksMedia.length === 0
+            ? "Scraping salvo parcialmente: sem midias retornadas."
+            : !descricaoNormalizada && !detalhesNormalizados
+              ? "Scraping salvo parcialmente: sem descricao detalhada."
+              : null,
         linksMedia: {
           deleteMany: {},
-          create: (data.linksMedia || []).map((m: any) => ({
+          create: linksMedia.map((m: any) => ({
             tipo: m.tipo,
             urlMinio: m.url,
           })),

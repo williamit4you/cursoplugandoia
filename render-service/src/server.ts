@@ -48,6 +48,139 @@ function totalDurationInFramesFromSpec(videoSpec: any, fps: number) {
   return Math.max(1, frames);
 }
 
+function normalizeShopeeText(value: unknown) {
+  return String(value || "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function cleanShopeeText(value: unknown) {
+  return normalizeShopeeText(value).replace(/\|\s*Shopee\s+Brasil.*$/i, "").trim();
+}
+
+function normalizeShopeeDomain(productUrl: string) {
+  try {
+    return new URL(productUrl).hostname || "shopee.com.br";
+  } catch {
+    return "shopee.com.br";
+  }
+}
+
+function parseShopeeIdsFromUrl(productUrl: string) {
+  const itemMatch = productUrl.match(/-i\.(\d+)\.(\d+)/i);
+  if (itemMatch) {
+    return { shopId: Number(itemMatch[1]), itemId: Number(itemMatch[2]) };
+  }
+
+  const productMatch = productUrl.match(/\/product\/(\d+)\/(\d+)/i);
+  if (productMatch) {
+    return { shopId: Number(productMatch[1]), itemId: Number(productMatch[2]) };
+  }
+
+  return null;
+}
+
+function buildShopeeItemApiUrl(domain: string, shopId: number, itemId: number) {
+  const url = new URL(`https://${domain}/api/v4/item/get`);
+  url.searchParams.set("shopid", String(shopId));
+  url.searchParams.set("itemid", String(itemId));
+  return url.toString();
+}
+
+function collectShopeeTextFragments(node: unknown, out: string[]) {
+  if (!node) return;
+  if (typeof node === "string") {
+    const normalized = cleanShopeeText(node);
+    if (normalized) out.push(normalized);
+    return;
+  }
+  if (Array.isArray(node)) {
+    for (const value of node) collectShopeeTextFragments(value, out);
+    return;
+  }
+  if (typeof node !== "object") return;
+  for (const value of Object.values(node as Record<string, unknown>)) {
+    collectShopeeTextFragments(value, out);
+  }
+}
+
+function buildShopeeDetailsFromApi(item: any) {
+  const parts: string[] = [];
+
+  const itemAttributes = Array.isArray(item?.item_attributes) ? item.item_attributes : [];
+  for (const attr of itemAttributes) {
+    const name = cleanShopeeText(attr?.name || attr?.display_name || "");
+    const value = cleanShopeeText(attr?.value || attr?.display_value || "");
+    if (name && value) parts.push(`${name}: ${value}`);
+  }
+
+  const tierVariations = Array.isArray(item?.tier_variations) ? item.tier_variations : [];
+  for (const variation of tierVariations) {
+    const name = cleanShopeeText(variation?.name || "");
+    const options = Array.isArray(variation?.options)
+      ? variation.options.map((value: unknown) => cleanShopeeText(value)).filter(Boolean)
+      : [];
+    if (name && options.length > 0) parts.push(`${name}: ${options.join(", ")}`);
+  }
+
+  if (parts.length === 0) {
+    const fragments: string[] = [];
+    collectShopeeTextFragments(item?.specification, fragments);
+    collectShopeeTextFragments(item?.product_attributes, fragments);
+    collectShopeeTextFragments(item?.attributes, fragments);
+    return cleanShopeeText(fragments.join(" | "));
+  }
+
+  return cleanShopeeText(parts.join(" | "));
+}
+
+async function fetchShopeeStructuredDetails(productUrl: string) {
+  const ids = parseShopeeIdsFromUrl(productUrl);
+  if (!ids) return null;
+
+  const domain = normalizeShopeeDomain(productUrl);
+  const apiUrl = buildShopeeItemApiUrl(domain, ids.shopId, ids.itemId);
+
+  try {
+    const res = await fetch(apiUrl, {
+      headers: {
+        accept: "application/json",
+        "user-agent": "PlugandoIA/1.0 (+https://plugandoia.cloud)",
+        referer: `https://${domain}/product/${ids.shopId}/${ids.itemId}`,
+        "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(15000),
+    });
+
+    const text = await res.text();
+    let data: any = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = {};
+    }
+
+    if (!res.ok) {
+      console.warn(`[render-service][shopee/scrape] item/get falhou: HTTP ${res.status}`);
+      return null;
+    }
+
+    const item = data?.data?.item || data?.data || null;
+    if (!item) return null;
+
+    return {
+      titulo: cleanShopeeText(item?.name || ""),
+      descricao: cleanShopeeText(item?.description || ""),
+      detalhes: buildShopeeDetailsFromApi(item),
+    };
+  } catch (error: any) {
+    console.warn(`[render-service][shopee/scrape] item/get indisponivel (${error?.message || "erro desconhecido"})`);
+    return null;
+  }
+}
+
 async function ensureBucket(bucketName: string) {
   try {
     console.log(`[render-service] Checking bucket: ${bucketName}`);
@@ -285,7 +418,15 @@ const server = http.createServer(async (req, res) => {
               imageRawUrls?: string[];
             };
 
-            const titulo = raw?.titulo || "";
+            const structured = await fetchShopeeStructuredDetails(payload.url);
+            const rawTitulo = cleanShopeeText(raw?.titulo || "");
+            const structuredTitulo = cleanShopeeText(structured?.titulo || "");
+            const titulo =
+              rawTitulo && rawTitulo.toLowerCase() !== "shopee__domain"
+                ? rawTitulo
+                : structuredTitulo;
+            const descricao = cleanShopeeText(structured?.descricao || raw?.descricao || "");
+            const detalhes = cleanShopeeText(structured?.detalhes || "");
             const videoRawUrl = raw?.videoRawUrl || null;
             const imageRawUrls = Array.isArray(raw?.imageRawUrls) ? raw.imageRawUrls : [];
 
@@ -333,11 +474,11 @@ const server = http.createServer(async (req, res) => {
 
               if (linksMedia.length > 0) {
                 // Generate AI sales script
-                const aiPromptVendas = await generateSalesScript(titulo, raw?.descricao || "", "");
+                const aiPromptVendas = await generateSalesScript(titulo, descricao, detalhes);
                 return json(res, 200, {
                   titulo,
-                  descricao: raw?.descricao || "",
-                  detalhes: "",
+                  descricao,
+                  detalhes,
                   aiPromptVendas,
                   linksMedia,
                 });
