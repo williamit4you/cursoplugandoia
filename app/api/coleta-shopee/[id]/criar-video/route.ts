@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import s3Client from "@/lib/s3";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const { id } = params;
@@ -56,6 +58,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   workerForm.append("coleta_id", id);
   workerForm.append("media_urls", JSON.stringify(coleta.linksMedia));
   workerForm.append("reaction_video", reactionFile, reactionFile.name);
+  workerForm.append("upload_mode", "external");
 
   // Opções opcionais vindas do frontend
   const pipFraction = formData.get("pip_fraction");
@@ -107,8 +110,41 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       throw new Error(`Worker retornou ${workerRes.status}: ${errText}`);
     }
 
-    const result = await workerRes.json();
-    const videoUrl: string = result.videoUrl;
+    const responseContentType = workerRes.headers.get("content-type") || "";
+    let videoUrl = "";
+
+    if (/video\/mp4/i.test(responseContentType)) {
+      const videoBuffer = Buffer.from(await workerRes.arrayBuffer());
+      const bucketName = process.env.MINIO_BUCKET_NAME || "uploads";
+      const minioKey = `shopee/videos-tiktok/tiktok_${id}_${Date.now()}.mp4`;
+
+      console.log("[criar-video] uploading via next/minio", {
+        coletaId: id,
+        elapsedMs: Date.now() - startedAt,
+        contentType: responseContentType,
+        bytes: videoBuffer.length,
+        bucketName,
+        minioKey,
+      });
+
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: bucketName,
+          Key: minioKey,
+          Body: videoBuffer,
+          ContentType: "video/mp4",
+        })
+      );
+
+      const publicBase = String(process.env.MINIO_PUBLIC_URL || "").replace(/\/+$/, "");
+      if (!publicBase) throw new Error("MINIO_PUBLIC_URL not configured");
+      videoUrl = `${publicBase}/${minioKey}`;
+    } else {
+      const result = await workerRes.json();
+      videoUrl = String(result.videoUrl || "").trim();
+      if (!videoUrl) throw new Error("Worker retornou sucesso sem videoUrl.");
+    }
+
     console.log("[criar-video] success", { coletaId: id, elapsedMs: Date.now() - startedAt, videoUrl });
 
     // 5. Persistir URL no DB
