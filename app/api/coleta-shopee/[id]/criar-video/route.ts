@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Agent } from "undici";
+
+const workerHttpAgent = new Agent({
+  headersTimeout: 600_000,
+  bodyTimeout: 600_000,
+  connectTimeout: 30_000,
+});
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const { id } = params;
@@ -72,21 +79,45 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       .replace(/\/gerar-video$/, "");
     
     const targetUrl = `${baseUrl}/gerar-video-tiktok`;
-    console.log(`[criar-video] Calling python worker: ${targetUrl}`);
+    const startedAt = Date.now();
+    console.log("[criar-video] start", {
+      coletaId: id,
+      targetUrl,
+      mediaCount: coleta.linksMedia.length,
+      reactionName: reactionFile.name,
+      reactionSize: reactionFile.size,
+      pipFraction: pipFraction ? String(pipFraction) : null,
+      pipMargin: pipMargin ? String(pipMargin) : null,
+      pipRadius: pipRadius ? String(pipRadius) : null,
+    });
 
     const workerRes = await fetch(targetUrl, {
       method: "POST",
       body: workerForm,
+      dispatcher: workerHttpAgent,
       signal: AbortSignal.timeout(600_000), // 10 min
+    });
+
+    console.log("[criar-video] worker response", {
+      coletaId: id,
+      status: workerRes.status,
+      ok: workerRes.ok,
+      elapsedMs: Date.now() - startedAt,
     });
 
     if (!workerRes.ok) {
       const errText = await workerRes.text();
+      console.error("[criar-video] worker error body", {
+        coletaId: id,
+        elapsedMs: Date.now() - startedAt,
+        body: errText,
+      });
       throw new Error(`Worker retornou ${workerRes.status}: ${errText}`);
     }
 
     const result = await workerRes.json();
     const videoUrl: string = result.videoUrl;
+    console.log("[criar-video] success", { coletaId: id, elapsedMs: Date.now() - startedAt, videoUrl });
 
     // 5. Persistir URL no DB
     const updated = await prisma.coletaDadosShoppe.update({
@@ -100,7 +131,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     return NextResponse.json({ ok: true, videoUrl, coleta: updated });
   } catch (error: any) {
-    console.error("[criar-video] Erro:", error);
+    console.error("[criar-video] Erro detalhado:", {
+      coletaId: id,
+      message: error?.message || null,
+      stack: error?.stack || null,
+      cause: error?.cause ? {
+        message: error.cause.message || null,
+        code: error.cause.code || null,
+        name: error.cause.name || null,
+      } : null,
+    });
 
     await prisma.coletaDadosShoppe.update({
       where: { id },
