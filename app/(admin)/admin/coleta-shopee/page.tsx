@@ -83,6 +83,7 @@ export default function ColetaShopeePage() {
   const [pipFraction, setPipFraction] = useState("0.30");
   const [pipMargin, setPipMargin] = useState("30");
   const [pipRadius, setPipRadius] = useState("20");
+  const [selectedMediaId, setSelectedMediaId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadColetas = async () => {
@@ -126,6 +127,17 @@ export default function ColetaShopeePage() {
       aiPromptVendas: fresh.aiPromptVendas ?? prev.aiPromptVendas,
     }));
   }, [coletas, selectedColeta]);
+
+  useEffect(() => {
+    if (!selectedColeta?.linksMedia?.length) {
+      setSelectedMediaId(null);
+      return;
+    }
+    const preferred = sortedMedia(selectedColeta.linksMedia)[0];
+    setSelectedMediaId((prev) =>
+      prev && selectedColeta.linksMedia?.some((item) => item.id === prev) ? prev : preferred?.id || null
+    );
+  }, [selectedColeta]);
 
   const handleAddUrl = async () => {
     if (!url) return;
@@ -177,7 +189,9 @@ export default function ColetaShopeePage() {
   };
 
   const handleViewDetails = (coleta: ColetaItem) => {
+    const preferredMedia = sortedMedia(coleta.linksMedia)[0];
     setSelectedColeta(coleta);
+    setSelectedMediaId(preferredMedia?.id || null);
     setEditFields({
       titulo: coleta.titulo || "",
       descricao: coleta.descricao || "",
@@ -275,6 +289,13 @@ export default function ColetaShopeePage() {
 
   const firstProductMedia = videoColeta ? sortedMedia(videoColeta.linksMedia)[0] : null;
   const selectedVideoMedia = selectedColeta?.linksMedia ? sortedMedia(selectedColeta.linksMedia).find((item) => item.tipo === "VIDEO") || null : null;
+  const sortedSelectedMedia = selectedColeta ? sortedMedia(selectedColeta.linksMedia) : [];
+  const selectedPreviewMedia =
+    sortedSelectedMedia.find((item) => item.id === selectedMediaId) ||
+    sortedSelectedMedia[0] ||
+    null;
+  const imageCount = selectedColeta?.linksMedia?.filter((item) => item.tipo === "IMAGE").length || 0;
+  const videoCount = selectedColeta?.linksMedia?.filter((item) => item.tipo === "VIDEO").length || 0;
 
   const videoStatusColor = (status?: string | null) =>
     status === "COMPLETED" ? "success" : status === "RENDERING" ? "warning" : status === "FAILED" ? "error" : "default";
@@ -415,7 +436,16 @@ export default function ColetaShopeePage() {
                     )}
                   </TableCell>
                   <TableCell className="border-white/10 text-slate-300">
-                    {coleta.linksMedia?.length || 0} midias
+                    <div className="flex items-center gap-2">
+                      <span>{coleta.linksMedia?.length || 0} midias</span>
+                      {!!coleta.linksMedia?.length && (
+                        <Chip
+                          size="small"
+                          label={`${coleta.linksMedia.filter((item) => item.tipo === "VIDEO").length} video / ${coleta.linksMedia.filter((item) => item.tipo !== "VIDEO").length} imagens`}
+                          sx={{ bgcolor: "rgba(255,255,255,0.06)", color: "#94a3b8", fontSize: 11 }}
+                        />
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="border-white/10">
                     <div className="flex items-center gap-2">
@@ -558,6 +588,26 @@ export default function ColetaShopeePage() {
                     <Typography variant="body2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>{selectedColeta.linksMedia?.length || 0}</Typography>
                   </Box>
                 </Box>
+                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 1.5 }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <Typography variant="caption" sx={{ color: "#94a3b8" }}>Descricao</Typography>
+                    <Typography variant="body2" sx={{ color: editFields.descricao ? "#e2e8f0" : "#f59e0b", fontWeight: 700 }}>
+                      {editFields.descricao ? `${editFields.descricao.length} caracteres` : "Nao preenchida"}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <Typography variant="caption" sx={{ color: "#94a3b8" }}>Detalhes</Typography>
+                    <Typography variant="body2" sx={{ color: editFields.detalhes ? "#e2e8f0" : "#f59e0b", fontWeight: 700 }}>
+                      {editFields.detalhes ? `${editFields.detalhes.length} caracteres` : "Nao preenchidos"}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <Typography variant="caption" sx={{ color: "#94a3b8" }}>Script IA</Typography>
+                    <Typography variant="body2" sx={{ color: editFields.aiPromptVendas ? "#e2e8f0" : "#f59e0b", fontWeight: 700 }}>
+                      {editFields.aiPromptVendas ? `${editFields.aiPromptVendas.length} caracteres` : "Nao gerado"}
+                    </Typography>
+                  </Box>
+                </Box>
                 <TextField
                   fullWidth
                   label="Titulo do Produto"
@@ -566,6 +616,7 @@ export default function ColetaShopeePage() {
                   value={editFields.titulo}
                   onChange={(e) => setEditFields((prev) => ({ ...prev, titulo: e.target.value }))}
                   sx={fieldSx}
+                  helperText="Titulo principal salvo no banco"
                 />
                 <TextField
                   fullWidth
@@ -577,17 +628,21 @@ export default function ColetaShopeePage() {
                   value={editFields.descricao}
                   onChange={(e) => setEditFields((prev) => ({ ...prev, descricao: e.target.value }))}
                   sx={fieldSx}
+                  placeholder="Descricao comercial ou texto principal do produto"
+                  helperText={editFields.descricao ? "Texto principal usado para enriquecer o cadastro." : "Ainda nao veio descricao estruturada para este produto."}
                 />
                 <TextField
                   fullWidth
                   multiline
-                  rows={3}
+                  rows={4}
                   label="Detalhes do Produto"
                   variant="filled"
                   size="small"
                   value={editFields.detalhes}
                   onChange={(e) => setEditFields((prev) => ({ ...prev, detalhes: e.target.value }))}
                   sx={fieldSx}
+                  placeholder="Especificacoes, variacoes e atributos tecnicos"
+                  helperText={editFields.detalhes ? "Detalhes tecnicos e atributos detectados." : "Ainda nao vieram detalhes estruturados para este produto."}
                 />
                 <TextField
                   fullWidth
@@ -599,6 +654,8 @@ export default function ColetaShopeePage() {
                   value={editFields.aiPromptVendas}
                   onChange={(e) => setEditFields((prev) => ({ ...prev, aiPromptVendas: e.target.value }))}
                   sx={fieldSx}
+                  placeholder="Script de vendas gerado pela IA"
+                  helperText={editFields.aiPromptVendas ? "Roteiro salvo e pronto para ajuste manual." : "A IA ainda nao retornou script para este item."}
                 />
                 {saveMsg && (
                   <Typography variant="body2" sx={{ color: saveMsg.includes("sucesso") ? "#4ade80" : "#f87171" }}>
@@ -608,6 +665,74 @@ export default function ColetaShopeePage() {
               </Box>
 
               <Box sx={{ flex: "0 0 45%", p: 3, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
+                <Box
+                  sx={{
+                    borderRadius: 2,
+                    overflow: "hidden",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    bgcolor: "rgba(2,6,23,0.85)",
+                  }}
+                >
+                  <Box sx={{ p: 1.5, borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      <Typography variant="caption" sx={{ color: "#94a3b8", letterSpacing: 1, textTransform: "uppercase" }}>
+                        Midia em destaque
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>
+                        {selectedPreviewMedia?.tipo === "VIDEO" ? "Video principal do produto" : "Imagem principal do produto"}
+                      </Typography>
+                    </div>
+                    {selectedPreviewMedia && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        href={selectedPreviewMedia.urlMinio}
+                        target="_blank"
+                        sx={{ borderColor: "rgba(255,255,255,0.14)", color: "#e2e8f0" }}
+                      >
+                        Abrir
+                      </Button>
+                    )}
+                  </Box>
+                  <Box sx={{ p: 1.5 }}>
+                    <Box
+                      sx={{
+                        borderRadius: 2,
+                        overflow: "hidden",
+                        bgcolor: "#000",
+                        aspectRatio: "16 / 11",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      {selectedPreviewMedia ? (
+                        selectedPreviewMedia.tipo === "VIDEO" ? (
+                          <video src={selectedPreviewMedia.urlMinio} controls style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          <img src={selectedPreviewMedia.urlMinio} alt="Midia principal" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        )
+                      ) : (
+                        <Box sx={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}>
+                          Nenhuma midia disponivel
+                        </Box>
+                      )}
+                    </Box>
+                    <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 1.25, mt: 1.5 }}>
+                      <Box sx={{ p: 1.25, borderRadius: 2, bgcolor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                        <Typography variant="caption" sx={{ color: "#94a3b8" }}>Total</Typography>
+                        <Typography variant="body2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>{selectedColeta.linksMedia?.length || 0} arquivos</Typography>
+                      </Box>
+                      <Box sx={{ p: 1.25, borderRadius: 2, bgcolor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                        <Typography variant="caption" sx={{ color: "#94a3b8" }}>Videos</Typography>
+                        <Typography variant="body2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>{videoCount}</Typography>
+                      </Box>
+                      <Box sx={{ p: 1.25, borderRadius: 2, bgcolor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                        <Typography variant="caption" sx={{ color: "#94a3b8" }}>Imagens</Typography>
+                        <Typography variant="body2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>{imageCount}</Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                </Box>
+
                 <Box
                   sx={{
                     borderRadius: 2,
@@ -683,23 +808,60 @@ export default function ColetaShopeePage() {
                   </Box>
                 ) : (
                   <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-                    {sortedMedia(selectedColeta.linksMedia).map((media, index) => (
+                    {sortedSelectedMedia.map((media, index) => (
                       <Box
                         key={media.id}
                         sx={{
                           position: "relative",
                           borderRadius: 1.5,
                           overflow: "hidden",
-                          border: media.tipo === "VIDEO" ? "2px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.1)",
+                          border:
+                            selectedPreviewMedia?.id === media.id
+                              ? "2px solid rgba(99,102,241,0.85)"
+                              : media.tipo === "VIDEO"
+                                ? "2px solid rgba(167,139,250,0.5)"
+                                : "1px solid rgba(255,255,255,0.1)",
                           bgcolor: "#000",
                           aspectRatio: "1 / 1",
+                          cursor: "pointer",
                         }}
+                        onClick={() => setSelectedMediaId(media.id)}
                       >
                         {media.tipo === "VIDEO" ? (
                           <video src={media.urlMinio} controls style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         ) : (
                           <img src={media.urlMinio} alt={`Midia ${index + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         )}
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            left: 8,
+                            right: 8,
+                            bottom: 8,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            bgcolor: "rgba(2,6,23,0.75)",
+                            backdropFilter: "blur(10px)",
+                          }}
+                        >
+                          <Typography variant="caption" sx={{ color: "#e2e8f0", fontWeight: 700 }}>
+                            {media.tipo === "VIDEO" ? `Video ${index + 1}` : `Imagem ${index + 1}`}
+                          </Typography>
+                          <Button
+                            size="small"
+                            variant="text"
+                            href={media.urlMinio}
+                            target="_blank"
+                            onClick={(event) => event.stopPropagation()}
+                            sx={{ minWidth: 0, color: "#c7d2fe", fontSize: 11, px: 1 }}
+                          >
+                            Abrir
+                          </Button>
+                        </Box>
                       </Box>
                     ))}
                   </Box>

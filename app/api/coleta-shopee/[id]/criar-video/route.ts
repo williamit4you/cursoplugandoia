@@ -2,12 +2,69 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import s3Client from "@/lib/s3";
+import http from "http";
+import https from "https";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type ColetaMedia = {
   id: string;
   tipo: string;
   urlMinio: string;
 };
+
+type WorkerHttpResponse = {
+  status: number;
+  ok: boolean;
+  headers: Record<string, string | string[] | undefined>;
+  body: Buffer;
+};
+
+async function postMultipartWithoutUndici(url: string, formData: FormData): Promise<WorkerHttpResponse> {
+  const requestPayload = new Request(url, {
+    method: "POST",
+    body: formData,
+  });
+
+  const body = Buffer.from(await requestPayload.arrayBuffer());
+  const contentType = requestPayload.headers.get("content-type") || "multipart/form-data";
+  const parsedUrl = new URL(url);
+  const transport = parsedUrl.protocol === "https:" ? https : http;
+
+  return await new Promise((resolve, reject) => {
+    const req = transport.request(
+      {
+        protocol: parsedUrl.protocol,
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || (parsedUrl.protocol === "https:" ? 443 : 80),
+        path: `${parsedUrl.pathname}${parsedUrl.search}`,
+        method: "POST",
+        headers: {
+          "content-type": contentType,
+          "content-length": String(body.length),
+        },
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+        res.on("end", () => {
+          resolve({
+            status: res.statusCode || 500,
+            ok: (res.statusCode || 500) >= 200 && (res.statusCode || 500) < 300,
+            headers: res.headers,
+            body: Buffer.concat(chunks),
+          });
+        });
+      }
+    );
+
+    req.setTimeout(0);
+    req.on("error", reject);
+    req.write(body);
+    req.end();
+  });
+}
 
 async function processTikTokVideoJob(params: {
   coletaId: string;
@@ -59,11 +116,7 @@ async function processTikTokVideoJob(params: {
     pipRadius,
   });
 
-  const workerRes = await fetch(targetUrl, {
-    method: "POST",
-    body: workerForm,
-    signal: AbortSignal.timeout(600_000),
-  });
+  const workerRes = await postMultipartWithoutUndici(targetUrl, workerForm);
 
   console.log("[criar-video][job] worker response", {
     coletaId,
@@ -73,15 +126,15 @@ async function processTikTokVideoJob(params: {
   });
 
   if (!workerRes.ok) {
-    const errText = await workerRes.text();
+    const errText = workerRes.body.toString("utf8");
     throw new Error(`Worker retornou ${workerRes.status}: ${errText}`);
   }
 
-  const responseContentType = workerRes.headers.get("content-type") || "";
+  const responseContentType = String(workerRes.headers["content-type"] || "");
   let videoUrl = "";
 
   if (/video\/mp4/i.test(responseContentType)) {
-    const videoBuffer = Buffer.from(await workerRes.arrayBuffer());
+    const videoBuffer = workerRes.body;
     const bucketName = process.env.MINIO_BUCKET_NAME || "uploads";
     const minioKey = `shopee/videos-tiktok/tiktok_${coletaId}_${Date.now()}.mp4`;
 
@@ -106,7 +159,7 @@ async function processTikTokVideoJob(params: {
     if (!publicBase) throw new Error("MINIO_PUBLIC_URL not configured");
     videoUrl = `${publicBase}/${minioKey}`;
   } else {
-    const result = await workerRes.json();
+    const result = JSON.parse(workerRes.body.toString("utf8") || "{}");
     videoUrl = String(result.videoUrl || "").trim();
     if (!videoUrl) throw new Error("Worker retornou sucesso sem videoUrl.");
   }

@@ -150,6 +150,16 @@ function buildShopeeDetailsFromApi(item: any) {
   return cleanShopeeText(parts.join(" | "));
 }
 
+function buildFallbackSalesScript(titulo: string, descricao: string, detalhes: string) {
+  const base = cleanShopeeText(descricao || detalhes);
+  const snippet = base ? `${base.slice(0, 240)}.` : "";
+  return cleanShopeeText(
+    `Se voce procura ${titulo}, vale muito a pena conhecer esse produto. ${snippet} ` +
+      "Ele se destaca pelo custo-beneficio e pelos detalhes que chamam atencao no uso do dia a dia. " +
+      "Para ter acesso ao produto, o link esta na bio!"
+  );
+}
+
 async function fetchShopeeStructuredDetails(productUrl: string) {
   const ids = parseShopeeIdsFromUrl(productUrl);
   if (!ids) return null;
@@ -429,6 +439,7 @@ const server = http.createServer(async (req, res) => {
             const raw = await workerRes.json() as {
               titulo?: string;
               descricao?: string;
+              detalhes?: string;
               videoRawUrl?: string | null;
               imageRawUrls?: string[];
             };
@@ -442,7 +453,7 @@ const server = http.createServer(async (req, res) => {
                 : structuredTitulo;
             const titulo = tituloExtraido || deriveShopeeTitleFromUrl(payload.url);
             const descricao = cleanShopeeText(structured?.descricao || raw?.descricao || "");
-            const detalhes = cleanShopeeText(structured?.detalhes || "");
+            const detalhes = cleanShopeeText(structured?.detalhes || raw?.detalhes || "");
             const videoRawUrl = raw?.videoRawUrl || null;
             const imageRawUrls = Array.isArray(raw?.imageRawUrls) ? raw.imageRawUrls : [];
 
@@ -490,7 +501,9 @@ const server = http.createServer(async (req, res) => {
 
               if (linksMedia.length > 0) {
                 // Generate AI sales script
-                const aiPromptVendas = await generateSalesScript(titulo, descricao, detalhes);
+                const aiPromptVendas =
+                  (await generateSalesScript(titulo, descricao, detalhes)) ||
+                  buildFallbackSalesScript(titulo, descricao, detalhes);
                 return json(res, 200, {
                   titulo,
                   descricao,
