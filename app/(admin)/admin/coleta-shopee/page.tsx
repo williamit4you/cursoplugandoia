@@ -79,6 +79,9 @@ export default function ColetaShopeePage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+  const [pipFraction, setPipFraction] = useState("0.30");
+  const [pipMargin, setPipMargin] = useState("30");
+  const [pipRadius, setPipRadius] = useState("20");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadColetas = async () => {
@@ -191,6 +194,9 @@ export default function ColetaShopeePage() {
     setReactionPreview(null);
     setGenerateError(null);
     setGeneratedUrl(coleta.videoFinalUrl || null);
+    setPipFraction("0.30");
+    setPipMargin("30");
+    setPipRadius("20");
     setVideoModalOpen(true);
   };
 
@@ -212,6 +218,9 @@ export default function ColetaShopeePage() {
     try {
       const form = new FormData();
       form.append("reaction_video", reactionFile, reactionFile.name);
+      form.append("pip_fraction", pipFraction);
+      form.append("pip_margin", pipMargin);
+      form.append("pip_radius", pipRadius);
 
       const res = await fetch(`/api/coleta-shopee/${videoColeta.id}/criar-video`, {
         method: "POST",
@@ -236,6 +245,8 @@ export default function ColetaShopeePage() {
       if (a.tipo !== "VIDEO" && b.tipo === "VIDEO") return 1;
       return 0;
     });
+
+  const firstProductMedia = videoColeta ? sortedMedia(videoColeta.linksMedia)[0] : null;
 
   const videoStatusColor = (status?: string) =>
     status === "COMPLETED" ? "success" : status === "RENDERING" ? "warning" : status === "FAILED" ? "error" : "default";
@@ -643,6 +654,28 @@ export default function ColetaShopeePage() {
             </div>
           )}
 
+          <Box
+            sx={{
+              border: "1px solid rgba(124,58,237,0.22)",
+              borderRadius: 2,
+              p: 2,
+              bgcolor: "rgba(124,58,237,0.06)",
+            }}
+          >
+            <Typography variant="subtitle2" className="text-violet-300 font-semibold mb-2">
+              Ordem da composicao
+            </Typography>
+            <Typography variant="body2" className="text-slate-300">
+              1. O video/imagens do produto ficam no fundo.
+            </Typography>
+            <Typography variant="body2" className="text-slate-300">
+              2. O seu video fica por cima, no canto inferior direito.
+            </Typography>
+            <Typography variant="body2" className="text-slate-300">
+              3. O audio final vem do seu video de reacao.
+            </Typography>
+          </Box>
+
           <div>
             <Typography variant="subtitle2" className="text-violet-300 font-semibold mb-3">
               Seu video de reacao
@@ -687,6 +720,83 @@ export default function ColetaShopeePage() {
               </div>
             )}
           </div>
+
+          <Box className="space-y-3">
+            <Typography variant="subtitle2" className="text-violet-300 font-semibold">
+              Posicionamento do seu video
+            </Typography>
+
+            <Box
+              sx={{
+                position: "relative",
+                height: 220,
+                borderRadius: 2,
+                overflow: "hidden",
+                border: "1px solid rgba(255,255,255,0.1)",
+                bgcolor: "#020617",
+              }}
+            >
+              {firstProductMedia?.tipo === "VIDEO" ? (
+                <video src={firstProductMedia.urlMinio} className="w-full h-full object-cover opacity-70" muted />
+              ) : firstProductMedia ? (
+                <img src={firstProductMedia.urlMinio} alt="" className="w-full h-full object-cover opacity-70" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-500 text-sm">
+                  Fundo do produto
+                </div>
+              )}
+
+              <Box
+                sx={{
+                  position: "absolute",
+                  right: 16,
+                  bottom: 16,
+                  width: 82,
+                  height: 82,
+                  borderRadius: `${Number(pipRadius) || 20}px`,
+                  overflow: "hidden",
+                  border: "2px solid rgba(255,255,255,0.85)",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+                  bgcolor: "#111827",
+                }}
+              >
+                {reactionPreview ? (
+                  <video src={reactionPreview} className="w-full h-full object-cover" muted />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-300 text-center px-2">
+                    Seu video aqui
+                  </div>
+                )}
+              </Box>
+            </Box>
+
+            <div className="grid grid-cols-3 gap-3">
+              <TextField
+                fullWidth
+                size="small"
+                label="Tamanho"
+                value={pipFraction}
+                onChange={(e) => setPipFraction(e.target.value)}
+                helperText="0.30 = 30%"
+              />
+              <TextField
+                fullWidth
+                size="small"
+                label="Margem"
+                value={pipMargin}
+                onChange={(e) => setPipMargin(e.target.value)}
+                helperText="px"
+              />
+              <TextField
+                fullWidth
+                size="small"
+                label="Borda arred."
+                value={pipRadius}
+                onChange={(e) => setPipRadius(e.target.value)}
+                helperText="px"
+              />
+            </div>
+          </Box>
 
           {generateError && (
             <Box sx={{ bgcolor: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 2, p: 2 }}>
