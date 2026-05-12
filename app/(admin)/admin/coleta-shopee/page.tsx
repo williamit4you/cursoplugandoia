@@ -564,6 +564,7 @@ export default function ColetaShopeePage() {
               color: "#e2e8f0",
               borderRadius: 3,
               maxHeight: "94vh",
+              height: "94vh",
               overflow: "hidden",
               boxShadow: "0 24px 80px rgba(2,6,23,0.65)",
             },
@@ -604,14 +605,33 @@ export default function ColetaShopeePage() {
           )}
         </Box>
 
-        <DialogContent sx={{ p: 0, overflow: "hidden", bgcolor: "#08111f" }}>
+        <DialogContent
+          sx={{
+            p: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+            bgcolor: "#08111f",
+            flex: 1,
+            "&::-webkit-scrollbar": {
+              width: 12,
+            },
+            "&::-webkit-scrollbar-thumb": {
+              background: "rgba(99,102,241,0.45)",
+              borderRadius: 999,
+              border: "3px solid rgba(8,17,31,1)",
+            },
+            "&::-webkit-scrollbar-track": {
+              background: "rgba(15,23,42,0.6)",
+            },
+          }}
+        >
           {selectedColeta && (
             <div
               style={{
                 display: "grid",
                 gridTemplateColumns: "minmax(0, 1.08fr) minmax(380px, 0.92fr)",
-                minHeight: 0,
-                maxHeight: "calc(94vh - 148px)",
+                minHeight: "100%",
+                alignItems: "start",
               }}
             >
               <Box
@@ -622,7 +642,7 @@ export default function ColetaShopeePage() {
                   flexDirection: "column",
                   gap: 2,
                   borderRight: "1px solid rgba(255,255,255,0.07)",
-                  minHeight: 0,
+                  minHeight: "100%",
                 }}
               >
                 <Box
@@ -728,7 +748,7 @@ export default function ColetaShopeePage() {
                   display: "flex",
                   flexDirection: "column",
                   gap: 2,
-                  minHeight: 0,
+                  minHeight: "100%",
                   bgcolor: "rgba(2,6,23,0.42)",
                 }}
               >
@@ -880,15 +900,20 @@ export default function ColetaShopeePage() {
                       display: "grid",
                       gridTemplateColumns: "1fr 1fr",
                       gap: 1.5,
-                      maxHeight: 560,
+                      maxHeight: 720,
+                      minHeight: 280,
                       overflowY: "auto",
                       pr: 0.5,
                       "&::-webkit-scrollbar": {
-                        width: 8,
+                        width: 12,
                       },
                       "&::-webkit-scrollbar-thumb": {
-                        background: "rgba(99,102,241,0.35)",
+                        background: "rgba(99,102,241,0.45)",
                         borderRadius: 999,
+                        border: "3px solid rgba(8,17,31,1)",
+                      },
+                      "&::-webkit-scrollbar-track": {
+                        background: "rgba(15,23,42,0.6)",
                       },
                     }}
                   >
