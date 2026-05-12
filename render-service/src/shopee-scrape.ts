@@ -374,7 +374,7 @@ async function firstExistingExecutable(): Promise<string> {
   throw new Error("Chrome/Chromium nao encontrado. Verifique PUPPETEER_EXECUTABLE_PATH ou REMOTION_CHROME_BIN.");
 }
 
-async function uploadToMinio(fileBuffer: Buffer, key: string, contentType: string): Promise<string> {
+export async function uploadToMinio(fileBuffer: Buffer, key: string, contentType: string): Promise<string> {
   const { S3Client, PutObjectCommand } = dynamicRequire("@aws-sdk/client-s3");
   const endpoint = process.env.MINIO_INTERNAL_ENDPOINT || process.env.MINIO_ENDPOINT;
   const publicUrl = process.env.MINIO_PUBLIC_URL;
@@ -406,7 +406,7 @@ async function uploadToMinio(fileBuffer: Buffer, key: string, contentType: strin
   return `${publicUrl.replace(/\/+$/, "")}/${key}`;
 }
 
-async function generateSalesScript(titulo: string, descricao: string, detalhes: string): Promise<string> {
+export async function generateSalesScript(titulo: string, descricao: string, detalhes: string): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return "";
 

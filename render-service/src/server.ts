@@ -7,7 +7,7 @@ import fs from "fs/promises";
 import { PutObjectCommand, HeadBucketCommand, CreateBucketCommand, PutBucketPolicyCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "./s3";
 import { shopeeBrowserSearch } from "./shopee-search";
-import { scrapeShopeeProduct } from "./shopee-scrape";
+import { scrapeShopeeProduct, uploadToMinio, generateSalesScript } from "./shopee-scrape";
 import { mercadoLivreBrowserImages, mercadoLivreBrowserSearch } from "./mercadolivre-search";
 
 type RenderRequest = {
@@ -269,31 +269,93 @@ const server = http.createServer(async (req, res) => {
       const workerBase = (process.env.WORKER_FASTAPI_BASE_URL || "").replace(/\/+$/, "");
       if (workerBase) {
         try {
-          console.log(`[render-service][shopee/scrape] Trying Python worker (curl_cffi): ${workerBase}/scraping-shopee`);
+          console.log(`[render-service][shopee/scrape] Trying Python worker (curl_cffi raw): ${workerBase}/scraping-shopee-raw`);
           const form = new FormData();
           form.set("url", payload.url);
-          const workerRes = await fetch(`${workerBase}/scraping-shopee`, {
+          const workerRes = await fetch(`${workerBase}/scraping-shopee-raw`, {
             method: "POST",
             body: form as any,
-            signal: AbortSignal.timeout(90000),
+            signal: AbortSignal.timeout(60000),
           });
           if (workerRes.ok) {
-            const data = await workerRes.json();
-            if (data?.titulo && (data?.linksMedia?.length ?? 0) > 0) {
-              console.log(`[render-service][shopee/scrape] Worker Python OK: ${data.titulo}`);
-              return json(res, 200, data);
+            const raw = await workerRes.json() as {
+              titulo?: string;
+              descricao?: string;
+              videoRawUrl?: string | null;
+              imageRawUrls?: string[];
+            };
+
+            const titulo = raw?.titulo || "";
+            const videoRawUrl = raw?.videoRawUrl || null;
+            const imageRawUrls = Array.isArray(raw?.imageRawUrls) ? raw.imageRawUrls : [];
+
+            console.log(`[render-service][shopee/scrape] curl_cffi found: title="${titulo}" video=${!!videoRawUrl} images=${imageRawUrls.length}`);
+
+            if (titulo && (videoRawUrl || imageRawUrls.length > 0)) {
+              // Worker found media — now upload everything to MinIO using render-service credentials
+              const ts = Date.now();
+              const linksMedia: Array<{ tipo: "IMAGE" | "VIDEO"; url: string }> = [];
+
+              // Upload images
+              for (let i = 0; i < Math.min(5, imageRawUrls.length); i++) {
+                try {
+                  const imgRes = await fetch(imageRawUrls[i], { signal: AbortSignal.timeout(20000) });
+                  if (imgRes.ok) {
+                    const buf = Buffer.from(await imgRes.arrayBuffer());
+                    const ct = imgRes.headers.get("content-type") || "";
+                    const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
+                    const minioUrl = await uploadToMinio(buf, `shopee/images/shopee_img_${ts}_${i}.${ext}`, `image/${ext}`);
+                    linksMedia.push({ tipo: "IMAGE", url: minioUrl });
+                    console.log(`[render-service][shopee/scrape] Imagem ${i + 1} enviada: ${minioUrl}`);
+                  }
+                } catch (e: any) {
+                  console.warn(`[render-service][shopee/scrape] Erro imagem ${i}:`, e?.message);
+                }
+              }
+
+              // Upload video
+              if (videoRawUrl) {
+                try {
+                  const vidRes = await fetch(videoRawUrl, {
+                    headers: { referer: "https://shopee.com.br/" },
+                    signal: AbortSignal.timeout(90000),
+                  });
+                  if (vidRes.ok) {
+                    const buf = Buffer.from(await vidRes.arrayBuffer());
+                    const minioUrl = await uploadToMinio(buf, `shopee/videos/shopee_vid_${ts}.mp4`, "video/mp4");
+                    linksMedia.push({ tipo: "VIDEO", url: minioUrl });
+                    console.log(`[render-service][shopee/scrape] Vídeo enviado: ${minioUrl}`);
+                  }
+                } catch (e: any) {
+                  console.warn(`[render-service][shopee/scrape] Erro vídeo:`, e?.message);
+                }
+              }
+
+              if (linksMedia.length > 0) {
+                // Generate AI sales script
+                const aiPromptVendas = await generateSalesScript(titulo, raw?.descricao || "", "");
+                return json(res, 200, {
+                  titulo,
+                  descricao: raw?.descricao || "",
+                  detalhes: "",
+                  aiPromptVendas,
+                  linksMedia,
+                });
+              }
+              console.warn(`[render-service][shopee/scrape] MinIO upload falhou para todas as mídias, tentando Puppeteer.`);
+            } else {
+              console.warn(`[render-service][shopee/scrape] Worker não encontrou título/mídia (título="${titulo}"), tentando Puppeteer.`);
             }
-            console.warn(`[render-service][shopee/scrape] Worker Python returned insufficient data, falling back to Puppeteer.`);
           } else {
-            console.warn(`[render-service][shopee/scrape] Worker Python returned HTTP ${workerRes.status}, falling back to Puppeteer.`);
+            console.warn(`[render-service][shopee/scrape] Worker retornou HTTP ${workerRes.status}, tentando Puppeteer.`);
           }
         } catch (workerErr: any) {
-          console.warn(`[render-service][shopee/scrape] Worker Python unreachable (${workerErr?.message}), falling back to Puppeteer.`);
+          console.warn(`[render-service][shopee/scrape] Worker inacessível (${workerErr?.message}), tentando Puppeteer.`);
         }
       }
 
       // Strategy 2: Fallback to Puppeteer (may be blocked by Datadome in cloud)
-      console.log(`[render-service][shopee/scrape] Trying Puppeteer fallback...`);
+      console.log(`[render-service][shopee/scrape] Tentando Puppeteer como fallback...`);
       const result = await scrapeShopeeProduct(payload.url);
       return json(res, 200, result);
     } catch (error: any) {
