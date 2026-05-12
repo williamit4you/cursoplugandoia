@@ -79,6 +79,7 @@ export default function ColetaShopeePage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+  const [videoMsg, setVideoMsg] = useState<string | null>(null);
   const [pipFraction, setPipFraction] = useState("0.30");
   const [pipMargin, setPipMargin] = useState("30");
   const [pipRadius, setPipRadius] = useState("20");
@@ -101,6 +102,30 @@ export default function ColetaShopeePage() {
   useEffect(() => {
     loadColetas();
   }, []);
+
+  useEffect(() => {
+    const hasRunningJobs = coletas.some((item) => item.status === "SCRAPING" || item.videoStatus === "RENDERING");
+    if (!hasRunningJobs) return;
+
+    const intervalId = window.setInterval(() => {
+      loadColetas();
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [coletas]);
+
+  useEffect(() => {
+    if (!selectedColeta) return;
+    const fresh = coletas.find((item) => item.id === selectedColeta.id);
+    if (!fresh) return;
+    setSelectedColeta(fresh);
+    setEditFields((prev) => ({
+      titulo: fresh.titulo ?? prev.titulo,
+      descricao: fresh.descricao ?? prev.descricao,
+      detalhes: fresh.detalhes ?? prev.detalhes,
+      aiPromptVendas: fresh.aiPromptVendas ?? prev.aiPromptVendas,
+    }));
+  }, [coletas, selectedColeta]);
 
   const handleAddUrl = async () => {
     if (!url) return;
@@ -194,6 +219,7 @@ export default function ColetaShopeePage() {
     setReactionPreview(null);
     setGenerateError(null);
     setGeneratedUrl(coleta.videoFinalUrl || null);
+    setVideoMsg(null);
     setPipFraction("0.30");
     setPipMargin("30");
     setPipRadius("20");
@@ -213,7 +239,7 @@ export default function ColetaShopeePage() {
     if (!reactionFile || !videoColeta) return;
     setIsGenerating(true);
     setGenerateError(null);
-    setGeneratedUrl(null);
+    setVideoMsg(null);
 
     try {
       const form = new FormData();
@@ -229,9 +255,10 @@ export default function ColetaShopeePage() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Falha ao gerar video.");
-
-      setGeneratedUrl(data.videoUrl);
+      setVideoMsg("Geracao iniciada em segundo plano. Voce pode fechar esta janela.");
+      setVideoColeta((prev) => (prev ? { ...prev, videoStatus: "RENDERING" } : prev));
       await loadColetas();
+      window.setTimeout(() => setVideoModalOpen(false), 700);
     } catch (error: any) {
       setGenerateError(error.message || "Falha ao gerar video.");
     } finally {
@@ -247,9 +274,19 @@ export default function ColetaShopeePage() {
     });
 
   const firstProductMedia = videoColeta ? sortedMedia(videoColeta.linksMedia)[0] : null;
+  const selectedVideoMedia = selectedColeta?.linksMedia ? sortedMedia(selectedColeta.linksMedia).find((item) => item.tipo === "VIDEO") || null : null;
 
   const videoStatusColor = (status?: string) =>
     status === "COMPLETED" ? "success" : status === "RENDERING" ? "warning" : status === "FAILED" ? "error" : "default";
+
+  const fieldSx = {
+    "& .MuiInputBase-root": {
+      backgroundColor: "rgba(15,23,42,0.68)",
+      color: "#e2e8f0",
+    },
+    "& .MuiInputLabel-root": { color: "#94a3b8" },
+    "& .MuiInputLabel-root.Mui-focused": { color: "#a5b4fc" },
+  };
 
   return (
     <Box className="space-y-6">
@@ -381,21 +418,21 @@ export default function ColetaShopeePage() {
                     {coleta.linksMedia?.length || 0} midias
                   </TableCell>
                   <TableCell className="border-white/10">
-                    {coleta.videoStatus && (
+                    <div className="flex items-center gap-2">
                       <Chip
                         size="small"
-                        label={coleta.videoStatus}
-                        variant="outlined"
+                        label={coleta.videoStatus || "PENDENTE"}
+                        variant={coleta.videoFinalUrl ? "filled" : "outlined"}
                         color={videoStatusColor(coleta.videoStatus)}
                       />
-                    )}
-                    {coleta.videoFinalUrl && (
-                      <Tooltip title="Assistir video gerado">
-                        <IconButton size="small" href={coleta.videoFinalUrl} target="_blank" className="text-green-400 ml-1">
-                          <OpenInNewIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
+                      {coleta.videoFinalUrl && (
+                        <Tooltip title="Assistir video gerado">
+                          <IconButton size="small" href={coleta.videoFinalUrl} target="_blank" className="text-green-400">
+                            <OpenInNewIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="border-white/10 text-right">
                     <div className="flex gap-2 justify-end">
@@ -501,6 +538,26 @@ export default function ColetaShopeePage() {
                   borderRight: "1px solid rgba(255,255,255,0.07)",
                 }}
               >
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                    gap: 1.5,
+                  }}
+                >
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)" }}>
+                    <Typography variant="caption" sx={{ color: "#94a3b8" }}>Status da coleta</Typography>
+                    <Typography variant="body2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>{selectedColeta.status}</Typography>
+                  </Box>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.18)" }}>
+                    <Typography variant="caption" sx={{ color: "#94a3b8" }}>Video TikTok</Typography>
+                    <Typography variant="body2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>{selectedColeta.videoStatus || "PENDENTE"}</Typography>
+                  </Box>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <Typography variant="caption" sx={{ color: "#94a3b8" }}>Arquivos</Typography>
+                    <Typography variant="body2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>{selectedColeta.linksMedia?.length || 0}</Typography>
+                  </Box>
+                </Box>
                 <TextField
                   fullWidth
                   label="Titulo do Produto"
@@ -508,6 +565,7 @@ export default function ColetaShopeePage() {
                   size="small"
                   value={editFields.titulo}
                   onChange={(e) => setEditFields((prev) => ({ ...prev, titulo: e.target.value }))}
+                  sx={fieldSx}
                 />
                 <TextField
                   fullWidth
@@ -518,6 +576,7 @@ export default function ColetaShopeePage() {
                   size="small"
                   value={editFields.descricao}
                   onChange={(e) => setEditFields((prev) => ({ ...prev, descricao: e.target.value }))}
+                  sx={fieldSx}
                 />
                 <TextField
                   fullWidth
@@ -528,6 +587,7 @@ export default function ColetaShopeePage() {
                   size="small"
                   value={editFields.detalhes}
                   onChange={(e) => setEditFields((prev) => ({ ...prev, detalhes: e.target.value }))}
+                  sx={fieldSx}
                 />
                 <TextField
                   fullWidth
@@ -538,6 +598,7 @@ export default function ColetaShopeePage() {
                   size="small"
                   value={editFields.aiPromptVendas}
                   onChange={(e) => setEditFields((prev) => ({ ...prev, aiPromptVendas: e.target.value }))}
+                  sx={fieldSx}
                 />
                 {saveMsg && (
                   <Typography variant="body2" sx={{ color: saveMsg.includes("sucesso") ? "#4ade80" : "#f87171" }}>
@@ -547,6 +608,49 @@ export default function ColetaShopeePage() {
               </Box>
 
               <Box sx={{ flex: "0 0 45%", p: 3, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
+                <Box
+                  sx={{
+                    borderRadius: 2,
+                    overflow: "hidden",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    bgcolor: "rgba(2,6,23,0.85)",
+                  }}
+                >
+                  <Box sx={{ p: 1.5, borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      <Typography variant="caption" sx={{ color: "#94a3b8", letterSpacing: 1, textTransform: "uppercase" }}>
+                        Video TikTok
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>
+                        {selectedColeta.videoFinalUrl ? "Video pronto para assistir" : selectedColeta.videoStatus === "RENDERING" ? "Gerando em segundo plano" : "Ainda nao gerado"}
+                      </Typography>
+                    </div>
+                    <Chip size="small" label={selectedColeta.videoStatus || "PENDENTE"} color={videoStatusColor(selectedColeta.videoStatus)} />
+                  </Box>
+
+                  {selectedColeta.videoFinalUrl ? (
+                    <Box sx={{ p: 1.5 }}>
+                      <video src={selectedColeta.videoFinalUrl} controls style={{ width: "100%", borderRadius: 12, background: "#000" }} />
+                      <div className="flex gap-2 mt-3">
+                        <Button variant="contained" href={selectedColeta.videoFinalUrl} target="_blank" startIcon={<OpenInNewIcon />} sx={{ bgcolor: "#22c55e", "&:hover": { bgcolor: "#16a34a" } }}>
+                          Assistir
+                        </Button>
+                        <Button variant="outlined" href={selectedColeta.videoFinalUrl} target="_blank" sx={{ borderColor: "rgba(255,255,255,0.14)", color: "#e2e8f0" }}>
+                          Baixar
+                        </Button>
+                      </div>
+                    </Box>
+                  ) : (
+                    <Box sx={{ p: 2, color: "#94a3b8" }}>
+                      <Typography variant="body2">
+                        {selectedColeta.videoStatus === "RENDERING"
+                          ? "A geracao continua mesmo com a tela fechada. Assim que terminar, o video aparece aqui automaticamente."
+                          : "Use o botao de video na lista para iniciar a geracao em segundo plano."}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+
                 <Box className="flex items-center justify-between">
                   <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase" }}>
                     Midias Coletadas
@@ -806,6 +910,14 @@ export default function ColetaShopeePage() {
             </Box>
           )}
 
+          {videoMsg && (
+            <Box sx={{ bgcolor: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 2, p: 2 }}>
+              <Typography variant="body2" className="text-green-400">
+                {videoMsg}
+              </Typography>
+            </Box>
+          )}
+
           {generatedUrl && !isGenerating && (
             <Box sx={{ bgcolor: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 2, p: 2 }}>
               <div className="flex items-center gap-2 mb-2">
@@ -830,7 +942,7 @@ export default function ColetaShopeePage() {
           {isGenerating && (
             <Box>
               <Typography variant="caption" className="text-violet-300 block mb-2">
-                Gerando video...
+                Enviando para fila de geracao...
               </Typography>
               <LinearProgress sx={{ borderRadius: 1, "& .MuiLinearProgress-bar": { bgcolor: "#7c3aed" } }} />
             </Box>
@@ -843,12 +955,12 @@ export default function ColetaShopeePage() {
           </Button>
           <Button
             variant="contained"
-            disabled={!reactionFile || isGenerating}
+            disabled={!reactionFile || isGenerating || videoColeta?.videoStatus === "RENDERING"}
             onClick={handleGenerateVideo}
             startIcon={isGenerating ? <CircularProgress size={18} color="inherit" /> : <MovieIcon />}
             sx={{ bgcolor: "#7c3aed", "&:hover": { bgcolor: "#6d28d9" }, "&:disabled": { bgcolor: "rgba(124,58,237,0.3)" } }}
           >
-            {isGenerating ? "Gerando..." : "Criar Video TikTok"}
+            {videoColeta?.videoStatus === "RENDERING" ? "Gerando em segundo plano" : isGenerating ? "Enfileirando..." : "Criar Video TikTok"}
           </Button>
         </DialogActions>
       </Dialog>

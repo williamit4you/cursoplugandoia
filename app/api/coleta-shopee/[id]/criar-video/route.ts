@@ -2,11 +2,141 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import s3Client from "@/lib/s3";
+import { Agent } from "undici";
+
+const workerHttpAgent = new Agent({
+  headersTimeout: 600_000,
+  bodyTimeout: 600_000,
+  connectTimeout: 30_000,
+});
+
+type ColetaMedia = {
+  id: string;
+  tipo: string;
+  urlMinio: string;
+};
+
+async function processTikTokVideoJob(params: {
+  coletaId: string;
+  linksMedia: ColetaMedia[];
+  reactionBuffer: Buffer;
+  reactionName: string;
+  reactionType: string;
+  pipFraction: string | null;
+  pipMargin: string | null;
+  pipRadius: string | null;
+}) {
+  const {
+    coletaId,
+    linksMedia,
+    reactionBuffer,
+    reactionName,
+    reactionType,
+    pipFraction,
+    pipMargin,
+    pipRadius,
+  } = params;
+
+  const workerForm = new FormData();
+  workerForm.append("coleta_id", coletaId);
+  workerForm.append("media_urls", JSON.stringify(linksMedia));
+  workerForm.append("reaction_video", new Blob([reactionBuffer], { type: reactionType || "video/mp4" }), reactionName);
+  workerForm.append("upload_mode", "external");
+  if (pipFraction) workerForm.append("pip_fraction", pipFraction);
+  if (pipMargin) workerForm.append("pip_margin", pipMargin);
+  if (pipRadius) workerForm.append("pip_radius", pipRadius);
+
+  const baseUrl = (process.env.WORKER_FASTAPI_BASE_URL || process.env.FASTAPI_URL || "http://127.0.0.1:8000")
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/gerar-video$/, "");
+
+  const targetUrl = `${baseUrl}/gerar-video-tiktok`;
+  const startedAt = Date.now();
+
+  console.log("[criar-video][job] start", {
+    coletaId,
+    targetUrl,
+    mediaCount: linksMedia.length,
+    reactionName,
+    reactionSize: reactionBuffer.length,
+    pipFraction,
+    pipMargin,
+    pipRadius,
+  });
+
+  const workerRes = await fetch(targetUrl, {
+    method: "POST",
+    body: workerForm,
+    dispatcher: workerHttpAgent,
+    signal: AbortSignal.timeout(600_000),
+  });
+
+  console.log("[criar-video][job] worker response", {
+    coletaId,
+    status: workerRes.status,
+    ok: workerRes.ok,
+    elapsedMs: Date.now() - startedAt,
+  });
+
+  if (!workerRes.ok) {
+    const errText = await workerRes.text();
+    throw new Error(`Worker retornou ${workerRes.status}: ${errText}`);
+  }
+
+  const responseContentType = workerRes.headers.get("content-type") || "";
+  let videoUrl = "";
+
+  if (/video\/mp4/i.test(responseContentType)) {
+    const videoBuffer = Buffer.from(await workerRes.arrayBuffer());
+    const bucketName = process.env.MINIO_BUCKET_NAME || "uploads";
+    const minioKey = `shopee/videos-tiktok/tiktok_${coletaId}_${Date.now()}.mp4`;
+
+    console.log("[criar-video][job] uploading via next/minio", {
+      coletaId,
+      elapsedMs: Date.now() - startedAt,
+      bytes: videoBuffer.length,
+      bucketName,
+      minioKey,
+    });
+
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucketName,
+        Key: minioKey,
+        Body: videoBuffer,
+        ContentType: "video/mp4",
+      })
+    );
+
+    const publicBase = String(process.env.MINIO_PUBLIC_URL || "").replace(/\/+$/, "");
+    if (!publicBase) throw new Error("MINIO_PUBLIC_URL not configured");
+    videoUrl = `${publicBase}/${minioKey}`;
+  } else {
+    const result = await workerRes.json();
+    videoUrl = String(result.videoUrl || "").trim();
+    if (!videoUrl) throw new Error("Worker retornou sucesso sem videoUrl.");
+  }
+
+  await prisma.coletaDadosShoppe.update({
+    where: { id: coletaId },
+    data: {
+      videoFinalUrl: videoUrl,
+      videoStatus: "COMPLETED",
+      errorMessage: null,
+    },
+  });
+
+  console.log("[criar-video][job] success", {
+    coletaId,
+    elapsedMs: Date.now() - startedAt,
+    videoUrl,
+  });
+}
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const { id } = params;
 
-  // 1. Buscar coleta + mídias no DB
   const coleta = await prisma.coletaDadosShoppe.findUnique({
     where: { id },
     include: { linksMedia: true },
@@ -17,19 +147,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   if (!coleta.linksMedia || coleta.linksMedia.length === 0) {
-    return NextResponse.json(
-      { error: "Nenhuma mídia coletada. Execute o scraping primeiro." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Nenhuma mídia coletada. Execute o scraping primeiro." }, { status: 400 });
   }
 
-  // 2. Extrair o vídeo de reação do multipart recebido
   const contentType = req.headers.get("content-type") || "";
   if (!contentType.includes("multipart/form-data")) {
-    return NextResponse.json(
-      { error: "Envie o vídeo de reação via multipart/form-data." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Envie o vídeo de reação via multipart/form-data." }, { status: 400 });
   }
 
   let formData: FormData;
@@ -41,143 +164,63 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const reactionFile = formData.get("reaction_video") as File | null;
   if (!reactionFile) {
-    return NextResponse.json(
-      { error: "Campo 'reaction_video' obrigatório." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Campo 'reaction_video' obrigatório." }, { status: 400 });
   }
 
-  // 3. Marcar como "em renderização" no DB
+  const reactionBuffer = Buffer.from(await reactionFile.arrayBuffer());
+  const pipFraction = formData.get("pip_fraction");
+  const pipMargin = formData.get("pip_margin");
+  const pipRadius = formData.get("pip_radius");
+
   await prisma.coletaDadosShoppe.update({
     where: { id },
-    data: { videoStatus: "RENDERING" },
+    data: {
+      videoStatus: "RENDERING",
+      errorMessage: null,
+    },
   });
 
-  // 4. Montar multipart para o Python Worker
-  const workerForm = new FormData();
-  workerForm.append("coleta_id", id);
-  workerForm.append("media_urls", JSON.stringify(coleta.linksMedia));
-  workerForm.append("reaction_video", reactionFile, reactionFile.name);
-  workerForm.append("upload_mode", "external");
-
-  // Opções opcionais vindas do frontend
-  const pipFraction = formData.get("pip_fraction");
-  const pipMargin   = formData.get("pip_margin");
-  const pipRadius   = formData.get("pip_radius");
-  if (pipFraction) workerForm.append("pip_fraction", String(pipFraction));
-  if (pipMargin)   workerForm.append("pip_margin",   String(pipMargin));
-  if (pipRadius)   workerForm.append("pip_radius",   String(pipRadius));
-
-  try {
-    const baseUrl = (process.env.WORKER_FASTAPI_BASE_URL || process.env.FASTAPI_URL || "http://127.0.0.1:8000")
-      .trim()
-      .replace(/\/+$/, "")
-      .replace(/\/gerar-video$/, "");
-    
-    const targetUrl = `${baseUrl}/gerar-video-tiktok`;
-    const startedAt = Date.now();
-    console.log("[criar-video] start", {
-      coletaId: id,
-      targetUrl,
-      mediaCount: coleta.linksMedia.length,
-      reactionName: reactionFile.name,
-      reactionSize: reactionFile.size,
-      pipFraction: pipFraction ? String(pipFraction) : null,
-      pipMargin: pipMargin ? String(pipMargin) : null,
-      pipRadius: pipRadius ? String(pipRadius) : null,
-    });
-
-    const workerRes = await fetch(targetUrl, {
-      method: "POST",
-      body: workerForm,
-      signal: AbortSignal.timeout(600_000), // 10 min
-    });
-
-    console.log("[criar-video] worker response", {
-      coletaId: id,
-      status: workerRes.status,
-      ok: workerRes.ok,
-      elapsedMs: Date.now() - startedAt,
-    });
-
-    if (!workerRes.ok) {
-      const errText = await workerRes.text();
-      console.error("[criar-video] worker error body", {
-        coletaId: id,
-        elapsedMs: Date.now() - startedAt,
-        body: errText,
-      });
-      throw new Error(`Worker retornou ${workerRes.status}: ${errText}`);
-    }
-
-    const responseContentType = workerRes.headers.get("content-type") || "";
-    let videoUrl = "";
-
-    if (/video\/mp4/i.test(responseContentType)) {
-      const videoBuffer = Buffer.from(await workerRes.arrayBuffer());
-      const bucketName = process.env.MINIO_BUCKET_NAME || "uploads";
-      const minioKey = `shopee/videos-tiktok/tiktok_${id}_${Date.now()}.mp4`;
-
-      console.log("[criar-video] uploading via next/minio", {
-        coletaId: id,
-        elapsedMs: Date.now() - startedAt,
-        contentType: responseContentType,
-        bytes: videoBuffer.length,
-        bucketName,
-        minioKey,
-      });
-
-      await s3Client.send(
-        new PutObjectCommand({
-          Bucket: bucketName,
-          Key: minioKey,
-          Body: videoBuffer,
-          ContentType: "video/mp4",
-        })
-      );
-
-      const publicBase = String(process.env.MINIO_PUBLIC_URL || "").replace(/\/+$/, "");
-      if (!publicBase) throw new Error("MINIO_PUBLIC_URL not configured");
-      videoUrl = `${publicBase}/${minioKey}`;
-    } else {
-      const result = await workerRes.json();
-      videoUrl = String(result.videoUrl || "").trim();
-      if (!videoUrl) throw new Error("Worker retornou sucesso sem videoUrl.");
-    }
-
-    console.log("[criar-video] success", { coletaId: id, elapsedMs: Date.now() - startedAt, videoUrl });
-
-    // 5. Persistir URL no DB
-    const updated = await prisma.coletaDadosShoppe.update({
-      where: { id },
-      data: {
-        videoFinalUrl: videoUrl,
-        videoStatus: "COMPLETED",
-      },
-      include: { linksMedia: true },
-    });
-
-    return NextResponse.json({ ok: true, videoUrl, coleta: updated });
-  } catch (error: any) {
-    console.error("[criar-video] Erro detalhado:", {
+  void processTikTokVideoJob({
+    coletaId: id,
+    linksMedia: coleta.linksMedia,
+    reactionBuffer,
+    reactionName: reactionFile.name,
+    reactionType: reactionFile.type,
+    pipFraction: pipFraction ? String(pipFraction) : null,
+    pipMargin: pipMargin ? String(pipMargin) : null,
+    pipRadius: pipRadius ? String(pipRadius) : null,
+  }).catch(async (error: any) => {
+    console.error("[criar-video][job] Erro detalhado:", {
       coletaId: id,
       message: error?.message || null,
       stack: error?.stack || null,
-      cause: error?.cause ? {
-        message: error.cause.message || null,
-        code: error.cause.code || null,
-        name: error.cause.name || null,
-      } : null,
+      cause: error?.cause
+        ? {
+            message: error.cause.message || null,
+            code: error.cause.code || null,
+            name: error.cause.name || null,
+          }
+        : null,
     });
 
-    await prisma.coletaDadosShoppe.update({
-      where: { id },
-      data: { videoStatus: "FAILED" },
-    });
+    await prisma.coletaDadosShoppe
+      .update({
+        where: { id },
+        data: {
+          videoStatus: "FAILED",
+          errorMessage: error?.message || "Falha ao gerar vídeo.",
+        },
+      })
+      .catch(() => null);
+  });
 
-    return NextResponse.json(
-      { error: error.message || "Falha ao gerar vídeo." },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    {
+      ok: true,
+      queued: true,
+      coletaId: id,
+      videoStatus: "RENDERING",
+    },
+    { status: 202 }
+  );
 }

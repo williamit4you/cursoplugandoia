@@ -35,6 +35,7 @@
     "react-dom": "^18.2.0",
     "react-toastify": "^11.1.0",
     "recharts": "^3.8.1",
+    "undici": "^6.21.3",
     "uuid": "^14.0.0",
     "which": "^6.0.1"
   },
