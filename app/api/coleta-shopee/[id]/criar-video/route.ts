@@ -33,7 +33,8 @@ async function processTikTokVideoJob(params: {
   const workerForm = new FormData();
   workerForm.append("coleta_id", coletaId);
   workerForm.append("media_urls", JSON.stringify(linksMedia));
-  workerForm.append("reaction_video", new Blob([reactionBuffer], { type: reactionType || "video/mp4" }), reactionName);
+  const reactionBytes = new Uint8Array(reactionBuffer);
+  workerForm.append("reaction_video", new Blob([reactionBytes], { type: reactionType || "video/mp4" }), reactionName);
   workerForm.append("upload_mode", "external");
   if (pipFraction) workerForm.append("pip_fraction", pipFraction);
   if (pipMargin) workerForm.append("pip_margin", pipMargin);
