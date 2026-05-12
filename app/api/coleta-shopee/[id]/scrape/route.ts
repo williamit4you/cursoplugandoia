@@ -60,13 +60,31 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const data = await response.json();
 
+    const linksMedia = Array.isArray(data?.linksMedia)
+      ? data.linksMedia.filter((m: any) => m?.url && (m?.tipo === "IMAGE" || m?.tipo === "VIDEO"))
+      : [];
+
+    if (linksMedia.length === 0) {
+      throw new Error("Scraping nao retornou midias do HTML. Operacao cancelada.");
+    }
+
+    await prisma.coletaDadosShoppe.update({
+      where: { id: coleta.id },
+      data: {
+        linksMedia: {
+          deleteMany: {},
+          create: linksMedia.map((m: any) => ({
+            tipo: m.tipo,
+            urlMinio: m.url,
+          })),
+        },
+      },
+    });
+
     const titulo = String(data?.titulo || "").trim();
     const descricao = String(data?.descricao || "").trim();
     const detalhes = String(data?.detalhes || "").trim();
     const aiPromptVendas = String(data?.aiPromptVendas || "").trim();
-    const linksMedia = Array.isArray(data?.linksMedia)
-      ? data.linksMedia.filter((m: any) => m?.url && (m?.tipo === "IMAGE" || m?.tipo === "VIDEO"))
-      : [];
 
     const tituloNormalizado =
       titulo && titulo.toLowerCase() !== "shopee__domain"
@@ -93,19 +111,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         detalhes: detalhesNormalizados || null,
         aiPromptVendas: aiPromptVendas || null,
         status: "COMPLETED",
-        errorMessage:
-          linksMedia.length === 0
-            ? "Scraping salvo parcialmente: sem midias retornadas."
-            : !descricaoNormalizada && !detalhesNormalizados
-              ? "Scraping salvo parcialmente: sem descricao detalhada."
-              : null,
-        linksMedia: {
-          deleteMany: {},
-          create: linksMedia.map((m: any) => ({
-            tipo: m.tipo,
-            urlMinio: m.url,
-          })),
-        },
+        errorMessage: !descricaoNormalizada && !detalhesNormalizados
+          ? "Midias salvas. Produto sem descricao detalhada estruturada."
+          : !aiPromptVendas
+            ? "Midias e texto salvos. Copy de vendas nao retornou nesta tentativa."
+            : null,
       },
       include: { linksMedia: true },
     });

@@ -301,9 +301,49 @@ export default function ColetaShopeePage() {
     status === "COMPLETED" ? "success" : status === "RENDERING" ? "warning" : status === "FAILED" ? "error" : "default";
 
   const fieldSx = {
+    "& .MuiFormHelperText-root": {
+      color: "rgba(148,163,184,0.92)",
+      ml: 0,
+      mt: 0.75,
+    },
     "& .MuiInputBase-root": {
-      backgroundColor: "rgba(15,23,42,0.68)",
+      backgroundColor: "rgba(15,23,42,0.92)",
       color: "#e2e8f0",
+    },
+    "& .MuiFilledInput-root": {
+      backgroundColor: "rgba(15,23,42,0.92)",
+      border: "1px solid rgba(148,163,184,0.18)",
+      borderRadius: "14px",
+      overflow: "hidden",
+      "&:before, &:after": {
+        display: "none",
+      },
+      "&:hover": {
+        backgroundColor: "rgba(15,23,42,0.96)",
+      },
+      "&.Mui-focused": {
+        backgroundColor: "rgba(15,23,42,0.98)",
+        borderColor: "rgba(129,140,248,0.55)",
+        boxShadow: "0 0 0 3px rgba(99,102,241,0.12)",
+      },
+    },
+    "& .MuiInputBase-input": {
+      color: "#f8fafc !important",
+      WebkitTextFillColor: "#f8fafc",
+      fontWeight: 500,
+    },
+    "& .MuiInputBase-inputMultiline": {
+      color: "#f8fafc !important",
+      WebkitTextFillColor: "#f8fafc",
+      lineHeight: 1.55,
+    },
+    "& .MuiInputBase-input::placeholder": {
+      color: "rgba(148,163,184,0.95)",
+      opacity: 1,
+    },
+    "& textarea::placeholder": {
+      color: "rgba(148,163,184,0.95)",
+      opacity: 1,
     },
     "& .MuiInputLabel-root": { color: "#94a3b8" },
     "& .MuiInputLabel-root.Mui-focused": { color: "#a5b4fc" },
@@ -519,16 +559,26 @@ export default function ColetaShopeePage() {
         slotProps={{
           paper: {
             sx: {
-              bgcolor: "#0d1526",
+              bgcolor: "#08111f",
               border: "1px solid rgba(99,102,241,0.25)",
               color: "#e2e8f0",
-              borderRadius: 2,
-              maxHeight: "90vh",
+              borderRadius: 3,
+              maxHeight: "94vh",
+              overflow: "hidden",
+              boxShadow: "0 24px 80px rgba(2,6,23,0.65)",
             },
           },
         }}
       >
-        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid rgba(255,255,255,0.08)", bgcolor: "rgba(99,102,241,0.06)" }}>
+        <Box
+          sx={{
+            px: 3,
+            py: 2,
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            bgcolor: "linear-gradient(180deg, rgba(99,102,241,0.08), rgba(15,23,42,0.22))",
+            background: "linear-gradient(180deg, rgba(99,102,241,0.10), rgba(8,17,31,0.92))",
+          }}
+        >
           <Box className="flex items-center gap-2 mb-1">
             <EditIcon sx={{ color: "#818cf8", fontSize: 18 }} />
             <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#e2e8f0" }}>
@@ -554,18 +604,25 @@ export default function ColetaShopeePage() {
           )}
         </Box>
 
-        <DialogContent sx={{ p: 0, overflow: "hidden" }}>
+        <DialogContent sx={{ p: 0, overflow: "hidden", bgcolor: "#08111f" }}>
           {selectedColeta && (
-            <div style={{ display: "flex", flexDirection: "row", height: "100%", minHeight: 480 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1.08fr) minmax(380px, 0.92fr)",
+                minHeight: 0,
+                maxHeight: "calc(94vh - 148px)",
+              }}
+            >
               <Box
                 sx={{
-                  flex: "0 0 55%",
                   p: 3,
                   overflowY: "auto",
                   display: "flex",
                   flexDirection: "column",
                   gap: 2,
                   borderRight: "1px solid rgba(255,255,255,0.07)",
+                  minHeight: 0,
                 }}
               >
                 <Box
@@ -664,7 +721,17 @@ export default function ColetaShopeePage() {
                 )}
               </Box>
 
-              <Box sx={{ flex: "0 0 45%", p: 3, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
+              <Box
+                sx={{
+                  p: 3,
+                  overflowY: "auto",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                  minHeight: 0,
+                  bgcolor: "rgba(2,6,23,0.42)",
+                }}
+              >
                 <Box
                   sx={{
                     borderRadius: 2,
@@ -694,16 +761,17 @@ export default function ColetaShopeePage() {
                       </Button>
                     )}
                   </Box>
-                  <Box sx={{ p: 1.5 }}>
-                    <Box
-                      sx={{
-                        borderRadius: 2,
-                        overflow: "hidden",
-                        bgcolor: "#000",
-                        aspectRatio: "16 / 11",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                      }}
-                    >
+                    <Box sx={{ p: 1.5 }}>
+                      <Box
+                        sx={{
+                          borderRadius: 2,
+                          overflow: "hidden",
+                          bgcolor: "#000",
+                          aspectRatio: "16 / 11",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          boxShadow: "0 18px 45px rgba(0,0,0,0.35)",
+                        }}
+                      >
                       {selectedPreviewMedia ? (
                         selectedPreviewMedia.tipo === "VIDEO" ? (
                           <video src={selectedPreviewMedia.urlMinio} controls style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -807,7 +875,23 @@ export default function ColetaShopeePage() {
                     </Typography>
                   </Box>
                 ) : (
-                  <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 1.5,
+                      maxHeight: 560,
+                      overflowY: "auto",
+                      pr: 0.5,
+                      "&::-webkit-scrollbar": {
+                        width: 8,
+                      },
+                      "&::-webkit-scrollbar-thumb": {
+                        background: "rgba(99,102,241,0.35)",
+                        borderRadius: 999,
+                      },
+                    }}
+                  >
                     {sortedSelectedMedia.map((media, index) => (
                       <Box
                         key={media.id}
@@ -824,6 +908,10 @@ export default function ColetaShopeePage() {
                           bgcolor: "#000",
                           aspectRatio: "1 / 1",
                           cursor: "pointer",
+                          boxShadow:
+                            selectedPreviewMedia?.id === media.id
+                              ? "0 0 0 1px rgba(99,102,241,0.2), 0 18px 38px rgba(37,99,235,0.18)"
+                              : "0 10px 30px rgba(0,0,0,0.22)",
                         }}
                         onClick={() => setSelectedMediaId(media.id)}
                       >
@@ -892,7 +980,27 @@ export default function ColetaShopeePage() {
         onClose={() => !isGenerating && setVideoModalOpen(false)}
         maxWidth="sm"
         fullWidth
-        sx={{ "& .MuiDialog-paper": { bgcolor: "#0f172a", borderColor: "rgba(124,58,237,0.3)", color: "#e2e8f0", borderWidth: 1, borderStyle: "solid" } }}
+        sx={{
+          "& .MuiDialog-paper": {
+            bgcolor: "#08111f",
+            borderColor: "rgba(124,58,237,0.3)",
+            color: "#e2e8f0",
+            borderWidth: 1,
+            borderStyle: "solid",
+            borderRadius: 3,
+            boxShadow: "0 24px 80px rgba(2,6,23,0.65)",
+          },
+          "& .MuiInputBase-input": {
+            color: "#f8fafc !important",
+            WebkitTextFillColor: "#f8fafc",
+          },
+          "& .MuiInputLabel-root": {
+            color: "#94a3b8",
+          },
+          "& .MuiFormHelperText-root": {
+            color: "#94a3b8",
+          },
+        }}
       >
         <DialogTitle className="border-b border-white/10 flex items-center gap-2">
           <MovieIcon sx={{ color: "#7c3aed" }} />
