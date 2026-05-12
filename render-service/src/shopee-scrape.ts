@@ -595,11 +595,11 @@ export async function scrapeShopeeProduct(productUrl: string): Promise<ShopeeScr
     await browser.close();
   }
 
-  if (!titulo || (!descricao && !detalhes)) {
+  if (!titulo) {
     throw new Error("Scraping retornou dados insuficientes da Shopee.");
   }
   if (!videoUrl) {
-    throw new Error("Shopee nao retornou video do produto via item/get nem pela pagina.");
+    console.warn("[shopee-scrape] Nenhum video encontrado nesta pagina da Shopee.");
   }
 
   const linksMedia: ScrapedMedia[] = [];
@@ -651,7 +651,7 @@ export async function scrapeShopeeProduct(productUrl: string): Promise<ShopeeScr
   }
 
   if (!linksMedia.some((item) => item.tipo === "VIDEO")) {
-    throw new Error("A Shopee indicou um video, mas o download/upload para o MinIO falhou.");
+    console.warn("[shopee-scrape] Video nao foi possivel baixar/enviar para MinIO, retornando apenas imagens.");
   }
 
   console.log("[shopee-scrape] Gerando script de vendas com IA...");

@@ -265,6 +265,35 @@ const server = http.createServer(async (req, res) => {
       const payload = safeJsonParse(Buffer.concat(chunks).toString("utf8")) as { url?: string } | null;
       if (!payload?.url) return json(res, 400, { error: "url is required" });
 
+      // Strategy 1: Try Python worker first (curl_cffi – bypasses Datadome perfectly)
+      const workerBase = (process.env.WORKER_FASTAPI_BASE_URL || "").replace(/\/+$/, "");
+      if (workerBase) {
+        try {
+          console.log(`[render-service][shopee/scrape] Trying Python worker (curl_cffi): ${workerBase}/scraping-shopee`);
+          const form = new FormData();
+          form.set("url", payload.url);
+          const workerRes = await fetch(`${workerBase}/scraping-shopee`, {
+            method: "POST",
+            body: form as any,
+            signal: AbortSignal.timeout(90000),
+          });
+          if (workerRes.ok) {
+            const data = await workerRes.json();
+            if (data?.titulo && (data?.linksMedia?.length ?? 0) > 0) {
+              console.log(`[render-service][shopee/scrape] Worker Python OK: ${data.titulo}`);
+              return json(res, 200, data);
+            }
+            console.warn(`[render-service][shopee/scrape] Worker Python returned insufficient data, falling back to Puppeteer.`);
+          } else {
+            console.warn(`[render-service][shopee/scrape] Worker Python returned HTTP ${workerRes.status}, falling back to Puppeteer.`);
+          }
+        } catch (workerErr: any) {
+          console.warn(`[render-service][shopee/scrape] Worker Python unreachable (${workerErr?.message}), falling back to Puppeteer.`);
+        }
+      }
+
+      // Strategy 2: Fallback to Puppeteer (may be blocked by Datadome in cloud)
+      console.log(`[render-service][shopee/scrape] Trying Puppeteer fallback...`);
       const result = await scrapeShopeeProduct(payload.url);
       return json(res, 200, result);
     } catch (error: any) {

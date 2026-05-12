@@ -146,7 +146,24 @@ export async function mercadoLivreBrowserSearch(body: MercadoLivreSearchRequest)
   const executablePath = await firstExistingExecutable();
   if (!executablePath) throw new Error("Chrome/Chromium nao encontrado para busca via navegador.");
 
-  const puppeteer = dynamicRequire("puppeteer-core");
+  const puppeteerExtra = dynamicRequire("puppeteer-extra");
+  const StealthPlugin = dynamicRequire("puppeteer-extra-plugin-stealth");
+  const puppeteerCore = dynamicRequire("puppeteer-core");
+  const puppeteer = puppeteerExtra.addExtra(puppeteerCore);
+  puppeteer.use(StealthPlugin());
+
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-blink-features=AutomationControlled",
+      "--lang=pt-BR",
+    ],
+  });
+
   const siteId = String(body.siteId || "MLB").trim() || "MLB";
   const limit = Math.min(24, Math.max(1, Number(body.limit || 8)));
   const terms = body.queryOverride
@@ -161,17 +178,6 @@ export async function mercadoLivreBrowserSearch(body: MercadoLivreSearchRequest)
   const gotoTimeoutMs = Math.min(45000, Math.max(5000, Number(body.gotoTimeoutMs || 45000)));
   const settleDelayMs = Math.min(10000, Math.max(0, Number(body.settleDelayMs || 4500)));
   const waitForAnchorsTimeoutMs = Math.min(15000, Math.max(1000, Number(body.waitForAnchorsTimeoutMs || 10000)));
-
-  const browser = await puppeteer.launch({
-    executablePath,
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-blink-features=AutomationControlled",
-    ],
-  });
 
   try {
     const page = await browser.newPage();
