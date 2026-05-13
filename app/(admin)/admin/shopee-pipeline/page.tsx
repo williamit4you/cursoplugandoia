@@ -162,6 +162,19 @@ export default function ShopeePipelinePage() {
   );
   const [focusedStepName, setFocusedStepName] = useState<string | null>(null);
 
+  const darkFieldSx = {
+    "& .MuiInputLabel-root": { color: "rgba(226,232,240,0.75)" },
+    "& .MuiInputLabel-root.Mui-focused": { color: "rgba(34,197,94,0.9)" },
+    "& .MuiOutlinedInput-root": {
+      color: "#e2e8f0",
+      bgcolor: "rgba(255,255,255,0.06)",
+      "& fieldset": { borderColor: "rgba(255,255,255,0.18)" },
+      "&:hover fieldset": { borderColor: "rgba(255,255,255,0.28)" },
+      "&.Mui-focused fieldset": { borderColor: "rgba(34,197,94,0.7)" },
+    },
+    "& textarea": { color: "#e2e8f0" },
+  } as const;
+
   const load = async () => {
     setLoading(true);
     try {
@@ -814,9 +827,24 @@ export default function ShopeePipelinePage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={configOpen} onClose={() => setConfigOpen(false)} fullWidth maxWidth="md">
-        <DialogTitle sx={{ fontWeight: 900 }}>Configuração do Pipeline</DialogTitle>
-        <DialogContent sx={{ pb: 3 }}>
+      <Dialog
+        open={configOpen}
+        onClose={() => setConfigOpen(false)}
+        fullWidth
+        maxWidth="md"
+        slotProps={{
+          paper: {
+            sx: {
+              bgcolor: "#0b0c10",
+              color: "#e2e8f0",
+              border: "1px solid rgba(255,255,255,0.12)",
+              backgroundImage: "none",
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 900, color: "#e2e8f0" }}>Configuração do Pipeline</DialogTitle>
+        <DialogContent sx={{ pb: 3, color: "#e2e8f0" }}>
           {configLoading || !configDraft ? (
             <div className="flex items-center gap-2">
               <CircularProgress size={18} />
@@ -832,18 +860,21 @@ export default function ShopeePipelinePage() {
                   value={String(Boolean(configDraft.enabled))}
                   onChange={(e) => setConfigDraft((p: any) => ({ ...p, enabled: e.target.value === "true" }))}
                   size="small"
+                  sx={darkFieldSx}
                 />
                 <TextField
                   label="Run a cada (min)"
                   value={String(configDraft.runEveryMinutes)}
                   onChange={(e) => setConfigDraft((p: any) => ({ ...p, runEveryMinutes: e.target.value }))}
                   size="small"
+                  sx={darkFieldSx}
                 />
                 <TextField
                   label="Máx. itens por ciclo"
                   value={String(configDraft.maxItemsPerRun)}
                   onChange={(e) => setConfigDraft((p: any) => ({ ...p, maxItemsPerRun: e.target.value }))}
                   size="small"
+                  sx={darkFieldSx}
                 />
               </div>
 
@@ -853,6 +884,7 @@ export default function ShopeePipelinePage() {
                 onChange={(e) => setConfigDraft((p: any) => ({ ...p, userVoiceRefUrl: e.target.value }))}
                 size="small"
                 fullWidth
+                sx={darkFieldSx}
               />
               <TextField
                 label="userBaseImageUrl (MinIO/public URL)"
@@ -860,6 +892,7 @@ export default function ShopeePipelinePage() {
                 onChange={(e) => setConfigDraft((p: any) => ({ ...p, userBaseImageUrl: e.target.value }))}
                 size="small"
                 fullWidth
+                sx={darkFieldSx}
               />
 
               <TextField
@@ -879,6 +912,7 @@ export default function ShopeePipelinePage() {
                 fullWidth
                 multiline
                 minRows={6}
+                sx={darkFieldSx}
               />
               <TextField
                 label="ComfyUI Video Template (JSON - Infinite Talk prompt API)"
@@ -896,6 +930,7 @@ export default function ShopeePipelinePage() {
                 fullWidth
                 multiline
                 minRows={8}
+                sx={darkFieldSx}
               />
 
               <div className="flex justify-end gap-2 pt-1">
