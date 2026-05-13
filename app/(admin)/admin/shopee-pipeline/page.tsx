@@ -107,6 +107,16 @@ function formatDate(value?: string | null) {
   return d.toLocaleString("pt-BR");
 }
 
+function toDateTimeLocalValue(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const pad = (num: number) => String(num).padStart(2, "0");
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return `${local.getFullYear()}-${pad(local.getMonth() + 1)}-${pad(local.getDate())}T${pad(local.getHours())}:${pad(local.getMinutes())}`;
+}
+
 function statusColor(status: string) {
   if (status === "FAILED") return "error";
   if (status === "PUBLISHED") return "success";
@@ -165,6 +175,7 @@ export default function ShopeePipelinePage() {
     message: React.ReactNode;
   } | null>(null);
   const [focusedStepName, setFocusedStepName] = useState<string | null>(null);
+  const [selectedNextRunDraft, setSelectedNextRunDraft] = useState("");
 
   const darkFieldSx = {
     "& .MuiInputLabel-root": { color: "rgba(226,232,240,0.75)" },
@@ -269,6 +280,7 @@ export default function ShopeePipelinePage() {
 
   const openDetail = async (item: ColetaItem) => {
     setSelected(item);
+    setSelectedNextRunDraft(toDateTimeLocalValue(item.nextRunAt));
     setDetailOpen(true);
     setEvents([]);
     setEventsLoading(true);
@@ -278,6 +290,7 @@ export default function ShopeePipelinePage() {
         .catch(() => null);
       if (full && typeof full === "object") {
         setSelected(full as any);
+        setSelectedNextRunDraft(toDateTimeLocalValue((full as any)?.nextRunAt));
       }
 
       const res = await fetch(`/api/shopee-pipeline/items/${item.id}/events?take=200`, { cache: "no-store" });
@@ -304,12 +317,78 @@ export default function ShopeePipelinePage() {
   };
 
   const patchItem = async (id: string, patch: any) => {
-    await fetch(`/api/shopee-pipeline/items/${id}`, {
+    const res = await fetch(`/api/shopee-pipeline/items/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error((data as any)?.error ? String((data as any).error) : `Falha ao atualizar item (HTTP ${res.status})`);
+    }
     await load();
+    if (detailOpen && selected?.id === id) {
+      await openDetail((data as any) || ({ id } as any));
+    }
+    return data;
+  };
+
+  const continueNow = async (item: ColetaItem) => {
+    try {
+      const data = await patchItem(item.id, { forceResumeNow: true });
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message: `Item preparado para continuar. Etapa de retomada: ${String((data as any)?.resumeInfo?.resumedStatus || item.pipelineStatus)}. Agora clique em “Rodar agora”.`,
+      });
+    } catch (error: any) {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: error?.message || "Falha ao preparar retomada.",
+      });
+    }
+  };
+
+  const saveNextRunForSelected = async () => {
+    if (!selected?.id) return;
+    try {
+      await patchItem(selected.id, {
+        nextRunAt: selectedNextRunDraft ? new Date(selectedNextRunDraft).toISOString() : null,
+      });
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message: selectedNextRunDraft
+          ? `Próxima execução agendada para ${formatDate(new Date(selectedNextRunDraft).toISOString())}.`
+          : "Agendamento removido. O item pode rodar assim que ficar elegível.",
+      });
+    } catch (error: any) {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: error?.message || "Falha ao salvar horário.",
+      });
+    }
+  };
+
+  const clearNextRunForSelected = async () => {
+    if (!selected?.id) return;
+    setSelectedNextRunDraft("");
+    try {
+      await patchItem(selected.id, { nextRunAt: null });
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message: "Agendamento removido. O item pode rodar assim que ficar elegível.",
+      });
+    } catch (error: any) {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: error?.message || "Falha ao limpar agendamento.",
+      });
+    }
   };
 
   const runManualOnce = async () => {
@@ -635,6 +714,11 @@ export default function ShopeePipelinePage() {
                             <InfoOutlinedIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
+                        <Tooltip title="Preparar para continuar agora">
+                          <IconButton onClick={() => continueNow(item)}>
+                            <BoltIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title={item.active ? "Pausar" : "Ativar"}>
                           <IconButton onClick={() => patchItem(item.id, { active: !item.active, pipelineStatus: item.active ? "PAUSED" : "PENDING" })}>
                             {item.active ? <PauseIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
@@ -786,6 +870,9 @@ export default function ShopeePipelinePage() {
                     <Typography variant="caption" className="text-slate-400 block mt-2">
                       Próx. Execução: {formatDate(selected.nextRunAt)}
                     </Typography>
+                    <Typography variant="caption" className="text-slate-400 block mt-2">
+                      Lock: {selected.lockedAt ? formatDate(selected.lockedAt) : "-"}
+                    </Typography>
                   </CardContent>
                 </Card>
                 <Card variant="outlined" sx={{ borderColor: "rgba(255,255,255,0.08)", bgcolor: "transparent" }}>
@@ -803,6 +890,48 @@ export default function ShopeePipelinePage() {
                   </CardContent>
                 </Card>
               </div>
+
+              <Card variant="outlined" sx={{ borderColor: "rgba(255,255,255,0.08)", bgcolor: "transparent" }}>
+                <CardContent>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
+                    Controle manual
+                  </Typography>
+                  <Typography variant="caption" className="text-slate-400 block mt-1">
+                    Use “Continuar agora” para limpar o agendamento, destravar o item e retomar do ponto mais próximo possível com base nos artefatos já gerados.
+                  </Typography>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Button size="small" variant="contained" startIcon={<BoltIcon />} onClick={() => continueNow(selected)}>
+                      Continuar agora
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => clearNextRunForSelected()}
+                    >
+                      Limpar agendamento
+                    </Button>
+                    <Button size="small" variant="outlined" startIcon={<LockOpenIcon />} onClick={() => patchItem(selected.id, { unlock: true })}>
+                      Destravar
+                    </Button>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
+                    <TextField
+                      label="Agendar próxima execução"
+                      type="datetime-local"
+                      value={selectedNextRunDraft}
+                      onChange={(e) => setSelectedNextRunDraft(e.target.value)}
+                      size="small"
+                      sx={darkFieldSx}
+                      slotProps={{ inputLabel: { shrink: true } }}
+                      helperText="Defina manualmente quando este item volta a ficar elegível."
+                    />
+                    <Button size="small" variant="outlined" onClick={saveNextRunForSelected}>
+                      Salvar horário
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
 
               <Card variant="outlined" sx={{ borderColor: "rgba(255,255,255,0.08)", bgcolor: "transparent" }}>
                 <CardContent>
