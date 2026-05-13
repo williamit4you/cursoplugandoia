@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { runpodOnline, runpodPowerOff } from "@/lib/shopee-pipeline/runpodClient";
+import { getRunpodManagerStatus, stopCurrentRunpodPod } from "@/lib/shopee-pipeline/runpodManager";
 import { logPipelineEvent } from "@/lib/shopee-pipeline/logger";
 
 export const dynamic = "force-dynamic";
@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const onlineRes = await runpodOnline(8000);
-    const online = onlineRes.ok && (onlineRes.data?.online === true || onlineRes.data?.ok === true || onlineRes.data?.status === "online");
+    const manager = await getRunpodManagerStatus();
+    const online = Boolean(manager.online);
 
     const session = await prisma.podSession.findFirst({ orderBy: { updatedAt: "desc" } });
     const current = now();
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
         });
 
     if (!online) {
-      return NextResponse.json({ ok: true, online: false, action: "none", session: savedSession });
+      return NextResponse.json({ ok: true, online: false, action: "none", session: savedSession, manager });
     }
 
     // Existe trabalho imediato que exige POD?
@@ -59,10 +59,10 @@ export async function GET(req: NextRequest) {
     const idleLongEnough = lastActivityAt ? current.getTime() - new Date(lastActivityAt).getTime() > IDLE_GRACE_MS : false;
 
     if (!needsPodNow && idleLongEnough) {
-      const offRes = await runpodPowerOff(20000);
+      const offRes = await stopCurrentRunpodPod();
       await prisma.podSession.update({
         where: { id: savedSession.id },
-        data: { status: "STOPPING" as any, shutdownRequestedAt: current, errorMessage: offRes.ok ? null : `desligar HTTP ${offRes.status}` },
+        data: { status: "STOPPING" as any, shutdownRequestedAt: current, errorMessage: offRes.ok ? null : "desligar falhou" },
       });
       const anyColeta = await prisma.coletaDadosShoppe.findFirst({ select: { id: true } });
       if (anyColeta?.id) {
@@ -75,10 +75,10 @@ export async function GET(req: NextRequest) {
         }).catch(() => null);
       }
 
-      return NextResponse.json({ ok: true, online: true, action: "power_off", offRes });
+      return NextResponse.json({ ok: true, online: true, action: "power_off", offRes, manager });
     }
 
-    return NextResponse.json({ ok: true, online: true, action: "none", needsPodNow: Boolean(needsPodNow), idleLongEnough });
+    return NextResponse.json({ ok: true, online: true, action: "none", needsPodNow: Boolean(needsPodNow), idleLongEnough, manager });
   } catch (error: any) {
     console.error("[api/shopee-pipeline/pod-watchdog GET]", error);
     return NextResponse.json({ error: error?.message || "Falha no watchdog do POD" }, { status: 500 });

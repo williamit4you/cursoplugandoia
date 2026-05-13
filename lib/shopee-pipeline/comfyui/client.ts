@@ -1,5 +1,7 @@
 import "server-only";
 
+import { getCurrentComfyBaseUrl } from "@/lib/shopee-pipeline/runpodManager";
+
 export type ComfyUiFileRef = {
   filename: string;
   subfolder?: string;
@@ -11,12 +13,14 @@ export type ComfyUiSubmitResponse = {
   number?: number;
 };
 
-function comfyBaseUrl() {
-  return (process.env.COMFYUI_BASE_URL || "").trim().replace(/\/+$/, "");
+async function comfyBaseUrl() {
+  const override = (process.env.COMFYUI_BASE_URL || "").trim().replace(/\/+$/, "");
+  if (override) return override;
+  return getCurrentComfyBaseUrl();
 }
 
-function requireBaseUrl() {
-  const base = comfyBaseUrl();
+async function requireBaseUrl() {
+  const base = await comfyBaseUrl();
   if (!base) throw new Error("COMFYUI_BASE_URL not configured");
   return base;
 }
@@ -34,12 +38,12 @@ async function jsonFetch(url: string, init: RequestInit, timeoutMs: number) {
 }
 
 export async function comfyIsOnline(timeoutMs = 5000) {
-  const base = requireBaseUrl();
+  const base = await requireBaseUrl();
   return jsonFetch(`${base}/system_stats`, { method: "GET" }, timeoutMs);
 }
 
 export async function comfyUploadInput(params: { buffer: Buffer; filename: string; contentType: string }, timeoutMs = 20000) {
-  const base = requireBaseUrl();
+  const base = await requireBaseUrl();
   const form = new FormData();
   const blob = new Blob([new Uint8Array(params.buffer)], { type: params.contentType });
   form.append("image", blob, params.filename);
@@ -58,7 +62,7 @@ export async function comfyUploadInput(params: { buffer: Buffer; filename: strin
 }
 
 export async function comfySubmitPrompt(prompt: unknown, timeoutMs = 20000) {
-  const base = requireBaseUrl();
+  const base = await requireBaseUrl();
   const body = { prompt, client_id: "shopee-pipeline" };
   const res = await jsonFetch(
     `${base}/prompt`,
@@ -70,12 +74,12 @@ export async function comfySubmitPrompt(prompt: unknown, timeoutMs = 20000) {
 }
 
 export async function comfyGetHistory(promptId: string, timeoutMs = 20000) {
-  const base = requireBaseUrl();
+  const base = await requireBaseUrl();
   return jsonFetch(`${base}/history/${encodeURIComponent(promptId)}`, { method: "GET" }, timeoutMs);
 }
 
 export async function comfyDownloadView(file: ComfyUiFileRef, timeoutMs = 30000) {
-  const base = requireBaseUrl();
+  const base = await requireBaseUrl();
   const qs = new URLSearchParams();
   qs.set("filename", file.filename);
   qs.set("type", file.type);
