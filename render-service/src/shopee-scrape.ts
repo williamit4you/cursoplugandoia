@@ -39,6 +39,40 @@ function cleanShopeeText(value: string | null | undefined) {
   return normalizeText(value).replace(/\|\s*Shopee\s+Brasil.*$/i, "").trim();
 }
 
+function cleanupMarketingText(value: string | null | undefined) {
+  return cleanShopeeText(value)
+    .replace(/%C[0-9A-F]{1,2}/gi, " ")
+    .replace(/\b\d{8,}\b/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function isSuspiciousProductTitle(value: string | null | undefined) {
+  const text = cleanupMarketingText(value);
+  if (!text) return true;
+  if (text.toLowerCase() === "shopee__domain") return true;
+  if (/^\d[\d\s\-_.]{5,}$/.test(text)) return true;
+  if (text.length < 6) return true;
+  return false;
+}
+
+function inferProductTitleFromContent(descricao: string, detalhes: string) {
+  const base = cleanupMarketingText(`${descricao} ${detalhes}`);
+  if (!base) return "";
+
+  const productMatch =
+    base.match(/(?:produto|item)\s*:\s*([^|.]{8,90})/i) ||
+    base.match(/compre\s+([^|.]{8,90})/i) ||
+    base.match(/camiseta\s+([^|.]{4,80})/i);
+
+  if (productMatch?.[1]) {
+    return cleanupMarketingText(productMatch[1]);
+  }
+
+  const sentence = base.split(/[.!?]/).map((part) => cleanupMarketingText(part)).find((part) => part.length >= 8);
+  return sentence ? sentence.slice(0, 90).trim() : "";
+}
+
 function decodeHtml(value: string) {
   return value
     .replace(/&nbsp;/gi, " ")
@@ -411,26 +445,33 @@ export async function generateSalesScript(titulo: string, descricao: string, det
   if (!apiKey) return "";
 
   const model = process.env.VIDEO_CODE_AI_MODEL || "gpt-4o-mini";
+  const tituloSeguro = cleanupMarketingText(titulo);
+  const descricaoSegura = cleanupMarketingText(descricao).slice(0, 1500);
+  const detalhesSeguros = cleanupMarketingText(detalhes).slice(0, 1500);
 
   const body = JSON.stringify({
     model,
-    temperature: 0.7,
+    temperature: 0.85,
     messages: [
       {
         role: "system",
         content:
-          'Voce e um especialista em marketing digital e copy de vendas.\n' +
-          "Crie um script de vendas curto e persuasivo para um produto da Shopee.\n" +
-          "Use gatilhos mentais para um vendedor falar em video estilo Reels ou TikTok.\n" +
-          'Obrigatorio: o script deve terminar com uma variacao de "Para ter acesso ao produto, o link esta na bio!".\n' +
-          'Responda apenas com JSON: {"script_vendas":"seu texto aqui"}',
+          "Voce e um copywriter senior de resposta direta para videos curtos de vendas.\n" +
+          "Escreva como uma pessoa real falaria em um video, com tom natural, convincente e profissional.\n" +
+          "Nunca leia codigos, ids, sku, numeros soltos, porcentagens estranhas, texto truncado, URLs ou marcacoes internas.\n" +
+          "Se o titulo estiver ruim, priorize o contexto da descricao e dos detalhes para identificar o produto.\n" +
+          "O roteiro deve destacar beneficio principal, contexto de uso, diferencial e um fechamento com CTA.\n" +
+          "Evite soar generico, robotico ou repetir o mesmo argumento.\n" +
+          'Obrigatorio: terminar com uma variacao natural de "Para ter acesso ao produto, o link esta na bio!".\n' +
+          'Responda apenas com JSON valido: {"script_vendas":"..."}',
       },
       {
         role: "user",
         content:
-          `Titulo: ${titulo}\n` +
-          `Descricao: ${descricao.slice(0, 1500)}\n` +
-          `Detalhes do Produto: ${detalhes.slice(0, 1500)}`,
+          `Titulo do produto: ${tituloSeguro}\n` +
+          `Descricao comercial: ${descricaoSegura}\n` +
+          `Detalhes tecnicos: ${detalhesSeguros}\n` +
+          "Escreva um texto pronto para locucao, fluido e com cara de anuncio profissional.",
       },
     ],
   });
@@ -451,7 +492,7 @@ export async function generateSalesScript(titulo: string, descricao: string, det
     const end = text.lastIndexOf("}");
     if (start === -1 || end === -1) return text;
     const parsed = JSON.parse(text.slice(start, end + 1));
-    return String(parsed?.script_vendas ?? "").trim();
+    return cleanupMarketingText(String(parsed?.script_vendas ?? "").trim());
   } catch {
     return "";
   }

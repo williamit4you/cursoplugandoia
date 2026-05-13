@@ -64,6 +64,40 @@ function cleanShopeeText(value: unknown) {
   return normalizeShopeeText(value).replace(/\|\s*Shopee\s+Brasil.*$/i, "").trim();
 }
 
+function cleanupMarketingText(value: unknown) {
+  return cleanShopeeText(value)
+    .replace(/%C[0-9A-F]{1,2}/gi, " ")
+    .replace(/\b\d{8,}\b/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function isSuspiciousProductTitle(value: unknown) {
+  const text = cleanupMarketingText(value);
+  if (!text) return true;
+  if (text.toLowerCase() === "shopee__domain") return true;
+  if (/^\d[\d\s\-_.]{5,}$/.test(text)) return true;
+  if (text.length < 6) return true;
+  return false;
+}
+
+function inferProductTitleFromContent(descricao: string, detalhes: string) {
+  const base = cleanupMarketingText(`${descricao} ${detalhes}`);
+  if (!base) return "";
+
+  const productMatch =
+    base.match(/(?:produto|item)\s*:\s*([^|.]{8,90})/i) ||
+    base.match(/compre\s+([^|.]{8,90})/i) ||
+    base.match(/camiseta\s+([^|.]{4,80})/i);
+
+  if (productMatch?.[1]) {
+    return cleanupMarketingText(productMatch[1]);
+  }
+
+  const sentence = base.split(/[.!?]/).map((part) => cleanupMarketingText(part)).find((part) => part.length >= 8);
+  return sentence ? sentence.slice(0, 90).trim() : "";
+}
+
 function normalizeShopeeDomain(productUrl: string) {
   try {
     return new URL(productUrl).hostname || "shopee.com.br";
@@ -91,7 +125,7 @@ function deriveShopeeTitleFromUrl(productUrl: string) {
       .replace(/[-_]+/g, " ")
       .trim();
 
-    return cleaned || "Produto Shopee";
+    return cleanupMarketingText(cleaned) || "Produto Shopee";
   } catch {
     return "Produto Shopee";
   }
@@ -152,11 +186,15 @@ function buildShopeeDetailsFromApi(item: any) {
 }
 
 function buildFallbackSalesScript(titulo: string, descricao: string, detalhes: string) {
-  const base = cleanShopeeText(descricao || detalhes);
-  const snippet = base ? `${base.slice(0, 240)}.` : "";
-  return cleanShopeeText(
-    `Se voce procura ${titulo}, vale muito a pena conhecer esse produto. ${snippet} ` +
-      "Ele se destaca pelo custo-beneficio e pelos detalhes que chamam atencao no uso do dia a dia. " +
+  const tituloSeguro = cleanupMarketingText(titulo) || "esse produto";
+  const base = cleanupMarketingText(descricao || detalhes);
+  const snippet = base ? base.slice(0, 220).trim() : "";
+  return cleanupMarketingText(
+    `Olha isso: ${tituloSeguro}. ` +
+      (snippet
+        ? `${snippet}. `
+        : "E uma opcao que chama atencao pelo visual, pela proposta e pelo custo-beneficio. ") +
+      "Se voce quer algo com boa apresentacao e potencial para surpreender no uso, vale conhecer melhor. " +
       "Para ter acesso ao produto, o link esta na bio!"
   );
 }
@@ -505,14 +543,16 @@ const server = http.createServer(async (req, res) => {
 
       console.log("[render-service][shopee/scrape] Step 2/3 titles and descriptions via API...");
       const structured = await fetchShopeeStructuredDetails(payload.url);
-      const structuredTitulo = cleanShopeeText(structured?.titulo || "");
-      const tituloExtraido =
-        rawTitulo && rawTitulo.toLowerCase() !== "shopee__domain"
-          ? rawTitulo
-          : structuredTitulo;
-      const titulo = tituloExtraido || deriveShopeeTitleFromUrl(payload.url);
-      const descricao = cleanShopeeText(structured?.descricao || rawDescricao || "");
-      const detalhes = cleanShopeeText(structured?.detalhes || rawDetalhes || "");
+      const structuredTitulo = cleanupMarketingText(structured?.titulo || "");
+      const descricao = cleanupMarketingText(structured?.descricao || rawDescricao || "");
+      const detalhes = cleanupMarketingText(structured?.detalhes || rawDetalhes || "");
+      const tituloBase =
+        !isSuspiciousProductTitle(rawTitulo)
+          ? cleanupMarketingText(rawTitulo)
+          : !isSuspiciousProductTitle(structuredTitulo)
+            ? structuredTitulo
+            : inferProductTitleFromContent(descricao, detalhes);
+      const titulo = tituloBase || deriveShopeeTitleFromUrl(payload.url);
 
       console.log("[render-service][shopee/scrape] Step 3/3 sales copy via AI...");
       let aiPromptVendas = "";
