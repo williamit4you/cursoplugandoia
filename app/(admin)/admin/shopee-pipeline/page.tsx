@@ -32,6 +32,8 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
+import BoltIcon from "@mui/icons-material/Bolt";
+import PublishIcon from "@mui/icons-material/Publish";
 
 type ColetaItem = {
   id: string;
@@ -111,6 +113,8 @@ export default function ShopeePipelinePage() {
   const [configLoading, setConfigLoading] = useState(false);
   const [config, setConfig] = useState<any>(null);
   const [configDraft, setConfigDraft] = useState<any>(null);
+  const [manualRunning, setManualRunning] = useState(false);
+  const [manualPublishing, setManualPublishing] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -223,6 +227,28 @@ export default function ShopeePipelinePage() {
     await load();
   };
 
+  const runManualOnce = async () => {
+    if (manualRunning) return;
+    setManualRunning(true);
+    try {
+      await fetch("/api/shopee-pipeline/manual-run", { method: "POST", cache: "no-store" });
+      await load();
+    } finally {
+      setManualRunning(false);
+    }
+  };
+
+  const runManualPublisher = async () => {
+    if (manualPublishing) return;
+    setManualPublishing(true);
+    try {
+      await fetch("/api/shopee-pipeline/manual-publisher", { method: "POST", cache: "no-store" });
+      await load();
+    } finally {
+      setManualPublishing(false);
+    }
+  };
+
   return (
     <Box className="space-y-6">
       <div className="flex items-center justify-between gap-3">
@@ -246,6 +272,20 @@ export default function ShopeePipelinePage() {
             color={pod?.online ? "success" : "default"}
             variant="outlined"
           />
+          <Tooltip title="Rodar 1 passo agora (manual)">
+            <span>
+              <IconButton onClick={runManualOnce} disabled={manualRunning}>
+                {manualRunning ? <CircularProgress size={18} /> : <BoltIcon />}
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Rodar publisher-runner agora (manual)">
+            <span>
+              <IconButton onClick={runManualPublisher} disabled={manualPublishing}>
+                {manualPublishing ? <CircularProgress size={18} /> : <PublishIcon />}
+              </IconButton>
+            </span>
+          </Tooltip>
           <Tooltip title="Configurar pipeline">
             <span>
               <IconButton
