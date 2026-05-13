@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { runpodOnline } from "@/lib/shopee-pipeline/runpodClient";
+import { getToken } from "next-auth/jwt";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+async function isAdminSession(req: NextRequest) {
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) return false;
+  const token = await getToken({ req, secret }).catch(() => null);
+  return Boolean(token);
+}
 
 export async function GET(req: NextRequest) {
   try {
     const secret = req.nextUrl.searchParams.get("secret");
     const cronSecret = process.env.CRON_SECRET;
     if (cronSecret && secret !== cronSecret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      const okSession = await isAdminSession(req);
+      if (!okSession) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
 
     const session = await prisma.podSession.findFirst({ orderBy: { updatedAt: "desc" } });
@@ -26,4 +37,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error?.message || "Falha ao ler status do POD" }, { status: 500 });
   }
 }
-

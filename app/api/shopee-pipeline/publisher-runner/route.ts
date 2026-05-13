@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getToken } from "next-auth/jwt";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 900;
+
+async function isAdminSession(req: NextRequest) {
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) return false;
+  const token = await getToken({ req, secret }).catch(() => null);
+  return Boolean(token);
+}
 
 function baseUrl(req: NextRequest) {
   const host = req.headers.get("host") || "localhost:3000";
@@ -61,7 +69,10 @@ export async function GET(req: NextRequest) {
     const secret = req.nextUrl.searchParams.get("secret");
     const cronSecret = process.env.CRON_SECRET;
     if (cronSecret && secret !== cronSecret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      const okSession = await isAdminSession(req);
+      if (!okSession) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
 
     const limit = Math.min(10, Math.max(1, Number(req.nextUrl.searchParams.get("limit") || 5)));
@@ -228,4 +239,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error?.message || "Falha no publisher-runner" }, { status: 500 });
   }
 }
-

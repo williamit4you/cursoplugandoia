@@ -251,7 +251,7 @@ export default function ShopeePipelinePage() {
 
   return (
     <Box className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
         <div>
           <Typography variant="h5" sx={{ fontWeight: 900 }}>
             Shopee Pipeline
@@ -271,27 +271,56 @@ export default function ShopeePipelinePage() {
             }
             color={pod?.online ? "success" : "default"}
             variant="outlined"
+            sx={{
+              color: "#e2e8f0",
+              borderColor: "rgba(255,255,255,0.18)",
+              bgcolor: "rgba(255,255,255,0.06)",
+              fontWeight: 800,
+            }}
           />
-          <Tooltip title="Rodar 1 passo agora (manual)">
-            <span>
-              <IconButton onClick={runManualOnce} disabled={manualRunning}>
-                {manualRunning ? <CircularProgress size={18} /> : <BoltIcon />}
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title="Rodar publisher-runner agora (manual)">
-            <span>
-              <IconButton onClick={runManualPublisher} disabled={manualPublishing}>
-                {manualPublishing ? <CircularProgress size={18} /> : <PublishIcon />}
-              </IconButton>
-            </span>
-          </Tooltip>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={runManualOnce}
+            disabled={manualRunning}
+            startIcon={manualRunning ? <CircularProgress size={16} /> : <BoltIcon />}
+            sx={{
+              bgcolor: "rgba(34,197,94,0.9)",
+              color: "#0b0c10",
+              fontWeight: 900,
+              "&:hover": { bgcolor: "rgba(34,197,94,1)" },
+            }}
+          >
+            Rodar agora
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={runManualPublisher}
+            disabled={manualPublishing}
+            startIcon={manualPublishing ? <CircularProgress size={16} /> : <PublishIcon />}
+            sx={{
+              color: "#e2e8f0",
+              borderColor: "rgba(255,255,255,0.22)",
+              bgcolor: "rgba(255,255,255,0.06)",
+              fontWeight: 900,
+              "&:hover": { bgcolor: "rgba(255,255,255,0.10)", borderColor: "rgba(255,255,255,0.30)" },
+            }}
+          >
+            Publicar
+          </Button>
           <Tooltip title="Configurar pipeline">
             <span>
               <IconButton
                 onClick={async () => {
                   setConfigOpen(true);
                   await loadConfig();
+                }}
+                sx={{
+                  color: "#e2e8f0",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  bgcolor: "rgba(255,255,255,0.06)",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.10)" },
                 }}
               >
                 <SettingsIcon />
@@ -303,11 +332,30 @@ export default function ShopeePipelinePage() {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Buscar por URL, titulo, status"
-            sx={{ minWidth: 360 }}
+            sx={{
+              minWidth: 360,
+              "& .MuiOutlinedInput-root": {
+                color: "#e2e8f0",
+                bgcolor: "rgba(255,255,255,0.06)",
+                "& fieldset": { borderColor: "rgba(255,255,255,0.18)" },
+                "&:hover fieldset": { borderColor: "rgba(255,255,255,0.28)" },
+                "&.Mui-focused fieldset": { borderColor: "rgba(34,197,94,0.7)" },
+              },
+              "& input::placeholder": { color: "rgba(226,232,240,0.65)", opacity: 1 },
+            }}
           />
           <Tooltip title="Atualizar">
             <span>
-              <IconButton onClick={load} disabled={loading}>
+              <IconButton
+                onClick={load}
+                disabled={loading}
+                sx={{
+                  color: "#e2e8f0",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  bgcolor: "rgba(255,255,255,0.06)",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.10)" },
+                }}
+              >
                 {loading ? <CircularProgress size={18} /> : <RefreshIcon />}
               </IconButton>
             </span>
