@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -14,7 +15,11 @@ import {
   Divider,
   IconButton,
   Paper,
+  Snackbar,
   Stack,
+  Step,
+  StepButton,
+  Stepper,
   Table,
   TableBody,
   TableCell,
@@ -34,6 +39,10 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
 import BoltIcon from "@mui/icons-material/Bolt";
 import PublishIcon from "@mui/icons-material/Publish";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ErrorIcon from "@mui/icons-material/Error";
+import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
+import AutorenewIcon from "@mui/icons-material/Autorenew";
 
 type ColetaItem = {
   id: string;
@@ -62,6 +71,12 @@ type ColetaItem = {
     status: string;
     attempt: number;
     errorMessage?: string | null;
+    startedAt?: string | null;
+    finishedAt?: string | null;
+    durationMs?: number | null;
+    nextRetryAt?: string | null;
+    requestPayload?: any;
+    responsePayload?: any;
     updatedAt: string;
   }>;
 };
@@ -100,6 +115,33 @@ function statusColor(status: string) {
   return "primary";
 }
 
+const PIPELINE_STEPS: Array<{ stepName: string; label: string }> = [
+  { stepName: "SCRAPE_MEDIA", label: "Scraping" },
+  { stepName: "ENSURE_POD_ONLINE", label: "POD" },
+  { stepName: "GENERATE_AUDIO", label: "Áudio" },
+  { stepName: "GENERATE_COPY_VIDEO", label: "Vídeo Copy" },
+  { stepName: "MERGE_VIDEOS", label: "Merge" },
+  { stepName: "GENERATE_AFFILIATE_LINK", label: "Afiliado" },
+  { stepName: "CREATE_BIO_PRODUCT", label: "Bio" },
+  { stepName: "CREATE_STORY_AD", label: "Story" },
+];
+
+function stepIcon(status?: string | null) {
+  if (status === "SUCCESS") return <CheckCircleIcon fontSize="small" />;
+  if (status === "FAILED") return <ErrorIcon fontSize="small" />;
+  if (status === "RUNNING") return <AutorenewIcon fontSize="small" />;
+  if (status === "RETRY_SCHEDULED") return <AutorenewIcon fontSize="small" />;
+  return <HourglassEmptyIcon fontSize="small" />;
+}
+
+function stepColor(status?: string | null) {
+  if (status === "SUCCESS") return "#22c55e";
+  if (status === "FAILED") return "#ef4444";
+  if (status === "RUNNING") return "#38bdf8";
+  if (status === "RETRY_SCHEDULED") return "#f59e0b";
+  return "rgba(226,232,240,0.55)";
+}
+
 export default function ShopeePipelinePage() {
   const [items, setItems] = useState<ColetaItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,6 +157,10 @@ export default function ShopeePipelinePage() {
   const [configDraft, setConfigDraft] = useState<any>(null);
   const [manualRunning, setManualRunning] = useState(false);
   const [manualPublishing, setManualPublishing] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; severity: "success" | "info" | "warning" | "error"; message: string } | null>(
+    null
+  );
+  const [focusedStepName, setFocusedStepName] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -210,7 +256,29 @@ export default function ShopeePipelinePage() {
     setEvents([]);
     setEventsLoading(true);
     try {
+      const full = await fetch(`/api/shopee-pipeline/items/${item.id}`, { cache: "no-store" })
+        .then((r) => r.json())
+        .catch(() => null);
+      if (full && typeof full === "object") {
+        setSelected(full as any);
+      }
+
       const res = await fetch(`/api/shopee-pipeline/items/${item.id}/events?take=200`, { cache: "no-store" });
+      const data = await res.json();
+      setEvents(Array.isArray(data) ? data : []);
+    } finally {
+      setEventsLoading(false);
+    }
+  };
+
+  const focusStep = async (stepName: string) => {
+    if (!selected?.id) return;
+    setFocusedStepName(stepName);
+    setEventsLoading(true);
+    try {
+      const res = await fetch(`/api/shopee-pipeline/items/${selected.id}/events?take=200&stepName=${encodeURIComponent(stepName)}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
       setEvents(Array.isArray(data) ? data : []);
     } finally {
@@ -231,8 +299,40 @@ export default function ShopeePipelinePage() {
     if (manualRunning) return;
     setManualRunning(true);
     try {
-      await fetch("/api/shopee-pipeline/manual-run", { method: "POST", cache: "no-store" });
+      const res = await fetch("/api/shopee-pipeline/manual-run", { method: "POST", cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || (data as any)?.ok === false) {
+        setSnackbar({
+          open: true,
+          severity: res.status === 401 ? "warning" : "error",
+          message: (data as any)?.error ? String((data as any).error) : `Falha ao rodar (HTTP ${res.status})`,
+        });
+        return;
+      }
+
+      const result = (data as any)?.result || {};
+      const itemId = result?.itemId ? String(result.itemId) : null;
+      const ran = result?.ran ? String(result.ran) : null;
+      const skipped = Boolean(result?.skipped);
+      const reason = result?.reason ? String(result.reason) : "";
+
+      setSnackbar({
+        open: true,
+        severity: skipped ? "info" : "success",
+        message: skipped ? `Nada para rodar${reason ? `: ${reason}` : ""}` : `Rodou: ${ran || "ok"}${itemId ? ` (${itemId})` : ""}`,
+      });
+
       await load();
+
+      if (itemId) {
+        const latest = await fetch(`/api/shopee-pipeline/items/${itemId}`, { cache: "no-store" })
+          .then((r) => r.json())
+          .catch(() => null);
+        if (latest && typeof latest === "object") {
+          await openDetail(latest as any);
+        }
+      }
     } finally {
       setManualRunning(false);
     }
@@ -242,7 +342,25 @@ export default function ShopeePipelinePage() {
     if (manualPublishing) return;
     setManualPublishing(true);
     try {
-      await fetch("/api/shopee-pipeline/manual-publisher", { method: "POST", cache: "no-store" });
+      const res = await fetch("/api/shopee-pipeline/manual-publisher", { method: "POST", cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || (data as any)?.ok === false) {
+        setSnackbar({
+          open: true,
+          severity: res.status === 401 ? "warning" : "error",
+          message: (data as any)?.error ? String((data as any).error) : `Falha ao publicar (HTTP ${res.status})`,
+        });
+        return;
+      }
+
+      const checked = (data as any)?.data?.checked;
+      setSnackbar({
+        open: true,
+        severity: "info",
+        message: typeof checked === "number" ? `Publisher rodou. StoryAds checados: ${checked}` : "Publisher rodou.",
+      });
+
       await load();
     } finally {
       setManualPublishing(false);
@@ -362,6 +480,22 @@ export default function ShopeePipelinePage() {
           </Tooltip>
         </div>
       </div>
+
+      <Snackbar
+        open={Boolean(snackbar?.open)}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar((p) => (p ? { ...p, open: false } : p))}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSnackbar((p) => (p ? { ...p, open: false } : p))}
+          severity={snackbar?.severity || "info"}
+          variant="filled"
+          sx={{ fontWeight: 900 }}
+        >
+          {snackbar?.message || ""}
+        </Alert>
+      </Snackbar>
 
       <div className="grid grid-cols-4 gap-3">
         <Card className="glass-panel border border-white/10">
@@ -496,6 +630,95 @@ export default function ShopeePipelinePage() {
               </Typography>
 
               <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
+
+              <Card variant="outlined" sx={{ borderColor: "rgba(255,255,255,0.10)", bgcolor: "rgba(255,255,255,0.04)" }}>
+                <CardContent>
+                  <div className="flex items-center justify-between gap-3">
+                    <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
+                      Linha do tempo
+                    </Typography>
+                    <Typography variant="caption" className="text-slate-400">
+                      Clique em uma etapa para ver logs e payloads.
+                    </Typography>
+                  </div>
+
+                  <div className="mt-3">
+                    <Stepper alternativeLabel nonLinear activeStep={Math.max(0, PIPELINE_STEPS.findIndex((s) => s.stepName === focusedStepName))}>
+                      {PIPELINE_STEPS.map((s) => {
+                        const step = (selected.pipelineSteps || []).find((p) => p.stepName === s.stepName);
+                        const status = step?.status || null;
+                        const ts = (step as any)?.finishedAt || (step as any)?.updatedAt || null;
+                        return (
+                          <Step key={s.stepName}>
+                            <StepButton onClick={() => focusStep(s.stepName)} sx={{ color: "#e2e8f0" }}>
+                              <div className="flex flex-col items-center">
+                                <div style={{ color: stepColor(status) }}>{stepIcon(status)}</div>
+                                <div className="mt-1 text-xs font-bold text-slate-200">{s.label}</div>
+                                <div className="mt-1 text-[11px] text-slate-400">{formatDate(ts)}</div>
+                              </div>
+                            </StepButton>
+                          </Step>
+                        );
+                      })}
+                    </Stepper>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {focusedStepName && (
+                <Card variant="outlined" sx={{ borderColor: "rgba(255,255,255,0.10)", bgcolor: "transparent" }}>
+                  <CardContent>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
+                      Etapa: {focusedStepName}
+                    </Typography>
+                    {(() => {
+                      const step = (selected.pipelineSteps || []).find((p) => p.stepName === focusedStepName) as any;
+                      if (!step) {
+                        return (
+                          <Typography variant="caption" className="text-slate-400">
+                            Nenhuma execução registrada para esta etapa ainda.
+                          </Typography>
+                        );
+                      }
+                      return (
+                        <div className="mt-2 grid grid-cols-2 gap-3">
+                          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                            <div className="text-xs text-slate-400">Status</div>
+                            <div className="mt-1 text-sm font-bold text-slate-100">{step.status}</div>
+                            <div className="mt-2 text-xs text-slate-400">Tentativa</div>
+                            <div className="mt-1 text-sm text-slate-200">{step.attempt}</div>
+                            <div className="mt-2 text-xs text-slate-400">Início</div>
+                            <div className="mt-1 text-sm text-slate-200">{formatDate(step.startedAt)}</div>
+                            <div className="mt-2 text-xs text-slate-400">Fim</div>
+                            <div className="mt-1 text-sm text-slate-200">{formatDate(step.finishedAt)}</div>
+                            <div className="mt-2 text-xs text-slate-400">Duração</div>
+                            <div className="mt-1 text-sm text-slate-200">{step.durationMs ? `${step.durationMs} ms` : "-"}</div>
+                            <div className="mt-2 text-xs text-slate-400">Próx. retry</div>
+                            <div className="mt-1 text-sm text-slate-200">{formatDate(step.nextRetryAt)}</div>
+                            {step.errorMessage ? (
+                              <>
+                                <div className="mt-2 text-xs text-slate-400">Erro</div>
+                                <div className="mt-1 text-sm text-rose-200">{step.errorMessage}</div>
+                              </>
+                            ) : null}
+                          </div>
+                          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                            <div className="text-xs text-slate-400">Payloads</div>
+                            <div className="mt-2 text-xs font-bold text-slate-200">Request</div>
+                            <pre className="mt-1 max-h-44 overflow-auto rounded-lg bg-black/30 p-2 text-[11px] text-slate-200">
+{step.requestPayload ? JSON.stringify(step.requestPayload, null, 2) : "-"}
+                            </pre>
+                            <div className="mt-3 text-xs font-bold text-slate-200">Response</div>
+                            <pre className="mt-1 max-h-44 overflow-auto rounded-lg bg-black/30 p-2 text-[11px] text-slate-200">
+{step.responsePayload ? JSON.stringify(step.responsePayload, null, 2) : "-"}
+                            </pre>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <Card variant="outlined" sx={{ borderColor: "rgba(255,255,255,0.08)", bgcolor: "transparent" }}>
