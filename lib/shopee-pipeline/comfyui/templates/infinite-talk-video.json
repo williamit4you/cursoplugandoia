@@ -1,0 +1,13 @@
+{
+  "_meta": {
+    "title": "Infinite Talk (Prompt API Template - Placeholder)"
+  },
+  "__PLACEHOLDERS__": {
+    "__IMG_FILENAME__": "input image filename uploaded to ComfyUI",
+    "__AUDIO_FILENAME__": "input audio filename uploaded to ComfyUI",
+    "__OUTPUT_PREFIX__": "output filename prefix",
+    "__SEED__": "numeric seed"
+  },
+  "__NOTE__": "Este arquivo e um template BASE em formato de prompt API do ComfyUI. Substitua pelo export real do workflow Infinite Talk/MultiTalk (formato API do /prompt)."
+}
+

@@ -1,0 +1,54 @@
+{
+  "24": {
+    "inputs": {
+      "audio": "__VOICE_REF_FILENAME__"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "Load Audio"
+    }
+  },
+  "40": {
+    "inputs": {
+      "target_text": "__TARGET_TEXT__",
+      "model_choice": "1.7B",
+      "device": "auto",
+      "precision": "bf16",
+      "language": "Portuguese",
+      "ref_text": "",
+      "seed": "__SEED__",
+      "max_new_tokens": 2048,
+      "top_p": 0.8,
+      "top_k": 20,
+      "temperature": 1,
+      "repetition_penalty": 1.05,
+      "x_vector_only": true,
+      "attention": "auto",
+      "unload_model_after_generate": false,
+      "custom_model_path": "",
+      "ref_audio": [
+        "24",
+        0
+      ]
+    },
+    "class_type": "FB_Qwen3TTSVoiceClone",
+    "_meta": {
+      "title": "Qwen3-TTS VoiceClone"
+    }
+  },
+  "44": {
+    "inputs": {
+      "filename_prefix": "__OUTPUT_PREFIX__",
+      "quality": "V0",
+      "audio": [
+        "40",
+        0
+      ]
+    },
+    "class_type": "SaveAudioMP3",
+    "_meta": {
+      "title": "Save Audio (MP3)"
+    }
+  }
+}
+

@@ -79,6 +79,72 @@ enum AutomationStepStatus {
   SKIPPED
 }
 
+enum ShopeePipelineStatus {
+  PENDING
+  SCRAPING_MEDIA
+  MEDIA_SCRAPED
+  GENERATING_COPY
+  COPY_READY
+  WAITING_POD
+  GENERATING_AUDIO
+  AUDIO_READY
+  GENERATING_COPY_VIDEO
+  COPY_VIDEO_READY
+  MERGING_VIDEOS
+  FINAL_VIDEO_READY
+  GENERATING_AFFILIATE_LINK
+  AFFILIATE_LINK_READY
+  READY_FOR_STORY
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  PAUSED
+}
+
+enum ShopeePipelineStepStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  RETRY_SCHEDULED
+  SKIPPED
+}
+
+enum PodSessionStatus {
+  OFFLINE
+  STARTING
+  ONLINE
+  BUSY
+  IDLE
+  STOPPING
+  ERROR
+}
+
+enum StoryAdStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  CANCELED
+}
+
+enum StoryPublicationStatus {
+  PENDING
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  RETRY_SCHEDULED
+  CANCELED
+}
+
+enum StoryPlatform {
+  TIKTOK
+  YOUTUBE
+  INSTAGRAM
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -855,10 +921,27 @@ model ColetaDadosShoppe {
   errorMessage     String?
   videoFinalUrl    String?  // URL do vídeo TikTok gerado (MinIO)
   videoStatus      String?  // RENDERING, COMPLETED, FAILED
+  pipelineStatus   ShopeePipelineStatus @default(PENDING)
+  active           Boolean  @default(true)
+  priority         Int      @default(0)
+  lockedAt         DateTime?
+  lockedBy         String?
+  nextRunAt        DateTime?
+  attemptCount     Int      @default(0)
+  lastError        String?
+  mediaImageUrls   String[] @default([])
+  mediaVideoUrls   String[] @default([])
+  audioUrl         String?
+  copyVideoUrl     String?
+  affiliateUrl     String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   linksMedia       LinksVideosImagens[]
+  pipelineSteps    ShopeePipelineStep[]
+  pipelineEvents   ShopeePipelineEvent[]
+  storyAd          StoryAd?
+  bioProduct       BioProduct?
 }
 
 model LinksVideosImagens {
@@ -872,4 +955,163 @@ model LinksVideosImagens {
   updatedAt        DateTime @updatedAt
 
   @@index([coletaId])
+}
+
+model ShopeePipelineConfig {
+  id                String   @id @default(cuid())
+  enabled           Boolean  @default(false)
+  runEveryMinutes   Int      @default(5)
+  maxItemsPerRun    Int      @default(1)
+  processOneAtATime Boolean  @default(true)
+  userBaseImageUrl  String?
+  userVoiceRefUrl   String?
+  comfyAudioPromptTemplate Json?
+  comfyVideoPromptTemplate Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model ShopeePipelineStep {
+  id              String   @id @default(cuid())
+  coletaId        String
+  coleta          ColetaDadosShoppe @relation(fields: [coletaId], references: [id], onDelete: Cascade)
+  stepName        String
+  status          ShopeePipelineStepStatus @default(PENDING)
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  durationMs      Int?
+  attempt         Int      @default(1)
+  nextRetryAt     DateTime?
+  errorCode       String?
+  errorMessage    String?
+  requestPayload  Json?
+  responsePayload Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([coletaId])
+  @@index([stepName])
+  @@index([status])
+  @@index([nextRetryAt])
+}
+
+model ShopeePipelineEvent {
+  id        String   @id @default(cuid())
+  coletaId  String
+  coleta    ColetaDadosShoppe @relation(fields: [coletaId], references: [id], onDelete: Cascade)
+  stepName  String?
+  level     String   @default("INFO") // DEBUG | INFO | WARN | ERROR
+  message   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([coletaId])
+  @@index([createdAt])
+}
+
+model PodSession {
+  id                  String   @id @default(cuid())
+  status              PodSessionStatus @default(OFFLINE)
+  startedAt           DateTime?
+  stoppedAt           DateTime?
+  lastOnlineCheckAt   DateTime?
+  lastActivityAt      DateTime?
+  currentColetaId     String?
+  currentStepName     String?
+  shutdownRequestedAt DateTime?
+  errorMessage        String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([status])
+  @@index([lastActivityAt])
+}
+
+model StoryAd {
+  id           String   @id @default(cuid())
+  coletaId     String   @unique
+  coleta       ColetaDadosShoppe @relation(fields: [coletaId], references: [id], onDelete: Cascade)
+  title        String
+  description  String
+  videoUrl     String
+  affiliateUrl String
+  scheduledAt  DateTime?
+  status       StoryAdStatus @default(DRAFT)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  publications StoryPublication[]
+
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+model StoryPublication {
+  id              String   @id @default(cuid())
+  storyAdId       String
+  storyAd         StoryAd @relation(fields: [storyAdId], references: [id], onDelete: Cascade)
+  platform        StoryPlatform
+  status          StoryPublicationStatus @default(PENDING)
+  externalPostId  String?
+  publishedUrl    String?
+  attemptCount    Int      @default(0)
+  nextRetryAt     DateTime?
+  errorMessage    String?
+  requestPayload  Json?
+  responsePayload Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([platform])
+  @@index([status])
+  @@index([nextRetryAt])
+}
+
+model BioCategory {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products  BioProduct[]
+}
+
+model BioProduct {
+  id           String   @id @default(cuid())
+  coletaId     String   @unique
+  coleta       ColetaDadosShoppe @relation(fields: [coletaId], references: [id], onDelete: Cascade)
+  slug         String   @unique
+  title        String
+  description  String
+  imageUrl     String?
+  videoUrl     String?
+  affiliateUrl String
+  categoryId   String?
+  category     BioCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  active       Boolean  @default(true)
+  publishedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  clicks       BioClick[]
+
+  @@index([active])
+  @@index([publishedAt])
+  @@index([categoryId])
+}
+
+model BioClick {
+  id           String   @id @default(cuid())
+  bioProductId String
+  bioProduct   BioProduct @relation(fields: [bioProductId], references: [id], onDelete: Cascade)
+  source       String?
+  userAgent    String?
+  ipHash       String?
+  createdAt    DateTime @default(now())
+
+  @@index([bioProductId])
+  @@index([createdAt])
 }
