@@ -13,10 +13,12 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControlLabel,
   IconButton,
   Paper,
   Snackbar,
   Stack,
+  Switch,
   Step,
   StepButton,
   Stepper,
@@ -157,9 +159,11 @@ export default function ShopeePipelinePage() {
   const [configDraft, setConfigDraft] = useState<any>(null);
   const [manualRunning, setManualRunning] = useState(false);
   const [manualPublishing, setManualPublishing] = useState(false);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; severity: "success" | "info" | "warning" | "error"; message: string } | null>(
-    null
-  );
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    severity: "success" | "info" | "warning" | "error";
+    message: React.ReactNode;
+  } | null>(null);
   const [focusedStepName, setFocusedStepName] = useState<string | null>(null);
 
   const darkFieldSx = {
@@ -329,11 +333,48 @@ export default function ShopeePipelinePage() {
       const ran = result?.ran ? String(result.ran) : null;
       const skipped = Boolean(result?.skipped);
       const reason = result?.reason ? String(result.reason) : "";
+      const rule = result?.rule ? String(result.rule) : "";
+      const howToFix = result?.howToFix ? String(result.howToFix) : "";
+      const details = result?.details && typeof result.details === "object" ? (result.details as any) : null;
 
       setSnackbar({
         open: true,
         severity: skipped ? "info" : "success",
-        message: skipped ? `Nada para rodar${reason ? `: ${reason}` : ""}` : `Rodou: ${ran || "ok"}${itemId ? ` (${itemId})` : ""}`,
+        message: skipped ? (
+          <Box className="space-y-1" sx={{ maxWidth: 780 }}>
+            <Typography sx={{ fontWeight: 950, lineHeight: 1.15 }}>Nada para rodar</Typography>
+            <Typography variant="body2" sx={{ opacity: 0.95 }}>
+              <b>Motivo:</b> {reason || "Nenhum item elegível no momento."}
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.95 }}>
+              <b>Regra:</b>{" "}
+              {rule || "Escolhe 1 item elegível (active=true, status != PAUSED/PUBLISHED, nextRunAt <= agora, sem lock recente)."}
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.95 }}>
+              <b>Para rodar:</b>{" "}
+              {howToFix || "Garanta um item elegível e clique em “Rodar agora” (raio verde)."}
+            </Typography>
+            {details?.counts ? (
+              <Typography variant="caption" sx={{ opacity: 0.9, display: "block" }}>
+                Diagnóstico: ativos={details.counts.totalActive}, excluídos(PAUSED/PUBLISHED)={details.counts.excludedByStatus},
+                bloqueados(nextRunAt)={details.counts.blockedByNextRunAt}, bloqueados(lock)={details.counts.blockedByLock}.
+              </Typography>
+            ) : null}
+            {details?.samples?.earliestFuture?.nextRunAt ? (
+              <Typography variant="caption" sx={{ opacity: 0.9, display: "block" }}>
+                Próximo agendado: {String(details.samples.earliestFuture.id)} em {String(details.samples.earliestFuture.nextRunAt)}.
+              </Typography>
+            ) : null}
+            {details?.samples?.locked?.lockedAt ? (
+              <Typography variant="caption" sx={{ opacity: 0.9, display: "block" }}>
+                Exemplo travado: {String(details.samples.locked.id)} (lockedAt {String(details.samples.locked.lockedAt)}
+                {details.samples.locked.lockedBy ? ` por ${String(details.samples.locked.lockedBy)}` : ""}).
+              </Typography>
+            ) : null}
+          </Box>
+        ) : (
+          `Rodou: ${ran || "ok"}${itemId ? ` (${itemId})` : ""}`
+        ),
       });
 
       await load();
@@ -854,45 +895,64 @@ export default function ShopeePipelinePage() {
             </div>
           ) : (
             <Box className="space-y-3">
+              <Typography variant="body2" className="text-slate-300">
+                “Rodar agora” roda <b>1 item elegível</b> por clique (independente do cron).
+              </Typography>
+
               <div className="grid grid-cols-3 gap-3">
+                <Box className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={Boolean(configDraft.enabled)}
+                        onChange={(_, checked) => setConfigDraft((p: any) => ({ ...p, enabled: checked }))}
+                      />
+                    }
+                    label={<Typography sx={{ fontWeight: 900 }}>Pipeline ativo</Typography>}
+                  />
+                  <Typography variant="caption" className="text-slate-400">
+                    Desligado = nada roda (cron e manual).
+                  </Typography>
+                </Box>
                 <TextField
-                  label="Ativo (true/false)"
-                  value={String(Boolean(configDraft.enabled))}
-                  onChange={(e) => setConfigDraft((p: any) => ({ ...p, enabled: e.target.value === "true" }))}
-                  size="small"
-                  sx={darkFieldSx}
-                />
-                <TextField
-                  label="Run a cada (min)"
+                  label="Rodar automaticamente a cada (min)"
                   value={String(configDraft.runEveryMinutes)}
                   onChange={(e) => setConfigDraft((p: any) => ({ ...p, runEveryMinutes: e.target.value }))}
+                  helperText="Intervalo do cron /api/shopee-pipeline/cron."
                   size="small"
                   sx={darkFieldSx}
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
                 <TextField
-                  label="Máx. itens por ciclo"
+                  label="Máx. itens por ciclo (cron)"
                   value={String(configDraft.maxItemsPerRun)}
                   onChange={(e) => setConfigDraft((p: any) => ({ ...p, maxItemsPerRun: e.target.value }))}
+                  helperText="Limite por execução automática. (Manual sempre tenta 1)."
                   size="small"
                   sx={darkFieldSx}
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
               </div>
 
               <TextField
-                label="userVoiceRefUrl (MinIO/public URL)"
+                label="URL pública do áudio de referência (voz)"
                 value={configDraft.userVoiceRefUrl}
                 onChange={(e) => setConfigDraft((p: any) => ({ ...p, userVoiceRefUrl: e.target.value }))}
+                helperText="Pasta/URL pública do MinIO onde ficam os áudios de referência do usuário (voice clone)."
                 size="small"
                 fullWidth
                 sx={darkFieldSx}
+                slotProps={{ inputLabel: { shrink: true } }}
               />
               <TextField
-                label="userBaseImageUrl (MinIO/public URL)"
+                label="URL pública da imagem base (avatar/foto)"
                 value={configDraft.userBaseImageUrl}
                 onChange={(e) => setConfigDraft((p: any) => ({ ...p, userBaseImageUrl: e.target.value }))}
+                helperText="Pasta/URL pública do MinIO onde ficam as imagens base do usuário (usado no vídeo)."
                 size="small"
                 fullWidth
                 sx={darkFieldSx}
+                slotProps={{ inputLabel: { shrink: true } }}
               />
 
               <TextField

@@ -13,6 +13,7 @@ import defaultInfiniteTalkTemplate from "@/lib/shopee-pipeline/comfyui/templates
 import { v4 as uuidv4 } from "uuid";
 
 const LOCK_TTL_MS = 30 * 60 * 1000;
+const EXCLUDED_STATUSES = ["PAUSED", "PUBLISHED"] as const;
 
 function now() {
   return new Date();
@@ -34,7 +35,7 @@ async function acquireNextItemLock(params: { runnerId: string; current: Date }) 
   const candidate = await prisma.coletaDadosShoppe.findFirst({
     where: {
       active: true,
-      pipelineStatus: { notIn: ["PAUSED", "PUBLISHED"] as any },
+      pipelineStatus: { notIn: EXCLUDED_STATUSES as any },
       AND: [
         { OR: [{ nextRunAt: null }, { nextRunAt: { lte: current } }] },
         { OR: [{ lockedAt: null }, { lockedAt: { lt: lockExpiry } }] },
@@ -56,6 +57,81 @@ async function acquireNextItemLock(params: { runnerId: string; current: Date }) 
 
   if (res.count === 0) return null;
   return prisma.coletaDadosShoppe.findUnique({ where: { id: candidate.id } });
+}
+
+function buildEligibilityRuleText(params: { current: Date }) {
+  const { current } = params;
+  return (
+    "O botão “Rodar agora” executa 1 ciclo do orquestrador e escolhe 1 item elegível (por prioridade desc, depois criação asc). " +
+    `Item elegível = active=true, status NÃO está em ${EXCLUDED_STATUSES.join("/")}, nextRunAt é vazio ou <= agora (${current.toISOString()}), ` +
+    `e não está travado (lockedAt vazio ou mais antigo que ${Math.round(LOCK_TTL_MS / 60000)} min).`
+  );
+}
+
+async function getEligibilityDiagnostics(params: { current: Date }) {
+  const { current } = params;
+  const lockExpiry = new Date(current.getTime() - LOCK_TTL_MS);
+
+  const baseWhere = {
+    active: true,
+    pipelineStatus: { notIn: EXCLUDED_STATUSES as any },
+  } as const;
+
+  const [totalActive, excludedByStatus, baseCount, futureCount, lockedCount, eligibleCount, earliestFuture, lockedSample] =
+    await Promise.all([
+      prisma.coletaDadosShoppe.count({ where: { active: true } }),
+      prisma.coletaDadosShoppe.count({ where: { active: true, pipelineStatus: { in: EXCLUDED_STATUSES as any } } }),
+      prisma.coletaDadosShoppe.count({ where: baseWhere as any }),
+      prisma.coletaDadosShoppe.count({ where: { ...(baseWhere as any), nextRunAt: { gt: current } } }),
+      prisma.coletaDadosShoppe.count({ where: { ...(baseWhere as any), lockedAt: { gte: lockExpiry } } }),
+      prisma.coletaDadosShoppe.count({
+        where: {
+          ...(baseWhere as any),
+          AND: [
+            { OR: [{ nextRunAt: null }, { nextRunAt: { lte: current } }] },
+            { OR: [{ lockedAt: null }, { lockedAt: { lt: lockExpiry } }] },
+          ],
+        },
+      }),
+      prisma.coletaDadosShoppe.findFirst({
+        where: { ...(baseWhere as any), nextRunAt: { gt: current } },
+        orderBy: { nextRunAt: "asc" },
+        select: { id: true, nextRunAt: true, pipelineStatus: true, priority: true },
+      }),
+      prisma.coletaDadosShoppe.findFirst({
+        where: { ...(baseWhere as any), lockedAt: { gte: lockExpiry } },
+        orderBy: { lockedAt: "desc" },
+        select: { id: true, lockedAt: true, lockedBy: true, pipelineStatus: true, priority: true },
+      }),
+    ]);
+
+  return {
+    now: current.toISOString(),
+    lockTtlMinutes: Math.round(LOCK_TTL_MS / 60000),
+    lockExpiry: lockExpiry.toISOString(),
+    counts: {
+      totalActive,
+      excludedByStatus,
+      considered: baseCount,
+      blockedByNextRunAt: futureCount,
+      blockedByLock: lockedCount,
+      eligible: eligibleCount,
+    },
+    samples: {
+      earliestFuture: earliestFuture
+        ? { id: earliestFuture.id, status: (earliestFuture as any).pipelineStatus, priority: (earliestFuture as any).priority, nextRunAt: (earliestFuture as any).nextRunAt?.toISOString?.() || null }
+        : null,
+      locked: lockedSample
+        ? {
+            id: lockedSample.id,
+            status: (lockedSample as any).pipelineStatus,
+            priority: (lockedSample as any).priority,
+            lockedAt: (lockedSample as any).lockedAt?.toISOString?.() || null,
+            lockedBy: (lockedSample as any).lockedBy || null,
+          }
+        : null,
+    },
+  };
 }
 
 async function releaseLock(coletaId: string) {
@@ -107,11 +183,28 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
 
   const config = await prisma.shopeePipelineConfig.findFirst({ orderBy: { createdAt: "desc" } });
   if (!config || !config.enabled) {
-    return { ok: true, skipped: true, reason: "Pipeline disabled" };
+    return {
+      ok: true,
+      skipped: true,
+      reason: "Pipeline desativado na configuração",
+      rule: buildEligibilityRuleText({ current }),
+      howToFix: "Abra Configuração do Pipeline e ative o switch “Pipeline ativo”, depois clique novamente em “Rodar agora”.",
+    };
   }
 
   const item = await acquireNextItemLock({ runnerId, current });
-  if (!item) return { ok: true, skipped: true, reason: "No eligible item" };
+  if (!item) {
+    const details = await getEligibilityDiagnostics({ current });
+    return {
+      ok: true,
+      skipped: true,
+      reason: "Nenhum item elegível encontrado agora",
+      rule: buildEligibilityRuleText({ current }),
+      howToFix:
+        "Para algum item rodar: deixe `active=true`, `status` diferente de PAUSED/PUBLISHED, e garanta `nextRunAt` vazio ou <= agora e `lockedAt` vazio (ou aguarde o lock expirar).",
+      details,
+    };
+  }
 
   try {
     if (!item.url) {
