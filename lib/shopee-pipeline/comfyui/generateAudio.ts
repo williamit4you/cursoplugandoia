@@ -1,7 +1,7 @@
 import "server-only";
 
 import audioTemplate from "@/lib/shopee-pipeline/comfyui/templates/audio-voiceclone.json";
-import { replacePlaceholders, deepClone } from "@/lib/shopee-pipeline/comfyui/templates";
+import { forceAudioPromptInputs, isComfyPromptApiTemplate, isComfyUiWorkflowTemplate, replacePlaceholders, deepClone } from "@/lib/shopee-pipeline/comfyui/templates";
 import { comfyDownloadView, comfySubmitPrompt, comfyUploadInput, comfyWaitForPrompt, type ComfyUiFileRef, ComfyUiHttpError } from "@/lib/shopee-pipeline/comfyui/client";
 
 export async function generateVoiceCloneAudio(params: {
@@ -21,11 +21,23 @@ export async function generateVoiceCloneAudio(params: {
   });
 
   const template = params.promptTemplateOverride || (audioTemplate as any);
-  const prompt = replacePlaceholders(deepClone(template), {
+  if (isComfyUiWorkflowTemplate(template)) {
+    throw new Error("ComfyUI Audio Template esta em formato Workflow/UI. Use Export (API) / Save (API Format) para o campo de audio.");
+  }
+  if (!isComfyPromptApiTemplate(template)) {
+    throw new Error("ComfyUI Audio Template invalido: esperado prompt API com nodes { class_type, inputs }.");
+  }
+
+  const prompt = forceAudioPromptInputs(replacePlaceholders(deepClone(template), {
     "__VOICE_REF_FILENAME__": upload.name,
     "__TARGET_TEXT__": params.targetText,
     "__OUTPUT_PREFIX__": params.outputPrefix,
     "__SEED__": params.seed,
+  }), {
+    voiceRefFilename: upload.name,
+    targetText: params.targetText,
+    outputPrefix: params.outputPrefix,
+    seed: params.seed,
   });
 
   let submit: any;

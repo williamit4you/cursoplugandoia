@@ -1,6 +1,6 @@
 import "server-only";
 
-import { replacePlaceholders, deepClone } from "@/lib/shopee-pipeline/comfyui/templates";
+import { forceVideoPromptInputs, isComfyPromptApiTemplate, isComfyUiWorkflowTemplate, replacePlaceholders, deepClone } from "@/lib/shopee-pipeline/comfyui/templates";
 import { comfyDownloadView, comfySubmitPrompt, comfyUploadInput, comfyWaitForPrompt, type ComfyUiFileRef, ComfyUiHttpError } from "@/lib/shopee-pipeline/comfyui/client";
 
 export async function generateVideoFromTemplate(params: {
@@ -18,7 +18,19 @@ export async function generateVideoFromTemplate(params: {
     uploadMeta.push({ placeholderKey: file.placeholderKey, name: up.name, raw: up.raw });
   }
 
-  const prompt = replacePlaceholders(deepClone(params.template), { ...params.replacements, ...uploaded });
+  if (isComfyUiWorkflowTemplate(params.template)) {
+    throw new Error("ComfyUI Video Template esta em formato Workflow/UI. Use Export (API) / Save (API Format) no ComfyUI para o campo de video.");
+  }
+  if (!isComfyPromptApiTemplate(params.template)) {
+    throw new Error("ComfyUI Video Template invalido: esperado prompt API com nodes { class_type, inputs }.");
+  }
+
+  const prompt = forceVideoPromptInputs(replacePlaceholders(deepClone(params.template), { ...params.replacements, ...uploaded }), {
+    imageFilename: uploaded.__IMG_FILENAME__,
+    audioFilename: uploaded.__AUDIO_FILENAME__,
+    outputPrefix: String(params.replacements.__OUTPUT_PREFIX__ || ""),
+    seed: Number(params.replacements.__SEED__ || 0),
+  });
   let submit: any;
   try {
     submit = await comfySubmitPrompt(prompt, 20000);

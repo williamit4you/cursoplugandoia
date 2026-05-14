@@ -519,6 +519,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
         const copy = String(item.aiPromptVendas || "").trim();
         if (!copy) throw new Error("Copy de vendas (aiPromptVendas) ausente");
 
+        const comfyBase = await getCurrentComfyBaseUrl().catch(() => null);
         await upsertPipelineStep({ coletaId: item.id, stepName, status: "RUNNING", attempt, startedAt });
         await logPipelineEvent({ coletaId: item.id, stepName, message: "Gerando audio via ComfyUI (voice clone)" });
 
@@ -531,7 +532,11 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           startedAt,
           requestPayload: {
             voiceRefUrl,
-            note: "Este step baixa o voiceRefUrl e depois envia o workflow para o ComfyUI (/prompt) no pod atual.",
+            comfyBaseUrl: comfyBase,
+            targetTextPreview: copy.slice(0, 220),
+            targetTextLength: copy.length,
+            note:
+              "Este step usa `aiPromptVendas` SALVO no banco no momento da execução (não rascunho na tela). Se você editou o script na tela Coleta Shopee, clique em 'Salvar Alterações' antes de rodar o pipeline.",
           },
         });
 
@@ -582,6 +587,8 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
             seed,
             outputPrefix,
             promptId: generated.promptId,
+            targetTextPreview: copy.slice(0, 220),
+            targetTextLength: copy.length,
             prompt: safeTruncateJson(generated.prompt, 20000),
           },
           responsePayload: {
@@ -589,6 +596,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
             outputFiles: generated.files,
             outputFile: generated.file,
             history: safeTruncateJson(generated.history, 50000),
+            audioUrl,
           },
         });
 
