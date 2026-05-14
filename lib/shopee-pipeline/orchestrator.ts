@@ -11,6 +11,9 @@ import { mergeProductAndCopyVideos } from "@/lib/shopee-pipeline/merge";
 import { generateShopeeAffiliateShortLink } from "@/lib/shopee/openApi";
 import defaultInfiniteTalkTemplate from "@/lib/shopee-pipeline/comfyui/templates/infinite-talk-video.json";
 import { v4 as uuidv4 } from "uuid";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import s3Client from "@/lib/s3";
+import { Readable } from "stream";
 
 const LOCK_TTL_MS = 30 * 60 * 1000;
 const EXCLUDED_STATUSES = ["PAUSED", "PUBLISHED"] as const;
@@ -26,6 +29,49 @@ function addMinutes(date: Date, minutes: number) {
 function isLockExpired(lockedAt: Date | null, current: Date) {
   if (!lockedAt) return true;
   return current.getTime() - lockedAt.getTime() > LOCK_TTL_MS;
+}
+
+async function streamToBuffer(stream: any): Promise<Buffer> {
+  if (!stream) return Buffer.alloc(0);
+  const nodeStream = typeof stream.getReader === "function" ? Readable.fromWeb(stream as any) : (stream as any);
+  const chunks: Buffer[] = [];
+  for await (const chunk of nodeStream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
+async function downloadVoiceRef(params: { voiceRefUrl: string; timeoutMs: number }) {
+  const { voiceRefUrl, timeoutMs } = params;
+  const url = String(voiceRefUrl || "").trim();
+  if (!url) throw new Error("voiceRefUrl vazio");
+
+  // 1) Try normal fetch (public URL, signed URL, etc.)
+  const res = await fetch(url, { method: "GET", cache: "no-store", signal: AbortSignal.timeout(timeoutMs) });
+  if (res.ok) {
+    const contentType = res.headers.get("content-type") || "audio/mpeg";
+    return { buffer: Buffer.from(await res.arrayBuffer()), contentType, source: { kind: "http", url } };
+  }
+
+  // 2) If the URL points to our MinIO public base but is not public (403), fallback to internal S3 getObject.
+  const publicBase = String(process.env.MINIO_PUBLIC_URL || "").replace(/\/+$/, "");
+  const bucketName = process.env.MINIO_BUCKET_NAME || "uploads";
+  if (publicBase && url.startsWith(publicBase + "/")) {
+    const key = url.slice(publicBase.length + 1);
+    try {
+      const obj = await s3Client.send(new GetObjectCommand({ Bucket: bucketName, Key: key }));
+      const buffer = await streamToBuffer((obj as any).Body);
+      const contentType = String((obj as any).ContentType || "audio/mpeg");
+      if (!buffer.length) throw new Error("MinIO retornou arquivo vazio");
+      return { buffer, contentType, source: { kind: "minio", bucket: bucketName, key } };
+    } catch (error: any) {
+      throw new Error(
+        `Falha ao baixar voiceRefUrl (HTTP ${res.status}) url=${url} (fallback MinIO falhou: ${error?.message || error})`
+      );
+    }
+  }
+
+  throw new Error(`Falha ao baixar voiceRefUrl (HTTP ${res.status}) url=${url}`);
 }
 
 async function acquireNextItemLock(params: { runnerId: string; current: Date }) {
@@ -471,10 +517,9 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
         await upsertPipelineStep({ coletaId: item.id, stepName, status: "RUNNING", attempt, startedAt });
         await logPipelineEvent({ coletaId: item.id, stepName, message: "Gerando audio via ComfyUI (voice clone)" });
 
-        const voiceRes = await fetch(voiceRefUrl, { method: "GET", cache: "no-store", signal: AbortSignal.timeout(30000) });
-        if (!voiceRes.ok) throw new Error(`Falha ao baixar voiceRefUrl (HTTP ${voiceRes.status})`);
-        const voiceBuf = Buffer.from(await voiceRes.arrayBuffer());
-        const voiceContentType = voiceRes.headers.get("content-type") || "audio/mpeg";
+        const voice = await downloadVoiceRef({ voiceRefUrl, timeoutMs: 30_000 });
+        const voiceBuf = voice.buffer;
+        const voiceContentType = voice.contentType;
 
         const uid = uuidv4().slice(0, 8);
         const outputPrefix = `audio/shopee_${item.id}_${uid}`;
