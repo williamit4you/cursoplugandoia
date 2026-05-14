@@ -14,6 +14,7 @@ import { v4 as uuidv4 } from "uuid";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import s3Client from "@/lib/s3";
 import { Readable } from "stream";
+import { getCurrentComfyBaseUrl } from "@/lib/shopee-pipeline/runpodManager";
 
 const LOCK_TTL_MS = 30 * 60 * 1000;
 const EXCLUDED_STATUSES = ["PAUSED", "PUBLISHED"] as const;
@@ -65,13 +66,17 @@ async function downloadVoiceRef(params: { voiceRefUrl: string; timeoutMs: number
       if (!buffer.length) throw new Error("MinIO retornou arquivo vazio");
       return { buffer, contentType, source: { kind: "minio", bucket: bucketName, key } };
     } catch (error: any) {
-      throw new Error(
+      const err: any = new Error(
         `Falha ao baixar voiceRefUrl (HTTP ${res.status}) url=${url} (fallback MinIO falhou: ${error?.message || error})`
       );
+      err.details = { url, httpStatus: res.status, minioFallbackTried: true, minioKey: key, minioError: error?.message || error };
+      throw err;
     }
   }
 
-  throw new Error(`Falha ao baixar voiceRefUrl (HTTP ${res.status}) url=${url}`);
+  const err: any = new Error(`Falha ao baixar voiceRefUrl (HTTP ${res.status}) url=${url}`);
+  err.details = { url, httpStatus: res.status, minioFallbackTried: false };
+  throw err;
 }
 
 async function acquireNextItemLock(params: { runnerId: string; current: Date }) {
@@ -517,7 +522,32 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
         await upsertPipelineStep({ coletaId: item.id, stepName, status: "RUNNING", attempt, startedAt });
         await logPipelineEvent({ coletaId: item.id, stepName, message: "Gerando audio via ComfyUI (voice clone)" });
 
-        const voice = await downloadVoiceRef({ voiceRefUrl, timeoutMs: 30_000 });
+        // Persist what will be fetched/called so the UI shows "envio" even if it fails early.
+        await upsertPipelineStep({
+          coletaId: item.id,
+          stepName,
+          status: "RUNNING",
+          attempt,
+          startedAt,
+          requestPayload: {
+            voiceRefUrl,
+            note: "Este step baixa o voiceRefUrl e depois envia o workflow para o ComfyUI (/prompt) no pod atual.",
+          },
+        });
+
+        let voice: { buffer: Buffer; contentType: string; source: any };
+        try {
+          voice = await downloadVoiceRef({ voiceRefUrl, timeoutMs: 30_000 });
+        } catch (error: any) {
+          await logPipelineEvent({
+            coletaId: item.id,
+            level: "ERROR",
+            stepName,
+            message: "Falha ao baixar voiceRefUrl antes de chamar o ComfyUI.",
+            metadata: { voiceRefUrl, details: error?.details || null, error: error?.message || String(error) },
+          });
+          throw error;
+        }
         const voiceBuf = voice.buffer;
         const voiceContentType = voice.contentType;
 
@@ -589,6 +619,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           durationMs: finishedAt.getTime() - startedAt.getTime(),
           nextRetryAt: retryDecision.nextRetryAt,
           errorMessage: message,
+          responsePayload: { error: message, details: error?.details || null },
         });
 
         await prisma.coletaDadosShoppe.update({
@@ -605,7 +636,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           level: retryDecision.retry ? "WARN" : "ERROR",
           stepName,
           message: retryDecision.retry ? "Geracao de audio falhou. Reagendado." : "Geracao de audio falhou. Marcado como FAILED.",
-          metadata: { error: message, nextRetryAt: retryDecision.nextRetryAt },
+          metadata: { error: message, details: error?.details || null, stack: error?.stack || null, nextRetryAt: retryDecision.nextRetryAt },
         });
 
         return { ok: false, itemId: item.id, error: message, retry: retryDecision.retry, nextRetryAt: retryDecision.nextRetryAt };
@@ -670,7 +701,20 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           data: { pipelineStatus: "GENERATING_COPY_VIDEO" as any, lastError: null },
         });
 
-        await upsertPipelineStep({ coletaId: item.id, stepName, status: "RUNNING", attempt, startedAt });
+        const comfyBase = await getCurrentComfyBaseUrl().catch(() => null);
+        await upsertPipelineStep({
+          coletaId: item.id,
+          stepName,
+          status: "RUNNING",
+          attempt,
+          startedAt,
+          requestPayload: {
+            userBaseImageUrl: imageUrl,
+            audioUrl: item.audioUrl,
+            comfyBaseUrl: comfyBase,
+            note: "Este step baixa userBaseImageUrl + audioUrl e envia o workflow para o ComfyUI (/prompt).",
+          },
+        });
         await logPipelineEvent({ coletaId: item.id, stepName, message: "Gerando video da copy via ComfyUI (Infinite Talk)" });
 
         const imgRes = await fetch(imageUrl, { method: "GET", cache: "no-store", signal: AbortSignal.timeout(30000) });
@@ -757,6 +801,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           durationMs: finishedAt.getTime() - startedAt.getTime(),
           nextRetryAt: retryDecision.nextRetryAt,
           errorMessage: message,
+          responsePayload: { error: message, details: error?.details || null },
         });
 
         await prisma.coletaDadosShoppe.update({
@@ -773,7 +818,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           level: retryDecision.retry ? "WARN" : "ERROR",
           stepName,
           message: retryDecision.retry ? "Geracao do video da copy falhou. Reagendado." : "Geracao do video da copy falhou. Marcado como FAILED.",
-          metadata: { error: message, nextRetryAt: retryDecision.nextRetryAt },
+          metadata: { error: message, details: error?.details || null, stack: error?.stack || null, nextRetryAt: retryDecision.nextRetryAt },
         });
 
         return { ok: false, itemId: item.id, error: message, retry: retryDecision.retry, nextRetryAt: retryDecision.nextRetryAt };

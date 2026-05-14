@@ -13,6 +13,21 @@ export type ComfyUiSubmitResponse = {
   number?: number;
 };
 
+export class ComfyUiHttpError extends Error {
+  url: string;
+  status: number;
+  request?: any;
+  response?: any;
+  constructor(message: string, params: { url: string; status: number; request?: any; response?: any }) {
+    super(message);
+    this.name = "ComfyUiHttpError";
+    this.url = params.url;
+    this.status = params.status;
+    this.request = params.request;
+    this.response = params.response;
+  }
+}
+
 async function comfyBaseUrl() {
   const override = (process.env.COMFYUI_BASE_URL || "").trim().replace(/\/+$/, "");
   if (override) return override;
@@ -34,7 +49,7 @@ async function jsonFetch(url: string, init: RequestInit, timeoutMs: number) {
   } catch {
     data = { _raw: text };
   }
-  return { ok: res.ok, status: res.status, data };
+  return { ok: res.ok, status: res.status, data, rawText: text };
 }
 
 export async function comfyIsOnline(timeoutMs = 5000) {
@@ -64,12 +79,32 @@ export async function comfyUploadInput(params: { buffer: Buffer; filename: strin
 export async function comfySubmitPrompt(prompt: unknown, timeoutMs = 20000) {
   const base = await requireBaseUrl();
   const body = { prompt, client_id: "shopee-pipeline" };
+  const url = `${base}/prompt`;
+  const requestBody = JSON.stringify(body);
   const res = await jsonFetch(
-    `${base}/prompt`,
+    url,
     { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
     timeoutMs
   );
-  if (!res.ok) throw new Error(`ComfyUI /prompt failed (HTTP ${res.status})`);
+  if (!res.ok) {
+    const nodeCount = prompt && typeof prompt === "object" ? Object.keys(prompt as any).length : null;
+    throw new ComfyUiHttpError(`ComfyUI /prompt failed (HTTP ${res.status})`, {
+      url,
+      status: res.status,
+      request: {
+        method: "POST",
+        url,
+        bodyPreview: requestBody.length > 4000 ? requestBody.slice(0, 4000) + "…(truncado)" : requestBody,
+        bodyLength: requestBody.length,
+        promptNodeCount: nodeCount,
+      },
+      response: {
+        status: res.status,
+        data: res.data,
+        bodyPreview: (res.rawText || "").length > 4000 ? (res.rawText || "").slice(0, 4000) + "…(truncado)" : res.rawText,
+      },
+    });
+  }
   return res.data as ComfyUiSubmitResponse;
 }
 

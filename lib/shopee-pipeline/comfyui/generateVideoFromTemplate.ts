@@ -1,7 +1,7 @@
 import "server-only";
 
 import { replacePlaceholders, deepClone } from "@/lib/shopee-pipeline/comfyui/templates";
-import { comfyDownloadView, comfySubmitPrompt, comfyUploadInput, comfyWaitForPrompt, type ComfyUiFileRef } from "@/lib/shopee-pipeline/comfyui/client";
+import { comfyDownloadView, comfySubmitPrompt, comfyUploadInput, comfyWaitForPrompt, type ComfyUiFileRef, ComfyUiHttpError } from "@/lib/shopee-pipeline/comfyui/client";
 
 export async function generateVideoFromTemplate(params: {
   template: any;
@@ -19,7 +19,15 @@ export async function generateVideoFromTemplate(params: {
   }
 
   const prompt = replacePlaceholders(deepClone(params.template), { ...params.replacements, ...uploaded });
-  const submit = await comfySubmitPrompt(prompt, 20000);
+  let submit: any;
+  try {
+    submit = await comfySubmitPrompt(prompt, 20000);
+  } catch (error: any) {
+    if (error instanceof ComfyUiHttpError) {
+      (error as any).details = { stage: "submitPrompt", uploadMeta, http: { request: error.request, response: error.response } };
+    }
+    throw error;
+  }
   const promptId = String(submit?.prompt_id || "");
   if (!promptId) throw new Error("ComfyUI did not return prompt_id");
 
