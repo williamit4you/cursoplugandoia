@@ -9,12 +9,15 @@ const DEFAULT_NETWORK_VOLUME_ID = "nizgbzbusx";
 const DEFAULT_VOLUME_MOUNT_PATH = "/workspace";
 const DEFAULT_PORTS = ["8188/http", "22/tcp"];
 const DEFAULT_GPU_TYPE_IDS = [
-  "NVIDIA RTX A5000",
-  "NVIDIA RTX A4500",
-  "NVIDIA RTX A4000",
   "NVIDIA A40",
+  "NVIDIA L40S",
+  "NVIDIA RTX 6000 Ada Generation",
   "NVIDIA RTX A6000",
+  "NVIDIA RTX PRO 4500 Blackwell",
   "NVIDIA GeForce RTX 4090",
+  "NVIDIA GeForce RTX 3090",
+  "NVIDIA L4",
+  "NVIDIA RTX 2000 Ada Generation",
 ];
 const DEFAULT_TIMEOUT_MS = 180_000;
 const DEFAULT_POLL_MS = 8_000;

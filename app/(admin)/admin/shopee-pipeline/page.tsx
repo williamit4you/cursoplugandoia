@@ -219,6 +219,7 @@ export default function ShopeePipelinePage() {
   const [events, setEvents] = useState<PipelineEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [pod, setPod] = useState<{ online: boolean; session: PodSession | null } | null>(null);
+  const [cronConfig, setCronConfig] = useState<any>(null);
   const [configOpen, setConfigOpen] = useState(false);
   const [configLoading, setConfigLoading] = useState(false);
   const [config, setConfig] = useState<any>(null);
@@ -258,6 +259,10 @@ export default function ShopeePipelinePage() {
       if (podData && typeof podData === "object") {
         setPod({ online: Boolean((podData as any).online), session: ((podData as any).session as any) || null });
       }
+
+      const cfgRes = await fetch("/api/shopee-pipeline/config", { cache: "no-store" }).catch(() => null);
+      const cfgData = cfgRes ? await cfgRes.json().catch(() => null) : null;
+      setCronConfig(cfgData && typeof cfgData === "object" ? cfgData : null);
     } finally {
       setLoading(false);
     }
@@ -354,6 +359,19 @@ export default function ShopeePipelinePage() {
       setEvents(Array.isArray(data) ? data : []);
     } finally {
       setEventsLoading(false);
+    }
+  };
+
+  const cronUrl = useMemo(() => {
+    // Secret is never shown here; user must configure it in the scheduler platform.
+    return "/api/shopee-pipeline/cron";
+  }, []);
+
+  const openCronInNewTab = () => {
+    try {
+      window.open(cronUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      // ignore
     }
   };
 
@@ -816,6 +834,43 @@ export default function ShopeePipelinePage() {
         <DialogContent sx={{ pb: 3 }}>
           {!selected ? null : (
             <Box className="space-y-3">
+              <Alert
+                severity="info"
+                sx={{
+                  border: "1px solid rgba(15, 23, 42, 0.10)",
+                  bgcolor: "rgba(255,255,255,0.75)",
+                  color: "#0f172a",
+                  "& .MuiAlert-message": { width: "100%" },
+                }}
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="font-extrabold">Como funciona</div>
+                  <div className="text-sm">
+                    Este pipeline executa <b>1 etapa por ciclo</b> (por cron ou por “Rodar agora”). Se a próxima etapa depende de pod/URLs externas, ela pode virar{" "}
+                    <b>RETRY_SCHEDULED</b> e agendar <b>nextRunAt</b>.
+                  </div>
+                  <div className="text-sm text-slate-700">
+                    Próxima execução deste item: <b>{selected.nextRunAt ? formatDate(selected.nextRunAt) : "assim que o cron rodar (sem nextRunAt)"}</b>
+                    {cronConfig?.enabled ? (
+                      <>
+                        {" "}
+                        • Cron configurado: <b>a cada {Number(cronConfig.runEveryMinutes || 5)} min</b>
+                      </>
+                    ) : (
+                      ""
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="small" variant="outlined" startIcon={<OpenInNewIcon />} onClick={openCronInNewTab}>
+                      Abrir endpoint do cron
+                    </Button>
+                    <Typography variant="caption" className="text-slate-600">
+                      URL: {cronUrl} (se houver `CRON_SECRET`, a plataforma deve chamar com `?secret=...`)
+                    </Typography>
+                  </div>
+                </div>
+              </Alert>
+
               <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
                 {selected.titulo || "Produto Shopee"}
               </Typography>
