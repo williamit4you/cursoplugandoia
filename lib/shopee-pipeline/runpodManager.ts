@@ -52,6 +52,7 @@ type RunpodManagerEvent = {
 class RunpodHttpError extends Error {
   status: number;
   data: any;
+  request?: any;
   constructor(message: string, status: number, data: any) {
     super(message);
     this.name = "RunpodHttpError";
@@ -94,7 +95,26 @@ function runpodConfig() {
   };
 }
 
-async function runpodFetch<T>(pathname: string, init: RequestInit = {}, timeoutMs = 30_000): Promise<{ ok: boolean; status: number; data: T }> {
+function truncateText(value: unknown, maxLen = 8000) {
+  const text = typeof value === "string" ? value : value == null ? "" : String(value);
+  if (text.length <= maxLen) return text;
+  return `${text.slice(0, maxLen)}…(truncado)`;
+}
+
+async function runpodFetch<T>(
+  pathname: string,
+  init: RequestInit = {},
+  timeoutMs = 30_000
+): Promise<{
+  ok: boolean;
+  status: number;
+  data: T;
+  request: { method: string; path: string; body: string | null };
+  elapsedMs: number;
+}> {
+  const startedAt = Date.now();
+  const method = String((init.method || "GET").toUpperCase());
+  const body = typeof init.body === "string" ? truncateText(init.body, 12000) : null;
   const res = await fetch(`${RUNPOD_API_BASE_URL}${pathname}`, {
     ...init,
     headers: {
@@ -113,7 +133,13 @@ async function runpodFetch<T>(pathname: string, init: RequestInit = {}, timeoutM
   } catch {
     data = { raw: text };
   }
-  return { ok: res.ok, status: res.status, data };
+  return {
+    ok: res.ok,
+    status: res.status,
+    data,
+    request: { method, path: pathname, body },
+    elapsedMs: Date.now() - startedAt,
+  };
 }
 
 function comfyProxyUrl(podId: string) {
@@ -163,25 +189,31 @@ async function getLatestPodSession() {
 async function getPod(podId: string, timeoutMs = 15_000) {
   const res = await runpodFetch<RunpodPod>(`/pods/${encodeURIComponent(podId)}`, { method: "GET" }, timeoutMs);
   if (!res.ok) {
-    throw new RunpodHttpError(`Runpod pod lookup failed`, res.status, res.data);
+    const err = new RunpodHttpError(`Runpod pod lookup failed`, res.status, res.data);
+    err.request = { ...res.request, elapsedMs: res.elapsedMs };
+    throw err;
   }
-  return res.data;
+  return { pod: res.data, http: { request: { ...res.request, elapsedMs: res.elapsedMs }, response: { status: res.status, data: res.data } } };
 }
 
 async function startPod(podId: string, timeoutMs = 15_000) {
   const res = await runpodFetch(`/pods/${encodeURIComponent(podId)}/start`, { method: "POST" }, timeoutMs);
   if (!res.ok) {
-    throw new RunpodHttpError(`Runpod pod start failed`, res.status, res.data);
+    const err = new RunpodHttpError(`Runpod pod start failed`, res.status, res.data);
+    err.request = { ...res.request, elapsedMs: res.elapsedMs };
+    throw err;
   }
-  return res.data;
+  return { data: res.data, http: { request: { ...res.request, elapsedMs: res.elapsedMs }, response: { status: res.status, data: res.data } } };
 }
 
 async function stopPod(podId: string, timeoutMs = 15_000) {
   const res = await runpodFetch(`/pods/${encodeURIComponent(podId)}/stop`, { method: "POST" }, timeoutMs);
   if (!res.ok) {
-    throw new RunpodHttpError(`Runpod pod stop failed`, res.status, res.data);
+    const err = new RunpodHttpError(`Runpod pod stop failed`, res.status, res.data);
+    err.request = { ...res.request, elapsedMs: res.elapsedMs };
+    throw err;
   }
-  return res.data;
+  return { data: res.data, http: { request: { ...res.request, elapsedMs: res.elapsedMs }, response: { status: res.status, data: res.data } } };
 }
 
 async function createPod(params: { timeoutMs?: number; podNameOverride?: string } = {}) {
@@ -211,9 +243,11 @@ async function createPod(params: { timeoutMs?: number; podNameOverride?: string 
 
   const res = await runpodFetch<RunpodPod>("/pods", { method: "POST", body: JSON.stringify(body) }, timeoutMs);
   if (!res.ok) {
-    throw new RunpodHttpError(`Runpod pod create failed`, res.status, res.data);
+    const err = new RunpodHttpError(`Runpod pod create failed`, res.status, res.data);
+    err.request = { ...res.request, elapsedMs: res.elapsedMs };
+    throw err;
   }
-  return res.data;
+  return { pod: res.data, http: { request: { ...res.request, elapsedMs: res.elapsedMs }, response: { status: res.status, data: res.data } } };
 }
 
 async function checkComfyHealth(podId: string, timeoutMs = 8_000) {
@@ -235,7 +269,8 @@ async function waitUntilRunning(podId: string, timeoutMs = DEFAULT_TIMEOUT_MS, p
   let lastComfy: any = null;
 
   while (Date.now() - startedAt < timeoutMs) {
-    lastPod = await getPod(podId, 15_000);
+    const fetched = await getPod(podId, 15_000);
+    lastPod = fetched.pod;
 
     if (lastPod.desiredStatus === "TERMINATED" || lastPod.desiredStatus === "EXITED" || lastPod.desiredStatus === "FAILED") {
       throw new Error(`Pod ${podId} failed before becoming ready (desiredStatus=${lastPod.desiredStatus})`);
@@ -307,10 +342,10 @@ export async function getRunpodManagerStatus() {
 
   try {
     const pod = await getPod(state.currentPodId, 15_000);
-    const comfyHealth = pod.desiredStatus === "RUNNING" ? await checkComfyHealth(state.currentPodId, 5_000) : null;
-    const online = pod.desiredStatus === "RUNNING" && Boolean(comfyHealth?.ok);
+    const comfyHealth = pod.pod.desiredStatus === "RUNNING" ? await checkComfyHealth(state.currentPodId, 5_000) : null;
+    const online = pod.pod.desiredStatus === "RUNNING" && Boolean(comfyHealth?.ok);
 
-    await updatePodSession(online ? "ONLINE" : pod.desiredStatus === "RUNNING" ? "IDLE" : "OFFLINE");
+    await updatePodSession(online ? "ONLINE" : pod.pod.desiredStatus === "RUNNING" ? "IDLE" : "OFFLINE");
     await saveRunpodState({ lastAction: "sync", lastError: null, pendingPod: online ? false : state.pendingPod });
 
     return {
@@ -319,7 +354,7 @@ export async function getRunpodManagerStatus() {
       currentPodId: state.currentPodId,
       session: await getLatestPodSession(),
       state: await loadRunpodState(),
-      pod,
+      pod: pod.pod,
       comfyBaseUrl: comfyProxyUrl(state.currentPodId),
       comfyHealth,
     };
@@ -357,7 +392,7 @@ export async function startOrCreateRunpodPod(params?: { forceCreateNew?: boolean
   };
 
   const locked = await tryAcquireRunpodLock();
-  pushEvent({ step: "LOCK", attempt: 1, message: locked ? "Acquired advisory lock" : "Proceeding without advisory lock" });
+  pushEvent({ step: "LOCK", attempt: 1, message: locked ? "Lock adquirido (evita criar 2 pods em paralelo)" : "Sem lock (seguindo com modo seguro/aguardar)" });
 
   try {
     const state = await loadRunpodState();
@@ -371,16 +406,16 @@ export async function startOrCreateRunpodPod(params?: { forceCreateNew?: boolean
           status: "ERROR",
           currentPodId: null,
           events,
-          error: "Another process is controlling Runpod and no currentPodId is saved",
+          error: "Outro processo está controlando o Runpod e não há currentPodId salvo",
         };
       }
 
-      pushEvent({ step: "POLL", attempt: 1, podId: state.currentPodId, message: "Lock not acquired; waiting for existing/pending pod to become ready" });
+      pushEvent({ step: "POLL", attempt: 1, podId: state.currentPodId, message: "Lock não adquirido; aguardando pod atual ficar pronto" });
       try {
         const ready = await waitUntilRunning(state.currentPodId, timeoutMs, pollMs);
         await saveRunpodState({ currentPodId: state.currentPodId, lastAction: "sync", lastError: null, pendingPod: false, pendingSince: null });
         await updatePodSession("ONLINE", { startedAt: new Date() });
-        pushEvent({ step: "VERIFY", attempt: 1, podId: state.currentPodId, message: "Pod RUNNING and ComfyUI healthy" });
+        pushEvent({ step: "VERIFY", attempt: 1, podId: state.currentPodId, message: "Pod RUNNING e ComfyUI saudável" });
         return {
           ok: true,
           action: "ligar",
@@ -397,7 +432,7 @@ export async function startOrCreateRunpodPod(params?: { forceCreateNew?: boolean
           step: "POLL",
           attempt: 1,
           podId: state.currentPodId,
-          message: "Pod not ready yet (lock held elsewhere)",
+          message: "Pod ainda não ficou pronto (lock está com outro processo)",
           details: { message: error?.message || error },
         });
         return {
@@ -408,37 +443,41 @@ export async function startOrCreateRunpodPod(params?: { forceCreateNew?: boolean
           currentPodId: state.currentPodId,
           connectUrl: comfyProxyUrl(state.currentPodId),
           events,
-          error: error?.message || "Pod not ready yet",
+          error: error?.message || "Pod ainda não ficou pronto",
         };
       }
     }
 
     if (state.currentPodId && !forceCreateNew) {
       const podId = state.currentPodId;
-      pushEvent({ step: "START", attempt: 1, podId, message: "Attempting to start saved pod" });
+      pushEvent({ step: "START", attempt: 1, podId, message: "Tentando dar START no pod salvo" });
       let startIssued = false;
 
       try {
-        await startPod(podId, 15_000);
+        const started = await startPod(podId, 15_000);
         startIssued = true;
+        pushEvent({ step: "START", attempt: 1, podId, message: "START enviado com sucesso", details: { http: started.http } });
       } catch (error: any) {
         pushEvent({
           step: "START",
           attempt: 1,
           podId,
-          message: "START failed; will fallback to CREATE",
-          details: error instanceof RunpodHttpError ? { status: error.status, data: error.data, message: error.message } : { message: error?.message || error },
+          message: "START falhou; fazendo fallback para CREATE",
+          details:
+            error instanceof RunpodHttpError
+              ? { http: { request: error.request || null, response: { status: error.status, data: error.data } }, message: error.message }
+              : { message: error?.message || error },
         });
         // Fall through to CREATE.
       }
 
       if (startIssued) {
-        pushEvent({ step: "POLL", attempt: 1, podId, message: "Polling pod status until RUNNING (and ComfyUI healthy)" });
+        pushEvent({ step: "POLL", attempt: 1, podId, message: "Aguardando pod ficar RUNNING (e ComfyUI saudável)" });
         try {
           const ready = await waitUntilRunning(podId, timeoutMs, pollMs);
           await saveRunpodState({ currentPodId: podId, lastAction: "ligar", lastError: null, pendingPod: false, pendingSince: null });
           await updatePodSession("ONLINE", { startedAt: new Date() });
-          pushEvent({ step: "VERIFY", attempt: 1, podId, message: "Pod RUNNING and ComfyUI healthy" });
+          pushEvent({ step: "VERIFY", attempt: 1, podId, message: "Pod RUNNING e ComfyUI saudável" });
           return {
             ok: true,
             action: "ligar",
@@ -455,7 +494,7 @@ export async function startOrCreateRunpodPod(params?: { forceCreateNew?: boolean
             step: "POLL",
             attempt: 1,
             podId,
-            message: "POLL failed/timeout; will fallback to CREATE",
+            message: "POLL falhou/timeout; fazendo fallback para CREATE",
             details: { message: error?.message || error },
           });
         }
@@ -464,18 +503,36 @@ export async function startOrCreateRunpodPod(params?: { forceCreateNew?: boolean
 
     const attempt = 1;
     const podName = formatPodName(createdNameBase);
-    pushEvent({ step: "CREATE", attempt, message: "Creating new pod", details: { podName } });
+    pushEvent({ step: "CREATE", attempt, message: "Criando pod novo", details: { podName } });
 
-    let created: RunpodPod;
+    let created: { pod: RunpodPod; http: any };
     try {
       created = await createPod({ timeoutMs: 30_000, podNameOverride: podName });
-      pushEvent({ step: "CREATE", attempt, podId: created.id, message: "CREATE succeeded", details: { podName } });
+      pushEvent({
+        step: "CREATE",
+        attempt,
+        podId: created.pod.id,
+        message: "CREATE ok",
+        details: {
+          podName,
+          http: created.http,
+          result: {
+            id: created.pod.id,
+            desiredStatus: created.pod.desiredStatus,
+            imageName: created.pod.imageName,
+            networkVolume: created.pod.networkVolume,
+          },
+        },
+      });
     } catch (error: any) {
       pushEvent({
         step: "CREATE",
         attempt,
-        message: "CREATE failed",
-        details: error instanceof RunpodHttpError ? { status: error.status, data: error.data, message: error.message } : { message: error?.message || error },
+        message: "CREATE falhou",
+        details:
+          error instanceof RunpodHttpError
+            ? { http: { request: error.request || null, response: { status: error.status, data: error.data } }, message: error.message }
+            : { message: error?.message || error },
       });
       await updatePodSession("ERROR", { errorMessage: error?.message || "runpod create failed" });
       await saveRunpodState({ lastError: error?.message || "runpod create failed" });
@@ -484,26 +541,26 @@ export async function startOrCreateRunpodPod(params?: { forceCreateNew?: boolean
 
     // Persist immediately (pending) to avoid duplicate creates on retries.
     await saveRunpodState({
-      currentPodId: created.id,
+      currentPodId: created.pod.id,
       lastAction: forceCreateNew ? "ligarnovo" : "ligar",
       lastError: null,
       pendingPod: true,
       pendingSince: new Date().toISOString(),
     });
 
-    pushEvent({ step: "POLL", attempt, podId: created.id, message: "Polling new pod until RUNNING (and ComfyUI healthy)" });
+    pushEvent({ step: "POLL", attempt, podId: created.pod.id, message: "Aguardando pod novo ficar RUNNING (e ComfyUI saudável)" });
     try {
-      const ready = await waitUntilRunning(created.id, timeoutMs, pollMs);
-      await saveRunpodState({ currentPodId: created.id, lastAction: forceCreateNew ? "ligarnovo" : "ligar", lastError: null, pendingPod: false, pendingSince: null });
+      const ready = await waitUntilRunning(created.pod.id, timeoutMs, pollMs);
+      await saveRunpodState({ currentPodId: created.pod.id, lastAction: forceCreateNew ? "ligarnovo" : "ligar", lastError: null, pendingPod: false, pendingSince: null });
       await updatePodSession("ONLINE", { startedAt: new Date() });
-      pushEvent({ step: "VERIFY", attempt, podId: created.id, message: "Pod RUNNING and ComfyUI healthy" });
+      pushEvent({ step: "VERIFY", attempt, podId: created.pod.id, message: "Pod RUNNING e ComfyUI saudável" });
       return {
         ok: true,
         action: forceCreateNew ? "ligarnovo" : "ligar",
         status: "RUNNING",
         reusedExistingPod: false,
         replacedPreviousPodId: state.currentPodId,
-        currentPodId: created.id,
+        currentPodId: created.pod.id,
         connectUrl: ready.comfyBaseUrl,
         comfyBaseUrl: ready.comfyBaseUrl,
         pod: ready.pod,
@@ -513,8 +570,8 @@ export async function startOrCreateRunpodPod(params?: { forceCreateNew?: boolean
       pushEvent({
         step: "POLL",
         attempt,
-        podId: created.id,
-        message: "POLL failed/timeout; pod remains pending",
+        podId: created.pod.id,
+        message: "POLL falhou/timeout; pod segue pendente",
         details: { message: error?.message || error },
       });
       await updatePodSession("STARTING", { errorMessage: error?.message || "waiting pod" });
@@ -525,8 +582,8 @@ export async function startOrCreateRunpodPod(params?: { forceCreateNew?: boolean
         status: "STARTING",
         reusedExistingPod: false,
         replacedPreviousPodId: state.currentPodId,
-        currentPodId: created.id,
-        connectUrl: comfyProxyUrl(created.id),
+        currentPodId: created.pod.id,
+        connectUrl: comfyProxyUrl(created.pod.id),
         events,
         error: error?.message || "Timeout waiting pod",
       };

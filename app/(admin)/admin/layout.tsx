@@ -57,97 +57,87 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
   ];
 
   return (
-    <div className="min-h-screen bg-[#030712] text-slate-200 flex overflow-hidden">
-      {/* Background Grid Decoration */}
-      <div className="fixed inset-0 bg-grid pointer-events-none opacity-20" />
-      <div className="fixed inset-0 bg-gradient-to-tr from-indigo-500/5 via-transparent to-emerald-500/5 pointer-events-none" />
+    <div className="min-h-screen bg-[#f5f7fb] text-slate-900 flex overflow-hidden">
+      {/* Subtle background decoration */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-indigo-500/10 blur-3xl" />
+        <div className="absolute top-24 -right-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl" />
+      </div>
 
-      {/* Modern Glass Sidebar */}
-      <aside 
-        className={`fixed lg:relative z-50 h-full glass transition-all duration-500 ease-in-out border-r border-white/5
-          ${isSidebarOpen ? "w-64 translate-x-0" : "w-0 lg:w-20 -translate-x-full lg:translate-x-0"}`}
+      {/* Light Sidebar */}
+      <aside
+        className={`fixed lg:relative z-50 h-full bg-white border-r border-slate-200/70 transition-all duration-300 ease-in-out
+          ${isSidebarOpen ? "w-72 translate-x-0" : "w-0 lg:w-20 -translate-x-full lg:translate-x-0"}`}
+        style={{ boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)" }}
       >
         <div className="flex flex-col h-full overflow-hidden">
-          {/* Logo Section */}
-          <div className="p-6 flex items-center gap-3 border-b border-white/5">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <span className="font-bold text-white">P</span>
+          <div className="p-6 flex items-center gap-3 border-b border-slate-200/70">
+            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <span className="font-black text-white">P</span>
             </div>
             {isSidebarOpen && (
-              <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-                Portal IA
-              </span>
+              <div className="leading-tight">
+                <div className="font-black text-slate-900 tracking-tight">Portal IA</div>
+                <div className="text-xs text-slate-500">Admin</div>
+              </div>
             )}
           </div>
 
-          {/* Navigation Items */}
-          <nav className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-1 custom-scrollbar">
+          <nav className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-1">
             {menuItems.map((item) => {
               const isActive = pathname === item.path;
               return (
                 <Link
                   key={item.text}
                   href={item.path}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group
-                    ${isActive 
-                      ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-lg shadow-indigo-500/5" 
-                      : "text-slate-400 hover:bg-white/5 hover:text-slate-100"}`}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-200
+                    ${isActive ? "bg-indigo-50 text-indigo-700 border border-indigo-100" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
                 >
-                  <span className={`transition-transform duration-300 group-hover:scale-110 ${isActive ? "scale-110" : ""}`}>
-                    {React.cloneElement(item.icon as React.ReactElement, { 
-                      fontSize: "small",
-                      className: isActive ? "text-indigo-400" : "text-slate-400 group-hover:text-slate-100"
-                    })}
+                  <span className={`${isActive ? "text-indigo-600" : "text-slate-500"} transition-colors`}>
+                    {React.cloneElement(item.icon as React.ReactElement, { fontSize: "small" })}
                   </span>
-                  {isSidebarOpen && (
-                    <span className="text-sm font-medium whitespace-nowrap overflow-hidden">
-                      {item.text}
-                    </span>
-                  )}
+                  {isSidebarOpen && <span className="text-sm font-semibold whitespace-nowrap overflow-hidden">{item.text}</span>}
                 </Link>
               );
             })}
           </nav>
 
-          {/* Footer / User Section */}
-          <div className="p-4 border-t border-white/5">
+          <div className="p-4 border-t border-slate-200/70">
             <button
               onClick={() => signOut({ callbackUrl: "/admin/login" })}
-              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors group"
+              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors"
             >
               <LogoutIcon fontSize="small" />
-              {isSidebarOpen && <span className="text-sm font-medium">Sair do Sistema</span>}
+              {isSidebarOpen && <span className="text-sm font-semibold">Sair</span>}
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 relative h-screen overflow-hidden">
-        {/* Modern Header */}
-        <header className="h-16 glass-panel border-b border-white/5 flex items-center justify-between px-6 z-40 shrink-0">
-          <div className="flex items-center gap-4">
-            <button 
+        <header className="h-16 bg-white/80 backdrop-blur border-b border-slate-200/70 flex items-center justify-between px-6 z-40 shrink-0">
+          <div className="flex items-center gap-3">
+            <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors text-slate-400 hover:text-white"
+              className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-600"
+              aria-label="Alternar menu"
             >
               <DashboardIcon fontSize="small" />
             </button>
-            <h1 className="text-lg font-semibold text-slate-100 capitalize">
+            <h1 className="text-lg font-black text-slate-900 capitalize">
               {pathname.split("/").pop()?.replace("-", " ") || "Dashboard"}
             </h1>
           </div>
 
           <div className="flex items-center gap-3">
-             <div className="px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full">
-                <span className="text-xs font-bold text-indigo-400">PRO PLAN</span>
-             </div>
+            <div className="px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full">
+              <span className="text-xs font-black text-indigo-700">PLUGANDO IA</span>
+            </div>
           </div>
         </header>
 
-        {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar animate-in relative">
-          {children}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="mx-auto w-full max-w-[1600px]">{children}</div>
         </div>
       </main>
     </div>

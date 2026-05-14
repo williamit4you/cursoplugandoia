@@ -81,10 +81,21 @@ export async function upsertPipelineStep(params: {
     responsePayload: safeJson(responsePayload),
   };
 
-  if (!existing) {
-    return prisma.shopeePipelineStep.create({ data });
+  const sameAttempt = await prisma.shopeePipelineStep.findFirst({
+    where: { coletaId, stepName, attempt },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  // Prefer updating the latest row for the same attempt, so the UI shows a single
+  // entry transitioning RUNNING -> SUCCESS/RETRY_SCHEDULED/FAILED.
+  if (sameAttempt) {
+    return prisma.shopeePipelineStep.update({
+      where: { id: sameAttempt.id },
+      data,
+    });
   }
 
+  // If an attempt wasn't persisted (older data), fallback to creating a new row.
+  if (!existing) return prisma.shopeePipelineStep.create({ data });
   return prisma.shopeePipelineStep.create({ data });
 }
-

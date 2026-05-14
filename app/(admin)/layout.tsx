@@ -13,7 +13,7 @@ export default function AdminLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body>
+      <body className="theme-light bg-[#f5f7fb] text-slate-900 antialiased min-h-screen">
         <Providers>{children}</Providers>
       </body>
     </html>

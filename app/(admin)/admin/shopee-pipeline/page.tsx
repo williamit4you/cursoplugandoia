@@ -89,6 +89,7 @@ type PipelineEvent = {
   level: string;
   stepName?: string | null;
   message: string;
+  metadata?: any;
 };
 
 type PodSession = {
@@ -152,6 +153,61 @@ function stepColor(status?: string | null) {
   if (status === "RUNNING") return "#38bdf8";
   if (status === "RETRY_SCHEDULED") return "#f59e0b";
   return "rgba(226,232,240,0.55)";
+}
+
+function truncateJson(value: unknown, maxLen = 900) {
+  if (value === null || value === undefined) return "";
+  let text = "";
+  try {
+    text = JSON.stringify(value, null, 2);
+  } catch {
+    text = String(value);
+  }
+  if (text.length <= maxLen) return text;
+  return `${text.slice(0, maxLen)}\n…(truncado)`;
+}
+
+function renderRunpodEvents(metadata: any) {
+  const events = metadata?.events;
+  if (!Array.isArray(events) || events.length === 0) return null;
+
+  return (
+    <div className="mt-2 space-y-2">
+      {events.map((evt: any, idx: number) => {
+        const http = evt?.details?.http || null;
+        const request = http?.request || null;
+        const response = http?.response || null;
+        const title = `${evt?.step || "?"} • ${evt?.message || ""}`.trim();
+        const subtitle = `${typeof evt?.elapsedMs === "number" ? `${evt.elapsedMs}ms` : ""}${evt?.podId ? ` • podId=${evt.podId}` : ""}`.trim();
+
+        return (
+          <details key={`${evt?.at || "evt"}-${idx}`} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1">
+            <summary className="cursor-pointer select-none text-[11px] text-slate-300 hover:text-slate-100">
+              {title}
+              {subtitle ? <span className="ml-2 text-slate-500">{subtitle}</span> : null}
+            </summary>
+            <div className="mt-2 space-y-2">
+              {request ? (
+                <details>
+                  <summary className="cursor-pointer select-none text-[11px] text-slate-500 hover:text-slate-300">Envio (request)</summary>
+                  <pre className="mt-1 whitespace-pre-wrap text-[11px] text-slate-500">{truncateJson(request, 2400)}</pre>
+                </details>
+              ) : null}
+              {response ? (
+                <details>
+                  <summary className="cursor-pointer select-none text-[11px] text-slate-500 hover:text-slate-300">Retorno (response)</summary>
+                  <pre className="mt-1 whitespace-pre-wrap text-[11px] text-slate-500">{truncateJson(response, 2400)}</pre>
+                </details>
+              ) : null}
+              {!request && !response ? (
+                <pre className="whitespace-pre-wrap text-[11px] text-slate-500">{truncateJson(evt, 2400)}</pre>
+              ) : null}
+            </div>
+          </details>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function ShopeePipelinePage() {
@@ -977,6 +1033,18 @@ export default function ShopeePipelinePage() {
                               [{ev.level}] {ev.stepName ? `${ev.stepName}: ` : ""}
                               {ev.message}
                             </Typography>
+                            {ev.metadata ? (
+                              <details className="mt-1">
+                                <summary className="cursor-pointer select-none text-[11px] text-slate-500 hover:text-slate-300">
+                                  Ver detalhes (envio/retorno)
+                                </summary>
+                                {renderRunpodEvents(ev.metadata)}
+                                <details className="mt-2">
+                                  <summary className="cursor-pointer select-none text-[11px] text-slate-500 hover:text-slate-300">Ver JSON bruto</summary>
+                                  <pre className="mt-1 whitespace-pre-wrap text-[11px] text-slate-500">{truncateJson(ev.metadata, 2400)}</pre>
+                                </details>
+                              </details>
+                            ) : null}
                           </div>
                           <Typography variant="caption" className="text-slate-500 whitespace-nowrap">
                             {formatDate(ev.createdAt)}

@@ -31,13 +31,23 @@ export default function CrmLayout({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <Box sx={{ display: "flex" }}>
-      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, bgcolor: "#0f172a" }}>
+    <Box sx={{ display: "flex", bgcolor: "#f5f7fb", minHeight: "100vh" }}>
+      <AppBar
+        position="fixed"
+        elevation={0}
+        sx={{
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          bgcolor: "rgba(255,255,255,0.85)",
+          color: "#0f172a",
+          backdropFilter: "blur(10px)",
+          borderBottom: "1px solid rgba(15, 23, 42, 0.08)",
+        }}
+      >
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 800 }}>
             CRM Plugando IA
           </Typography>
-          <Button color="inherit" onClick={() => signOut({ callbackUrl: "/crm/login" })}>
+          <Button variant="outlined" onClick={() => signOut({ callbackUrl: "/crm/login" })}>
             Sair
           </Button>
         </Toolbar>
@@ -48,7 +58,12 @@ export default function CrmLayout({ children }: { children: React.ReactNode }) {
         sx={{
           width: drawerWidth,
           flexShrink: 0,
-          [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: "border-box" },
+          [`& .MuiDrawer-paper`]: {
+            width: drawerWidth,
+            boxSizing: "border-box",
+            bgcolor: "#ffffff",
+            borderRight: "1px solid rgba(15, 23, 42, 0.08)",
+          },
         }}
       >
         <Toolbar />
@@ -63,7 +78,7 @@ export default function CrmLayout({ children }: { children: React.ReactNode }) {
         </List>
       </Drawer>
 
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+      <Box component="main" sx={{ flexGrow: 1, p: 3, bgcolor: "#f5f7fb" }}>
         <Toolbar />
         {children}
       </Box>

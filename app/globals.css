@@ -5,7 +5,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  color-scheme: dark;
+  --app-bg: #f5f7fb;
+  --app-fg: #0f172a;
+  --scroll-thumb: rgba(15, 23, 42, 0.18);
+  --scroll-thumb-hover: rgba(15, 23, 42, 0.28);
 }
 
 html,
@@ -15,8 +18,22 @@ body {
   scroll-behavior: smooth;
 }
 
-body {
-  @apply bg-[#030712] text-slate-200 antialiased selection:bg-indigo-500/30;
+body { background: var(--app-bg); color: var(--app-fg); }
+
+.theme-light {
+  color-scheme: light;
+  --app-bg: #f5f7fb;
+  --app-fg: #0f172a;
+  --scroll-thumb: rgba(15, 23, 42, 0.18);
+  --scroll-thumb-hover: rgba(15, 23, 42, 0.28);
+}
+
+.theme-dark {
+  color-scheme: dark;
+  --app-bg: #030712;
+  --app-fg: #e2e8f0;
+  --scroll-thumb: rgba(255,255,255,0.14);
+  --scroll-thumb-hover: rgba(255,255,255,0.22);
 }
 
 /* Modern Grid Background */
@@ -48,11 +65,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.1);
+  background: var(--scroll-thumb);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.2);
+  background: var(--scroll-thumb-hover);
 }
 
 @keyframes fade-in {

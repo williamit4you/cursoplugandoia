@@ -9,7 +9,7 @@ export const metadata = {
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className="dark">
-      <body className="bg-[#0b0c10] text-gray-100 antialiased min-h-screen">
+      <body className="theme-dark bg-[#0b0c10] text-gray-100 antialiased min-h-screen">
         <Providers>
           {children}
         </Providers>

@@ -330,7 +330,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           online.ok && (online.data?.online === true || online.data?.ok === true || online.data?.status === "online");
 
         if (!isOnline) {
-          const power = await runpodPowerOn({ esperarOnline: true, maxEsperaSegundos: 10 }, 20000);
+          const power = await runpodPowerOn({ esperarOnline: true, maxEsperaSegundos: 240 }, 300_000);
           const powerData: any = (power as any)?.data;
           const started = Boolean(power.ok || powerData?.currentPodId);
           const isRunningNow = Boolean(power.ok && powerData?.status === "RUNNING");
@@ -376,7 +376,18 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
             level: "WARN",
             stepName,
             message: "POD offline. Reagendando para tentar novamente.",
-            metadata: { nextRetryAt, online, power },
+            metadata: {
+              nextRetryAt,
+              online,
+              pod: {
+                ok: Boolean(powerData?.ok),
+                status: powerData?.status,
+                currentPodId: powerData?.currentPodId,
+                replacedPreviousPodId: powerData?.replacedPreviousPodId,
+              },
+              events: powerData?.events || null,
+              error: powerData?.error || null,
+            },
           });
 
           return { ok: true, itemId: item.id, ran: stepName, scheduled: nextRetryAt };
@@ -433,7 +444,13 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           data: { pipelineStatus: "WAITING_POD" as any, nextRunAt: nextRetryAt, lastError: message },
         });
 
-        await logPipelineEvent({ coletaId: item.id, level: "WARN", stepName, message: "Erro no ensurePodOnline. Reagendado.", metadata: { error: message, nextRetryAt } });
+        await logPipelineEvent({
+          coletaId: item.id,
+          level: "WARN",
+          stepName,
+          message: "Erro no ensurePodOnline. Reagendado.",
+          metadata: { error: message, stack: error?.stack || null, nextRetryAt },
+        });
         return { ok: false, itemId: item.id, error: message, retry: true, nextRetryAt };
       }
     }
