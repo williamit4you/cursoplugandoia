@@ -109,13 +109,14 @@ async function runpodFetch<T>(
   ok: boolean;
   status: number;
   data: T;
-  request: { method: string; path: string; body: string | null };
+  request: { method: string; url: string; path: string; body: string | null };
   elapsedMs: number;
 }> {
   const startedAt = Date.now();
   const method = String((init.method || "GET").toUpperCase());
   const body = typeof init.body === "string" ? truncateText(init.body, 12000) : null;
-  const res = await fetch(`${RUNPOD_API_BASE_URL}${pathname}`, {
+  const url = `${RUNPOD_API_BASE_URL}${pathname}`;
+  const res = await fetch(url, {
     ...init,
     headers: {
       Authorization: `Bearer ${runpodApiKey()}`,
@@ -137,7 +138,7 @@ async function runpodFetch<T>(
     ok: res.ok,
     status: res.status,
     data,
-    request: { method, path: pathname, body },
+    request: { method, url, path: pathname, body },
     elapsedMs: Date.now() - startedAt,
   };
 }

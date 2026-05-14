@@ -1,6 +1,7 @@
 import "server-only";
 
 import { mkdir, readFile, writeFile } from "fs/promises";
+import os from "os";
 import path from "path";
 import { prisma } from "@/lib/prisma";
 
@@ -23,7 +24,10 @@ const defaultState: RunpodState = {
 };
 
 function stateFilePath() {
-  return path.join(process.cwd(), ".cache", "runpod-state.json");
+  // In many production containers `/app` is read-only. Prefer an OS temp dir there.
+  const isProd = process.env.NODE_ENV === "production";
+  const baseDir = isProd ? os.tmpdir() : process.cwd();
+  return path.join(baseDir, ".cache", "runpod-state.json");
 }
 
 async function readStateFromDb(): Promise<Partial<RunpodState> | null> {
@@ -112,7 +116,11 @@ export async function saveRunpodState(patch: Partial<RunpodState>) {
     updatedAt: new Date().toISOString(),
   };
 
-  await mkdir(path.dirname(stateFilePath()), { recursive: true });
-  await writeFile(stateFilePath(), JSON.stringify(next, null, 2), "utf8");
+  try {
+    await mkdir(path.dirname(stateFilePath()), { recursive: true });
+    await writeFile(stateFilePath(), JSON.stringify(next, null, 2), "utf8");
+  } catch {
+    // Ignore filesystem permission issues in production; DB is the source of truth.
+  }
   return next;
 }
