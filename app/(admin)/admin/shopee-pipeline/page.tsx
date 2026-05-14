@@ -1186,6 +1186,16 @@ export default function ShopeePipelinePage() {
                 />
               </div>
 
+              <Box className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                <Typography variant="caption" className="text-slate-300">
+                  Cron real: o Next.js nao dispara sozinho; a plataforma precisa chamar o endpoint. Quando chamado antes da hora, agora ele pula.
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 800, color: "#e2e8f0" }}>
+                  Proxima chamada aceita: {configDraft.nextCronRunAt ? formatDate(configDraft.nextCronRunAt) : "na proxima chamada externa"}
+                  {configDraft.lastCronRunAt ? ` • ultima: ${formatDate(configDraft.lastCronRunAt)}` : ""}
+                </Typography>
+              </Box>
+
               <TextField
                 label="URL pública do áudio de referência (voz)"
                 value={configDraft.userVoiceRefUrl}

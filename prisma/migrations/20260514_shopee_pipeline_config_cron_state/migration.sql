@@ -1,0 +1,3 @@
+ALTER TABLE "ShopeePipelineConfig"
+  ADD COLUMN IF NOT EXISTS "lastCronRunAt" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "nextCronRunAt" TIMESTAMP(3);

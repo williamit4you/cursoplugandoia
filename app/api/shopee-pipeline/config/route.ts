@@ -12,6 +12,8 @@ export async function GET() {
       runEveryMinutes: 5,
       maxItemsPerRun: 1,
       processOneAtATime: true,
+      lastCronRunAt: null,
+      nextCronRunAt: null,
       userBaseImageUrl: null,
       userVoiceRefUrl: null,
     }

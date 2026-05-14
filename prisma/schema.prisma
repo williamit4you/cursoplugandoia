@@ -963,6 +963,8 @@ model ShopeePipelineConfig {
   runEveryMinutes   Int      @default(5)
   maxItemsPerRun    Int      @default(1)
   processOneAtATime Boolean  @default(true)
+  lastCronRunAt     DateTime?
+  nextCronRunAt     DateTime?
   userBaseImageUrl  String?
   userVoiceRefUrl   String?
   comfyAudioPromptTemplate Json?

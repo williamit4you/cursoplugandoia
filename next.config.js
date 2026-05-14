@@ -12,6 +12,9 @@ const nextConfig = {
     // mas mantemos false para garantir qualidade, a menos que o OOM persista.
     ignoreBuildErrors: true,
   },
+  experimental: {
+    instrumentationHook: true,
+  },
   // Nao force incluir Puppeteer no build do Next.
   // Chromium/Puppeteer rodam no render-service (processador) para manter builds/dev leves.
 };
