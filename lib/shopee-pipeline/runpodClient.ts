@@ -24,7 +24,7 @@ export async function runpodPowerOn(params: { esperarOnline: boolean; maxEsperaS
     forceCreateNew: false,
     timeoutMs: Math.max(timeoutMs, params.maxEsperaSegundos * 1000),
   });
-  return { ok: true, status: 200, data: result };
+  return { ok: Boolean(result.ok), status: result.ok ? 200 : 503, data: result };
 }
 
 export async function runpodPowerOff(timeoutMs = 20000) {

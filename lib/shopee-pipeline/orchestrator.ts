@@ -331,18 +331,20 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
 
         if (!isOnline) {
           const power = await runpodPowerOn({ esperarOnline: true, maxEsperaSegundos: 10 }, 20000);
-          const success = power.ok;
-          const nextRetryAt = success ? addMinutes(now(), 1) : addMinutes(now(), 30);
+          const powerData: any = (power as any)?.data;
+          const started = Boolean(power.ok || powerData?.currentPodId);
+          const isRunningNow = Boolean(power.ok && powerData?.status === "RUNNING");
+          const nextRetryAt = started ? addMinutes(now(), 1) : addMinutes(now(), 30);
 
           const lastSession = await prisma.podSession.findFirst({ orderBy: { updatedAt: "desc" } });
           if (lastSession) {
             await prisma.podSession.update({
               where: { id: lastSession.id },
-              data: { status: success ? ("STARTING" as any) : ("OFFLINE" as any), lastOnlineCheckAt: now(), lastActivityAt: now() },
+              data: { status: started ? ("STARTING" as any) : ("OFFLINE" as any), lastOnlineCheckAt: now(), lastActivityAt: now() },
             });
           } else {
             await prisma.podSession.create({
-              data: { status: success ? ("STARTING" as any) : ("OFFLINE" as any), lastOnlineCheckAt: now(), lastActivityAt: now() },
+              data: { status: started ? ("STARTING" as any) : ("OFFLINE" as any), lastOnlineCheckAt: now(), lastActivityAt: now() },
             });
           }
 
@@ -357,7 +359,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
             durationMs: finishedAt.getTime() - startedAt.getTime(),
             nextRetryAt,
             responsePayload: { online, power },
-            errorMessage: success ? "POD ligando (aguardando online)" : "POD offline; reagendado",
+            errorMessage: isRunningNow ? "POD RUNNING (validar health)" : started ? "POD ligando (aguardando online)" : "POD offline; reagendado",
           });
 
           await prisma.coletaDadosShoppe.update({
@@ -365,7 +367,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
             data: {
               pipelineStatus: "WAITING_POD" as any,
               nextRunAt: nextRetryAt,
-              lastError: success ? "Aguardando POD ficar online" : "POD offline; reagendado",
+              lastError: isRunningNow ? "POD RUNNING (validar health)" : started ? "Aguardando POD ficar online" : "POD offline; reagendado",
             },
           });
 

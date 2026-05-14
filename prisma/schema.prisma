@@ -1016,6 +1016,9 @@ model PodSession {
   stoppedAt           DateTime?
   lastOnlineCheckAt   DateTime?
   lastActivityAt      DateTime?
+  currentPodId        String?
+  pendingPod          Boolean  @default(false)
+  pendingSince        DateTime?
   currentColetaId     String?
   currentStepName     String?
   shutdownRequestedAt DateTime?
