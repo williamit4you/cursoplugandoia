@@ -11,9 +11,8 @@ const DEFAULT_PORTS = ["8188/http", "22/tcp"];
 const DEFAULT_GPU_TYPE_IDS = [
   "NVIDIA A40",
   "NVIDIA L40S",
-  "NVIDIA RTX 6000 Ada Generation",
   "NVIDIA RTX A6000",
-  "NVIDIA RTX PRO 4500 Blackwell",
+  "NVIDIA RTX 6000 Ada Generation",
   "NVIDIA GeForce RTX 4090",
   "NVIDIA GeForce RTX 3090",
   "NVIDIA L4",
@@ -22,7 +21,6 @@ const DEFAULT_GPU_TYPE_IDS = [
 const DEFAULT_TIMEOUT_MS = 180_000;
 const DEFAULT_POLL_MS = 8_000;
 const DEFAULT_CONTAINER_DISK_GB = 50;
-const DEFAULT_VOLUME_GB = 40;
 
 type RunpodPod = {
   id: string;
@@ -91,10 +89,7 @@ function runpodConfig() {
     podName: (process.env.RUNPOD_POD_NAME || "Plugando ComfyUI").trim(),
     cloudType: (process.env.RUNPOD_CLOUD_TYPE || "SECURE").trim(),
     gpuCount: Math.max(1, Number(process.env.RUNPOD_GPU_COUNT || 1)),
-    minVCPUPerGPU: Math.max(2, Number(process.env.RUNPOD_MIN_VCPU_PER_GPU || 2)),
-    minRAMPerGPU: Math.max(8, Number(process.env.RUNPOD_MIN_RAM_PER_GPU || 8)),
     containerDiskInGb: Math.max(20, Number(process.env.RUNPOD_CONTAINER_DISK_GB || DEFAULT_CONTAINER_DISK_GB)),
-    volumeInGb: Math.max(20, Number(process.env.RUNPOD_VOLUME_GB || DEFAULT_VOLUME_GB)),
   };
 }
 
@@ -235,10 +230,6 @@ async function createPod(params: { timeoutMs?: number; podNameOverride?: string 
     volumeMountPath: cfg.volumeMountPath,
     ports: cfg.ports,
     containerDiskInGb: cfg.containerDiskInGb,
-    volumeInGb: cfg.volumeInGb,
-    minVCPUPerGPU: cfg.minVCPUPerGPU,
-    minRAMPerGPU: cfg.minRAMPerGPU,
-    supportPublicIp: true,
   };
 
   if (cfg.dataCenterIds.length) body.dataCenterIds = cfg.dataCenterIds;
@@ -633,10 +624,7 @@ export function getRunpodManagerDefaults() {
     podName: cfg.podName,
     cloudType: cfg.cloudType,
     gpuCount: cfg.gpuCount,
-    minVCPUPerGPU: cfg.minVCPUPerGPU,
-    minRAMPerGPU: cfg.minRAMPerGPU,
     containerDiskInGb: cfg.containerDiskInGb,
-    volumeInGb: cfg.volumeInGb,
     dataCenterIds: cfg.dataCenterIds,
     countryCodes: cfg.countryCodes,
     allowedCudaVersions: cfg.allowedCudaVersions,
