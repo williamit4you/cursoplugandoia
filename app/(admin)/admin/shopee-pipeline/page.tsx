@@ -988,7 +988,7 @@ export default function ShopeePipelinePage() {
                       <Chip size="small" label={statusLabel(item.pipelineStatus)} color={statusColor(item.pipelineStatus) as any} />
                     </TableCell>
                     <TableCell>{item.active ? "Sim" : "Não"}</TableCell>
-                    <TableCell>{formatDate(item.nextRunAt)}</TableCell>
+                    <TableCell>{item.nextRunAt ? formatDate(item.nextRunAt) : item.active ? "Próximo ciclo" : "-"}</TableCell>
                     <TableCell>
                       {item.lockedAt ? (
                         <Tooltip title={`LockedBy: ${item.lockedBy || "-"}`}>
@@ -1250,7 +1250,7 @@ export default function ShopeePipelinePage() {
                       <Chip size="small" label={statusLabel(selected.pipelineStatus)} color={statusColor(selected.pipelineStatus) as any} />
                     </div>
                     <Typography variant="caption" className="text-slate-400 block mt-2">
-                      Próx. Execução: {formatDate(selected.nextRunAt)}
+                      Próx. Execução: {selected.nextRunAt ? formatDate(selected.nextRunAt) : selected.active ? "Próximo ciclo do cron" : "-"}
                     </Typography>
                     <Typography variant="caption" className="text-slate-400 block mt-2">
                       Lock: {selected.lockedAt ? formatDate(selected.lockedAt) : "-"}
@@ -1294,7 +1294,7 @@ export default function ShopeePipelinePage() {
                     Controle manual
                   </Typography>
                   <Typography variant="caption" className="text-slate-400 block mt-1">
-                    Use “Continuar agora” para limpar o agendamento, destravar o item e retomar do ponto mais próximo possível com base nos artefatos já gerados.
+                    Use “Continuar agora” para deixar o item elegível no próximo ciclo, destravar e retomar do ponto mais próximo possível com base nos artefatos já gerados.
                   </Typography>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <Button size="small" variant="contained" startIcon={<BoltIcon />} onClick={() => continueNow(selected)}>
@@ -1321,7 +1321,7 @@ export default function ShopeePipelinePage() {
                       size="small"
                       sx={darkFieldSx}
                       slotProps={{ inputLabel: { shrink: true } }}
-                      helperText="Defina manualmente quando este item volta a ficar elegível."
+                      helperText="Se ficar vazio, roda no próximo ciclo do cron. Se preencher uma data futura, espera até esse horário."
                     />
                     <Button size="small" variant="outlined" onClick={saveNextRunForSelected}>
                       Salvar horário

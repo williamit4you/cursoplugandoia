@@ -357,7 +357,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
       }
     }
 
-    if (item.pipelineStatus === "COPY_READY" && !item.audioUrl) {
+    if ((item.pipelineStatus === "COPY_READY" || item.pipelineStatus === "WAITING_POD") && !item.audioUrl) {
       const stepName = "ENSURE_POD_ONLINE";
       const startedAt = now();
       const attempt = await nextAttemptForStep(item.id, stepName);
@@ -665,7 +665,13 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
       }
     }
 
-    if ((item.pipelineStatus === "AUDIO_READY" || item.pipelineStatus === "GENERATING_COPY_VIDEO") && !item.copyVideoUrl) {
+    if (
+      (item.pipelineStatus === "AUDIO_READY" ||
+        item.pipelineStatus === "GENERATING_COPY_VIDEO" ||
+        item.pipelineStatus === "WAITING_POD") &&
+      item.audioUrl &&
+      !item.copyVideoUrl
+    ) {
       const stepName = "GENERATE_COPY_VIDEO";
       const startedAt = now();
       const attempt = await nextAttemptForStep(item.id, stepName);
