@@ -390,7 +390,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           const powerData: any = (power as any)?.data;
           const started = Boolean(power.ok || powerData?.currentPodId);
           const isRunningNow = Boolean(power.ok && powerData?.status === "RUNNING");
-          const nextRetryAt = started ? addMinutes(now(), 1) : addMinutes(now(), 30);
+          const nextRetryAt = addMinutes(now(), 3);
 
           const lastSession = await prisma.podSession.findFirst({ orderBy: { updatedAt: "desc" } });
           if (lastSession) {
@@ -679,7 +679,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           online.ok && (online.data?.online === true || online.data?.ok === true || online.data?.status === "online");
         if (!isOnline) {
           const power = await runpodPowerOn({ esperarOnline: true, maxEsperaSegundos: 10 }, 20000);
-          const nextRetryAt = power.ok ? addMinutes(now(), 1) : addMinutes(now(), 30);
+          const nextRetryAt = addMinutes(now(), 3);
 
           const finishedAt = now();
           await upsertPipelineStep({

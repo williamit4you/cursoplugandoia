@@ -48,6 +48,7 @@ COPY lib ./lib
 COPY prisma ./prisma
 COPY public ./public
 COPY middleware.ts ./middleware.ts
+COPY instrumentation.ts ./instrumentation.ts
 COPY next-env.d.ts ./next-env.d.ts
 COPY next.config.js ./next.config.js
 COPY postcss.config.js ./postcss.config.js

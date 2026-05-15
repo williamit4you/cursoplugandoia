@@ -191,7 +191,7 @@ const STEP_DETAILS: Record<
     title: "Ligar ou validar o POD",
     summary: "Verifica se o ComfyUI responde. Se estiver desligado, tenta iniciar o POD Runpod ou criar outro.",
     actions: ["Consulta o health do ComfyUI", "Se necessario, chama a API do Runpod", "Quando online, libera a proxima etapa"],
-    waits: "Se o POD ainda estiver subindo, reagenda e tenta de novo automaticamente.",
+    waits: "Se o POD nao subir ou nao houver GPU disponivel, agenda nova tentativa para 3 minutos depois. O status `Aguardando POD` continua elegivel para o cron; ele nao fica parado para sempre.",
     application: ["Decide se precisa ligar o POD", "Guarda o podId atual e o estado da sessao"],
     runpod: ["Liga o POD existente ou cria outro", "Expõe o ComfyUI pela porta HTTP 8188"],
     minio: ["Nao participa desta etapa"],

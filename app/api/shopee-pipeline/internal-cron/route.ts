@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getInternalCronSchedulerStatus } from "@/lib/internalCronScheduler";
+import { getInternalCronSchedulerStatus, startInternalCronScheduler } from "@/lib/internalCronScheduler";
 import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
 
 export const dynamic = "force-dynamic";
@@ -12,5 +12,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  startInternalCronScheduler();
   return NextResponse.json(getInternalCronSchedulerStatus());
 }
