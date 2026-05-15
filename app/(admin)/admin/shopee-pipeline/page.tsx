@@ -101,6 +101,16 @@ type PodSession = {
   errorMessage?: string | null;
 };
 
+type InternalCronStatus = {
+  enabled: boolean;
+  started: boolean;
+  running: boolean;
+  tickMs: number;
+  lastTickAt?: string | null;
+  lastResult?: any;
+  lastError?: string | null;
+};
+
 function formatDate(value?: string | null) {
   if (!value) return "-";
   const d = new Date(value);
@@ -126,6 +136,132 @@ function statusColor(status: string) {
   if (status.endsWith("_READY")) return "info";
   if (status === "PAUSED") return "default";
   return "primary";
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pendente",
+  PAUSED: "Pausado",
+  WAITING_POD: "Aguardando POD",
+  GENERATING_AUDIO: "Gerando audio",
+  AUDIO_READY: "Audio pronto",
+  GENERATING_COPY_VIDEO: "Gerando video da copy",
+  COPY_VIDEO_READY: "Video da copy pronto",
+  MERGING_VIDEOS: "Juntando videos",
+  FINAL_VIDEO_READY: "Video final pronto",
+  FAILED: "Falhou",
+  PUBLISHED: "Publicado",
+  SUCCESS: "Sucesso",
+  RUNNING: "Executando",
+  RETRY_SCHEDULED: "Nova tentativa agendada",
+};
+
+const STEP_LABELS: Record<string, string> = {
+  SCRAPE_MEDIA: "Coletar midias",
+  ENSURE_POD_ONLINE: "Ligar/validar POD",
+  GENERATE_AUDIO: "Gerar audio",
+  GENERATE_COPY_VIDEO: "Gerar video da copy",
+  MERGE_VIDEOS: "Juntar videos",
+  GENERATE_AFFILIATE_LINK: "Gerar link afiliado",
+  CREATE_BIO_PRODUCT: "Criar produto na bio",
+  CREATE_STORY_AD: "Criar story",
+};
+
+const STEP_DETAILS: Record<
+  string,
+  {
+    title: string;
+    summary: string;
+    actions: string[];
+    waits?: string;
+    saves?: string;
+    application?: string[];
+    runpod?: string[];
+    minio?: string[];
+  }
+> = {
+  SCRAPE_MEDIA: {
+    title: "Coletar midias e texto do produto",
+    summary: "Busca a pagina da Shopee, extrai titulo, descricao, imagens, video original e prepara o roteiro de venda.",
+    actions: ["Chama o servico de scraping/render", "Guarda URLs de imagens e videos encontrados", "Salva o roteiro no banco"],
+    application: ["Coordena a coleta", "Salva titulo, descricao, roteiro e URLs no banco"],
+    runpod: ["Nao participa desta etapa"],
+    minio: ["Nao grava arquivo novo nesta etapa"],
+  },
+  ENSURE_POD_ONLINE: {
+    title: "Ligar ou validar o POD",
+    summary: "Verifica se o ComfyUI responde. Se estiver desligado, tenta iniciar o POD Runpod ou criar outro.",
+    actions: ["Consulta o health do ComfyUI", "Se necessario, chama a API do Runpod", "Quando online, libera a proxima etapa"],
+    waits: "Se o POD ainda estiver subindo, reagenda e tenta de novo automaticamente.",
+    application: ["Decide se precisa ligar o POD", "Guarda o podId atual e o estado da sessao"],
+    runpod: ["Liga o POD existente ou cria outro", "Expõe o ComfyUI pela porta HTTP 8188"],
+    minio: ["Nao participa desta etapa"],
+  },
+  GENERATE_AUDIO: {
+    title: "Gerar audio",
+    summary: "Usa o roteiro salvo do produto atual e a voz de referencia para gerar o MP3 no ComfyUI.",
+    actions: ["Baixa o audio de referencia", "Envia a voz ao ComfyUI", "Envia o texto para /prompt", "Consulta /history/{promptId} ate terminar", "Baixa o MP3 pronto via /view"],
+    saves: "Depois de pronto, salva o MP3 no MinIO e grava `audioUrl` no item.",
+    application: ["Pega o roteiro salvo do produto", "Baixa a voz de referencia", "Envia requests ao ComfyUI", "Espera terminar", "Baixa o MP3 pronto"],
+    runpod: ["Executa o workflow de clonagem de voz no ComfyUI", "Gera o MP3"],
+    minio: ["Recebe e guarda o MP3 final gerado", "Fornece a URL publica `audioUrl`"],
+  },
+  GENERATE_COPY_VIDEO: {
+    title: "Gerar video com imagem + audio",
+    summary: "Pega a imagem base e o MP3 gerado, envia ambos ao ComfyUI e gera o video falado da copy.",
+    actions: ["Baixa a imagem base", "Baixa o MP3 do audio", "Envia os arquivos ao ComfyUI", "Envia o prompt de video", "Consulta /history/{promptId} ate o video ficar pronto", "Baixa o MP4 via /view"],
+    waits: "Pode demorar bastante; o sistema espera ate 45 minutos antes de considerar timeout.",
+    saves: "Quando termina, salva o MP4 no MinIO e grava `copyVideoUrl`.",
+    application: ["Baixa imagem base e MP3", "Envia ambos ao ComfyUI", "Acompanha o job ate terminar", "Baixa o MP4 pronto"],
+    runpod: ["Executa o workflow de imagem + audio", "Gera o video da foto falando"],
+    minio: ["Entrega a imagem/audio se estiverem la", "Guarda o MP4 gerado como `copyVideoUrl`"],
+  },
+  MERGE_VIDEOS: {
+    title: "Unir video original + video da copy",
+    summary: "Envia ao worker o video original coletado da propaganda e o video da copy gerado pelo ComfyUI.",
+    actions: ["Chama o worker `/merge-videos`", "O worker baixa os dois videos", "Une os dois em um MP4 final"],
+    saves: "O MP4 final volta para o Next, e o Next salva no MinIO como `videoFinalUrl`.",
+    application: ["Envia para o worker as URLs do video original e do video da copy", "Recebe o MP4 final", "Salva o resultado"],
+    runpod: ["Nao participa desta etapa"],
+    minio: ["Fornece o video da copy", "Guarda o video final unido"],
+  },
+  GENERATE_AFFILIATE_LINK: {
+    title: "Gerar link afiliado",
+    summary: "Converte a URL original da Shopee em link afiliado curto.",
+    actions: ["Usa a configuracao da conta Shopee afiliados", "Chama a API de link afiliado", "Salva `affiliateUrl`"],
+    application: ["Chama a API de afiliados e guarda o resultado"],
+    runpod: ["Nao participa desta etapa"],
+    minio: ["Nao participa desta etapa"],
+  },
+  CREATE_BIO_PRODUCT: {
+    title: "Criar produto na bio",
+    summary: "Monta a pagina de produto da bio usando titulo, descricao, imagem, video final e link afiliado.",
+    actions: ["Cria slug", "Salva produto da bio", "Mantem link para compra"],
+    application: ["Cria o registro da bio no banco"],
+    runpod: ["Nao participa desta etapa"],
+    minio: ["Usa URLs ja existentes de imagem/video, mas nao gera arquivo novo"],
+  },
+  CREATE_STORY_AD: {
+    title: "Preparar publicacoes",
+    summary: "Cria o StoryAd e agenda publicacoes nas redes configuradas.",
+    actions: ["Cria registro do story", "Agenda TikTok, YouTube e Instagram", "Define o horario de publicacao"],
+    application: ["Cria o story e os agendamentos"],
+    runpod: ["Nao participa desta etapa"],
+    minio: ["Usa o video final ja salvo"],
+  },
+};
+
+function statusLabel(status: string) {
+  return STATUS_LABELS[status] || status;
+}
+
+function stepLabel(stepName: string) {
+  return STEP_LABELS[stepName] || stepName;
+}
+
+function secondsUntil(value?: string | null, nowMs = Date.now()) {
+  if (!value) return null;
+  const diff = Math.ceil((new Date(value).getTime() - nowMs) / 1000);
+  return Number.isFinite(diff) ? Math.max(0, diff) : null;
 }
 
 const PIPELINE_STEPS: Array<{ stepName: string; label: string }> = [
@@ -220,6 +356,8 @@ export default function ShopeePipelinePage() {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [pod, setPod] = useState<{ online: boolean; session: PodSession | null } | null>(null);
   const [cronConfig, setCronConfig] = useState<any>(null);
+  const [internalCron, setInternalCron] = useState<InternalCronStatus | null>(null);
+  const [nowMs, setNowMs] = useState(Date.now());
   const [configOpen, setConfigOpen] = useState(false);
   const [configLoading, setConfigLoading] = useState(false);
   const [config, setConfig] = useState<any>(null);
@@ -263,6 +401,10 @@ export default function ShopeePipelinePage() {
       const cfgRes = await fetch("/api/shopee-pipeline/config", { cache: "no-store" }).catch(() => null);
       const cfgData = cfgRes ? await cfgRes.json().catch(() => null) : null;
       setCronConfig(cfgData && typeof cfgData === "object" ? cfgData : null);
+
+      const cronRes = await fetch("/api/shopee-pipeline/internal-cron", { cache: "no-store" }).catch(() => null);
+      const cronData = cronRes?.ok ? await cronRes.json().catch(() => null) : null;
+      setInternalCron(cronData && typeof cronData === "object" ? cronData : null);
     } finally {
       setLoading(false);
     }
@@ -318,7 +460,33 @@ export default function ShopeePipelinePage() {
 
   useEffect(() => {
     load();
+    const clock = window.setInterval(() => setNowMs(Date.now()), 1000);
+    const refresh = window.setInterval(() => void load(), 15000);
+    return () => {
+      window.clearInterval(clock);
+      window.clearInterval(refresh);
+    };
   }, []);
+
+  const toggleCron = async (enabled: boolean) => {
+    const source = cronConfig || config || {};
+    const payload = {
+      enabled,
+      runEveryMinutes: Number(source.runEveryMinutes || 1),
+      maxItemsPerRun: Number(source.maxItemsPerRun || 1),
+      processOneAtATime: source.processOneAtATime !== false,
+      userBaseImageUrl: source.userBaseImageUrl || null,
+      userVoiceRefUrl: source.userVoiceRefUrl || null,
+      comfyAudioPromptTemplate: source.comfyAudioPromptTemplate || null,
+      comfyVideoPromptTemplate: source.comfyVideoPromptTemplate || null,
+    };
+    await fetch("/api/shopee-pipeline/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    await load();
+  };
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -413,7 +581,7 @@ export default function ShopeePipelinePage() {
       setSnackbar({
         open: true,
         severity: "success",
-        message: `Item preparado para continuar. Etapa de retomada: ${String((data as any)?.resumeInfo?.resumedStatus || item.pipelineStatus)}. Agora clique em “Rodar agora”.`,
+        message: `Item liberado para continuar em: ${statusLabel(String((data as any)?.resumeInfo?.resumedStatus || item.pipelineStatus))}. A automacao pega sozinha no proximo ciclo; "Rodar agora" apenas antecipa.`,
       });
     } catch (error: any) {
       setSnackbar({
@@ -576,12 +744,12 @@ export default function ShopeePipelinePage() {
 
   return (
     <Box className="space-y-6">
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <div>
           <Typography variant="h5" sx={{ fontWeight: 900 }}>
             Shopee Pipeline
           </Typography>
-          <Typography variant="body2" className="text-slate-400">
+          <Typography variant="body2" sx={{ color: "#475569" }}>
             Estado, logs e passos por URL (1 URL = 1 post).
           </Typography>
         </div>
@@ -597,9 +765,9 @@ export default function ShopeePipelinePage() {
             color={pod?.online ? "success" : "default"}
             variant="outlined"
             sx={{
-              color: "#e2e8f0",
-              borderColor: "rgba(255,255,255,0.18)",
-              bgcolor: "rgba(255,255,255,0.06)",
+              color: pod?.online ? "#166534" : "#475569",
+              borderColor: pod?.online ? "#86efac" : "#cbd5e1",
+              bgcolor: pod?.online ? "#dcfce7" : "#f8fafc",
               fontWeight: 800,
             }}
           />
@@ -625,9 +793,9 @@ export default function ShopeePipelinePage() {
             disabled={manualPublishing}
             startIcon={manualPublishing ? <CircularProgress size={16} /> : <PublishIcon />}
             sx={{
-              color: "#e2e8f0",
-              borderColor: "rgba(255,255,255,0.22)",
-              bgcolor: "rgba(255,255,255,0.06)",
+              color: "#0f172a",
+              borderColor: "#cbd5e1",
+              bgcolor: "#fff",
               fontWeight: 900,
               "&:hover": { bgcolor: "rgba(255,255,255,0.10)", borderColor: "rgba(255,255,255,0.30)" },
             }}
@@ -642,9 +810,9 @@ export default function ShopeePipelinePage() {
                   await loadConfig();
                 }}
                 sx={{
-                  color: "#e2e8f0",
-                  border: "1px solid rgba(255,255,255,0.18)",
-                  bgcolor: "rgba(255,255,255,0.06)",
+                  color: "#0f172a",
+                  border: "1px solid #cbd5e1",
+                  bgcolor: "#fff",
                   "&:hover": { bgcolor: "rgba(255,255,255,0.10)" },
                 }}
               >
@@ -660,13 +828,13 @@ export default function ShopeePipelinePage() {
             sx={{
               minWidth: 360,
               "& .MuiOutlinedInput-root": {
-                color: "#e2e8f0",
-                bgcolor: "rgba(255,255,255,0.06)",
-                "& fieldset": { borderColor: "rgba(255,255,255,0.18)" },
-                "&:hover fieldset": { borderColor: "rgba(255,255,255,0.28)" },
+                color: "#0f172a",
+                bgcolor: "#fff",
+                "& fieldset": { borderColor: "#cbd5e1" },
+                "&:hover fieldset": { borderColor: "#94a3b8" },
                 "&.Mui-focused fieldset": { borderColor: "rgba(34,197,94,0.7)" },
               },
-              "& input::placeholder": { color: "rgba(226,232,240,0.65)", opacity: 1 },
+              "& input::placeholder": { color: "#64748b", opacity: 1 },
             }}
           />
           <Tooltip title="Atualizar">
@@ -675,9 +843,9 @@ export default function ShopeePipelinePage() {
                 onClick={load}
                 disabled={loading}
                 sx={{
-                  color: "#e2e8f0",
-                  border: "1px solid rgba(255,255,255,0.18)",
-                  bgcolor: "rgba(255,255,255,0.06)",
+                  color: "#0f172a",
+                  border: "1px solid #cbd5e1",
+                  bgcolor: "#fff",
                   "&:hover": { bgcolor: "rgba(255,255,255,0.10)" },
                 }}
               >
@@ -704,6 +872,61 @@ export default function ShopeePipelinePage() {
         </Alert>
       </Snackbar>
 
+      <Card sx={{ border: "1px solid #cbd5e1", bgcolor: "#ffffff", boxShadow: "0 1px 2px rgba(15,23,42,0.06)" }}>
+        <CardContent>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <Typography variant="subtitle1" sx={{ fontWeight: 900, color: "#0f172a" }}>
+                Automacao do pipeline
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#475569" }}>
+                Cron interno: {internalCron?.started ? "iniciado" : "nao iniciado"} • verifica a cada{" "}
+                {Math.round((internalCron?.tickMs || 60000) / 1000)}s • pipeline {cronConfig?.enabled ? "ligado" : "desligado"}
+              </Typography>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant={cronConfig?.enabled ? "outlined" : "contained"} color={cronConfig?.enabled ? "inherit" : "success"} onClick={() => toggleCron(true)}>
+                Ligar automacao
+              </Button>
+              <Button variant={!cronConfig?.enabled ? "outlined" : "contained"} color={!cronConfig?.enabled ? "inherit" : "warning"} onClick={() => toggleCron(false)}>
+                Desligar automacao
+              </Button>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-4">
+            <div className="rounded-xl bg-slate-50 p-3">
+              <div className="text-xs font-bold text-slate-500">Ultima verificacao interna</div>
+              <div className="mt-1 font-bold text-slate-900">{formatDate(internalCron?.lastTickAt)}</div>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-3">
+              <div className="text-xs font-bold text-slate-500">Proximo ciclo permitido</div>
+              <div className="mt-1 font-bold text-slate-900">{formatDate(cronConfig?.nextCronRunAt)}</div>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-3">
+              <div className="text-xs font-bold text-slate-500">Contador ate o proximo ciclo</div>
+              <div className="mt-1 font-bold text-slate-900">
+                {secondsUntil(cronConfig?.nextCronRunAt, nowMs) === null ? "pronto agora" : `${secondsUntil(cronConfig?.nextCronRunAt, nowMs)}s`}
+              </div>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-3">
+              <div className="text-xs font-bold text-slate-500">Ultimo resultado do cron</div>
+              <div className="mt-1 font-bold text-slate-900">
+                {internalCron?.lastError
+                  ? `Erro: ${internalCron.lastError}`
+                  : internalCron?.lastResult?.skipped
+                    ? `Pulou: ${internalCron.lastResult.reason || "sem item elegivel"}`
+                    : internalCron?.lastResult
+                      ? "Executou"
+                      : "Ainda sem execucao"}
+              </div>
+            </div>
+          </div>
+          <Typography variant="caption" sx={{ mt: 1.5, display: "block", color: "#475569" }}>
+            Endpoint de diagnostico: <code>/api/shopee-pipeline/internal-cron</code> • endpoint manual: <code>/api/shopee-pipeline/cron</code>
+          </Typography>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-4 gap-3">
         <Card className="glass-panel border border-white/10">
           <CardContent>
@@ -722,7 +945,7 @@ export default function ShopeePipelinePage() {
             <Card key={status} className="glass-panel border border-white/10">
               <CardContent>
                 <Typography variant="caption" className="text-slate-400">
-                  {status}
+                  {statusLabel(status)}
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 900 }}>
                   {count}
@@ -762,7 +985,7 @@ export default function ShopeePipelinePage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Chip size="small" label={item.pipelineStatus} color={statusColor(item.pipelineStatus) as any} />
+                      <Chip size="small" label={statusLabel(item.pipelineStatus)} color={statusColor(item.pipelineStatus) as any} />
                     </TableCell>
                     <TableCell>{item.active ? "Sim" : "Não"}</TableCell>
                     <TableCell>{formatDate(item.nextRunAt)}</TableCell>
@@ -788,7 +1011,7 @@ export default function ShopeePipelinePage() {
                             <InfoOutlinedIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Preparar para continuar agora">
+                        <Tooltip title="Retomar agora: limpa agendamento e mantem a etapa atual quando ela ja esta em andamento">
                           <IconButton onClick={() => continueNow(item)}>
                             <BoltIcon fontSize="small" />
                           </IconButton>
@@ -918,8 +1141,56 @@ export default function ShopeePipelinePage() {
                 <Card variant="outlined" sx={{ borderColor: "rgba(255,255,255,0.10)", bgcolor: "transparent" }}>
                   <CardContent>
                     <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
-                      Etapa: {focusedStepName}
+                      Etapa: {stepLabel(focusedStepName)}
                     </Typography>
+                    {STEP_DETAILS[focusedStepName] ? (
+                      <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3 text-slate-900">
+                        <div className="text-sm font-extrabold">{STEP_DETAILS[focusedStepName].title}</div>
+                        <div className="mt-1 text-sm text-slate-700">{STEP_DETAILS[focusedStepName].summary}</div>
+                        <div className="mt-2 text-xs font-bold text-slate-500">O que faz</div>
+                        <ul className="mt-1 list-disc pl-5 text-sm text-slate-700">
+                          {STEP_DETAILS[focusedStepName].actions.map((action) => (
+                            <li key={action}>{action}</li>
+                          ))}
+                        </ul>
+                        {STEP_DETAILS[focusedStepName].waits ? (
+                          <div className="mt-2 text-sm text-slate-700">
+                            <b>Espera:</b> {STEP_DETAILS[focusedStepName].waits}
+                          </div>
+                        ) : null}
+                        {STEP_DETAILS[focusedStepName].saves ? (
+                          <div className="mt-1 text-sm text-slate-700">
+                            <b>Salva:</b> {STEP_DETAILS[focusedStepName].saves}
+                          </div>
+                        ) : null}
+                        <div className="mt-3 grid gap-2 md:grid-cols-3">
+                          <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                            <div className="text-xs font-extrabold text-slate-500">Na aplicacao</div>
+                            <ul className="mt-1 list-disc pl-4 text-sm text-slate-700">
+                              {(STEP_DETAILS[focusedStepName].application || []).map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                            <div className="text-xs font-extrabold text-slate-500">No Runpod</div>
+                            <ul className="mt-1 list-disc pl-4 text-sm text-slate-700">
+                              {(STEP_DETAILS[focusedStepName].runpod || []).map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                            <div className="text-xs font-extrabold text-slate-500">No MinIO</div>
+                            <ul className="mt-1 list-disc pl-4 text-sm text-slate-700">
+                              {(STEP_DETAILS[focusedStepName].minio || []).map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                     {(() => {
                       const step = (selected.pipelineSteps || []).find((p) => p.stepName === focusedStepName) as any;
                       if (!step) {
@@ -933,7 +1204,7 @@ export default function ShopeePipelinePage() {
                         <div className="mt-2 grid grid-cols-2 gap-3">
                           <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                             <div className="text-xs text-slate-400">Status</div>
-                            <div className="mt-1 text-sm font-bold text-slate-100">{step.status}</div>
+                            <div className="mt-1 text-sm font-bold text-slate-100">{statusLabel(step.status)}</div>
                             <div className="mt-2 text-xs text-slate-400">Tentativa</div>
                             <div className="mt-1 text-sm text-slate-200">{step.attempt}</div>
                             <div className="mt-2 text-xs text-slate-400">Início</div>
@@ -976,7 +1247,7 @@ export default function ShopeePipelinePage() {
                       Status
                     </Typography>
                     <div className="mt-1">
-                      <Chip size="small" label={selected.pipelineStatus} color={statusColor(selected.pipelineStatus) as any} />
+                      <Chip size="small" label={statusLabel(selected.pipelineStatus)} color={statusColor(selected.pipelineStatus) as any} />
                     </div>
                     <Typography variant="caption" className="text-slate-400 block mt-2">
                       Próx. Execução: {formatDate(selected.nextRunAt)}
@@ -1001,6 +1272,21 @@ export default function ShopeePipelinePage() {
                   </CardContent>
                 </Card>
               </div>
+
+              <Card variant="outlined" sx={{ borderColor: "#cbd5e1", bgcolor: "#fff" }}>
+                <CardContent>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 900, color: "#0f172a" }}>
+                    Quando o POD desliga
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 1, color: "#475569" }}>
+                    O watchdog verifica o POD. Se nao houver item ativo precisando de POD em `Aguardando POD`, `Gerando audio` ou `Gerando video da copy`
+                    e ele ficar ocioso por mais de 5 minutos, o sistema chama o desligamento do POD automaticamente.
+                  </Typography>
+                  <Typography variant="caption" sx={{ mt: 1, display: "block", color: "#64748b" }}>
+                    Endpoint usado para essa rotina: <code>/api/shopee-pipeline/pod-watchdog</code>
+                  </Typography>
+                </CardContent>
+              </Card>
 
               <Card variant="outlined" sx={{ borderColor: "rgba(255,255,255,0.08)", bgcolor: "transparent" }}>
                 <CardContent>
@@ -1053,9 +1339,9 @@ export default function ShopeePipelinePage() {
                     {(selected.pipelineSteps || []).slice(0, 12).map((step) => (
                       <div key={step.id} className="flex items-center justify-between gap-2 border border-white/10 rounded-lg px-2 py-1">
                         <Typography variant="caption" className="text-slate-900" noWrap>
-                          {step.stepName}
+                          {stepLabel(step.stepName)}
                         </Typography>
-                        <Chip size="small" label={step.status} />
+                        <Chip size="small" label={statusLabel(step.status)} />
                       </div>
                     ))}
                     {(selected.pipelineSteps || []).length === 0 && (
@@ -1085,7 +1371,7 @@ export default function ShopeePipelinePage() {
                         <div key={ev.id} className="flex items-start justify-between gap-3 border-b border-white/5 py-1">
                           <div className="min-w-0">
                             <Typography variant="caption" className="text-slate-900">
-                              [{ev.level}] {ev.stepName ? `${ev.stepName}: ` : ""}
+                              [{ev.level}] {ev.stepName ? `${stepLabel(ev.stepName)}: ` : ""}
                               {ev.message}
                             </Typography>
                             {ev.metadata ? (

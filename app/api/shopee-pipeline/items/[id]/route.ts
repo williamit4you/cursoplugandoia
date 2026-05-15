@@ -5,6 +5,15 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function inferResumeStatus(item: any) {
+  const keepCurrentStatuses = new Set([
+    "WAITING_POD",
+    "GENERATING_AUDIO",
+    "GENERATING_COPY_VIDEO",
+    "MERGING_VIDEOS",
+    "GENERATING_AFFILIATE_LINK",
+    "READY_FOR_STORY",
+  ]);
+  if (keepCurrentStatuses.has(String(item.pipelineStatus || ""))) return item.pipelineStatus;
   if (item.pipelineStatus === "PUBLISHED") return "PUBLISHED";
   if (item.affiliateUrl) return "AFFILIATE_LINK_READY";
   if (item.videoFinalUrl) return "FINAL_VIDEO_READY";

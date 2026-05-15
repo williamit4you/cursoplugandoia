@@ -368,12 +368,17 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           data: { pipelineStatus: "WAITING_POD" as any, lastError: null },
         });
 
+        const comfyBaseBeforeCheck = await getCurrentComfyBaseUrl().catch(() => null);
         await upsertPipelineStep({
           coletaId: item.id,
           stepName,
           status: "RUNNING",
           attempt,
           startedAt,
+          requestPayload: {
+            action: "Verificar se o POD/ComfyUI esta online",
+            checkUrl: comfyBaseBeforeCheck ? `${comfyBaseBeforeCheck}/system_stats` : null,
+          },
         });
 
         const online = await runpodOnline(8000);
@@ -463,6 +468,10 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           startedAt,
           finishedAt,
           durationMs: finishedAt.getTime() - startedAt.getTime(),
+          requestPayload: {
+            action: "Verificar se o POD/ComfyUI esta online",
+            checkUrl: online.data?.comfyBaseUrl ? `${online.data.comfyBaseUrl}/system_stats` : null,
+          },
           responsePayload: { online },
         });
 
@@ -533,6 +542,11 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           requestPayload: {
             voiceRefUrl,
             comfyBaseUrl: comfyBase,
+            requests: [
+              { method: "GET", url: voiceRefUrl, purpose: "Baixar audio de referencia da voz" },
+              { method: "POST", url: comfyBase ? `${comfyBase}/upload/image` : null, purpose: "Enviar audio de referencia ao ComfyUI" },
+              { method: "POST", url: comfyBase ? `${comfyBase}/prompt` : null, purpose: "Enviar prompt de geracao de audio ao ComfyUI" },
+            ],
             targetTextPreview: copy.slice(0, 220),
             targetTextLength: copy.length,
             note:
@@ -720,7 +734,15 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
             userBaseImageUrl: imageUrl,
             audioUrl: item.audioUrl,
             comfyBaseUrl: comfyBase,
-            note: "Este step baixa userBaseImageUrl + audioUrl e envia o workflow para o ComfyUI (/prompt).",
+            requests: [
+              { method: "GET", url: imageUrl, purpose: "Baixar imagem base do avatar/foto" },
+              { method: "GET", url: item.audioUrl, purpose: "Baixar audio ja gerado" },
+              { method: "POST", url: comfyBase ? `${comfyBase}/upload/image` : null, purpose: "Enviar imagem e audio ao ComfyUI" },
+              { method: "POST", url: comfyBase ? `${comfyBase}/prompt` : null, purpose: "Iniciar geracao do video no ComfyUI" },
+              { method: "GET", url: comfyBase ? `${comfyBase}/history/{promptId}` : null, purpose: "Consultar ate o video ficar pronto" },
+              { method: "GET", url: comfyBase ? `${comfyBase}/view?...` : null, purpose: "Baixar o MP4 finalizado pelo ComfyUI" },
+            ],
+            note: "Este step baixa a imagem base + audio, envia ao ComfyUI, aguarda o job finalizar, baixa o MP4 pronto e depois salva no MinIO.",
           },
         });
         await logPipelineEvent({ coletaId: item.id, stepName, message: "Gerando video da copy via ComfyUI (Infinite Talk)" });
@@ -779,6 +801,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
             outputFile: generated.file,
             history: safeTruncateJson(generated.history, 50000),
             uploadMeta: generated.uploadMeta,
+            copyVideoUrl,
           },
         });
 
@@ -850,7 +873,18 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           status: "RUNNING",
           attempt,
           startedAt,
-          requestPayload: { originalVideoUrl: item.mediaVideoUrls?.[0] || null, copyVideoUrl: item.copyVideoUrl || null },
+          requestPayload: {
+            originalVideoUrl: item.mediaVideoUrls?.[0] || null,
+            copyVideoUrl: item.copyVideoUrl || null,
+            requests: [
+              {
+                method: "POST",
+                url: `${String(process.env.WORKER_FASTAPI_BASE_URL || process.env.FASTAPI_URL || "http://127.0.0.1:8000").trim().replace(/\/+$/, "")}/merge-videos`,
+                purpose: "Pedir ao worker para unir o video original com o video da copy",
+              },
+            ],
+            note: "O worker baixa os dois videos pelas URLs recebidas, faz o merge e devolve o MP4 final para o Next salvar no MinIO.",
+          },
         });
 
         const originalVideoUrl = String(item.mediaVideoUrls?.[0] || "").trim();
@@ -885,6 +919,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
             originalVideoUrl,
             copyVideoUrl,
             minioKey,
+            videoFinalUrl,
             contentType: merged.contentType,
             bytes: merged.buffer.length,
           },
