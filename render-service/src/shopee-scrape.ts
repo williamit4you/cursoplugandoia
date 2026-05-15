@@ -47,6 +47,20 @@ function cleanupMarketingText(value: string | null | undefined) {
     .trim();
 }
 
+function removeLowValueSalesNoise(value: string | null | undefined) {
+  return cleanupMarketingText(value)
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+    .filter(
+      (sentence) =>
+        !/(primeiro uso|deix[aá]-?lo carregando|carregando de \d|antes do primeiro uso|manual|instru[cç][aã]o)/i.test(sentence)
+    )
+    .map((sentence) => sentence.replace(/\([^)]*$/g, "").trim())
+    .filter((sentence) => sentence.length >= 12)
+    .join(" ");
+}
+
 function isSuspiciousProductTitle(value: string | null | undefined) {
   const text = cleanupMarketingText(value);
   if (!text) return true;
@@ -446,8 +460,8 @@ export async function generateSalesScript(titulo: string, descricao: string, det
 
   const model = process.env.VIDEO_CODE_AI_MODEL || "gpt-4o-mini";
   const tituloSeguro = cleanupMarketingText(titulo);
-  const descricaoSegura = cleanupMarketingText(descricao).slice(0, 1500);
-  const detalhesSeguros = cleanupMarketingText(detalhes).slice(0, 1500);
+  const descricaoSegura = removeLowValueSalesNoise(descricao).slice(0, 1500);
+  const detalhesSeguros = removeLowValueSalesNoise(detalhes).slice(0, 1500);
 
   const body = JSON.stringify({
     model,
@@ -457,11 +471,20 @@ export async function generateSalesScript(titulo: string, descricao: string, det
         role: "system",
         content:
           "Voce e um copywriter senior de resposta direta para videos curtos de vendas.\n" +
-          "Escreva como uma pessoa real falaria em um video, com tom natural, convincente e profissional.\n" +
+          "Antes de escrever, interprete o produto e identifique: dor que resolve, desejo que ativa, publico comprador e principal beneficio percebido.\n" +
+          "O texto deve vender o produto como uma oferta irresistivel, nao apenas descrever caracteristicas.\n" +
+          "A copy deve seguir esta estrutura: GANCHO FORTE + PROBLEMA/DESEJO + BENEFICIO PRINCIPAL + PROVA/DETALHE + CTA.\n" +
+          "Escreva como uma pessoa real falaria em um video UGC/TikTok, com tom natural, curto, direto, convincente e profissional.\n" +
+          "Nunca comece com 'Olha isso', 'Compre agora' ou repetindo o nome cru do produto.\n" +
           "Nunca leia codigos, ids, sku, numeros soltos, porcentagens estranhas, texto truncado, URLs ou marcacoes internas.\n" +
+          "Se a descricao vier confusa, cortada ou ruim, descarte trechos quebrados e irrelevantes.\n" +
+          "Nao cite instrucoes tecnicas sem apelo de venda, como tempo de carregamento inicial, salvo se forem um diferencial real para comprar.\n" +
           "Se o titulo estiver ruim, priorize o contexto da descricao e dos detalhes para identificar o produto.\n" +
-          "O roteiro deve destacar beneficio principal, contexto de uso, diferencial e um fechamento com CTA.\n" +
-          "Evite soar generico, robotico ou repetir o mesmo argumento.\n" +
+          "Transforme caracteristicas tecnicas em beneficios claros para o comprador.\n" +
+          "Mostre para quem o produto e util e em qual situacao ele resolve um problema.\n" +
+          "Evite frases genericas como 'boa apresentacao', 'vale conhecer melhor' ou 'potencial para surpreender'.\n" +
+          "Nao prometa resultados impossiveis nem invente funcionalidades que nao estejam no produto.\n" +
+          "Use gatilhos com moderacao: praticidade, economia, tecnologia, presente, estilo, novidade e custo-beneficio.\n" +
           'Obrigatorio: terminar com uma variacao natural de "Para ter acesso ao produto, o link esta na bio!".\n' +
           'Responda apenas com JSON valido: {"script_vendas":"..."}',
       },
@@ -469,9 +492,9 @@ export async function generateSalesScript(titulo: string, descricao: string, det
         role: "user",
         content:
           `Titulo do produto: ${tituloSeguro}\n` +
-          `Descricao comercial: ${descricaoSegura}\n` +
-          `Detalhes tecnicos: ${detalhesSeguros}\n` +
-          "Escreva um texto pronto para locucao, fluido e com cara de anuncio profissional.",
+          `Descricao comercial filtrada: ${descricaoSegura}\n` +
+          `Detalhes uteis filtrados: ${detalhesSeguros}\n` +
+          "Escreva um texto pronto para locucao, fluido, vendedor e focado somente no que ajuda a pessoa a desejar e comprar o produto.",
       },
     ],
   });

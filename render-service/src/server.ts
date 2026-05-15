@@ -72,6 +72,20 @@ function cleanupMarketingText(value: unknown) {
     .trim();
 }
 
+function removeLowValueSalesNoise(value: unknown) {
+  return cleanupMarketingText(value)
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+    .filter(
+      (sentence) =>
+        !/(primeiro uso|deix[aá]-?lo carregando|carregando de \d|antes do primeiro uso|manual|instru[cç][aã]o)/i.test(sentence)
+    )
+    .map((sentence) => sentence.replace(/\([^)]*$/g, "").trim())
+    .filter((sentence) => sentence.length >= 12)
+    .join(" ");
+}
+
 function isSuspiciousProductTitle(value: unknown) {
   const text = cleanupMarketingText(value);
   if (!text) return true;
@@ -187,15 +201,14 @@ function buildShopeeDetailsFromApi(item: any) {
 
 function buildFallbackSalesScript(titulo: string, descricao: string, detalhes: string) {
   const tituloSeguro = cleanupMarketingText(titulo) || "esse produto";
-  const base = cleanupMarketingText(descricao || detalhes);
-  const snippet = base ? base.slice(0, 220).trim() : "";
+  const base = removeLowValueSalesNoise(descricao || detalhes);
+  const snippet = base ? base.slice(0, 180).trim() : "";
   return cleanupMarketingText(
-    `Olha isso: ${tituloSeguro}. ` +
+    `Quer um produto que entregue mais praticidade no dia a dia? ${tituloSeguro} pode ser uma excelente escolha. ` +
       (snippet
         ? `${snippet}. `
-        : "E uma opcao que chama atencao pelo visual, pela proposta e pelo custo-beneficio. ") +
-      "Se voce quer algo com boa apresentacao e potencial para surpreender no uso, vale conhecer melhor. " +
-      "Para ter acesso ao produto, o link esta na bio!"
+        : "Ele combina utilidade, boa proposta e custo-beneficio para quem quer comprar melhor. ") +
+      "Vale conferir o preco de hoje antes que acabe. Para ter acesso ao produto, o link esta na bio!"
   );
 }
 
