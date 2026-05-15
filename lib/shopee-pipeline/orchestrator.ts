@@ -5,7 +5,7 @@ import { logPipelineEvent, upsertPipelineStep } from "@/lib/shopee-pipeline/logg
 import { scrapeShopeeAndPersist } from "@/lib/shopee-pipeline/scrape";
 import { runpodOnline, runpodPowerOn } from "@/lib/shopee-pipeline/runpodClient";
 import { generateVoiceCloneAudio } from "@/lib/shopee-pipeline/comfyui/generateAudio";
-import { generateVideoFromTemplate } from "@/lib/shopee-pipeline/comfyui/generateVideoFromTemplate";
+import { getCompletedVideoForPrompt, submitVideoFromTemplate } from "@/lib/shopee-pipeline/comfyui/generateVideoFromTemplate";
 import { uploadBufferToMinio } from "@/lib/shopee-pipeline/minioUpload";
 import { mergeProductAndCopyVideos } from "@/lib/shopee-pipeline/merge";
 import { generateShopeeAffiliateShortLink } from "@/lib/shopee/openApi";
@@ -484,7 +484,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
         return { ok: true, itemId: item.id, ran: stepName };
       } catch (error: any) {
         const message = error?.message || "Falha ao verificar/ligar POD";
-        const nextRetryAt = addMinutes(now(), 30);
+        const nextRetryAt = addMinutes(now(), 3);
         const finishedAt = now();
 
         await upsertPipelineStep({
@@ -521,6 +521,25 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
       const attempt = await nextAttemptForStep(item.id, stepName);
 
       try {
+        const lastSuccessfulAudioStep = await prisma.shopeePipelineStep.findFirst({
+          where: { coletaId: item.id, stepName, status: "SUCCESS" as any },
+          orderBy: { updatedAt: "desc" },
+        });
+        const recoveredAudioUrl = String(((lastSuccessfulAudioStep?.responsePayload || {}) as any)?.audioUrl || "").trim();
+        if (recoveredAudioUrl) {
+          await prisma.coletaDadosShoppe.update({
+            where: { id: item.id },
+            data: { audioUrl: recoveredAudioUrl, pipelineStatus: "AUDIO_READY" as any, nextRunAt: null, lastError: null },
+          });
+          await logPipelineEvent({
+            coletaId: item.id,
+            stepName,
+            message: "Audio ja existia em step anterior; URL restaurada sem gerar novamente.",
+            metadata: { audioUrl: recoveredAudioUrl },
+          });
+          return { ok: true, itemId: item.id, ran: stepName, reusedAudioUrl: recoveredAudioUrl };
+        }
+
         const config = await prisma.shopeePipelineConfig.findFirst({ orderBy: { createdAt: "desc" } });
         const voiceRefUrl = config?.userVoiceRefUrl || null;
         if (!voiceRefUrl) throw new Error("Pipeline config missing userVoiceRefUrl");
@@ -628,7 +647,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
         return { ok: true, itemId: item.id, ran: stepName, audioUrl };
       } catch (error: any) {
         const message = error?.message || "Falha ao gerar audio";
-        const retryDecision = decideRetry({ attempt, maxAttempts: 3, baseDelayMinutes: 30 });
+        const retryDecision = decideRetry({ attempt, maxAttempts: 3, baseDelayMinutes: 3 });
         const finishedAt = now();
 
         await upsertPipelineStep({
@@ -674,7 +693,15 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
     ) {
       const stepName = "GENERATE_COPY_VIDEO";
       const startedAt = now();
-      const attempt = await nextAttemptForStep(item.id, stepName);
+      const latestVideoStep = await prisma.shopeePipelineStep.findFirst({
+        where: { coletaId: item.id, stepName },
+        orderBy: { updatedAt: "desc" },
+      });
+      const persistedRequest = (latestVideoStep?.requestPayload || {}) as any;
+      const persistedResponse = (latestVideoStep?.responsePayload || {}) as any;
+      const existingPromptId = String(persistedResponse?.promptId || persistedRequest?.promptId || "").trim();
+      const hasRunningPrompt = latestVideoStep?.status === "RUNNING" && Boolean(existingPromptId);
+      const attempt = hasRunningPrompt ? latestVideoStep!.attempt : await nextAttemptForStep(item.id, stepName);
 
       try {
         const config = await prisma.shopeePipelineConfig.findFirst({ orderBy: { createdAt: "desc" } });
@@ -715,6 +742,81 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           });
 
           return { ok: true, itemId: item.id, ran: stepName, scheduled: nextRetryAt };
+        }
+
+        if (hasRunningPrompt) {
+          const polled = await getCompletedVideoForPrompt(existingPromptId);
+          const nextRetryAt = addMinutes(now(), 1);
+          const historyUrl = `${online.data?.comfyBaseUrl || (await getCurrentComfyBaseUrl())}/history/${existingPromptId}`;
+
+          if (!polled.done) {
+            await upsertPipelineStep({
+              coletaId: item.id,
+              stepName,
+              status: "RUNNING",
+              attempt,
+              startedAt: latestVideoStep?.startedAt || startedAt,
+              nextRetryAt,
+              requestPayload: {
+                ...persistedRequest,
+                promptId: existingPromptId,
+                latestPoll: { method: "GET", url: historyUrl, at: now().toISOString() },
+              },
+              responsePayload: {
+                ...persistedResponse,
+                promptId: existingPromptId,
+                latestPoll: { done: false, filesFound: polled.files.length },
+              },
+            });
+            await prisma.coletaDadosShoppe.update({
+              where: { id: item.id },
+              data: { pipelineStatus: "GENERATING_COPY_VIDEO" as any, nextRunAt: nextRetryAt, lastError: "Vídeo ainda em processamento no ComfyUI" },
+            });
+            await logPipelineEvent({
+              coletaId: item.id,
+              stepName,
+              message: "Video ainda em processamento no ComfyUI; nova consulta agendada.",
+              metadata: { promptId: existingPromptId, request: { method: "GET", url: historyUrl }, nextRetryAt, filesFound: polled.files.length },
+            });
+            return { ok: true, itemId: item.id, ran: stepName, polling: true, promptId: existingPromptId, scheduled: nextRetryAt };
+          }
+
+          const minioKey = `shopee/videos-copy/copy_${item.id}_${Date.now()}.mp4`;
+          const copyVideoUrl = await uploadBufferToMinio({ buffer: polled.buffer, key: minioKey, contentType: "video/mp4" });
+          const finishedAt = now();
+          await upsertPipelineStep({
+            coletaId: item.id,
+            stepName,
+            status: "SUCCESS",
+            attempt,
+            startedAt: latestVideoStep?.startedAt || startedAt,
+            finishedAt,
+            durationMs: latestVideoStep?.startedAt ? finishedAt.getTime() - latestVideoStep.startedAt.getTime() : null,
+            requestPayload: {
+              ...persistedRequest,
+              promptId: existingPromptId,
+              latestPoll: { method: "GET", url: historyUrl, at: finishedAt.toISOString() },
+            },
+            responsePayload: {
+              ...persistedResponse,
+              promptId: existingPromptId,
+              outputFiles: polled.files,
+              outputFile: polled.file,
+              history: safeTruncateJson(polled.history, 50000),
+              copyVideoUrl,
+            },
+          });
+          await prisma.coletaDadosShoppe.update({
+            where: { id: item.id },
+            data: { copyVideoUrl, pipelineStatus: "COPY_VIDEO_READY" as any, nextRunAt: null, lastError: null },
+          });
+          await logPipelineEvent({
+            coletaId: item.id,
+            stepName,
+            message: "Video da copy finalizado no ComfyUI e salvo no MinIO.",
+            metadata: { promptId: existingPromptId, request: { method: "GET", url: historyUrl }, copyVideoUrl },
+          });
+          return { ok: true, itemId: item.id, ran: stepName, copyVideoUrl };
         }
 
         const imageUrl = config?.userBaseImageUrl || null;
@@ -772,60 +874,50 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
         // __AUDIO_FILENAME__ -> nome do arquivo de audio no input do ComfyUI
         // __OUTPUT_PREFIX__ -> prefixo para salvar output no ComfyUI
         // __SEED__ -> seed do sampler (se aplicavel)
-        const generated = await generateVideoFromTemplate({
+        const submitted = await submitVideoFromTemplate({
           template,
           replacements: { "__OUTPUT_PREFIX__": outputPrefix, "__SEED__": seed },
           inputFiles: [
             { buffer: imgBuf, filename: `base_${item.id}.png`, contentType: imgType, placeholderKey: "__IMG_FILENAME__" },
             { buffer: audBuf, filename: `audio_${item.id}.mp3`, contentType: audType, placeholderKey: "__AUDIO_FILENAME__" },
           ],
-          timeoutMs: 45 * 60 * 1000,
         });
-
-        const minioKey = `shopee/videos-copy/copy_${item.id}_${Date.now()}.mp4`;
-        const copyVideoUrl = await uploadBufferToMinio({ buffer: generated.buffer, key: minioKey, contentType: "video/mp4" });
-
-        const finishedAt = now();
+        const nextRetryAt = addMinutes(now(), 1);
         await upsertPipelineStep({
           coletaId: item.id,
           stepName,
-          status: "SUCCESS",
+          status: "RUNNING",
           attempt,
           startedAt,
-          finishedAt,
-          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          nextRetryAt,
           requestPayload: {
             seed,
             outputPrefix,
-            promptId: generated.promptId,
-            prompt: safeTruncateJson(generated.prompt, 20000),
-            uploadMeta: generated.uploadMeta,
+            promptId: submitted.promptId,
+            prompt: safeTruncateJson(submitted.prompt, 20000),
+            uploadMeta: submitted.uploadMeta,
           },
           responsePayload: {
-            promptId: generated.promptId,
-            outputFiles: generated.files,
-            outputFile: generated.file,
-            history: safeTruncateJson(generated.history, 50000),
-            uploadMeta: generated.uploadMeta,
-            copyVideoUrl,
+            promptId: submitted.promptId,
+            uploadMeta: submitted.uploadMeta,
+            status: "SUBMITTED",
           },
         });
 
         await prisma.coletaDadosShoppe.update({
           where: { id: item.id },
-          data: { copyVideoUrl, pipelineStatus: "COPY_VIDEO_READY" as any, nextRunAt: null, lastError: null },
+          data: { pipelineStatus: "GENERATING_COPY_VIDEO" as any, nextRunAt: nextRetryAt, lastError: "Vídeo enviado ao ComfyUI; aguardando processamento" },
         });
-
-        const lastSession = await prisma.podSession.findFirst({ orderBy: { updatedAt: "desc" } });
-        if (lastSession) {
-          await prisma.podSession.update({ where: { id: lastSession.id }, data: { status: "IDLE" as any, lastActivityAt: finishedAt } });
-        }
-
-        await logPipelineEvent({ coletaId: item.id, stepName, message: "Video da copy gerado e salvo no MinIO.", metadata: { copyVideoUrl } });
-        return { ok: true, itemId: item.id, ran: stepName, copyVideoUrl };
+        await logPipelineEvent({
+          coletaId: item.id,
+          stepName,
+          message: "Video enviado ao ComfyUI; primeira consulta agendada.",
+          metadata: { promptId: submitted.promptId, nextRetryAt },
+        });
+        return { ok: true, itemId: item.id, ran: stepName, submitted: true, promptId: submitted.promptId, scheduled: nextRetryAt };
       } catch (error: any) {
         const message = error?.message || "Falha ao gerar video da copy";
-        const retryDecision = decideRetry({ attempt, maxAttempts: 3, baseDelayMinutes: 30 });
+        const retryDecision = decideRetry({ attempt, maxAttempts: 3, baseDelayMinutes: 3 });
         const finishedAt = now();
 
         await upsertPipelineStep({

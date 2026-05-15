@@ -988,7 +988,15 @@ export default function ShopeePipelinePage() {
                       <Chip size="small" label={statusLabel(item.pipelineStatus)} color={statusColor(item.pipelineStatus) as any} />
                     </TableCell>
                     <TableCell>{item.active ? "Sim" : "Não"}</TableCell>
-                    <TableCell>{item.nextRunAt ? formatDate(item.nextRunAt) : item.active ? "Próximo ciclo" : "-"}</TableCell>
+                    <TableCell>
+                      {item.lockedAt
+                        ? `Em execução desde ${formatDate(item.lockedAt)}`
+                        : item.nextRunAt
+                          ? formatDate(item.nextRunAt)
+                          : item.active
+                            ? "Próximo ciclo"
+                            : "-"}
+                    </TableCell>
                     <TableCell>
                       {item.lockedAt ? (
                         <Tooltip title={`LockedBy: ${item.lockedBy || "-"}`}>
@@ -1250,10 +1258,17 @@ export default function ShopeePipelinePage() {
                       <Chip size="small" label={statusLabel(selected.pipelineStatus)} color={statusColor(selected.pipelineStatus) as any} />
                     </div>
                     <Typography variant="caption" className="text-slate-400 block mt-2">
-                      Próx. Execução: {selected.nextRunAt ? formatDate(selected.nextRunAt) : selected.active ? "Próximo ciclo do cron" : "-"}
+                      Próx. Execução:{" "}
+                      {selected.lockedAt
+                        ? `Em execução desde ${formatDate(selected.lockedAt)}`
+                        : selected.nextRunAt
+                          ? formatDate(selected.nextRunAt)
+                          : selected.active
+                            ? "Próximo ciclo do cron"
+                            : "-"}
                     </Typography>
                     <Typography variant="caption" className="text-slate-400 block mt-2">
-                      Lock: {selected.lockedAt ? formatDate(selected.lockedAt) : "-"}
+                      Lock: {selected.lockedAt ? `reservado desde ${formatDate(selected.lockedAt)}` : "-"}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -1539,6 +1554,7 @@ export default function ShopeePipelinePage() {
                 multiline
                 minRows={8}
                 sx={darkFieldSx}
+                helperText="Tem que ser o JSON exportado em formato API do ComfyUI. Se o arquivo tiver `nodes` e `links`, ele é Workflow/UI e não serve para o endpoint `/prompt`."
               />
 
               <div className="flex justify-end gap-2 pt-1">

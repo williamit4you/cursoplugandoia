@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isComfyPromptApiTemplate, isComfyUiWorkflowTemplate } from "@/lib/shopee-pipeline/comfyui/templates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,6 +31,25 @@ export async function POST(req: Request) {
   const userVoiceRefUrl = body.userVoiceRefUrl ? String(body.userVoiceRefUrl) : null;
   const comfyAudioPromptTemplate = body.comfyAudioPromptTemplate && typeof body.comfyAudioPromptTemplate === "object" ? body.comfyAudioPromptTemplate : null;
   const comfyVideoPromptTemplate = body.comfyVideoPromptTemplate && typeof body.comfyVideoPromptTemplate === "object" ? body.comfyVideoPromptTemplate : null;
+
+  if (comfyVideoPromptTemplate && isComfyUiWorkflowTemplate(comfyVideoPromptTemplate)) {
+    return NextResponse.json(
+      {
+        error:
+          "ComfyUI Video Template está em formato Workflow/UI. No ComfyUI, exporte em formato API (Save/Export API Format) e cole esse JSON aqui.",
+      },
+      { status: 400 }
+    );
+  }
+
+  if (comfyVideoPromptTemplate && !isComfyPromptApiTemplate(comfyVideoPromptTemplate)) {
+    return NextResponse.json(
+      {
+        error: "ComfyUI Video Template inválido: esperado prompt API com nodes no formato { class_type, inputs }.",
+      },
+      { status: 400 }
+    );
+  }
 
   const existing = await prisma.shopeePipelineConfig.findFirst({ orderBy: { createdAt: "desc" } });
   const saved = existing

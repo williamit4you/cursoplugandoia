@@ -1,13 +1,21 @@
 import "server-only";
 
 import { forceVideoPromptInputs, isComfyPromptApiTemplate, isComfyUiWorkflowTemplate, replacePlaceholders, deepClone } from "@/lib/shopee-pipeline/comfyui/templates";
-import { comfyDownloadView, comfySubmitPrompt, comfyUploadInput, comfyWaitForPrompt, type ComfyUiFileRef, ComfyUiHttpError } from "@/lib/shopee-pipeline/comfyui/client";
+import {
+  comfyDownloadView,
+  comfyGetHistory,
+  comfySubmitPrompt,
+  comfyUploadInput,
+  comfyWaitForPrompt,
+  extractOutputFilesFromHistory,
+  type ComfyUiFileRef,
+  ComfyUiHttpError,
+} from "@/lib/shopee-pipeline/comfyui/client";
 
-export async function generateVideoFromTemplate(params: {
+export async function submitVideoFromTemplate(params: {
   template: any;
   replacements: Record<string, string | number>;
   inputFiles: Array<{ buffer: Buffer; filename: string; contentType: string; placeholderKey: string }>;
-  timeoutMs: number;
 }) {
   const uploaded: Record<string, string> = {};
   const uploadMeta: any[] = [];
@@ -31,6 +39,7 @@ export async function generateVideoFromTemplate(params: {
     outputPrefix: String(params.replacements.__OUTPUT_PREFIX__ || ""),
     seed: Number(params.replacements.__SEED__ || 0),
   });
+
   let submit: any;
   try {
     submit = await comfySubmitPrompt(prompt, 20000);
@@ -40,8 +49,39 @@ export async function generateVideoFromTemplate(params: {
     }
     throw error;
   }
+
   const promptId = String(submit?.prompt_id || "");
   if (!promptId) throw new Error("ComfyUI did not return prompt_id");
+  return { promptId, prompt, uploadMeta };
+}
+
+export async function getCompletedVideoForPrompt(promptId: string) {
+  const history = await comfyGetHistory(promptId, 20000);
+  if (!history.ok) return { done: false as const, history: history.data, files: [] as ComfyUiFileRef[] };
+
+  const files = extractOutputFilesFromHistory(history.data);
+  const mp4 = files.find((file) => file.filename.toLowerCase().endsWith(".mp4"));
+  if (!mp4) return { done: false as const, history: history.data, files };
+
+  const downloaded = await comfyDownloadView(mp4, 60000);
+  return {
+    done: true as const,
+    history: history.data,
+    files,
+    file: mp4,
+    buffer: downloaded.buffer,
+    contentType: downloaded.contentType,
+  };
+}
+
+export async function generateVideoFromTemplate(params: {
+  template: any;
+  replacements: Record<string, string | number>;
+  inputFiles: Array<{ buffer: Buffer; filename: string; contentType: string; placeholderKey: string }>;
+  timeoutMs: number;
+}) {
+  const submitted = await submitVideoFromTemplate(params);
+  const { promptId, prompt, uploadMeta } = submitted;
 
   const done = await comfyWaitForPrompt({ promptId, timeoutMs: params.timeoutMs, pollMs: 5000 });
   const files = done.files;
