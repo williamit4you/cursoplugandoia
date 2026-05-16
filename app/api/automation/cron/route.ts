@@ -41,20 +41,16 @@ export async function GET(req: NextRequest) {
     // Orquestrador do pipeline de URLs da Coleta Shopee
     const shopeePipeline = await callJson(`${origin}/api/shopee-pipeline/cron${encodedSecret}`);
 
-    // Watchdog do POD (desliga quando ocioso)
-    const shopeePodWatchdog = await callJson(`${origin}/api/shopee-pipeline/pod-watchdog${encodedSecret}`);
-
     // Publica stories agendados do shopee-video-pipeline
     const shopeePublisher = await callJson(`${origin}/api/shopee-pipeline/publisher-runner${encodedSecret}`);
 
-    const allOk = taskRuns.ok && mercadoLivre.ok && social.ok && shopeePipeline.ok && shopeePodWatchdog.ok && shopeePublisher.ok;
+    const allOk = taskRuns.ok && mercadoLivre.ok && social.ok && shopeePipeline.ok && shopeePublisher.ok;
 
     console.log("[api/automation/cron] Results:", {
       taskRuns: { ok: taskRuns.ok, status: taskRuns.status },
       mercadoLivre: { ok: mercadoLivre.ok, status: mercadoLivre.status },
       social: { ok: social.ok, status: social.status },
       shopeePipeline: { ok: shopeePipeline.ok, status: shopeePipeline.status },
-      shopeePodWatchdog: { ok: shopeePodWatchdog.ok, status: shopeePodWatchdog.status },
       shopeePublisher: { ok: shopeePublisher.ok, status: shopeePublisher.status },
     });
 
@@ -64,7 +60,6 @@ export async function GET(req: NextRequest) {
       mercadoLivre,
       social,
       shopeePipeline,
-      shopeePodWatchdog,
       shopeePublisher,
     });
   } catch (error: any) {

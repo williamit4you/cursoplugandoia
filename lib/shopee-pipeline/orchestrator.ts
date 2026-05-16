@@ -3,20 +3,15 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { logPipelineEvent, upsertPipelineStep } from "@/lib/shopee-pipeline/logger";
 import { scrapeShopeeAndPersist } from "@/lib/shopee-pipeline/scrape";
-import { runpodOnline, runpodPowerOn } from "@/lib/shopee-pipeline/runpodClient";
-import { generateVoiceCloneAudio } from "@/lib/shopee-pipeline/comfyui/generateAudio";
-import { getCompletedVideoForPrompt, submitVideoFromTemplate } from "@/lib/shopee-pipeline/comfyui/generateVideoFromTemplate";
+import { generateModalAudio, generateModalVideo } from "@/lib/shopee-pipeline/modalClient";
 import { uploadBufferToMinio } from "@/lib/shopee-pipeline/minioUpload";
 import { mergeProductAndCopyVideos } from "@/lib/shopee-pipeline/merge";
 import { generateShopeeAffiliateShortLink } from "@/lib/shopee/openApi";
-import defaultInfiniteTalkTemplate from "@/lib/shopee-pipeline/comfyui/templates/infinite-talk-video.json";
 import { v4 as uuidv4 } from "uuid";
-import { GetObjectCommand } from "@aws-sdk/client-s3";
-import s3Client from "@/lib/s3";
-import { Readable } from "stream";
-import { getCurrentComfyBaseUrl } from "@/lib/shopee-pipeline/runpodManager";
 
 const LOCK_TTL_MS = 30 * 60 * 1000;
+const ASYNC_LOCK_TTL_MS = LOCK_TTL_MS;
+const ASYNC_RESUMABLE_STATUSES = [] as const;
 const EXCLUDED_STATUSES = ["PAUSED", "PUBLISHED"] as const;
 
 function now() {
@@ -32,56 +27,11 @@ function isLockExpired(lockedAt: Date | null, current: Date) {
   return current.getTime() - lockedAt.getTime() > LOCK_TTL_MS;
 }
 
-async function streamToBuffer(stream: any): Promise<Buffer> {
-  if (!stream) return Buffer.alloc(0);
-  const nodeStream = typeof stream.getReader === "function" ? Readable.fromWeb(stream as any) : (stream as any);
-  const chunks: Buffer[] = [];
-  for await (const chunk of nodeStream) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  return Buffer.concat(chunks);
-}
-
-async function downloadVoiceRef(params: { voiceRefUrl: string; timeoutMs: number }) {
-  const { voiceRefUrl, timeoutMs } = params;
-  const url = String(voiceRefUrl || "").trim();
-  if (!url) throw new Error("voiceRefUrl vazio");
-
-  // 1) Try normal fetch (public URL, signed URL, etc.)
-  const res = await fetch(url, { method: "GET", cache: "no-store", signal: AbortSignal.timeout(timeoutMs) });
-  if (res.ok) {
-    const contentType = res.headers.get("content-type") || "audio/mpeg";
-    return { buffer: Buffer.from(await res.arrayBuffer()), contentType, source: { kind: "http", url } };
-  }
-
-  // 2) If the URL points to our MinIO public base but is not public (403), fallback to internal S3 getObject.
-  const publicBase = String(process.env.MINIO_PUBLIC_URL || "").replace(/\/+$/, "");
-  const bucketName = process.env.MINIO_BUCKET_NAME || "uploads";
-  if (publicBase && url.startsWith(publicBase + "/")) {
-    const key = url.slice(publicBase.length + 1);
-    try {
-      const obj = await s3Client.send(new GetObjectCommand({ Bucket: bucketName, Key: key }));
-      const buffer = await streamToBuffer((obj as any).Body);
-      const contentType = String((obj as any).ContentType || "audio/mpeg");
-      if (!buffer.length) throw new Error("MinIO retornou arquivo vazio");
-      return { buffer, contentType, source: { kind: "minio", bucket: bucketName, key } };
-    } catch (error: any) {
-      const err: any = new Error(
-        `Falha ao baixar voiceRefUrl (HTTP ${res.status}) url=${url} (fallback MinIO falhou: ${error?.message || error})`
-      );
-      err.details = { url, httpStatus: res.status, minioFallbackTried: true, minioKey: key, minioError: error?.message || error };
-      throw err;
-    }
-  }
-
-  const err: any = new Error(`Falha ao baixar voiceRefUrl (HTTP ${res.status}) url=${url}`);
-  err.details = { url, httpStatus: res.status, minioFallbackTried: false };
-  throw err;
-}
 
 async function acquireNextItemLock(params: { runnerId: string; current: Date }) {
   const { runnerId, current } = params;
   const lockExpiry = new Date(current.getTime() - LOCK_TTL_MS);
+  const asyncLockExpiry = new Date(current.getTime() - ASYNC_LOCK_TTL_MS);
 
   const candidate = await prisma.coletaDadosShoppe.findFirst({
     where: {
@@ -89,7 +39,13 @@ async function acquireNextItemLock(params: { runnerId: string; current: Date }) 
       pipelineStatus: { notIn: EXCLUDED_STATUSES as any },
       AND: [
         { OR: [{ nextRunAt: null }, { nextRunAt: { lte: current } }] },
-        { OR: [{ lockedAt: null }, { lockedAt: { lt: lockExpiry } }] },
+        {
+          OR: [
+            { lockedAt: null },
+            { lockedAt: { lt: lockExpiry } },
+            { pipelineStatus: { in: ASYNC_RESUMABLE_STATUSES as any }, lockedAt: { lt: asyncLockExpiry } },
+          ],
+        },
       ],
     },
     orderBy: [{ priority: "desc" }, { createdAt: "asc" }],
@@ -101,7 +57,11 @@ async function acquireNextItemLock(params: { runnerId: string; current: Date }) 
   const res = await prisma.coletaDadosShoppe.updateMany({
     where: {
       id: candidate.id,
-      OR: [{ lockedAt: null }, { lockedAt: { lt: lockExpiry } }],
+      OR: [
+        { lockedAt: null },
+        { lockedAt: { lt: lockExpiry } },
+        { pipelineStatus: { in: ASYNC_RESUMABLE_STATUSES as any }, lockedAt: { lt: asyncLockExpiry } },
+      ],
     },
     data: { lockedAt: current, lockedBy: runnerId },
   });
@@ -122,6 +82,7 @@ function buildEligibilityRuleText(params: { current: Date }) {
 async function getEligibilityDiagnostics(params: { current: Date }) {
   const { current } = params;
   const lockExpiry = new Date(current.getTime() - LOCK_TTL_MS);
+  const asyncLockExpiry = new Date(current.getTime() - ASYNC_LOCK_TTL_MS);
 
   const baseWhere = {
     active: true,
@@ -134,13 +95,27 @@ async function getEligibilityDiagnostics(params: { current: Date }) {
       prisma.coletaDadosShoppe.count({ where: { active: true, pipelineStatus: { in: EXCLUDED_STATUSES as any } } }),
       prisma.coletaDadosShoppe.count({ where: baseWhere as any }),
       prisma.coletaDadosShoppe.count({ where: { ...(baseWhere as any), nextRunAt: { gt: current } } }),
-      prisma.coletaDadosShoppe.count({ where: { ...(baseWhere as any), lockedAt: { gte: lockExpiry } } }),
+      prisma.coletaDadosShoppe.count({
+        where: {
+          ...(baseWhere as any),
+          OR: [
+            { pipelineStatus: { notIn: ASYNC_RESUMABLE_STATUSES as any }, lockedAt: { gte: lockExpiry } },
+            { pipelineStatus: { in: ASYNC_RESUMABLE_STATUSES as any }, lockedAt: { gte: asyncLockExpiry } },
+          ],
+        },
+      }),
       prisma.coletaDadosShoppe.count({
         where: {
           ...(baseWhere as any),
           AND: [
             { OR: [{ nextRunAt: null }, { nextRunAt: { lte: current } }] },
-            { OR: [{ lockedAt: null }, { lockedAt: { lt: lockExpiry } }] },
+            {
+              OR: [
+                { lockedAt: null },
+                { lockedAt: { lt: lockExpiry } },
+                { pipelineStatus: { in: ASYNC_RESUMABLE_STATUSES as any }, lockedAt: { lt: asyncLockExpiry } },
+              ],
+            },
           ],
         },
       }),
@@ -150,7 +125,13 @@ async function getEligibilityDiagnostics(params: { current: Date }) {
         select: { id: true, nextRunAt: true, pipelineStatus: true, priority: true },
       }),
       prisma.coletaDadosShoppe.findFirst({
-        where: { ...(baseWhere as any), lockedAt: { gte: lockExpiry } },
+        where: {
+          ...(baseWhere as any),
+          OR: [
+            { pipelineStatus: { notIn: ASYNC_RESUMABLE_STATUSES as any }, lockedAt: { gte: lockExpiry } },
+            { pipelineStatus: { in: ASYNC_RESUMABLE_STATUSES as any }, lockedAt: { gte: asyncLockExpiry } },
+          ],
+        },
         orderBy: { lockedAt: "desc" },
         select: { id: true, lockedAt: true, lockedBy: true, pipelineStatus: true, priority: true },
       }),
@@ -159,6 +140,7 @@ async function getEligibilityDiagnostics(params: { current: Date }) {
   return {
     now: current.toISOString(),
     lockTtlMinutes: Math.round(LOCK_TTL_MS / 60000),
+    asyncLockTtlMinutes: Math.round(ASYNC_LOCK_TTL_MS / 60000),
     lockExpiry: lockExpiry.toISOString(),
     counts: {
       totalActive,
@@ -357,165 +339,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
       }
     }
 
-    if ((item.pipelineStatus === "COPY_READY" || item.pipelineStatus === "WAITING_POD") && !item.audioUrl) {
-      const stepName = "ENSURE_POD_ONLINE";
-      const startedAt = now();
-      const attempt = await nextAttemptForStep(item.id, stepName);
-
-      try {
-        await prisma.coletaDadosShoppe.update({
-          where: { id: item.id },
-          data: { pipelineStatus: "WAITING_POD" as any, lastError: null },
-        });
-
-        const comfyBaseBeforeCheck = await getCurrentComfyBaseUrl().catch(() => null);
-        await upsertPipelineStep({
-          coletaId: item.id,
-          stepName,
-          status: "RUNNING",
-          attempt,
-          startedAt,
-          requestPayload: {
-            action: "Verificar se o POD/ComfyUI esta online",
-            checkUrl: comfyBaseBeforeCheck ? `${comfyBaseBeforeCheck}/system_stats` : null,
-          },
-        });
-
-        const online = await runpodOnline(8000);
-        const isOnline =
-          online.ok && (online.data?.online === true || online.data?.ok === true || online.data?.status === "online");
-
-        if (!isOnline) {
-          const power = await runpodPowerOn({ esperarOnline: true, maxEsperaSegundos: 240 }, 300_000);
-          const powerData: any = (power as any)?.data;
-          const started = Boolean(power.ok || powerData?.currentPodId);
-          const isRunningNow = Boolean(power.ok && powerData?.status === "RUNNING");
-          const nextRetryAt = addMinutes(now(), 3);
-
-          const lastSession = await prisma.podSession.findFirst({ orderBy: { updatedAt: "desc" } });
-          if (lastSession) {
-            await prisma.podSession.update({
-              where: { id: lastSession.id },
-              data: { status: started ? ("STARTING" as any) : ("OFFLINE" as any), lastOnlineCheckAt: now(), lastActivityAt: now() },
-            });
-          } else {
-            await prisma.podSession.create({
-              data: { status: started ? ("STARTING" as any) : ("OFFLINE" as any), lastOnlineCheckAt: now(), lastActivityAt: now() },
-            });
-          }
-
-          const finishedAt = now();
-          await upsertPipelineStep({
-            coletaId: item.id,
-            stepName,
-            status: "RETRY_SCHEDULED",
-            attempt,
-            startedAt,
-            finishedAt,
-            durationMs: finishedAt.getTime() - startedAt.getTime(),
-            nextRetryAt,
-            responsePayload: { online, power },
-            errorMessage: isRunningNow ? "POD RUNNING (validar health)" : started ? "POD ligando (aguardando online)" : "POD offline; reagendado",
-          });
-
-          await prisma.coletaDadosShoppe.update({
-            where: { id: item.id },
-            data: {
-              pipelineStatus: "WAITING_POD" as any,
-              nextRunAt: nextRetryAt,
-              lastError: isRunningNow ? "POD RUNNING (validar health)" : started ? "Aguardando POD ficar online" : "POD offline; reagendado",
-            },
-          });
-
-          await logPipelineEvent({
-            coletaId: item.id,
-            level: "WARN",
-            stepName,
-            message: "POD offline. Reagendando para tentar novamente.",
-            metadata: {
-              nextRetryAt,
-              online,
-              pod: {
-                ok: Boolean(powerData?.ok),
-                status: powerData?.status,
-                currentPodId: powerData?.currentPodId,
-                replacedPreviousPodId: powerData?.replacedPreviousPodId,
-              },
-              events: powerData?.events || null,
-              error: powerData?.error || null,
-            },
-          });
-
-          return { ok: true, itemId: item.id, ran: stepName, scheduled: nextRetryAt };
-        }
-
-        const finishedAt = now();
-        const lastSession = await prisma.podSession.findFirst({ orderBy: { updatedAt: "desc" } });
-        if (lastSession) {
-          await prisma.podSession.update({
-            where: { id: lastSession.id },
-            data: { status: "ONLINE" as any, lastOnlineCheckAt: finishedAt, lastActivityAt: finishedAt },
-          });
-        } else {
-          await prisma.podSession.create({ data: { status: "ONLINE" as any, lastOnlineCheckAt: finishedAt, lastActivityAt: finishedAt } });
-        }
-
-        await upsertPipelineStep({
-          coletaId: item.id,
-          stepName,
-          status: "SUCCESS",
-          attempt,
-          startedAt,
-          finishedAt,
-          durationMs: finishedAt.getTime() - startedAt.getTime(),
-          requestPayload: {
-            action: "Verificar se o POD/ComfyUI esta online",
-            checkUrl: online.data?.comfyBaseUrl ? `${online.data.comfyBaseUrl}/system_stats` : null,
-          },
-          responsePayload: { online },
-        });
-
-        await prisma.coletaDadosShoppe.update({
-          where: { id: item.id },
-          data: { pipelineStatus: "GENERATING_AUDIO" as any, nextRunAt: null, lastError: null },
-        });
-
-        await logPipelineEvent({ coletaId: item.id, stepName, message: "POD online. Proxima etapa: gerar audio." });
-        return { ok: true, itemId: item.id, ran: stepName };
-      } catch (error: any) {
-        const message = error?.message || "Falha ao verificar/ligar POD";
-        const nextRetryAt = addMinutes(now(), 3);
-        const finishedAt = now();
-
-        await upsertPipelineStep({
-          coletaId: item.id,
-          stepName,
-          status: "RETRY_SCHEDULED",
-          attempt,
-          startedAt,
-          finishedAt,
-          durationMs: finishedAt.getTime() - startedAt.getTime(),
-          nextRetryAt,
-          errorMessage: message,
-        });
-
-        await prisma.coletaDadosShoppe.update({
-          where: { id: item.id },
-          data: { pipelineStatus: "WAITING_POD" as any, nextRunAt: nextRetryAt, lastError: message },
-        });
-
-        await logPipelineEvent({
-          coletaId: item.id,
-          level: "WARN",
-          stepName,
-          message: "Erro no ensurePodOnline. Reagendado.",
-          metadata: { error: message, stack: error?.stack || null, nextRetryAt },
-        });
-        return { ok: false, itemId: item.id, error: message, retry: true, nextRetryAt };
-      }
-    }
-
-    if (item.pipelineStatus === "GENERATING_AUDIO" && !item.audioUrl) {
+    if ((item.pipelineStatus === "COPY_READY" || item.pipelineStatus === "WAITING_POD" || item.pipelineStatus === "GENERATING_AUDIO") && !item.audioUrl) {
       const stepName = "GENERATE_AUDIO";
       const startedAt = now();
       const attempt = await nextAttemptForStep(item.id, stepName);
@@ -547,9 +371,8 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
         const copy = String(item.aiPromptVendas || "").trim();
         if (!copy) throw new Error("Copy de vendas (aiPromptVendas) ausente");
 
-        const comfyBase = await getCurrentComfyBaseUrl().catch(() => null);
         await upsertPipelineStep({ coletaId: item.id, stepName, status: "RUNNING", attempt, startedAt });
-        await logPipelineEvent({ coletaId: item.id, stepName, message: "Gerando audio via ComfyUI (voice clone)" });
+        await logPipelineEvent({ coletaId: item.id, stepName, message: "Gerando audio via Modal (voice clone)" });
 
         // Persist what will be fetched/called so the UI shows "envio" even if it fails early.
         await upsertPipelineStep({
@@ -560,11 +383,8 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           startedAt,
           requestPayload: {
             voiceRefUrl,
-            comfyBaseUrl: comfyBase,
             requests: [
-              { method: "GET", url: voiceRefUrl, purpose: "Baixar audio de referencia da voz" },
-              { method: "POST", url: comfyBase ? `${comfyBase}/upload/image` : null, purpose: "Enviar audio de referencia ao ComfyUI" },
-              { method: "POST", url: comfyBase ? `${comfyBase}/prompt` : null, purpose: "Enviar prompt de geracao de audio ao ComfyUI" },
+              { method: "POST", url: process.env.MODAL_AUDIO_ENDPOINT || null, purpose: "Gerar audio pelo worker Modal" },
             ],
             targetTextPreview: copy.slice(0, 220),
             targetTextLength: copy.length,
@@ -573,39 +393,13 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           },
         });
 
-        let voice: { buffer: Buffer; contentType: string; source: any };
-        try {
-          voice = await downloadVoiceRef({ voiceRefUrl, timeoutMs: 30_000 });
-        } catch (error: any) {
-          await logPipelineEvent({
-            coletaId: item.id,
-            level: "ERROR",
-            stepName,
-            message: "Falha ao baixar voiceRefUrl antes de chamar o ComfyUI.",
-            metadata: { voiceRefUrl, details: error?.details || null, error: error?.message || String(error) },
-          });
-          throw error;
-        }
-        const voiceBuf = voice.buffer;
-        const voiceContentType = voice.contentType;
-
-        const uid = uuidv4().slice(0, 8);
-        const outputPrefix = `audio/shopee_${item.id}_${uid}`;
         const seed = Math.floor(Math.random() * 1_000_000_000);
-
-        const generated = await generateVoiceCloneAudio({
+        const generated = await generateModalAudio({
+          voiceRefUrl,
           targetText: copy,
-          voiceRefBuffer: voiceBuf,
-          voiceRefFilename: `voice_ref_${item.id}.mp3`,
-          voiceRefContentType: voiceContentType,
-          outputPrefix,
           seed,
-          timeoutMs: 25 * 60 * 1000,
-          promptTemplateOverride: config?.comfyAudioPromptTemplate || undefined,
         });
-
-        const minioKey = `shopee/audio/audio_${item.id}_${Date.now()}.mp3`;
-        const audioUrl = await uploadBufferToMinio({ buffer: generated.buffer, key: minioKey, contentType: "audio/mpeg" });
+        const audioUrl = generated.audio_url;
 
         const finishedAt = now();
         await upsertPipelineStep({
@@ -618,17 +412,11 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           durationMs: finishedAt.getTime() - startedAt.getTime(),
           requestPayload: {
             seed,
-            outputPrefix,
-            promptId: generated.promptId,
             targetTextPreview: copy.slice(0, 220),
             targetTextLength: copy.length,
-            prompt: safeTruncateJson(generated.prompt, 20000),
           },
           responsePayload: {
-            promptId: generated.promptId,
-            outputFiles: generated.files,
-            outputFile: generated.file,
-            history: safeTruncateJson(generated.history, 50000),
+            promptId: generated.prompt_id,
             audioUrl,
           },
         });
@@ -638,12 +426,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           data: { audioUrl, pipelineStatus: "AUDIO_READY" as any, nextRunAt: null, lastError: null },
         });
 
-        const lastSession = await prisma.podSession.findFirst({ orderBy: { updatedAt: "desc" } });
-        if (lastSession) {
-          await prisma.podSession.update({ where: { id: lastSession.id }, data: { status: "IDLE" as any, lastActivityAt: finishedAt } });
-        }
-
-        await logPipelineEvent({ coletaId: item.id, stepName, message: "Audio gerado e salvo no MinIO.", metadata: { audioUrl } });
+        await logPipelineEvent({ coletaId: item.id, stepName, message: "Audio gerado pela Modal e salvo no MinIO.", metadata: { audioUrl } });
         return { ok: true, itemId: item.id, ran: stepName, audioUrl };
       } catch (error: any) {
         const message = error?.message || "Falha ao gerar audio";
@@ -693,137 +476,13 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
     ) {
       const stepName = "GENERATE_COPY_VIDEO";
       const startedAt = now();
-      const latestVideoStep = await prisma.shopeePipelineStep.findFirst({
-        where: { coletaId: item.id, stepName },
-        orderBy: { updatedAt: "desc" },
-      });
-      const persistedRequest = (latestVideoStep?.requestPayload || {}) as any;
-      const persistedResponse = (latestVideoStep?.responsePayload || {}) as any;
-      const existingPromptId = String(persistedResponse?.promptId || persistedRequest?.promptId || "").trim();
-      const hasRunningPrompt = latestVideoStep?.status === "RUNNING" && Boolean(existingPromptId);
-      const attempt = hasRunningPrompt ? latestVideoStep!.attempt : await nextAttemptForStep(item.id, stepName);
+      const attempt = await nextAttemptForStep(item.id, stepName);
 
       try {
         const config = await prisma.shopeePipelineConfig.findFirst({ orderBy: { createdAt: "desc" } });
 
-        // Se o POD/ComfyUI estiver offline, tenta ligar e reagenda.
-        const online = await runpodOnline(8000);
-        const isOnline =
-          online.ok && (online.data?.online === true || online.data?.ok === true || online.data?.status === "online");
-        if (!isOnline) {
-          const power = await runpodPowerOn({ esperarOnline: true, maxEsperaSegundos: 10 }, 20000);
-          const nextRetryAt = addMinutes(now(), 3);
-
-          const finishedAt = now();
-          await upsertPipelineStep({
-            coletaId: item.id,
-            stepName,
-            status: "RETRY_SCHEDULED",
-            attempt,
-            startedAt,
-            finishedAt,
-            durationMs: finishedAt.getTime() - startedAt.getTime(),
-            nextRetryAt,
-            responsePayload: { online, power },
-            errorMessage: "POD offline; reagendado",
-          });
-
-          await prisma.coletaDadosShoppe.update({
-            where: { id: item.id },
-            data: { pipelineStatus: "WAITING_POD" as any, nextRunAt: nextRetryAt, lastError: "Aguardando POD ficar online" },
-          });
-
-          await logPipelineEvent({
-            coletaId: item.id,
-            level: "WARN",
-            stepName,
-            message: "POD offline durante geracao do video. Reagendado.",
-            metadata: { nextRetryAt, online, power },
-          });
-
-          return { ok: true, itemId: item.id, ran: stepName, scheduled: nextRetryAt };
-        }
-
-        if (hasRunningPrompt) {
-          const polled = await getCompletedVideoForPrompt(existingPromptId);
-          const nextRetryAt = addMinutes(now(), 1);
-          const historyUrl = `${online.data?.comfyBaseUrl || (await getCurrentComfyBaseUrl())}/history/${existingPromptId}`;
-
-          if (!polled.done) {
-            await upsertPipelineStep({
-              coletaId: item.id,
-              stepName,
-              status: "RUNNING",
-              attempt,
-              startedAt: latestVideoStep?.startedAt || startedAt,
-              nextRetryAt,
-              requestPayload: {
-                ...persistedRequest,
-                promptId: existingPromptId,
-                latestPoll: { method: "GET", url: historyUrl, at: now().toISOString() },
-              },
-              responsePayload: {
-                ...persistedResponse,
-                promptId: existingPromptId,
-                latestPoll: { done: false, filesFound: polled.files.length },
-              },
-            });
-            await prisma.coletaDadosShoppe.update({
-              where: { id: item.id },
-              data: { pipelineStatus: "GENERATING_COPY_VIDEO" as any, nextRunAt: nextRetryAt, lastError: "Vídeo ainda em processamento no ComfyUI" },
-            });
-            await logPipelineEvent({
-              coletaId: item.id,
-              stepName,
-              message: "Video ainda em processamento no ComfyUI; nova consulta agendada.",
-              metadata: { promptId: existingPromptId, request: { method: "GET", url: historyUrl }, nextRetryAt, filesFound: polled.files.length },
-            });
-            return { ok: true, itemId: item.id, ran: stepName, polling: true, promptId: existingPromptId, scheduled: nextRetryAt };
-          }
-
-          const minioKey = `shopee/videos-copy/copy_${item.id}_${Date.now()}.mp4`;
-          const copyVideoUrl = await uploadBufferToMinio({ buffer: polled.buffer, key: minioKey, contentType: "video/mp4" });
-          const finishedAt = now();
-          await upsertPipelineStep({
-            coletaId: item.id,
-            stepName,
-            status: "SUCCESS",
-            attempt,
-            startedAt: latestVideoStep?.startedAt || startedAt,
-            finishedAt,
-            durationMs: latestVideoStep?.startedAt ? finishedAt.getTime() - latestVideoStep.startedAt.getTime() : null,
-            requestPayload: {
-              ...persistedRequest,
-              promptId: existingPromptId,
-              latestPoll: { method: "GET", url: historyUrl, at: finishedAt.toISOString() },
-            },
-            responsePayload: {
-              ...persistedResponse,
-              promptId: existingPromptId,
-              outputFiles: polled.files,
-              outputFile: polled.file,
-              history: safeTruncateJson(polled.history, 50000),
-              copyVideoUrl,
-            },
-          });
-          await prisma.coletaDadosShoppe.update({
-            where: { id: item.id },
-            data: { copyVideoUrl, pipelineStatus: "COPY_VIDEO_READY" as any, nextRunAt: null, lastError: null },
-          });
-          await logPipelineEvent({
-            coletaId: item.id,
-            stepName,
-            message: "Video da copy finalizado no ComfyUI e salvo no MinIO.",
-            metadata: { promptId: existingPromptId, request: { method: "GET", url: historyUrl }, copyVideoUrl },
-          });
-          return { ok: true, itemId: item.id, ran: stepName, copyVideoUrl };
-        }
-
         const imageUrl = config?.userBaseImageUrl || null;
         if (!imageUrl) throw new Error("Pipeline config missing userBaseImageUrl");
-        const template = config?.comfyVideoPromptTemplate || (defaultInfiniteTalkTemplate as any) || null;
-        if (!template) throw new Error("Missing Infinite Talk template (config.comfyVideoPromptTemplate or default template file).");
-
         if (!item.audioUrl) throw new Error("audioUrl ausente");
 
         await prisma.coletaDadosShoppe.update({
@@ -831,7 +490,6 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           data: { pipelineStatus: "GENERATING_COPY_VIDEO" as any, lastError: null },
         });
 
-        const comfyBase = await getCurrentComfyBaseUrl().catch(() => null);
         await upsertPipelineStep({
           coletaId: item.id,
           stepName,
@@ -841,80 +499,47 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           requestPayload: {
             userBaseImageUrl: imageUrl,
             audioUrl: item.audioUrl,
-            comfyBaseUrl: comfyBase,
             requests: [
-              { method: "GET", url: imageUrl, purpose: "Baixar imagem base do avatar/foto" },
-              { method: "GET", url: item.audioUrl, purpose: "Baixar audio ja gerado" },
-              { method: "POST", url: comfyBase ? `${comfyBase}/upload/image` : null, purpose: "Enviar imagem e audio ao ComfyUI" },
-              { method: "POST", url: comfyBase ? `${comfyBase}/prompt` : null, purpose: "Iniciar geracao do video no ComfyUI" },
-              { method: "GET", url: comfyBase ? `${comfyBase}/history/{promptId}` : null, purpose: "Consultar ate o video ficar pronto" },
-              { method: "GET", url: comfyBase ? `${comfyBase}/view?...` : null, purpose: "Baixar o MP4 finalizado pelo ComfyUI" },
+              { method: "POST", url: process.env.MODAL_VIDEO_ENDPOINT || null, purpose: "Gerar video pelo worker Modal" },
             ],
-            note: "Este step baixa a imagem base + audio, envia ao ComfyUI, aguarda o job finalizar, baixa o MP4 pronto e depois salva no MinIO.",
+            note: "O worker Modal recebe as URLs da imagem e do audio, executa o workflow e devolve a URL publica do MP4.",
           },
         });
-        await logPipelineEvent({ coletaId: item.id, stepName, message: "Gerando video da copy via ComfyUI (Infinite Talk)" });
-
-        const imgRes = await fetch(imageUrl, { method: "GET", cache: "no-store", signal: AbortSignal.timeout(30000) });
-        if (!imgRes.ok) throw new Error(`Falha ao baixar userBaseImageUrl (HTTP ${imgRes.status})`);
-        const imgBuf = Buffer.from(await imgRes.arrayBuffer());
-        const imgType = imgRes.headers.get("content-type") || "image/png";
-
-        const audRes = await fetch(item.audioUrl, { method: "GET", cache: "no-store", signal: AbortSignal.timeout(30000) });
-        if (!audRes.ok) throw new Error(`Falha ao baixar audioUrl (HTTP ${audRes.status})`);
-        const audBuf = Buffer.from(await audRes.arrayBuffer());
-        const audType = audRes.headers.get("content-type") || "audio/mpeg";
-
-        const uid = uuidv4().slice(0, 8);
-        const outputPrefix = `video/shopee_copy_${item.id}_${uid}`;
+        await logPipelineEvent({ coletaId: item.id, stepName, message: "Gerando video da copy via Modal (Infinite Talk)" });
         const seed = Math.floor(Math.random() * 1_000_000_000);
-
-        // Placeholders esperados no template:
-        // __IMG_FILENAME__  -> nome do arquivo de imagem no input do ComfyUI
-        // __AUDIO_FILENAME__ -> nome do arquivo de audio no input do ComfyUI
-        // __OUTPUT_PREFIX__ -> prefixo para salvar output no ComfyUI
-        // __SEED__ -> seed do sampler (se aplicavel)
-        const submitted = await submitVideoFromTemplate({
-          template,
-          replacements: { "__OUTPUT_PREFIX__": outputPrefix, "__SEED__": seed },
-          inputFiles: [
-            { buffer: imgBuf, filename: `base_${item.id}.png`, contentType: imgType, placeholderKey: "__IMG_FILENAME__" },
-            { buffer: audBuf, filename: `audio_${item.id}.mp3`, contentType: audType, placeholderKey: "__AUDIO_FILENAME__" },
-          ],
-        });
-        const nextRetryAt = addMinutes(now(), 1);
+        const generated = await generateModalVideo({ imageUrl, audioUrl: item.audioUrl, seed });
+        const copyVideoUrl = generated.video_url;
+        const finishedAt = now();
         await upsertPipelineStep({
           coletaId: item.id,
           stepName,
-          status: "RUNNING",
+          status: "SUCCESS",
           attempt,
           startedAt,
-          nextRetryAt,
+          finishedAt,
+          durationMs: finishedAt.getTime() - startedAt.getTime(),
           requestPayload: {
             seed,
-            outputPrefix,
-            promptId: submitted.promptId,
-            prompt: safeTruncateJson(submitted.prompt, 20000),
-            uploadMeta: submitted.uploadMeta,
+            userBaseImageUrl: imageUrl,
+            audioUrl: item.audioUrl,
           },
           responsePayload: {
-            promptId: submitted.promptId,
-            uploadMeta: submitted.uploadMeta,
-            status: "SUBMITTED",
+            promptId: generated.prompt_id,
+            copyVideoUrl,
           },
         });
 
         await prisma.coletaDadosShoppe.update({
           where: { id: item.id },
-          data: { pipelineStatus: "GENERATING_COPY_VIDEO" as any, nextRunAt: nextRetryAt, lastError: "Vídeo enviado ao ComfyUI; aguardando processamento" },
+          data: { copyVideoUrl, pipelineStatus: "COPY_VIDEO_READY" as any, nextRunAt: null, lastError: null },
         });
         await logPipelineEvent({
           coletaId: item.id,
           stepName,
-          message: "Video enviado ao ComfyUI; primeira consulta agendada.",
-          metadata: { promptId: submitted.promptId, nextRetryAt },
+          message: "Video da copy gerado pela Modal e salvo no MinIO.",
+          metadata: { promptId: generated.prompt_id, copyVideoUrl },
         });
-        return { ok: true, itemId: item.id, ran: stepName, submitted: true, promptId: submitted.promptId, scheduled: nextRetryAt };
+        return { ok: true, itemId: item.id, ran: stepName, copyVideoUrl };
       } catch (error: any) {
         const message = error?.message || "Falha ao gerar video da copy";
         const retryDecision = decideRetry({ attempt, maxAttempts: 3, baseDelayMinutes: 3 });

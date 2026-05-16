@@ -92,15 +92,6 @@ type PipelineEvent = {
   metadata?: any;
 };
 
-type PodSession = {
-  id: string;
-  status: string;
-  lastOnlineCheckAt?: string | null;
-  lastActivityAt?: string | null;
-  updatedAt?: string | null;
-  errorMessage?: string | null;
-};
-
 type InternalCronStatus = {
   enabled: boolean;
   started: boolean;
@@ -116,6 +107,13 @@ function formatDate(value?: string | null) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "-";
   return d.toLocaleString("pt-BR");
+}
+
+function lockAgeMinutes(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
 }
 
 function toDateTimeLocalValue(value?: string | null) {
@@ -141,7 +139,7 @@ function statusColor(status: string) {
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pendente",
   PAUSED: "Pausado",
-  WAITING_POD: "Aguardando POD",
+  WAITING_POD: "Legado: aguardando worker",
   GENERATING_AUDIO: "Gerando audio",
   AUDIO_READY: "Audio pronto",
   GENERATING_COPY_VIDEO: "Gerando video da copy",
@@ -157,7 +155,6 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STEP_LABELS: Record<string, string> = {
   SCRAPE_MEDIA: "Coletar midias",
-  ENSURE_POD_ONLINE: "Ligar/validar POD",
   GENERATE_AUDIO: "Gerar audio",
   GENERATE_COPY_VIDEO: "Gerar video da copy",
   MERGE_VIDEOS: "Juntar videos",
@@ -175,7 +172,7 @@ const STEP_DETAILS: Record<
     waits?: string;
     saves?: string;
     application?: string[];
-    runpod?: string[];
+    modal?: string[];
     minio?: string[];
   }
 > = {
@@ -184,44 +181,35 @@ const STEP_DETAILS: Record<
     summary: "Busca a pagina da Shopee, extrai titulo, descricao, imagens, video original e prepara o roteiro de venda.",
     actions: ["Chama o servico de scraping/render", "Guarda URLs de imagens e videos encontrados", "Salva o roteiro no banco"],
     application: ["Coordena a coleta", "Salva titulo, descricao, roteiro e URLs no banco"],
-    runpod: ["Nao participa desta etapa"],
+    modal: ["Nao participa desta etapa"],
     minio: ["Nao grava arquivo novo nesta etapa"],
-  },
-  ENSURE_POD_ONLINE: {
-    title: "Ligar ou validar o POD",
-    summary: "Verifica se o ComfyUI responde. Se estiver desligado, tenta iniciar o POD Runpod ou criar outro.",
-    actions: ["Consulta o health do ComfyUI", "Se necessario, chama a API do Runpod", "Quando online, libera a proxima etapa"],
-    waits: "Se o POD nao subir ou nao houver GPU disponivel, agenda nova tentativa para 3 minutos depois. O status `Aguardando POD` continua elegivel para o cron; ele nao fica parado para sempre.",
-    application: ["Decide se precisa ligar o POD", "Guarda o podId atual e o estado da sessao"],
-    runpod: ["Liga o POD existente ou cria outro", "Expõe o ComfyUI pela porta HTTP 8188"],
-    minio: ["Nao participa desta etapa"],
   },
   GENERATE_AUDIO: {
     title: "Gerar audio",
-    summary: "Usa o roteiro salvo do produto atual e a voz de referencia para gerar o MP3 no ComfyUI.",
-    actions: ["Baixa o audio de referencia", "Envia a voz ao ComfyUI", "Envia o texto para /prompt", "Consulta /history/{promptId} ate terminar", "Baixa o MP3 pronto via /view"],
-    saves: "Depois de pronto, salva o MP3 no MinIO e grava `audioUrl` no item.",
-    application: ["Pega o roteiro salvo do produto", "Baixa a voz de referencia", "Envia requests ao ComfyUI", "Espera terminar", "Baixa o MP3 pronto"],
-    runpod: ["Executa o workflow de clonagem de voz no ComfyUI", "Gera o MP3"],
+    summary: "Envia o roteiro salvo e a voz de referencia para o worker Modal gerar o MP3.",
+    actions: ["Chama o endpoint de audio da Modal", "A Modal executa o workflow de voz", "Recebe a URL publica do MP3"],
+    saves: "A Modal salva o MP3 no MinIO e o app grava `audioUrl` no item.",
+    application: ["Pega o roteiro salvo do produto", "Envia texto e URL da voz para a Modal", "Salva a URL devolvida"],
+    modal: ["Executa o workflow de clonagem de voz", "Gera e publica o MP3"],
     minio: ["Recebe e guarda o MP3 final gerado", "Fornece a URL publica `audioUrl`"],
   },
   GENERATE_COPY_VIDEO: {
     title: "Gerar video com imagem + audio",
-    summary: "Pega a imagem base e o MP3 gerado, envia ambos ao ComfyUI e gera o video falado da copy.",
-    actions: ["Baixa a imagem base", "Baixa o MP3 do audio", "Envia os arquivos ao ComfyUI", "Envia o prompt de video", "Consulta /history/{promptId} ate o video ficar pronto", "Baixa o MP4 via /view"],
-    waits: "Pode demorar bastante; o sistema espera ate 45 minutos antes de considerar timeout.",
-    saves: "Quando termina, salva o MP4 no MinIO e grava `copyVideoUrl`.",
-    application: ["Baixa imagem base e MP3", "Envia ambos ao ComfyUI", "Acompanha o job ate terminar", "Baixa o MP4 pronto"],
-    runpod: ["Executa o workflow de imagem + audio", "Gera o video da foto falando"],
+    summary: "Envia a imagem base e o MP3 para o worker Modal gerar o video falado da copy.",
+    actions: ["Chama o endpoint de video da Modal", "A Modal executa o workflow Infinite Talk", "Recebe a URL publica do MP4"],
+    waits: "Pode demorar alguns minutos enquanto a GPU da Modal processa o workflow.",
+    saves: "A Modal salva o MP4 no MinIO e o app grava `copyVideoUrl`.",
+    application: ["Envia as URLs de imagem e audio para a Modal", "Salva a URL devolvida"],
+    modal: ["Executa o workflow de imagem + audio", "Gera o video da foto falando"],
     minio: ["Entrega a imagem/audio se estiverem la", "Guarda o MP4 gerado como `copyVideoUrl`"],
   },
   MERGE_VIDEOS: {
     title: "Unir video original + video da copy",
-    summary: "Envia ao worker o video original coletado da propaganda e o video da copy gerado pelo ComfyUI.",
+    summary: "Envia ao worker o video original coletado da propaganda e o video da copy gerado pela Modal.",
     actions: ["Chama o worker `/merge-videos`", "O worker baixa os dois videos", "Une os dois em um MP4 final"],
     saves: "O MP4 final volta para o Next, e o Next salva no MinIO como `videoFinalUrl`.",
     application: ["Envia para o worker as URLs do video original e do video da copy", "Recebe o MP4 final", "Salva o resultado"],
-    runpod: ["Nao participa desta etapa"],
+    modal: ["Nao participa desta etapa"],
     minio: ["Fornece o video da copy", "Guarda o video final unido"],
   },
   GENERATE_AFFILIATE_LINK: {
@@ -229,7 +217,7 @@ const STEP_DETAILS: Record<
     summary: "Converte a URL original da Shopee em link afiliado curto.",
     actions: ["Usa a configuracao da conta Shopee afiliados", "Chama a API de link afiliado", "Salva `affiliateUrl`"],
     application: ["Chama a API de afiliados e guarda o resultado"],
-    runpod: ["Nao participa desta etapa"],
+    modal: ["Nao participa desta etapa"],
     minio: ["Nao participa desta etapa"],
   },
   CREATE_BIO_PRODUCT: {
@@ -237,7 +225,7 @@ const STEP_DETAILS: Record<
     summary: "Monta a pagina de produto da bio usando titulo, descricao, imagem, video final e link afiliado.",
     actions: ["Cria slug", "Salva produto da bio", "Mantem link para compra"],
     application: ["Cria o registro da bio no banco"],
-    runpod: ["Nao participa desta etapa"],
+    modal: ["Nao participa desta etapa"],
     minio: ["Usa URLs ja existentes de imagem/video, mas nao gera arquivo novo"],
   },
   CREATE_STORY_AD: {
@@ -245,7 +233,7 @@ const STEP_DETAILS: Record<
     summary: "Cria o StoryAd e agenda publicacoes nas redes configuradas.",
     actions: ["Cria registro do story", "Agenda TikTok, YouTube e Instagram", "Define o horario de publicacao"],
     application: ["Cria o story e os agendamentos"],
-    runpod: ["Nao participa desta etapa"],
+    modal: ["Nao participa desta etapa"],
     minio: ["Usa o video final ja salvo"],
   },
 };
@@ -266,7 +254,6 @@ function secondsUntil(value?: string | null, nowMs = Date.now()) {
 
 const PIPELINE_STEPS: Array<{ stepName: string; label: string }> = [
   { stepName: "SCRAPE_MEDIA", label: "Scraping" },
-  { stepName: "ENSURE_POD_ONLINE", label: "POD" },
   { stepName: "GENERATE_AUDIO", label: "Áudio" },
   { stepName: "GENERATE_COPY_VIDEO", label: "Vídeo Copy" },
   { stepName: "MERGE_VIDEOS", label: "Merge" },
@@ -303,7 +290,7 @@ function truncateJson(value: unknown, maxLen = 900) {
   return `${text.slice(0, maxLen)}\n…(truncado)`;
 }
 
-function renderRunpodEvents(metadata: any) {
+function renderProviderEvents(metadata: any) {
   const events = metadata?.events;
   if (!Array.isArray(events) || events.length === 0) return null;
 
@@ -354,7 +341,6 @@ export default function ShopeePipelinePage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [events, setEvents] = useState<PipelineEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
-  const [pod, setPod] = useState<{ online: boolean; session: PodSession | null } | null>(null);
   const [cronConfig, setCronConfig] = useState<any>(null);
   const [internalCron, setInternalCron] = useState<InternalCronStatus | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
@@ -392,11 +378,6 @@ export default function ShopeePipelinePage() {
       const data = await res.json();
       setItems(Array.isArray(data) ? data : []);
 
-      const podRes = await fetch("/api/shopee-pipeline/pod-session", { cache: "no-store" }).catch(() => null);
-      const podData = podRes ? await podRes.json().catch(() => null) : null;
-      if (podData && typeof podData === "object") {
-        setPod({ online: Boolean((podData as any).online), session: ((podData as any).session as any) || null });
-      }
 
       const cfgRes = await fetch("/api/shopee-pipeline/config", { cache: "no-store" }).catch(() => null);
       const cfgData = cfgRes ? await cfgRes.json().catch(() => null) : null;
@@ -757,19 +738,10 @@ export default function ShopeePipelinePage() {
         <div className="flex items-center gap-2">
           <Chip
             size="small"
-            label={
-              pod
-                ? `POD: ${pod.online ? "ONLINE" : "OFFLINE"}${pod.session?.status ? ` (${pod.session.status})` : ""}`
-                : "POD: -"
-            }
-            color={pod?.online ? "success" : "default"}
+            label="Workers: Modal"
+            color="success"
             variant="outlined"
-            sx={{
-              color: pod?.online ? "#166534" : "#475569",
-              borderColor: pod?.online ? "#86efac" : "#cbd5e1",
-              bgcolor: pod?.online ? "#dcfce7" : "#f8fafc",
-              fontWeight: 800,
-            }}
+            sx={{ color: "#166534", borderColor: "#86efac", bgcolor: "#dcfce7", fontWeight: 800 }}
           />
           <Button
             variant="contained"
@@ -990,7 +962,9 @@ export default function ShopeePipelinePage() {
                     <TableCell>{item.active ? "Sim" : "Não"}</TableCell>
                     <TableCell>
                       {item.lockedAt
-                        ? `Em execução desde ${formatDate(item.lockedAt)}`
+                        ? lockAgeMinutes(item.lockedAt) != null && lockAgeMinutes(item.lockedAt)! >= 2 && item.pipelineStatus === "GENERATING_COPY_VIDEO"
+                          ? `Lock antigo; cron pode retomar`
+                          : `Em execução desde ${formatDate(item.lockedAt)}`
                         : item.nextRunAt
                           ? formatDate(item.nextRunAt)
                           : item.active
@@ -1077,7 +1051,7 @@ export default function ShopeePipelinePage() {
                 <div className="flex flex-col gap-2">
                   <div className="font-extrabold">Como funciona</div>
                   <div className="text-sm">
-                    Este pipeline executa <b>1 etapa por ciclo</b> (por cron ou por “Rodar agora”). Se a próxima etapa depende de pod/URLs externas, ela pode virar{" "}
+                    Este pipeline executa <b>1 etapa por ciclo</b> (por cron ou por “Rodar agora”). Se a próxima etapa depende de serviços externos, ela pode virar{" "}
                     <b>RETRY_SCHEDULED</b> e agendar <b>nextRunAt</b>.
                   </div>
                   <div className="text-sm text-slate-700">
@@ -1181,9 +1155,9 @@ export default function ShopeePipelinePage() {
                             </ul>
                           </div>
                           <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
-                            <div className="text-xs font-extrabold text-slate-500">No Runpod</div>
+                            <div className="text-xs font-extrabold text-slate-500">Na Modal</div>
                             <ul className="mt-1 list-disc pl-4 text-sm text-slate-700">
-                              {(STEP_DETAILS[focusedStepName].runpod || []).map((item) => (
+                              {(STEP_DETAILS[focusedStepName].modal || []).map((item) => (
                                 <li key={item}>{item}</li>
                               ))}
                             </ul>
@@ -1260,7 +1234,11 @@ export default function ShopeePipelinePage() {
                     <Typography variant="caption" className="text-slate-400 block mt-2">
                       Próx. Execução:{" "}
                       {selected.lockedAt
-                        ? `Em execução desde ${formatDate(selected.lockedAt)}`
+                        ? lockAgeMinutes(selected.lockedAt) != null &&
+                          lockAgeMinutes(selected.lockedAt)! >= 2 &&
+                          selected.pipelineStatus === "GENERATING_COPY_VIDEO"
+                          ? `Lock antigo; cron pode retomar`
+                          : `Em execução desde ${formatDate(selected.lockedAt)}`
                         : selected.nextRunAt
                           ? formatDate(selected.nextRunAt)
                           : selected.active
@@ -1287,21 +1265,6 @@ export default function ShopeePipelinePage() {
                   </CardContent>
                 </Card>
               </div>
-
-              <Card variant="outlined" sx={{ borderColor: "#cbd5e1", bgcolor: "#fff" }}>
-                <CardContent>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 900, color: "#0f172a" }}>
-                    Quando o POD desliga
-                  </Typography>
-                  <Typography variant="body2" sx={{ mt: 1, color: "#475569" }}>
-                    O watchdog verifica o POD. Se nao houver item ativo precisando de POD em `Aguardando POD`, `Gerando audio` ou `Gerando video da copy`
-                    e ele ficar ocioso por mais de 5 minutos, o sistema chama o desligamento do POD automaticamente.
-                  </Typography>
-                  <Typography variant="caption" sx={{ mt: 1, display: "block", color: "#64748b" }}>
-                    Endpoint usado para essa rotina: <code>/api/shopee-pipeline/pod-watchdog</code>
-                  </Typography>
-                </CardContent>
-              </Card>
 
               <Card variant="outlined" sx={{ borderColor: "rgba(255,255,255,0.08)", bgcolor: "transparent" }}>
                 <CardContent>
@@ -1394,7 +1357,7 @@ export default function ShopeePipelinePage() {
                                 <summary className="cursor-pointer select-none text-[11px] text-slate-700 hover:text-slate-900">
                                   Ver detalhes (envio/retorno)
                                 </summary>
-                                {renderRunpodEvents(ev.metadata)}
+                                {renderProviderEvents(ev.metadata)}
                                 <details className="mt-2">
                                   <summary className="cursor-pointer select-none text-[11px] text-slate-700 hover:text-slate-900">Ver JSON bruto</summary>
                                   <pre className="mt-1 whitespace-pre-wrap text-[11px] text-slate-700">{truncateJson(ev.metadata, 2400)}</pre>
@@ -1519,7 +1482,7 @@ export default function ShopeePipelinePage() {
               />
 
               <TextField
-                label="ComfyUI Audio Template (JSON)"
+                label="Template de audio legado (nao usado pela Modal)"
                 value={configDraft.comfyAudioPromptTemplate ? JSON.stringify(configDraft.comfyAudioPromptTemplate, null, 2) : ""}
                 onChange={(e) => {
                   const text = e.target.value;
@@ -1538,7 +1501,7 @@ export default function ShopeePipelinePage() {
                 sx={darkFieldSx}
               />
               <TextField
-                label="ComfyUI Video Template (JSON - Infinite Talk prompt API)"
+                label="Template de video legado (nao usado pela Modal)"
                 value={configDraft.comfyVideoPromptTemplate ? JSON.stringify(configDraft.comfyVideoPromptTemplate, null, 2) : ""}
                 onChange={(e) => {
                   const text = e.target.value;
@@ -1554,7 +1517,7 @@ export default function ShopeePipelinePage() {
                 multiline
                 minRows={8}
                 sx={darkFieldSx}
-                helperText="Tem que ser o JSON exportado em formato API do ComfyUI. Se o arquivo tiver `nodes` e `links`, ele é Workflow/UI e não serve para o endpoint `/prompt`."
+                helperText="Mantido apenas para compatibilidade historica. O workflow ativo agora fica versionado dentro do worker Modal."
               />
 
               <div className="flex justify-end gap-2 pt-1">

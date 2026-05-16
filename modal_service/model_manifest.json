@@ -1,0 +1,49 @@
+{
+  "groups": {
+    "audio_voice_clone": {
+      "source_workflow": "API-VOZ.json",
+      "files": []
+    },
+    "infinite_talk_video": {
+      "source_workflow": "WORKFLOW - INFINITE TALK (API Export).json",
+      "files": [
+        {
+          "relative_path": "unet/Wan2_1-InfiniteTalk_Single_Q6_K.gguf",
+          "workflow_node": "120"
+        },
+        {
+          "relative_path": "unet/wan2.1-i2v-14b-480p-Q4_K_S.gguf",
+          "workflow_node": "122"
+        },
+        {
+          "relative_path": "vae/wan_2.1_vae.safetensors",
+          "workflow_node": "129"
+        },
+        {
+          "relative_path": "text_encoders/umt5-xxl-enc-fp8_e4m3fn.safetensors",
+          "workflow_node": "136"
+        },
+        {
+          "relative_path": "loras/Wan21_I2V_14B_lightx2v_cfg_step_distill_lora_rank64.safetensors",
+          "workflow_node": "138"
+        },
+        {
+          "relative_path": "clip_vision/clip_vision_h.safetensors",
+          "workflow_node": "173"
+        }
+      ],
+      "remote_models": [
+        {
+          "name": "TencentGameMate/chinese-wav2vec2-base",
+          "workflow_node": "137",
+          "notes": "Downloaded by the workflow at runtime unless pre-cached."
+        }
+      ]
+    }
+  },
+  "notes": [
+    "The audio workflow references Qwen3-TTS nodes but does not expose local model filenames in the exported JSON.",
+    "Confirm the exact ComfyUI model directories from the current RunPod volume before uploading to Modal.",
+    "Relative paths are an initial normalization proposal for the Modal volume, not yet a verified copy of the current RunPod filesystem."
+  ]
+}
