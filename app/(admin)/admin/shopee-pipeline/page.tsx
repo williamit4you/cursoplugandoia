@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -29,6 +29,7 @@ import {
   TableHead,
   TableRow,
   TextField,
+  MenuItem,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -134,6 +135,12 @@ function statusColor(status: string) {
   if (status.endsWith("_READY")) return "info";
   if (status === "PAUSED") return "default";
   return "primary";
+}
+
+function shortId(id: string) {
+  const value = String(id || "");
+  if (!value) return "-";
+  return value.length <= 8 ? value : value.slice(-8);
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -362,6 +369,9 @@ export default function ShopeePipelinePage() {
   } | null>(null);
   const [focusedStepName, setFocusedStepName] = useState<string | null>(null);
   const [selectedNextRunDraft, setSelectedNextRunDraft] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [order, setOrder] = useState<string>("priority_desc_updatedAt_desc");
 
   const darkFieldSx = {
     "& .MuiInputLabel-root": { color: "rgba(226,232,240,0.75)" },
@@ -376,10 +386,17 @@ export default function ShopeePipelinePage() {
     "& textarea": { color: "#e2e8f0" },
   } as const;
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/shopee-pipeline/items?take=100", { cache: "no-store" });
+      const qs = new URLSearchParams();
+      qs.set("take", "100");
+      if (statusFilter) qs.set("status", statusFilter);
+      if (activeFilter === "true") qs.set("active", "true");
+      if (activeFilter === "false") qs.set("active", "false");
+      if (order) qs.set("order", order);
+
+      const res = await fetch(`/api/shopee-pipeline/items?${qs.toString()}`, { cache: "no-store" });
       const data = await res.json();
       setItems(Array.isArray(data) ? data : []);
 
@@ -394,7 +411,7 @@ export default function ShopeePipelinePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, activeFilter, order]);
 
   const loadConfig = async () => {
     setConfigLoading(true);
@@ -445,14 +462,14 @@ export default function ShopeePipelinePage() {
   };
 
   useEffect(() => {
-    load();
+    void load();
     const clock = window.setInterval(() => setNowMs(Date.now()), 1000);
     const refresh = window.setInterval(() => void load(), 15000);
     return () => {
       window.clearInterval(clock);
       window.clearInterval(refresh);
     };
-  }, []);
+  }, [load]);
 
   const toggleCron = async (enabled: boolean) => {
     const source = cronConfig || config || {};
@@ -474,6 +491,35 @@ export default function ShopeePipelinePage() {
     await load();
   };
 
+  const resetCronSchedule = async () => {
+    const source = configDraft || cronConfig || config || {};
+    const payload = {
+      enabled: Boolean(source.enabled),
+      runEveryMinutes: Number(source.runEveryMinutes || 1),
+      maxItemsPerRun: Number(source.maxItemsPerRun || 1),
+      processOneAtATime: source.processOneAtATime !== false,
+      userBaseImageUrl: source.userBaseImageUrl || null,
+      userVoiceRefUrl: source.userVoiceRefUrl || null,
+      comfyAudioPromptTemplate: source.comfyAudioPromptTemplate || null,
+      comfyVideoPromptTemplate: source.comfyVideoPromptTemplate || null,
+      resetSchedule: true,
+    };
+
+    await fetch("/api/shopee-pipeline/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    setSnackbar({
+      open: true,
+      severity: "info",
+      message: "Agenda do cron resetada (lastCronRunAt/nextCronRunAt limpos).",
+    });
+
+    await load();
+  };
+
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
     if (!q) return items;
@@ -485,6 +531,18 @@ export default function ShopeePipelinePage() {
       );
     });
   }, [items, filter]);
+
+  const lastCronRun = useMemo(() => {
+    const last = internalCron?.lastResult;
+    const run = last?.runs && Array.isArray(last.runs) ? last.runs[0] : null;
+    return {
+      skipped: Boolean(last?.skipped),
+      reason: last?.reason ? String(last.reason) : "",
+      itemId: run?.itemId ? String(run.itemId) : null,
+      step: run?.ran ? String(run.ran) : null,
+      ok: typeof run?.ok === "boolean" ? Boolean(run.ok) : null,
+    };
+  }, [internalCron]);
 
   const stats = useMemo(() => {
     const total = items.length;
@@ -814,6 +872,72 @@ export default function ShopeePipelinePage() {
               "& input::placeholder": { color: "#64748b", opacity: 1 },
             }}
           />
+          <TextField
+            select
+            size="small"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(String(e.target.value))}
+            sx={{
+              minWidth: 180,
+              "& .MuiOutlinedInput-root": {
+                color: "#0f172a",
+                bgcolor: "#fff",
+                "& fieldset": { borderColor: "#cbd5e1" },
+                "&:hover fieldset": { borderColor: "#94a3b8" },
+                "&.Mui-focused fieldset": { borderColor: "rgba(34,197,94,0.7)" },
+              },
+            }}
+          >
+            <MenuItem value="">Todos os status</MenuItem>
+            {Object.keys(STATUS_LABELS).map((key) => (
+              <MenuItem key={key} value={key}>
+                {STATUS_LABELS[key]}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            size="small"
+            value={activeFilter}
+            onChange={(e) => setActiveFilter(String(e.target.value))}
+            sx={{
+              minWidth: 140,
+              "& .MuiOutlinedInput-root": {
+                color: "#0f172a",
+                bgcolor: "#fff",
+                "& fieldset": { borderColor: "#cbd5e1" },
+                "&:hover fieldset": { borderColor: "#94a3b8" },
+                "&.Mui-focused fieldset": { borderColor: "rgba(34,197,94,0.7)" },
+              },
+            }}
+          >
+            <MenuItem value="all">Ativas + pausadas</MenuItem>
+            <MenuItem value="true">Só ativas</MenuItem>
+            <MenuItem value="false">Só pausadas</MenuItem>
+          </TextField>
+          <TextField
+            select
+            size="small"
+            value={order}
+            onChange={(e) => setOrder(String(e.target.value))}
+            sx={{
+              minWidth: 200,
+              "& .MuiOutlinedInput-root": {
+                color: "#0f172a",
+                bgcolor: "#fff",
+                "& fieldset": { borderColor: "#cbd5e1" },
+                "&:hover fieldset": { borderColor: "#94a3b8" },
+                "&.Mui-focused fieldset": { borderColor: "rgba(34,197,94,0.7)" },
+              },
+            }}
+          >
+            <MenuItem value="priority_desc_updatedAt_desc">Ordenar: prioridade</MenuItem>
+            <MenuItem value="createdAt_asc">Ordenar: criação (antigos)</MenuItem>
+            <MenuItem value="createdAt_desc">Ordenar: criação (novos)</MenuItem>
+            <MenuItem value="updatedAt_desc">Ordenar: atualizado (recentes)</MenuItem>
+            <MenuItem value="nextRunAt_asc">Ordenar: próximo agendamento</MenuItem>
+            <MenuItem value="status_asc">Ordenar: status</MenuItem>
+          </TextField>
           <Tooltip title="Atualizar">
             <span>
               <IconButton
@@ -896,6 +1020,13 @@ export default function ShopeePipelinePage() {
                       ? "Executou"
                       : "Ainda sem execucao"}
               </div>
+              {lastCronRun.itemId ? (
+                <div className="mt-1 text-xs font-semibold text-slate-600">
+                  Item: {shortId(lastCronRun.itemId)}
+                  {lastCronRun.step ? ` • etapa: ${String(lastCronRun.step)}` : ""}
+                  {lastCronRun.ok === false ? " • falhou" : ""}
+                </div>
+              ) : null}
             </div>
           </div>
           <Typography variant="caption" sx={{ mt: 1.5, display: "block", color: "#475569" }}>
@@ -934,10 +1065,14 @@ export default function ShopeePipelinePage() {
 
       <Card className="glass-panel border border-white/10">
         <CardContent>
-          <TableContainer component={Paper} sx={{ bgcolor: "transparent", backgroundImage: "none" }}>
+          <TableContainer component={Paper} sx={{ bgcolor: "transparent", backgroundImage: "none", overflowX: "auto" }}>
             <Table size="small">
               <TableHead>
                 <TableRow>
+                  <TableCell>#</TableCell>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Criado</TableCell>
+                  <TableCell align="left">Ações</TableCell>
                   <TableCell>Produto</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Ativa</TableCell>
@@ -945,18 +1080,63 @@ export default function ShopeePipelinePage() {
                   <TableCell>Lock</TableCell>
                   <TableCell>Tentativas</TableCell>
                   <TableCell>Último Erro</TableCell>
-                  <TableCell align="right">Ações</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filtered.map((item) => (
+                {filtered.map((item, index) => (
                   <TableRow key={item.id} hover>
+                    <TableCell sx={{ width: 50 }}>
+                      <Typography variant="caption" className="text-slate-400">
+                        {index + 1}
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{ width: 90 }}>
+                      <Tooltip title={item.id}>
+                        <Chip size="small" label={shortId(item.id)} />
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell sx={{ width: 170 }}>
+                      <Typography variant="caption" className="text-slate-400" noWrap>
+                        {formatDate(item.createdAt)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="left" sx={{ minWidth: 200 }}>
+                      <Stack direction="row" sx={{ justifyContent: "flex-start", flexWrap: "wrap" }} spacing={1}>
+                        <Tooltip title="Detalhes">
+                          <IconButton onClick={() => openDetail(item)}>
+                            <InfoOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Retomar agora: limpa agendamento e mantem a etapa atual quando ela ja esta em andamento">
+                          <IconButton onClick={() => continueNow(item)}>
+                            <BoltIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title={item.active ? "Pausar" : "Ativar"}>
+                          <IconButton onClick={() => patchItem(item.id, { active: !item.active, pipelineStatus: item.active ? "PAUSED" : "PENDING" })}>
+                            {item.active ? <PauseIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Destravar (unlock)">
+                          <IconButton onClick={() => patchItem(item.id, { unlock: true })}>
+                            <LockOpenIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        {item.videoFinalUrl && (
+                          <Tooltip title="Abrir video final">
+                            <IconButton href={item.videoFinalUrl} target="_blank">
+                              <OpenInNewIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Stack>
+                    </TableCell>
                     <TableCell sx={{ maxWidth: 420 }}>
                       <div className="flex flex-col gap-0.5">
                         <Typography variant="body2" sx={{ fontWeight: 800 }} noWrap>
                           {item.titulo || "Produto Shopee"}
                         </Typography>
-                        <Typography variant="caption" className="text-slate-400" noWrap>
+                        <Typography variant="caption" className="text-slate-400 break-all">
                           {item.url}
                         </Typography>
                       </div>
@@ -991,42 +1171,11 @@ export default function ShopeePipelinePage() {
                         {item.lastError || "-"}
                       </Typography>
                     </TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" sx={{ justifyContent: "flex-end" }} spacing={1}>
-                        <Tooltip title="Detalhes">
-                          <IconButton onClick={() => openDetail(item)}>
-                            <InfoOutlinedIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Retomar agora: limpa agendamento e mantem a etapa atual quando ela ja esta em andamento">
-                          <IconButton onClick={() => continueNow(item)}>
-                            <BoltIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title={item.active ? "Pausar" : "Ativar"}>
-                          <IconButton onClick={() => patchItem(item.id, { active: !item.active, pipelineStatus: item.active ? "PAUSED" : "PENDING" })}>
-                            {item.active ? <PauseIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Destravar (unlock)">
-                          <IconButton onClick={() => patchItem(item.id, { unlock: true })}>
-                            <LockOpenIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        {item.videoFinalUrl && (
-                          <Tooltip title="Abrir video final">
-                            <IconButton href={item.videoFinalUrl} target="_blank">
-                              <OpenInNewIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </Stack>
-                    </TableCell>
                   </TableRow>
                 ))}
                 {filtered.length === 0 && !loading && (
                   <TableRow>
-                    <TableCell colSpan={8}>
+                    <TableCell colSpan={11}>
                       <Typography variant="body2" className="text-slate-400">
                         Nenhum item encontrado.
                       </Typography>
@@ -1528,6 +1677,9 @@ export default function ShopeePipelinePage() {
               <div className="flex justify-end gap-2 pt-1">
                 <Button onClick={() => setConfigOpen(false)} color="inherit">
                   Fechar
+                </Button>
+                <Button variant="outlined" color="warning" onClick={resetCronSchedule} disabled={configLoading}>
+                  Resetar agenda
                 </Button>
                 <Button variant="contained" onClick={saveConfig} disabled={configLoading}>
                   Salvar

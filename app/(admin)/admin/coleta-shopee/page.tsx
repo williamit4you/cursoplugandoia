@@ -407,15 +407,15 @@ export default function ColetaShopeePage() {
         </CardContent>
       </Card>
 
-      <TableContainer component={Paper} className="bg-white/5 border border-white/10 backdrop-blur-md">
+      <TableContainer component={Paper} className="bg-white/5 border border-white/10 backdrop-blur-md" sx={{ overflowX: "auto" }}>
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell className="text-slate-400 font-semibold border-white/10">Acoes</TableCell>
               <TableCell className="text-slate-400 font-semibold border-white/10">URL / Titulo</TableCell>
               <TableCell className="text-slate-400 font-semibold border-white/10">Status</TableCell>
               <TableCell className="text-slate-400 font-semibold border-white/10">Midias</TableCell>
               <TableCell className="text-slate-400 font-semibold border-white/10">Video TikTok</TableCell>
-              <TableCell className="text-slate-400 font-semibold border-white/10 text-right">Acoes</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -434,6 +434,46 @@ export default function ColetaShopeePage() {
             ) : (
               coletas.map((coleta) => (
                 <TableRow key={coleta.id} className="hover:bg-white/5 transition-colors">
+                  <TableCell className="border-white/10">
+                    <div className="flex flex-wrap gap-2 justify-start min-w-[220px]">
+                      <Tooltip title="Ver / Editar dados coletados">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleViewDetails(coleta)}
+                          className="text-indigo-400 hover:bg-indigo-400/10"
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="primary"
+                        className="bg-indigo-600 hover:bg-indigo-700"
+                        startIcon={coleta.status === "SCRAPING" ? <CircularProgress size={14} color="inherit" /> : <PlayArrowIcon />}
+                        onClick={() => handleScrape(coleta.id)}
+                        disabled={coleta.status === "SCRAPING"}
+                      >
+                        Scraping
+                      </Button>
+                      {coleta.status === "COMPLETED" && (
+                        <Tooltip title="Criar Video TikTok">
+                          <Button
+                            size="small"
+                            variant="contained"
+                            sx={{ bgcolor: "#7c3aed", "&:hover": { bgcolor: "#6d28d9" } }}
+                            startIcon={<MovieIcon />}
+                            onClick={() => openVideoModal(coleta)}
+                          >
+                            Video
+                          </Button>
+                        </Tooltip>
+                      )}
+                      <IconButton size="small" onClick={() => handleDelete(coleta.id)} className="text-red-400 hover:bg-red-400/10">
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </div>
+                  </TableCell>
                   <TableCell className="border-white/10 text-slate-200">
                     <div className="flex flex-col gap-1">
                       {coleta.titulo && (
@@ -448,7 +488,7 @@ export default function ColetaShopeePage() {
                         href={coleta.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs text-slate-500 hover:underline max-w-md truncate"
+                        className="text-xs text-slate-500 hover:underline break-all"
                       >
                         {coleta.url}
                       </a>
@@ -502,46 +542,6 @@ export default function ColetaShopeePage() {
                           </IconButton>
                         </Tooltip>
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="border-white/10 text-right">
-                    <div className="flex gap-2 justify-end">
-                      <Tooltip title="Ver / Editar dados coletados">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleViewDetails(coleta)}
-                          className="text-indigo-400 hover:bg-indigo-400/10"
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="primary"
-                        className="bg-indigo-600 hover:bg-indigo-700"
-                        startIcon={coleta.status === "SCRAPING" ? <CircularProgress size={14} color="inherit" /> : <PlayArrowIcon />}
-                        onClick={() => handleScrape(coleta.id)}
-                        disabled={coleta.status === "SCRAPING"}
-                      >
-                        Scraping
-                      </Button>
-                      {coleta.status === "COMPLETED" && (
-                        <Tooltip title="Criar Video TikTok">
-                          <Button
-                            size="small"
-                            variant="contained"
-                            sx={{ bgcolor: "#7c3aed", "&:hover": { bgcolor: "#6d28d9" } }}
-                            startIcon={<MovieIcon />}
-                            onClick={() => openVideoModal(coleta)}
-                          >
-                            Video
-                          </Button>
-                        </Tooltip>
-                      )}
-                      <IconButton size="small" onClick={() => handleDelete(coleta.id)} className="text-red-400 hover:bg-red-400/10">
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
                     </div>
                   </TableCell>
                 </TableRow>

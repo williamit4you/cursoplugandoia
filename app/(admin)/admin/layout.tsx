@@ -6,6 +6,7 @@ import {
   Button,
   Typography,
 } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import ArticleIcon from "@mui/icons-material/Article";
 import LinkIcon from "@mui/icons-material/Link";
@@ -24,11 +25,29 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import EventIcon from "@mui/icons-material/Event";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const apply = () => {
+      const mobile = mq.matches;
+      setIsMobile(mobile);
+      setIsSidebarOpen(!mobile);
+    };
+    apply();
+    const onChange = () => apply();
+    if ("addEventListener" in mq) mq.addEventListener("change", onChange);
+    else (mq as any).addListener(onChange);
+    return () => {
+      if ("removeEventListener" in mq) mq.removeEventListener("change", onChange);
+      else (mq as any).removeListener(onChange);
+    };
+  }, []);
 
   if (pathname === "/admin/login") {
     return <>{children}</>;
@@ -64,10 +83,19 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
         <div className="absolute top-24 -right-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl" />
       </div>
 
+      {/* Mobile overlay */}
+      {isMobile && isSidebarOpen && (
+        <button
+          aria-label="Fechar menu"
+          className="fixed inset-0 z-40 bg-black/40"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Light Sidebar */}
       <aside
         className={`fixed lg:relative z-50 h-full bg-white border-r border-slate-200/70 transition-all duration-300 ease-in-out
-          ${isSidebarOpen ? "w-72 translate-x-0" : "w-0 lg:w-20 -translate-x-full lg:translate-x-0"}`}
+          ${isSidebarOpen ? "w-72 translate-x-0" : isMobile ? "w-72 -translate-x-full" : "w-20 translate-x-0"}`}
         style={{ boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)" }}
       >
         <div className="flex flex-col h-full overflow-hidden">
@@ -90,6 +118,9 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
                 <Link
                   key={item.text}
                   href={item.path}
+                  onClick={() => {
+                    if (isMobile) setIsSidebarOpen(false);
+                  }}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-200
                     ${isActive ? "bg-indigo-50 text-indigo-700 border border-indigo-100" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
                 >
@@ -118,11 +149,11 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
         <header className="h-16 bg-white/80 backdrop-blur border-b border-slate-200/70 flex items-center justify-between px-6 z-40 shrink-0">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              onClick={() => setIsSidebarOpen((v) => !v)}
               className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-600"
               aria-label="Alternar menu"
             >
-              <DashboardIcon fontSize="small" />
+              {isMobile ? <MenuIcon fontSize="small" /> : <DashboardIcon fontSize="small" />}
             </button>
             <h1 className="text-lg font-black text-slate-900 capitalize">
               {pathname.split("/").pop()?.replace("-", " ") || "Dashboard"}

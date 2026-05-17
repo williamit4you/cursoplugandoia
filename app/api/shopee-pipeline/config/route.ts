@@ -27,6 +27,7 @@ export async function POST(req: Request) {
   const runEveryMinutes = Math.max(1, Number(body.runEveryMinutes || 5));
   const maxItemsPerRun = Math.max(1, Number(body.maxItemsPerRun || 1));
   const processOneAtATime = body.processOneAtATime === false ? false : true;
+  const resetSchedule = body.resetSchedule === true;
   const userBaseImageUrl = body.userBaseImageUrl ? String(body.userBaseImageUrl) : null;
   const userVoiceRefUrl = body.userVoiceRefUrl ? String(body.userVoiceRefUrl) : null;
   const comfyAudioPromptTemplate = body.comfyAudioPromptTemplate && typeof body.comfyAudioPromptTemplate === "object" ? body.comfyAudioPromptTemplate : null;
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
   }
 
   const existing = await prisma.shopeePipelineConfig.findFirst({ orderBy: { createdAt: "desc" } });
-  const saved = existing
+  let saved = existing
     ? await prisma.shopeePipelineConfig.update({
         where: { id: existing.id },
         data: { enabled, runEveryMinutes, maxItemsPerRun, processOneAtATime, userBaseImageUrl, userVoiceRefUrl, comfyAudioPromptTemplate, comfyVideoPromptTemplate },
@@ -60,6 +61,13 @@ export async function POST(req: Request) {
     : await prisma.shopeePipelineConfig.create({
         data: { enabled, runEveryMinutes, maxItemsPerRun, processOneAtATime, userBaseImageUrl, userVoiceRefUrl, comfyAudioPromptTemplate, comfyVideoPromptTemplate },
       });
+
+  if (resetSchedule) {
+    saved = await prisma.shopeePipelineConfig.update({
+      where: { id: saved.id },
+      data: { lastCronRunAt: null, nextCronRunAt: null },
+    });
+  }
 
   return NextResponse.json(saved);
 }

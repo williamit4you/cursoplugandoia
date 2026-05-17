@@ -13,6 +13,7 @@ const LOCK_TTL_MS = 30 * 60 * 1000;
 const ASYNC_LOCK_TTL_MS = LOCK_TTL_MS;
 const ASYNC_RESUMABLE_STATUSES = [] as const;
 const EXCLUDED_STATUSES = ["PAUSED", "PUBLISHED"] as const;
+const STICKY_EXCLUDED_STATUSES = ["PENDING", "FAILED", ...EXCLUDED_STATUSES] as const;
 
 function now() {
   return new Date();
@@ -49,6 +50,48 @@ async function acquireNextItemLock(params: { runnerId: string; current: Date }) 
       ],
     },
     orderBy: [{ priority: "desc" }, { createdAt: "asc" }],
+    select: { id: true, lockedAt: true },
+  });
+
+  if (!candidate) return null;
+
+  const res = await prisma.coletaDadosShoppe.updateMany({
+    where: {
+      id: candidate.id,
+      OR: [
+        { lockedAt: null },
+        { lockedAt: { lt: lockExpiry } },
+        { pipelineStatus: { in: ASYNC_RESUMABLE_STATUSES as any }, lockedAt: { lt: asyncLockExpiry } },
+      ],
+    },
+    data: { lockedAt: current, lockedBy: runnerId },
+  });
+
+  if (res.count === 0) return null;
+  return prisma.coletaDadosShoppe.findUnique({ where: { id: candidate.id } });
+}
+
+async function acquireInProgressItemLock(params: { runnerId: string; current: Date }) {
+  const { runnerId, current } = params;
+  const lockExpiry = new Date(current.getTime() - LOCK_TTL_MS);
+  const asyncLockExpiry = new Date(current.getTime() - ASYNC_LOCK_TTL_MS);
+
+  const candidate = await prisma.coletaDadosShoppe.findFirst({
+    where: {
+      active: true,
+      pipelineStatus: { notIn: STICKY_EXCLUDED_STATUSES as any },
+      AND: [
+        { OR: [{ nextRunAt: null }, { nextRunAt: { lte: current } }] },
+        {
+          OR: [
+            { lockedAt: null },
+            { lockedAt: { lt: lockExpiry } },
+            { pipelineStatus: { in: ASYNC_RESUMABLE_STATUSES as any }, lockedAt: { lt: asyncLockExpiry } },
+          ],
+        },
+      ],
+    },
+    orderBy: [{ priority: "desc" }, { updatedAt: "desc" }],
     select: { id: true, lockedAt: true },
   });
 
@@ -225,7 +268,10 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
     };
   }
 
-  const item = await acquireNextItemLock({ runnerId, current });
+  const stickyEnabled = config.processOneAtATime !== false;
+  const item = stickyEnabled
+    ? (await acquireInProgressItemLock({ runnerId, current })) || (await acquireNextItemLock({ runnerId, current }))
+    : await acquireNextItemLock({ runnerId, current });
   if (!item) {
     const details = await getEligibilityDiagnostics({ current });
     return {
