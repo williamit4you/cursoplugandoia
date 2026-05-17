@@ -210,6 +210,27 @@ async function getEligibilityDiagnostics(params: { current: Date }) {
   };
 }
 
+export async function getShopeePipelineEligibilityDiagnostics() {
+  const current = now();
+  const config = await prisma.shopeePipelineConfig.findFirst({ orderBy: { createdAt: "desc" } });
+  const details = await getEligibilityDiagnostics({ current });
+  return {
+    current: current.toISOString(),
+    config: config
+      ? {
+          enabled: Boolean(config.enabled),
+          processOneAtATime: config.processOneAtATime !== false,
+          runEveryMinutes: Number(config.runEveryMinutes || 0) || null,
+          maxItemsPerRun: Number(config.maxItemsPerRun || 0) || null,
+          lastCronRunAt: config.lastCronRunAt || null,
+          nextCronRunAt: config.nextCronRunAt || null,
+        }
+      : null,
+    rule: buildEligibilityRuleText({ current }),
+    details,
+  };
+}
+
 async function releaseLock(coletaId: string) {
   await prisma.coletaDadosShoppe.update({
     where: { id: coletaId },
