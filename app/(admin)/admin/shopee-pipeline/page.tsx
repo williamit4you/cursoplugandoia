@@ -538,6 +538,8 @@ export default function ShopeePipelinePage() {
     return {
       skipped: Boolean(last?.skipped),
       reason: last?.reason ? String(last.reason) : "",
+      runSkipped: Boolean(run?.skipped),
+      runReason: run?.reason ? String(run.reason) : "",
       itemId: run?.itemId ? String(run.itemId) : null,
       step: run?.ran ? String(run.ran) : null,
       ok: typeof run?.ok === "boolean" ? Boolean(run.ok) : null,
@@ -1025,6 +1027,10 @@ export default function ShopeePipelinePage() {
                   Item: {shortId(lastCronRun.itemId)}
                   {lastCronRun.step ? ` • etapa: ${String(lastCronRun.step)}` : ""}
                   {lastCronRun.ok === false ? " • falhou" : ""}
+                </div>
+              ) : lastCronRun.runSkipped ? (
+                <div className="mt-1 text-xs font-semibold text-slate-600">
+                  Sem item: {lastCronRun.runReason || lastCronRun.reason || "nenhum elegível"}
                 </div>
               ) : null}
             </div>

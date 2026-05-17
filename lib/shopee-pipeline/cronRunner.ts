@@ -69,11 +69,17 @@ export async function runShopeePipelineCron() {
     if (res?.skipped) break;
   }
 
+  // Surface "no work" in a way the UI can understand (otherwise it shows "Executou" even when the run was skipped).
+  const first = runs[0];
+  const skipped = Boolean(first?.skipped);
+  const reason = skipped ? String(first?.reason || "Nenhum item elegível encontrado agora") : undefined;
+
   return {
     ok: true,
     runEveryMinutes: intervalMinutes,
     lastCronRunAt: current,
     nextCronRunAt,
     runs,
+    ...(skipped ? { skipped, reason } : {}),
   };
 }
