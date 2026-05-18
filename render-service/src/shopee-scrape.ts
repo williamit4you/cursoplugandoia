@@ -47,6 +47,81 @@ function cleanupMarketingText(value: string | null | undefined) {
     .trim();
 }
 
+function sanitizeTitleForSpokenAd(value: string | null | undefined) {
+  const text = cleanupMarketingText(value);
+  if (!text) return "";
+
+  const withoutBrackets = text.replace(/\[[^\]]*]/g, " ").replace(/\([^)]*\)/g, " ");
+  const normalized = withoutBrackets.replace(/[|•·]/g, " ").replace(/\s{2,}/g, " ").trim();
+
+  const rawTokens = normalized.split(/\s+/).filter(Boolean);
+  const filtered = rawTokens.filter((token) => {
+    const t = token.trim();
+    if (!t) return false;
+    if (t.length <= 1) return false;
+    if (/^\d+$/.test(t)) return false;
+    if (/[0-9]/.test(t) && /[a-zA-ZÀ-ÿ]/.test(t)) return false; // "1080P", "iCSee", "A8", etc
+    if (/^ip\d{2,}$/i.test(t)) return false;
+    if (/^\d{2,}\s*-\s*\d{2,}$/i.test(t)) return false;
+    if (/^\d{2,}\s*-\s*\d{2,}v$/i.test(t)) return false;
+    if (/^\d{2,}v$/i.test(t)) return false;
+    if (/^\d{3,}mah$/i.test(t)) return false;
+    if (/^\d{3,}w$/i.test(t)) return false;
+    if (/^\d{3,}ml$/i.test(t)) return false;
+    if (/^\d{2,}l$/i.test(t)) return false;
+    if (/^[A-Z]{2,6}$/.test(t)) return false; // "HD", "APP", etc (sole token)
+    if (/^(app|icsee|yoosee|tuya|alexa|google|smart|wifi|bluetooth)$/i.test(t)) return false;
+    return true;
+  });
+
+  const collapsed = filtered.join(" ").replace(/\s{2,}/g, " ").trim();
+  return collapsed;
+}
+
+function inferFriendlyProductName(titulo: string, descricao: string, detalhes: string) {
+  const haystack = cleanupMarketingText(`${titulo} ${descricao} ${detalhes}`).toLowerCase();
+
+  const rules: Array<{ re: RegExp; label: string }> = [
+    { re: /\b(cam(era)?|câmera)\b/, label: "câmera de segurança" },
+    { re: /\b(furadeira|parafusadeira)\b/, label: "furadeira/parafusadeira" },
+    { re: /\b(air\s*fryer|airfryer)\b/, label: "airfryer" },
+    { re: /\b(liquidificador)\b/, label: "liquidificador" },
+    { re: /\b(aspirador)\b/, label: "aspirador" },
+    { re: /\b(fone|headset|auricular)\b/, label: "fone de ouvido" },
+    { re: /\b(teclado)\b/, label: "teclado" },
+    { re: /\b(mouse)\b/, label: "mouse" },
+    { re: /\b(rel[óo]gio|smartwatch)\b/, label: "relógio" },
+    { re: /\b(vestido)\b/, label: "vestido" },
+    { re: /\b(camisa|camiseta)\b/, label: "camiseta" },
+    { re: /\b(cal[cç]a|jeans)\b/, label: "calça" },
+    { re: /\b(t[eê]nis|sapato)\b/, label: "tênis" },
+    { re: /\b(bolsa)\b/, label: "bolsa" },
+    { re: /\b(mochila)\b/, label: "mochila" },
+  ];
+
+  const matched = rules.find((r) => r.re.test(haystack));
+  if (matched) return matched.label;
+
+  const titleSlim = sanitizeTitleForSpokenAd(titulo);
+  if (titleSlim) return titleSlim.split(/\s+/).slice(0, 6).join(" ").trim();
+  return "este produto";
+}
+
+function stripTechnicalTokensForSpeech(value: string) {
+  return String(value || "")
+    .replace(/\bip\s*\d{2,3}\b/gi, "")
+    .replace(/\b\d{3,4}\s*p\b/gi, "")
+    .replace(/\b(4k|8k)\b/gi, "")
+    .replace(/\b\d{2,3}\s*-\s*\d{2,3}\s*v\b/gi, "")
+    .replace(/\b\d{2,3}\s*v\b/gi, "")
+    .replace(/\b\d+(\.\d+)?\s*(ghz|mhz)\b/gi, "")
+    .replace(/\b\d{3,5}\s*(mah|wh|w)\b/gi, "")
+    // model/codigo: mistura letras+numeros (ex: A8, X12Pro, H9, 2.4G, etc)
+    .replace(/\b(?=[a-zA-ZÀ-ÿ0-9]{3,}\b)(?=.*[0-9])(?=.*[a-zA-ZÀ-ÿ])[a-zA-ZÀ-ÿ0-9-_.]+\b/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function removeLowValueSalesNoise(value: string | null | undefined) {
   return cleanupMarketingText(value)
     .split(/(?<=[.!?])\s+/)
@@ -460,6 +535,7 @@ export async function generateSalesScript(titulo: string, descricao: string, det
 
   const model = process.env.VIDEO_CODE_AI_MODEL || "gpt-4o-mini";
   const tituloSeguro = cleanupMarketingText(titulo);
+  const nomeCurto = inferFriendlyProductName(titulo, descricao, detalhes);
   const descricaoSegura = removeLowValueSalesNoise(descricao).slice(0, 1500);
   const detalhesSeguros = removeLowValueSalesNoise(detalhes).slice(0, 1500);
 
@@ -475,8 +551,12 @@ export async function generateSalesScript(titulo: string, descricao: string, det
           "O texto deve vender o produto como uma oferta irresistivel, nao apenas descrever caracteristicas.\n" +
           "A copy deve seguir esta estrutura: GANCHO FORTE + PROBLEMA/DESEJO + BENEFICIO PRINCIPAL + PROVA/DETALHE + CTA.\n" +
           "Escreva como uma pessoa real falaria em um video UGC/TikTok, com tom natural, curto, direto, convincente e profissional.\n" +
+          "O gancho deve partir do USO e do BENEFICIO (ex: seguranca, praticidade, saude, beleza, conforto, renda extra), como se estivesse resolvendo um problema real.\n" +
           "Nunca comece com 'Olha isso', 'Compre agora' ou repetindo o nome cru do produto.\n" +
           "Nunca leia codigos, ids, sku, numeros soltos, porcentagens estranhas, texto truncado, URLs ou marcacoes internas.\n" +
+          "Nao use no texto siglas, nomes de app/modelo e especificacoes tecnicas que ficam ruins em audio. Exemplos (apenas exemplos): IP66, 1080P, 110-220V, ICSEE, YOOSEE.\n" +
+          "A regra vale para QUALQUER termo tecnico parecido (codigos, modelos, combinacoes de letras+numeros, siglas, etc).\n" +
+          "Quando existir especificacao tecnica importante, traduza para beneficio humano (ex: 'resistente a agua', 'imagem em alta definicao', 'bivolt', 'controle pelo app').\n" +
           "Se a descricao vier confusa, cortada ou ruim, descarte trechos quebrados e irrelevantes.\n" +
           "Nao cite instrucoes tecnicas sem apelo de venda, como tempo de carregamento inicial, salvo se forem um diferencial real para comprar.\n" +
           "Se o titulo estiver ruim, priorize o contexto da descricao e dos detalhes para identificar o produto.\n" +
@@ -491,7 +571,8 @@ export async function generateSalesScript(titulo: string, descricao: string, det
       {
         role: "user",
         content:
-          `Titulo do produto: ${tituloSeguro}\n` +
+          `Titulo original (nao repetir literalmente): ${tituloSeguro}\n` +
+          `Nome curto sugerido (use este no texto): ${nomeCurto}\n` +
           `Descricao comercial filtrada: ${descricaoSegura}\n` +
           `Detalhes uteis filtrados: ${detalhesSeguros}\n` +
           "Escreva um texto pronto para locucao, fluido, vendedor e focado somente no que ajuda a pessoa a desejar e comprar o produto.",
@@ -515,7 +596,14 @@ export async function generateSalesScript(titulo: string, descricao: string, det
     const end = text.lastIndexOf("}");
     if (start === -1 || end === -1) return text;
     const parsed = JSON.parse(text.slice(start, end + 1));
-    return cleanupMarketingText(String(parsed?.script_vendas ?? "").trim());
+    const script = cleanupMarketingText(String(parsed?.script_vendas ?? "").trim());
+    // Final safety net: avoid app/model tokens being read in audio.
+    return stripTechnicalTokensForSpeech(
+      script
+        .replace(/\b(icsee|yoosee|tuya)\b/gi, "")
+        .replace(/\s{2,}/g, " ")
+        .trim()
+    );
   } catch {
     return "";
   }

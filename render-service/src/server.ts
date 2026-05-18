@@ -200,7 +200,7 @@ function buildShopeeDetailsFromApi(item: any) {
 }
 
 function buildFallbackSalesScript(titulo: string, descricao: string, detalhes: string) {
-  const tituloSeguro = cleanupMarketingText(titulo) || "esse produto";
+  const tituloSeguro = sanitizeTitleForSpokenAd(titulo) || cleanupMarketingText(titulo) || "esse produto";
   const base = removeLowValueSalesNoise(descricao || detalhes);
   const snippet = base ? base.slice(0, 180).trim() : "";
   return cleanupMarketingText(
@@ -210,6 +210,33 @@ function buildFallbackSalesScript(titulo: string, descricao: string, detalhes: s
         : "Ele combina utilidade, boa proposta e custo-beneficio para quem quer comprar melhor. ") +
       "Vale conferir o preco de hoje antes que acabe. Para ter acesso ao produto, o link esta na bio!"
   );
+}
+
+function sanitizeTitleForSpokenAd(value: string | null | undefined) {
+  const text = cleanupMarketingText(value);
+  if (!text) return "";
+
+  const withoutBrackets = text.replace(/\[[^\]]*]/g, " ").replace(/\([^)]*\)/g, " ");
+  const normalized = withoutBrackets.replace(/[|•·]/g, " ").replace(/\s{2,}/g, " ").trim();
+
+  const rawTokens = normalized.split(/\s+/).filter(Boolean);
+  const filtered = rawTokens.filter((token) => {
+    const t = token.trim();
+    if (!t) return false;
+    if (t.length <= 1) return false;
+    if (/^\d+$/.test(t)) return false;
+    if (/[0-9]/.test(t) && /[a-zA-ZÀ-ÿ]/.test(t)) return false;
+    if (/^ip\d{2,}$/i.test(t)) return false;
+    if (/^\d{2,}\s*-\s*\d{2,}v$/i.test(t)) return false;
+    if (/^\d{2,}v$/i.test(t)) return false;
+    if (/^\d{3,}mah$/i.test(t)) return false;
+    if (/^\d{3,}w$/i.test(t)) return false;
+    if (/^[A-Z]{2,6}$/.test(t)) return false;
+    if (/^(app|icsee|yoosee|tuya|alexa|google|smart|wifi|bluetooth)$/i.test(t)) return false;
+    return true;
+  });
+
+  return filtered.join(" ").replace(/\s{2,}/g, " ").trim();
 }
 
 async function fetchShopeeStructuredDetails(productUrl: string) {

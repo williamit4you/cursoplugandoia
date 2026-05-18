@@ -40,7 +40,17 @@ export default async function BioProductPage({ params }: { params: { slug: strin
           <div className="mt-2 text-xs text-slate-500">Você será redirecionado para a Shopee.</div>
         </div>
       </div>
+      <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-slate-400">
+        <div>© {new Date().getFullYear()} Plugando IA</div>
+        <div className="flex items-center gap-4">
+          <Link href="/terms" className="hover:text-slate-200">
+            Termos
+          </Link>
+          <Link href="/privacy" className="hover:text-slate-200">
+            Privacidade
+          </Link>
+        </div>
+      </footer>
     </main>
   );
 }
-
