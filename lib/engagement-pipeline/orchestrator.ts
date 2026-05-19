@@ -2,7 +2,7 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { logPipelineEvent, upsertPipelineStep } from "@/lib/shopee-pipeline/logger";
-import { scrapeShopeeAndPersist } from "@/lib/shopee-pipeline/scrape";
+import { scrapeShopeeAndPersistEngagement } from "@/lib/engagement-pipeline/scrape";
 import { generateModalAudio, generateModalVideo } from "@/lib/shopee-pipeline/modalClient";
 import { uploadBufferToMinio } from "@/lib/shopee-pipeline/minioUpload";
 import { mergeProductAndCopyVideos } from "@/lib/shopee-pipeline/merge";
@@ -38,7 +38,7 @@ async function acquireNextItemLock(params: { runnerId: string; current: Date }) 
 
   const candidate = await prisma.coletaDadosShoppe.findFirst({
     where: {
-      pipelineKind: "SALES" as any,
+      pipelineKind: "ENGAGEMENT" as any,
       active: true,
       pipelineStatus: { notIn: EXCLUDED_STATUSES as any },
       AND: [
@@ -81,7 +81,7 @@ async function acquireInProgressItemLock(params: { runnerId: string; current: Da
 
   const candidate = await prisma.coletaDadosShoppe.findFirst({
     where: {
-      pipelineKind: "SALES" as any,
+      pipelineKind: "ENGAGEMENT" as any,
       active: true,
       pipelineStatus: { notIn: STICKY_EXCLUDED_STATUSES as any },
       AND: [
@@ -132,15 +132,15 @@ async function getEligibilityDiagnostics(params: { current: Date }) {
   const asyncLockExpiry = new Date(current.getTime() - ASYNC_LOCK_TTL_MS);
 
   const baseWhere = {
-    pipelineKind: "SALES" as any,
+    pipelineKind: "ENGAGEMENT" as any,
     active: true,
     pipelineStatus: { notIn: EXCLUDED_STATUSES as any },
   } as const;
 
   const [totalActive, excludedByStatus, baseCount, futureCount, lockedCount, eligibleCount, earliestFuture, lockedSample] =
     await Promise.all([
-      prisma.coletaDadosShoppe.count({ where: { active: true } }),
-      prisma.coletaDadosShoppe.count({ where: { active: true, pipelineStatus: { in: EXCLUDED_STATUSES as any } } }),
+      prisma.coletaDadosShoppe.count({ where: { pipelineKind: "ENGAGEMENT" as any, active: true } }),
+      prisma.coletaDadosShoppe.count({ where: { pipelineKind: "ENGAGEMENT" as any, active: true, pipelineStatus: { in: EXCLUDED_STATUSES as any } } }),
       prisma.coletaDadosShoppe.count({ where: baseWhere as any }),
       prisma.coletaDadosShoppe.count({ where: { ...(baseWhere as any), nextRunAt: { gt: current } } }),
       prisma.coletaDadosShoppe.count({
@@ -215,10 +215,10 @@ async function getEligibilityDiagnostics(params: { current: Date }) {
   };
 }
 
-export async function getShopeePipelineEligibilityDiagnostics() {
+export async function getEngagementPipelineEligibilityDiagnostics() {
   const current = now();
   const config = await prisma.shopeePipelineConfig.findFirst({
-    where: { pipelineKind: "SALES" as any },
+    where: { pipelineKind: "ENGAGEMENT" as any },
     orderBy: { createdAt: "desc" },
   });
   const details = await getEligibilityDiagnostics({ current });
@@ -282,12 +282,12 @@ async function nextAttemptForStep(coletaId: string, stepName: string) {
   return (last?.attempt || 0) + 1;
 }
 
-export async function runShopeePipelineOnce(params?: { origin?: string }) {
-  const runnerId = `shopee-pipeline:sales:${uuidv4()}`;
+export async function runEngagementPipelineOnce(params?: { origin?: string }) {
+  const runnerId = `shopee-pipeline:engagement:${uuidv4()}`;
   const current = now();
 
   const config = await prisma.shopeePipelineConfig.findFirst({
-    where: { pipelineKind: "SALES" as any },
+    where: { pipelineKind: "ENGAGEMENT" as any },
     orderBy: { createdAt: "desc" },
   });
   if (!config || !config.enabled) {
@@ -349,7 +349,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
         });
         await logPipelineEvent({ coletaId: item.id, stepName, message: "Iniciando scraping via render-service" });
 
-        const result = await scrapeShopeeAndPersist({ coletaId: item.id, productUrl: item.url });
+        const result = await scrapeShopeeAndPersistEngagement({ coletaId: item.id, productUrl: item.url });
 
         const finishedAt = now();
         await upsertPipelineStep({
@@ -443,14 +443,14 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
         }
 
         const config = await prisma.shopeePipelineConfig.findFirst({
-          where: { pipelineKind: "SALES" as any },
+          where: { pipelineKind: "ENGAGEMENT" as any },
           orderBy: { createdAt: "desc" },
         });
         const voiceRefUrl = config?.userVoiceRefUrl || null;
         if (!voiceRefUrl) throw new Error("Pipeline config missing userVoiceRefUrl");
 
-        const copy = String(item.aiPromptVendas || "").trim();
-        if (!copy) throw new Error("Copy de vendas (aiPromptVendas) ausente");
+        const copy = String(item.aiPromptEngajamento || "").trim();
+        if (!copy) throw new Error("Ideia de engajamento (aiPromptEngajamento) ausente");
 
         await upsertPipelineStep({ coletaId: item.id, stepName, status: "RUNNING", attempt, startedAt });
         await logPipelineEvent({ coletaId: item.id, stepName, message: "Gerando audio via Modal (voice clone)" });
@@ -470,7 +470,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
             targetTextPreview: copy.slice(0, 220),
             targetTextLength: copy.length,
             note:
-              "Este step usa `aiPromptVendas` SALVO no banco no momento da execução (não rascunho na tela). Se você editou o script na tela Coleta Shopee, clique em 'Salvar Alterações' antes de rodar o pipeline.",
+              "Este step usa `aiPromptEngajamento` SALVO no banco no momento da execução (não rascunho na tela). Se você editou o script na tela Engajamento Shopee, clique em 'Salvar Alterações' antes de rodar o pipeline.",
           },
         });
 
@@ -561,7 +561,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
 
       try {
         const config = await prisma.shopeePipelineConfig.findFirst({
-          where: { pipelineKind: "SALES" as any },
+          where: { pipelineKind: "ENGAGEMENT" as any },
           orderBy: { createdAt: "desc" },
         });
 
@@ -876,7 +876,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
         }
 
         const title = String(item.titulo || "Produto Shopee").trim() || "Produto Shopee";
-        const description = String(item.descricao || item.aiPromptVendas || "").trim().slice(0, 2000) || title;
+        const description = String(item.descricao || item.aiPromptEngajamento || "").trim().slice(0, 2000) || title;
         const affiliateUrl = String(item.affiliateUrl || "").trim();
         const videoUrl = String(item.videoFinalUrl || "").trim();
         const imageUrl = item.mediaImageUrls?.[0] ? String(item.mediaImageUrls[0]).trim() : null;
@@ -982,7 +982,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
         }
 
         const title = String(item.titulo || "Produto Shopee").trim() || "Produto Shopee";
-        const description = String(item.descricao || item.aiPromptVendas || "").trim().slice(0, 1000);
+        const description = String(item.descricao || item.aiPromptEngajamento || "").trim().slice(0, 1000);
         const videoUrl = String(item.videoFinalUrl || "").trim();
         const affiliateUrl = String(item.affiliateUrl || "").trim();
         if (!videoUrl) throw new Error("videoFinalUrl ausente para criar StoryAd.");

@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const config = await prisma.shopeePipelineConfig.findFirst({
-    where: { pipelineKind: "SALES" as any },
+    where: { pipelineKind: "ENGAGEMENT" as any },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json(
@@ -56,14 +56,14 @@ export async function POST(req: Request) {
   }
 
   const existing = await prisma.shopeePipelineConfig.findFirst({
-    where: { pipelineKind: "SALES" as any },
+    where: { pipelineKind: "ENGAGEMENT" as any },
     orderBy: { createdAt: "desc" },
   });
   let saved = existing
     ? await prisma.shopeePipelineConfig.update({
         where: { id: existing.id },
         data: {
-          pipelineKind: "SALES" as any,
+          pipelineKind: "ENGAGEMENT" as any,
           enabled,
           runEveryMinutes,
           maxItemsPerRun,
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
       })
     : await prisma.shopeePipelineConfig.create({
         data: {
-          pipelineKind: "SALES" as any,
+          pipelineKind: "ENGAGEMENT" as any,
           enabled,
           runEveryMinutes,
           maxItemsPerRun,

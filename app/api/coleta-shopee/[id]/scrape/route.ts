@@ -24,8 +24,8 @@ function deriveTitleFromUrl(url: string) {
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
-    const coleta = await prisma.coletaDadosShoppe.findUnique({
-      where: { id: params.id }
+    const coleta = await prisma.coletaDadosShoppe.findFirst({
+      where: { id: params.id, pipelineKind: "SALES" as any }
     });
 
     if (!coleta) {

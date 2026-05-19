@@ -33,6 +33,7 @@ export async function generateEngagementIdea(params: {
   productTitle?: string;
   productDescription?: string;
   productDetails?: string;
+  durationHint?: string;
 }) {
   if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
@@ -52,6 +53,7 @@ export async function generateEngagementIdea(params: {
     `TÍTULO DO PRODUTO (pode estar sujo): ${title}\n` +
     `DESCRIÇÃO (filtrada): ${description}\n` +
     `DETALHES (filtrados): ${details}\n\n` +
+    `DURAÇÃO ALVO: ${safeString(params.durationHint) || "30s a 2min"}\n` +
     "Gere um roteiro para locução (voz humana), com humor/curiosidade/autoridade conforme o template.\n" +
     "Saída JSON (campos obrigatórios):\n" +
     '{\n' +
@@ -96,4 +98,3 @@ export async function generateEngagementIdea(params: {
 
   return { hook, script, onScreenText, ctaComment, personaName, template };
 }
-

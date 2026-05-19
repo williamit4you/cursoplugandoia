@@ -188,7 +188,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     include: { linksMedia: true },
   });
 
-  if (!coleta || coleta.pipelineKind !== ("SALES" as any)) {
+  if (!coleta || coleta.pipelineKind !== ("ENGAGEMENT" as any)) {
     return NextResponse.json({ error: "Coleta não encontrada." }, { status: 404 });
   }
 

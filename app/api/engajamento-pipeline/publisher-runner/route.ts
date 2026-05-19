@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
     const current = now();
 
     const due = await prisma.storyAd.findMany({
-      where: { status: "SCHEDULED" as any, scheduledAt: { lte: current }, coleta: { pipelineKind: "SALES" as any } },
+      where: { status: "SCHEDULED" as any, scheduledAt: { lte: current }, coleta: { pipelineKind: "ENGAGEMENT" as any } },
       orderBy: [{ scheduledAt: "asc" }, { createdAt: "asc" }],
       take: limit,
       include: { publications: true, coleta: { select: { id: true } } },
@@ -235,7 +235,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ok: true, checked: due.length, results });
   } catch (error: any) {
-    console.error("[api/shopee-pipeline/publisher-runner GET]", error);
+    console.error("[api/engajamento-pipeline/publisher-runner GET]", error);
     return NextResponse.json({ error: error?.message || "Falha no publisher-runner" }, { status: 500 });
   }
 }

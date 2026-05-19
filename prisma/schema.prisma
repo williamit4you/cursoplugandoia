@@ -102,6 +102,11 @@ enum ShopeePipelineStatus {
   PAUSED
 }
 
+enum ColetaPipelineKind {
+  SALES
+  ENGAGEMENT
+}
+
 enum ShopeePipelineStepStatus {
   PENDING
   RUNNING
@@ -912,11 +917,13 @@ model YtAiReport {
 
 model ColetaDadosShoppe {
   id               String   @id @default(cuid())
-  url              String   @unique
+  url              String
+  pipelineKind     ColetaPipelineKind @default(SALES)
   titulo           String?
   detalhes         String?
   descricao        String?
   aiPromptVendas   String?
+  aiPromptEngajamento String?
   status           String   @default("PENDING") // PENDING, SCRAPING, COMPLETED, FAILED
   errorMessage     String?
   videoFinalUrl    String?  // URL do vídeo TikTok gerado (MinIO)
@@ -943,6 +950,9 @@ model ColetaDadosShoppe {
   storyAd          StoryAd?
   bioProduct       BioProduct?
   engagementIdeas  EngagementIdea[]
+
+  @@unique([url, pipelineKind])
+  @@index([pipelineKind])
 }
 
 model LinksVideosImagens {
@@ -960,6 +970,7 @@ model LinksVideosImagens {
 
 model ShopeePipelineConfig {
   id                String   @id @default(cuid())
+  pipelineKind      ColetaPipelineKind @default(SALES)
   enabled           Boolean  @default(false)
   runEveryMinutes   Int      @default(5)
   maxItemsPerRun    Int      @default(1)
@@ -972,6 +983,8 @@ model ShopeePipelineConfig {
   comfyVideoPromptTemplate Json?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  @@unique([pipelineKind])
 }
 
 model ShopeePipelineStep {

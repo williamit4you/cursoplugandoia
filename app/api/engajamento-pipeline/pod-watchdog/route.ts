@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     // Existe trabalho imediato que exige POD?
     const needsPodNow = await prisma.coletaDadosShoppe.findFirst({
       where: {
-        pipelineKind: "SALES" as any,
+        pipelineKind: "ENGAGEMENT" as any,
         active: true,
         AND: [
           { OR: [{ pipelineStatus: "WAITING_POD" as any }, { pipelineStatus: "GENERATING_AUDIO" as any }, { pipelineStatus: "GENERATING_COPY_VIDEO" as any }] },
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
         data: { status: "STOPPING" as any, shutdownRequestedAt: current, errorMessage: offRes.ok ? null : "desligar falhou" },
       });
       const anyColeta = await prisma.coletaDadosShoppe.findFirst({
-        where: { pipelineKind: "SALES" as any },
+        where: { pipelineKind: "ENGAGEMENT" as any },
         select: { id: true },
       });
       if (anyColeta?.id) {
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ok: true, online: true, action: "none", needsPodNow: Boolean(needsPodNow), idleLongEnough, manager });
   } catch (error: any) {
-    console.error("[api/shopee-pipeline/pod-watchdog GET]", error);
+    console.error("[api/engajamento-pipeline/pod-watchdog GET]", error);
     return NextResponse.json({ error: error?.message || "Falha no watchdog do POD" }, { status: 500 });
   }
 }

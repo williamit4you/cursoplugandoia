@@ -19,13 +19,20 @@ function inferResumeStatus(item: any) {
   if (item.videoFinalUrl) return "FINAL_VIDEO_READY";
   if (item.copyVideoUrl) return "COPY_VIDEO_READY";
   if (item.audioUrl) return "AUDIO_READY";
-  if (String(item.aiPromptVendas || "").trim()) return "COPY_READY";
+  if (String(item.aiPromptEngajamento || item.aiPromptVendas || "").trim()) return "COPY_READY";
   return "PENDING";
+}
+
+function serializeItem(item: any) {
+  return {
+    ...item,
+    aiPromptVendas: item?.aiPromptEngajamento ?? item?.aiPromptVendas ?? null,
+  };
 }
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const item = await prisma.coletaDadosShoppe.findFirst({
-    where: { id: params.id, pipelineKind: "SALES" as any },
+    where: { id: params.id, pipelineKind: "ENGAGEMENT" as any },
     include: {
       linksMedia: true,
       pipelineSteps: { orderBy: { updatedAt: "desc" } },
@@ -36,14 +43,14 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   });
 
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(item);
+  return NextResponse.json(serializeItem(item));
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const body = await req.json().catch(() => ({}));
   const data: any = {};
   const current = await prisma.coletaDadosShoppe.findFirst({
-    where: { id: params.id, pipelineKind: "SALES" as any },
+    where: { id: params.id, pipelineKind: "ENGAGEMENT" as any },
   });
 
   if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -73,12 +80,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   const updated = await prisma.coletaDadosShoppe.update({
-    where: { id: params.id },
+    where: { id: current.id },
     data,
   });
 
   return NextResponse.json({
-    ...updated,
+    ...serializeItem(updated),
     resumeInfo:
       body.forceResumeNow === true
         ? {

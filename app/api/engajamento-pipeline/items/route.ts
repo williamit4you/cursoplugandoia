@@ -30,6 +30,13 @@ function parseOrder(value: string | null): ItemsOrder {
   return (allowed as string[]).includes(v) ? (v as ItemsOrder) : "priority_desc_updatedAt_desc";
 }
 
+function serializeItem(item: any) {
+  return {
+    ...item,
+    aiPromptVendas: item?.aiPromptEngajamento ?? item?.aiPromptVendas ?? null,
+  };
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const take = Math.min(200, Math.max(1, toInt(url.searchParams.get("take"), 50)));
@@ -54,7 +61,7 @@ export async function GET(req: Request) {
     take,
     orderBy,
     where: {
-      pipelineKind: "SALES" as any,
+      pipelineKind: "ENGAGEMENT" as any,
       ...(status ? { pipelineStatus: status as any } : {}),
       ...(active === "true" ? { active: true } : active === "false" ? { active: false } : {}),
     },
@@ -66,5 +73,5 @@ export async function GET(req: Request) {
     },
   });
 
-  return NextResponse.json(items);
+  return NextResponse.json(items.map(serializeItem));
 }

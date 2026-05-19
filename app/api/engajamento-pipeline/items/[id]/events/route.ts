@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const item = await prisma.coletaDadosShoppe.findFirst({
-    where: { id: params.id, pipelineKind: "SALES" as any },
+    where: { id: params.id, pipelineKind: "ENGAGEMENT" as any },
     select: { id: true },
   });
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
