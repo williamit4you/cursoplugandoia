@@ -81,27 +81,30 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
   };
 
   return (
-    <div className="space-y-6 animate-in">
-      <ToastContainer theme="dark" />
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <ToastContainer theme="colored" />
       
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-          <div className="w-1.5 h-5 bg-indigo-500 rounded-full" />
+        <h2 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+          <div className="w-1.5 h-5 bg-indigo-600 rounded-full" />
           Lista de Notícias
         </h2>
         <Link 
           href="/admin/posts/new"
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl transition-all shadow-lg shadow-indigo-600/10 active:scale-95"
         >
-          Nova Notícia
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+          </svg>
+          NOVA NOTÍCIA
         </Link>
       </div>
 
-      <div className="glass-panel rounded-2xl overflow-hidden border border-white/5">
+      <div className="bg-white rounded-2xl overflow-hidden border border-slate-200/60 shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-white/5 text-[10px] uppercase tracking-widest text-slate-400 font-black">
+              <tr className="bg-slate-50/75 border-b border-slate-100 text-[10px] uppercase tracking-wider text-slate-500 font-bold">
                 <th className="px-6 py-4">Título</th>
                 <th className="px-6 py-4 text-center">Capa</th>
                 <th className="px-6 py-4 text-center">Status</th>
@@ -110,23 +113,23 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
                 <th className="px-6 py-4 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 text-sm">
+            <tbody className="divide-y divide-slate-100 text-sm">
               {posts.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500 italic">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400 italic">
                     Nenhuma notícia encontrada.
                   </td>
                 </tr>
               )}
               {posts.map((item) => (
-                <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
+                <tr key={item.id} className="hover:bg-slate-50/30 transition-colors group">
                   {/* Título */}
                   <td className="px-6 py-4 max-w-md">
-                    <div className="font-bold text-slate-200 group-hover:text-white transition-colors truncate">
+                    <div className="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors truncate">
                       {item.title}
                     </div>
-                    <div className="text-[10px] text-slate-500 mt-0.5 truncate opacity-0 group-hover:opacity-100 transition-opacity">
-                      {item.id}
+                    <div className="text-[10px] text-slate-400 mt-0.5 truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                      ID: {item.id}
                     </div>
                   </td>
 
@@ -137,15 +140,24 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
                         <img
                           src={item.coverImage}
                           alt="capa"
-                          className="w-16 h-10 object-cover rounded-lg ring-1 ring-white/10 shadow-lg"
+                          className="w-16 h-10 object-cover rounded-lg ring-1 ring-slate-100 shadow-sm"
                         />
                       ) : (
                         <button
                           disabled={loadingId === item.id + "-cover"}
                           onClick={() => handleFetchCover(item.id)}
-                          className="px-3 py-1 bg-white/5 hover:bg-white/10 text-[10px] font-black text-slate-300 rounded-lg transition-all active:scale-95 disabled:opacity-50"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-[10px] font-black text-slate-600 rounded-lg transition-all active:scale-95 disabled:opacity-50"
                         >
-                          {loadingId === item.id + "-cover" ? "⏳" : "🖼️ PEXELS"}
+                          {loadingId === item.id + "-cover" ? (
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-slate-600"></div>
+                          ) : (
+                            <>
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              PEXELS
+                            </>
+                          )}
                         </button>
                       )}
                     </div>
@@ -153,22 +165,22 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
 
                   {/* Status */}
                   <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight
                       ${item.status === "PUBLISHED" 
-                        ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20" 
-                        : "bg-slate-500/10 text-slate-400 ring-1 ring-slate-500/20"}`}
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60" 
+                        : "bg-slate-100 text-slate-600 border border-slate-200/60"}`}
                     >
-                      {item.status}
+                      {item.status === "PUBLISHED" ? "Publicado" : "Rascunho"}
                     </span>
                   </td>
 
                   {/* Views */}
-                  <td className="px-6 py-4 text-center font-mono font-bold text-indigo-400">
+                  <td className="px-6 py-4 text-center font-mono font-bold text-indigo-600">
                     {item.views ?? 0}
                   </td>
 
                   {/* Data */}
-                  <td className="px-6 py-4 text-center text-slate-400 text-xs">
+                  <td className="px-6 py-4 text-center text-slate-500 text-xs">
                     {new Date(item.createdAt).toLocaleDateString("pt-BR")}
                   </td>
 
@@ -177,28 +189,49 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
                     <div className="flex justify-end gap-2">
                       <Link
                         href={`/admin/posts/${item.id}`}
-                        className="p-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors"
+                        className="p-2 bg-slate-50 hover:bg-slate-100 hover:text-indigo-600 text-slate-500 rounded-lg transition-colors border border-slate-100"
                         title="Editar"
                       >
-                        ✏️
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
                       </Link>
 
                       {item.status !== "PUBLISHED" && (
                         <button
                           disabled={loadingId === item.id + "-site"}
                           onClick={() => handlePublish(item.id)}
-                          className="px-3 py-1 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 text-[10px] font-black rounded-lg transition-all active:scale-95 disabled:opacity-50"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg transition-all active:scale-95 disabled:opacity-50 border border-emerald-200/50"
                         >
-                          {loadingId === item.id + "-site" ? "⏳" : "PUBLISH"}
+                          {loadingId === item.id + "-site" ? (
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-700"></div>
+                          ) : (
+                            <>
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              PUBLISH
+                            </>
+                          )}
                         </button>
                       )}
 
                       <button
                         disabled={loadingId === item.id + "-linkedin"}
                         onClick={() => handleLinkedIn(item.id)}
-                        className="px-3 py-1 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-[10px] font-black rounded-lg transition-all active:scale-95 disabled:opacity-50 border border-blue-500/20"
+                        className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black rounded-lg transition-all active:scale-95 disabled:opacity-50 border border-indigo-200/50"
                       >
-                        {loadingId === item.id + "-linkedin" ? "⏳" : "LINKEDIN"}
+                        {loadingId === item.id + "-linkedin" ? (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-indigo-700"></div>
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 10.742l8.99-4.495m0 0l-8.99-4.499m8.99 4.495v12.567m0-12.567l-8.99 4.495" />
+                            </svg>
+                            LINKEDIN
+                          </>
+                        )}
                       </button>
                     </div>
                   </td>
@@ -211,4 +244,3 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
     </div>
   );
 }
-

@@ -16,8 +16,11 @@ export default async function PostsPage() {
   })
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Notícias</h1>
+    <div className="space-y-6">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm">
+        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Posts & Notícias</h1>
+        <p className="text-slate-500 text-sm font-medium mt-1">Gerencie artigos e publicações que aparecem no site e são convertidos em posts sociais.</p>
+      </div>
       <PostsTable initialData={posts} />
     </div>
   )

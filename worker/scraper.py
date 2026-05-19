@@ -729,10 +729,13 @@ def generate_video_and_upload(summary_text: str, keywords: str = "", config: dic
         log_pipeline("VIDEO", "⚠️ Sem keywords — usando fundo preto", "WARN")
 
     try:
+        import random
+        brand_colors = ["#1e1b4b", "#111827", "#0f172a", "#022c22", "#311042", "#1c1917", "#082f49", "#0f172a"]
+        chosen_color = random.choice(brand_colors)
         data_fields = {
             "text": summary_text,
             "video_format": "portrait",
-            "background_color": "#111827",
+            "background_color": chosen_color,
             "speed": tts_speed,
             "voice": tts_voice,
         }

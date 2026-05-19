@@ -72,6 +72,7 @@ export default function VideoQuestionsPage() {
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [enqueueing, setEnqueueing] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -276,6 +277,12 @@ export default function VideoQuestionsPage() {
               Concluídos: {doneCount} / {questions.length}
             </span>
             {refreshing && <span className="text-[10px] font-bold text-indigo-400 animate-pulse">Atualizando...</span>}
+            <button 
+              onClick={() => setShowHelp(prev => !prev)}
+              className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 cursor-pointer transition-colors"
+            >
+              {showHelp ? "Ocultar Guia" : "Como Funciona?"}
+            </button>
           </div>
         </div>
 
@@ -326,6 +333,51 @@ export default function VideoQuestionsPage() {
           </button>
         </div>
       </div>
+
+      {showHelp && (
+        <div className="mb-6 p-6 bg-gradient-to-br from-indigo-50/70 to-blue-50/70 border border-indigo-100 rounded-2xl shadow-sm text-gray-700 animate-in fade-in slide-in-from-top-2 duration-300">
+          <h2 className="text-lg font-bold text-indigo-900 mb-3 flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            Guia de Funcionamento: Perguntas → Vídeos
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+            <div className="space-y-2">
+              <h3 className="font-bold text-indigo-950 flex items-center gap-1.5">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-black">1</span>
+                Entrada de Conteúdo
+              </h3>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                Adicione perguntas manualmente com o botão <b>Nova Pergunta</b> ou importe em lote clicando em <b>Importar CSV</b> (baixe o modelo para ver a estrutura correta).
+              </p>
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-bold text-indigo-950 flex items-center gap-1.5">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-black">2</span>
+                Geração de Vídeo
+              </h3>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                <b>Manual:</b> Clique em <i>Gerar Vídeo Agora</i> no item ou <i>RODAR AGORA</i> no topo (processa a fila em background).<br />
+                <b>Automático:</b> Ative o sistema nas configurações para gerar vídeos periodicamente no piloto automático.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-bold text-indigo-950 flex items-center gap-1.5">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-black">3</span>
+                Distribuição Social
+              </h3>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                Vídeos concluídos podem ser enfileirados nas redes sociais usando os botões rápidos (ME, YT, TK, LN). Se preferir, ative a <b>Auto-Publicação</b> nas configurações para postar automaticamente.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-indigo-100 flex justify-between items-center text-xs">
+            <span className="text-gray-500 font-medium">As configurações de voz, formato, Pexels e canais podem ser gerenciadas na página de configurações.</span>
+            <a href="/admin/video-questions-config" className="text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1">
+              Acessar Configurações →
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Busca e Filtros */}
       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm mb-6">

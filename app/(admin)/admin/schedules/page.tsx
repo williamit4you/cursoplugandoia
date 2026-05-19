@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Box, Chip, MenuItem, Paper, TextField, Typography } from "@mui/material";
+import { Alert } from "@mui/material";
+import { Clock, Calendar, RefreshCcw, Filter, ExternalLink, Play } from "lucide-react";
 
 type ScheduleItem = {
   id: string;
@@ -47,86 +48,187 @@ export default function SchedulesPage() {
   }, []);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <Box>
-        <Typography variant="h4" sx={{ fontWeight: 900 }}>Agendamentos</Typography>
-        <Typography sx={{ opacity: 0.8, mt: 1 }}>Posts criados pelas Automation Tasks (SocialPost).</Typography>
-      </Box>
+    <div className="space-y-6 animate-in fade-in duration-300">
+      {/* Title */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm flex justify-between items-center">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+            <Calendar className="w-6 h-6 text-indigo-600" />
+            Agendamentos
+          </h1>
+          <p className="text-slate-500 text-sm font-medium">
+            Posts sociais criados automaticamente que estão agendados ou já foram publicados.
+          </p>
+        </div>
+        <button
+          onClick={load}
+          disabled={loading}
+          className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm disabled:opacity-50"
+          title="Atualizar"
+        >
+          <RefreshCcw className={`w-4 h-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
 
-      {message ? <Alert severity="error">{message}</Alert> : null}
+      {message && (
+        <Alert severity="error" className="rounded-xl shadow-sm border border-rose-200/50">
+          {message}
+        </Alert>
+      )}
 
-      <Paper sx={{ p: 2 }}>
-        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
-          <Box sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}>
-            <TextField select fullWidth label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
-              {["ALL", "DRAFT", "SCHEDULED", "POSTED", "FAILED", "PROCESSING_MEDIA"].map((s) => (
-                <MenuItem key={s} value={s}>{s}</MenuItem>
-              ))}
-            </TextField>
-          </Box>
-          <Box sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}>
-            <TextField select fullWidth label="Plataforma" value={platform} onChange={(e) => setPlatform(e.target.value)}>
-              {["ALL", "META", "YOUTUBE", "TIKTOK", "LINKEDIN"].map((p) => (
-                <MenuItem key={p} value={p}>{p}</MenuItem>
-              ))}
-            </TextField>
-          </Box>
-        </Box>
-        <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
-          <button
-            onClick={load}
-            disabled={loading}
-            style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 800, background: "#111827", color: "white" }}
+      {/* Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
+        <div className="relative">
+          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-100 rounded-xl py-2.5 pl-11 pr-4 appearance-none focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-200 focus:bg-white text-xs font-medium text-slate-700"
           >
-            Aplicar filtros
-          </button>
-        </Box>
-      </Paper>
+            <option value="ALL">Todos os Status</option>
+            {["DRAFT", "SCHEDULED", "POSTED", "FAILED", "PROCESSING_MEDIA"].map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
 
-      <Paper sx={{ p: 0, overflow: "hidden" }}>
-        <Box sx={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div className="relative">
+          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <select
+            value={platform}
+            onChange={(e) => setPlatform(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-100 rounded-xl py-2.5 pl-11 pr-4 appearance-none focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-200 focus:bg-white text-xs font-medium text-slate-700"
+          >
+            <option value="ALL">Todas as Plataformas</option>
+            {["META", "YOUTUBE", "TIKTOK", "LINKEDIN"].map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={load}
+          disabled={loading}
+          className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-md shadow-indigo-600/10 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
+          ) : (
+            "FILTRAR AGENDAMENTOS"
+          )}
+        </button>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl overflow-hidden border border-slate-200/60 shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr style={{ background: "rgba(255,255,255,0.04)" }}>
-                {["Agendado", "Status", "Plataforma", "Resumo", "TaskRun"].map((label) => (
-                  <th key={label} style={{ textAlign: "left", padding: 16, fontSize: 12 }}>{label}</th>
-                ))}
+              <tr className="bg-slate-50/75 border-b border-slate-100 text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                <th className="px-6 py-4">Agendado</th>
+                <th className="px-6 py-4 text-center">Status</th>
+                <th className="px-6 py-4 text-center">Plataforma / Canal</th>
+                <th className="px-6 py-4">Resumo & Link</th>
+                <th className="px-6 py-4 text-right">Task Run ID</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100 text-sm">
+              {loading && items.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                    <div className="flex justify-center items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                      Carregando...
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {!loading && items.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic">
+                    Nenhum agendamento encontrado para os filtros selecionados.
+                  </td>
+                </tr>
+              )}
               {items.map((item) => (
-                <tr key={item.id} style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                  <td style={{ padding: 16 }}>
-                    {item.scheduledTo ? new Date(item.scheduledTo).toLocaleString("pt-BR") : "—"}
+                <tr key={item.id} className="hover:bg-slate-50/30 transition-colors group">
+                  {/* Agendado */}
+                  <td className="px-6 py-4 whitespace-nowrap text-slate-600 text-xs font-semibold">
+                    {item.scheduledTo ? (
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        {new Date(item.scheduledTo).toLocaleString("pt-BR")}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
                   </td>
-                  <td style={{ padding: 16 }}>
-                    <Chip label={item.status} size="small" color={item.status === "POSTED" ? "success" : item.status === "FAILED" ? "error" : "default"} />
+
+                  {/* Status */}
+                  <td className="px-6 py-4 text-center">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight
+                      ${item.status === "POSTED" 
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60" 
+                        : item.status === "FAILED"
+                        ? "bg-rose-50 text-rose-700 border border-rose-200/60"
+                        : "bg-slate-100 text-slate-600 border border-slate-200/60"}`}
+                    >
+                      {item.status}
+                    </span>
                   </td>
-                  <td style={{ padding: 16 }}>
-                    <Chip label={`${item.platform}/${item.postType}`} size="small" variant="outlined" />
+
+                  {/* Plataforma */}
+                  <td className="px-6 py-4 text-center">
+                    <span className="inline-flex items-center px-2.5 py-1 bg-indigo-50/40 text-indigo-700 text-[10px] font-bold uppercase tracking-tight rounded-lg border border-indigo-100/50">
+                      {item.platform} / {item.postType}
+                    </span>
                   </td>
-                  <td style={{ padding: 16, maxWidth: 520 }}>
-                    <div style={{ fontWeight: 700 }}>{item.summary}</div>
-                    <div style={{ opacity: 0.7, fontSize: 12 }}>{item.videoUrl}</div>
+
+                  {/* Resumo & Link */}
+                  <td className="px-6 py-4 max-w-md">
+                    <div className="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors line-clamp-2">
+                      {item.summary}
+                    </div>
+                    {item.videoUrl && (
+                      <div className="flex items-center gap-1.5 mt-1.5 text-slate-400 text-xs font-medium">
+                        <Play className="w-3.5 h-3.5 text-indigo-500 fill-indigo-50" />
+                        <a 
+                          href={item.videoUrl} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="hover:underline hover:text-indigo-600 truncate max-w-xs"
+                        >
+                          {item.videoUrl}
+                        </a>
+                      </div>
+                    )}
+                    {item.postUrl && (
+                      <div className="flex items-center gap-1.5 mt-1 text-slate-400 text-xs font-medium">
+                        <ExternalLink className="w-3.5 h-3.5 text-emerald-500" />
+                        <a 
+                          href={item.postUrl} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="hover:underline hover:text-emerald-600 font-bold"
+                        >
+                          Ver publicação original
+                        </a>
+                      </div>
+                    )}
                   </td>
-                  <td style={{ padding: 16 }}>
-                    <div style={{ fontFamily: "monospace", fontSize: 12, opacity: 0.85 }}>
-                      {item.automationTaskRunId || "—"}
+
+                  {/* Task Run ID */}
+                  <td className="px-6 py-4 text-right">
+                    <div className="font-mono text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded px-2.5 py-1 inline-block">
+                      {item.automationTaskRunId ? item.automationTaskRunId.slice(0, 12) + "..." : "—"}
                     </div>
                   </td>
                 </tr>
               ))}
-              {!loading && items.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{ padding: 24, textAlign: "center", opacity: 0.7 }}>
-                    Nenhum agendamento encontrado.
-                  </td>
-                </tr>
-              ) : null}
             </tbody>
           </table>
-        </Box>
-      </Paper>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 }

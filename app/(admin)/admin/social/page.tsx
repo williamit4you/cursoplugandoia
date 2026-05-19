@@ -27,12 +27,12 @@ import Image from "next/image";
 
 // Configuração de Status
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; pulse?: boolean }> = {
-  DRAFT: { label: "Rascunho", color: "text-slate-400 bg-slate-500/10 border-slate-500/20", icon: Clock },
-  SCHEDULED: { label: "Agendado", color: "text-blue-400 bg-blue-500/10 border-blue-500/20", icon: Calendar },
-  PROCESSING_MEDIA: { label: "Meta Processando", color: "text-amber-400 bg-amber-500/10 border-amber-500/20", icon: RefreshCcw, pulse: true },
-  PUBLISHING: { label: "Publicando", color: "text-amber-400 bg-amber-500/10 border-amber-500/20", icon: RefreshCcw, pulse: true },
-  POSTED: { label: "Publicado", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", icon: CheckCircle2 },
-  FAILED: { label: "Falhou", color: "text-rose-400 bg-rose-500/10 border-rose-500/20", icon: XCircle },
+  DRAFT: { label: "Rascunho", color: "text-slate-500 bg-slate-100 border-slate-200/60", icon: Clock },
+  SCHEDULED: { label: "Agendado", color: "text-indigo-600 bg-indigo-50 border-indigo-200/60", icon: Calendar },
+  PROCESSING_MEDIA: { label: "Processando", color: "text-amber-700 bg-amber-50 border-amber-200/60", icon: RefreshCcw, pulse: true },
+  PUBLISHING: { label: "Publicando", color: "text-amber-700 bg-amber-50 border-amber-200/60", icon: RefreshCcw, pulse: true },
+  POSTED: { label: "Publicado", color: "text-emerald-700 bg-emerald-50 border-emerald-200/60", icon: CheckCircle2 },
+  FAILED: { label: "Falhou", color: "text-rose-700 bg-rose-50 border-rose-200/60", icon: XCircle },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -40,8 +40,8 @@ function StatusBadge({ status }: { status: string }) {
   const Icon = cfg.icon;
   
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${cfg.color} ${cfg.pulse ? 'animate-pulse' : ''}`}>
-      <Icon className={`w-3.5 h-3.5 ${cfg.pulse ? 'animate-spin' : ''}`} />
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${cfg.color} ${cfg.pulse ? 'animate-pulse' : ''}`}>
+      <Icon className={`w-3 h-3 ${cfg.pulse ? 'animate-spin' : ''}`} />
       {cfg.label}
     </span>
   );
@@ -49,14 +49,14 @@ function StatusBadge({ status }: { status: string }) {
 
 function PlatformIcon({ platform, postType }: { platform: string; postType?: string }) {
   const p = platform.toUpperCase();
-  if (p === "YOUTUBE") return <Video className="w-5 h-5 text-rose-500" />;
+  if (p === "YOUTUBE") return <Video className="w-4 h-4 text-rose-500" />;
   if (p === "META" || p === "INSTAGRAM") {
     return postType === "STORY" 
-      ? <div className="relative"><Share2 className="w-5 h-5 text-pink-500" /><div className="absolute -top-1 -right-1 w-2 h-2 bg-pink-500 rounded-full border border-slate-900" /></div>
-      : <Share2 className="w-5 h-5 text-pink-500" />;
+      ? <div className="relative"><Share2 className="w-4 h-4 text-pink-500" /><div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-pink-500 rounded-full border border-white" /></div>
+      : <Share2 className="w-4 h-4 text-pink-500" />;
   }
-  if (p === "TIKTOK") return <Video className="w-5 h-5 text-cyan-400" />;
-  return <Share2 className="w-5 h-5 text-slate-400" />;
+  if (p === "TIKTOK") return <Video className="w-4 h-4 text-cyan-500" />;
+  return <Share2 className="w-4 h-4 text-slate-400" />;
 }
 
 export default function SocialPostsDashboard() {
@@ -173,17 +173,17 @@ export default function SocialPostsDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 p-6 md:p-10 space-y-8 animate-in fade-in duration-700">
-      <ToastContainer theme="dark" position="bottom-right" />
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <ToastContainer theme="colored" position="bottom-right" />
       
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-4xl font-black tracking-tight text-white mb-2 flex items-center gap-3">
-            <Share2 className="w-10 h-10 text-blue-500" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-black tracking-tight text-slate-800 flex items-center gap-2">
+            <Share2 className="w-6 h-6 text-indigo-600" />
             Fila Social
           </h1>
-          <p className="text-slate-400 text-lg">
+          <p className="text-slate-500 text-sm font-medium">
             Gerencie e monitore as publicações automáticas em todas as redes.
           </p>
         </div>
@@ -191,71 +191,86 @@ export default function SocialPostsDashboard() {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => fetchPosts()}
-            className="p-3 bg-slate-900 border border-slate-800 rounded-2xl hover:bg-slate-800 transition-colors"
+            className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm"
             title="Atualizar"
           >
-            <RefreshCcw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCcw className={`w-4 h-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <div className="flex bg-slate-900 p-1 rounded-2xl border border-slate-800">
+          <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200/60">
             <button 
               onClick={() => setGroupByVideo(true)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${groupByVideo ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${groupByVideo ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/40' : 'text-slate-500 hover:text-slate-800'}`}
             >
-              <LayoutGrid className="w-4 h-4" /> Agrupado
+              <LayoutGrid className="w-3.5 h-3.5" /> Agrupado
             </button>
             <button 
               onClick={() => setGroupByVideo(false)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${!groupByVideo ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${!groupByVideo ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/40' : 'text-slate-500 hover:text-slate-800'}`}
             >
-              <ListIcon className="w-4 h-4" /> Lista
+              <ListIcon className="w-3.5 h-3.5" /> Lista
             </button>
           </div>
         </div>
       </div>
 
+      {/* Info Card Explaining functionality */}
+      <div className="p-4 bg-indigo-50/40 border border-indigo-100 rounded-2xl flex items-start gap-3">
+        <div className="p-2 bg-indigo-50 rounded-xl border border-indigo-100 text-indigo-600 shrink-0">
+          <AlertCircle className="w-5 h-5" />
+        </div>
+        <div className="space-y-1">
+          <h4 className="text-sm font-bold text-indigo-900">Como funciona a Fila de Stories / Social?</h4>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Esta fila armazena as postagens geradas que estão aguardando publicação. O robô em background varre esta tabela periodicamente, executa os envios agendados via API (Meta Graph API, YouTube API, etc.) e atualiza o status. Caso uma publicação falhe, você pode revisar o erro nos detalhes do post ou tentar forçar a publicação manualmente clicando no botão de repetição.
+          </p>
+        </div>
+      </div>
+
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-900/50 p-6 rounded-3xl border border-white/5 backdrop-blur-sm">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
         <div className="relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
           <input 
             type="text"
             placeholder="Buscar por legenda..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+            className="w-full bg-slate-50 border border-slate-100 rounded-xl py-2.5 pl-11 pr-4 focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-200 focus:bg-white transition-all text-xs font-medium text-slate-700"
           />
         </div>
 
         <div className="relative">
-          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <select 
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-2xl py-3 pl-12 pr-4 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="w-full bg-slate-50 border border-slate-100 rounded-xl py-2.5 pl-11 pr-4 appearance-none focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-200 focus:bg-white text-xs font-medium text-slate-700"
           >
             <option value="ALL">Todos os Status</option>
             <option value="DRAFT">Rascunho</option>
             <option value="SCHEDULED">Agendado</option>
             <option value="POSTED">Publicado</option>
             <option value="FAILED">Falhou</option>
+            <option value="PROCESSING_MEDIA">Processando Mídia</option>
           </select>
         </div>
 
         <div className="relative">
-          <PlatformIcon platform={platformFilter === "ALL" ? "" : platformFilter} />
+          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <select 
             value={platformFilter}
             onChange={(e) => setPlatformFilter(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-2xl py-3 pl-12 pr-4 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="w-full bg-slate-50 border border-slate-100 rounded-xl py-2.5 pl-11 pr-4 appearance-none focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-200 focus:bg-white text-xs font-medium text-slate-700"
           >
             <option value="ALL">Todas as Plataformas</option>
             <option value="META">Meta (IG/FB)</option>
             <option value="YOUTUBE">YouTube</option>
             <option value="TIKTOK">TikTok</option>
+            <option value="LINKEDIN">LinkedIn</option>
           </select>
         </div>
 
-        <div className="flex items-center justify-end text-sm text-slate-500 font-medium">
+        <div className="flex items-center justify-end text-xs text-slate-500 font-bold">
           {total} postagens encontradas
         </div>
       </div>
@@ -263,58 +278,58 @@ export default function SocialPostsDashboard() {
       {/* Main Content */}
       <div className="space-y-4">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 space-y-4">
-            <RefreshCcw className="w-12 h-12 text-blue-500 animate-spin" />
-            <p className="text-slate-400 font-medium">Carregando fila...</p>
+          <div className="flex flex-col items-center justify-center py-24 space-y-4 bg-white rounded-2xl border border-slate-200/60 shadow-sm">
+            <RefreshCcw className="w-8 h-8 text-indigo-600 animate-spin" />
+            <p className="text-slate-500 text-sm font-medium">Carregando fila...</p>
           </div>
         ) : groupByVideo ? (
           /* Agrupado por Vídeo */
-          <div className="space-y-6">
+          <div className="space-y-4">
             {groupedRows.map(group => (
-              <div key={group.id} className="bg-slate-900 border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
-                <div className="p-6 flex items-start gap-6">
+              <div key={group.id} className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <div className="p-5 flex flex-col sm:flex-row items-start gap-5">
                   {/* Thumbnail */}
-                  <div className="relative w-32 h-44 bg-slate-950 rounded-2xl overflow-hidden shrink-0 border border-white/5 group">
+                  <div className="relative w-28 h-36 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-slate-200/60 group cursor-pointer shadow-sm">
                     {group.thumbUrl ? (
-                      <Image src={group.thumbUrl} alt="Thumbnail" fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <Image src={group.thumbUrl} alt="Thumbnail" fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <Video className="w-8 h-8 text-slate-800" />
+                        <Video className="w-6 h-6 text-slate-400" />
                       </div>
                     )}
                     <button 
                       onClick={() => window.open(group.videoUrl, '_blank')}
-                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                      className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
                     >
-                      <Play className="w-8 h-8 text-white fill-current" />
+                      <Play className="w-6 h-6 text-white fill-current" />
                     </button>
                   </div>
 
                   {/* Content Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start justify-between gap-4 mb-2">
                       <div>
-                        <h3 className="text-xl font-bold text-white truncate max-w-xl mb-1">{group.summary}</h3>
-                        <div className="flex items-center gap-3 text-sm text-slate-500">
-                          <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {new Date(group.createdAt).toLocaleString('pt-BR')}</span>
-                          <span className="w-1 h-1 bg-slate-700 rounded-full" />
-                          <span className="font-mono text-xs uppercase tracking-wider">{group.id.slice(0, 8)}...</span>
+                        <h3 className="text-base font-bold text-slate-800 line-clamp-2 mb-1">{group.summary}</h3>
+                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                          <span className="flex items-center gap-1 font-medium"><Clock className="w-3.5 h-3.5" /> {new Date(group.createdAt).toLocaleString('pt-BR')}</span>
+                          <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                          <span className="font-mono text-[10px] uppercase tracking-wider">ID: {group.id.slice(0, 10)}...</span>
                         </div>
                       </div>
                       <button 
                         onClick={() => toggleGroup(group.id)}
-                        className="p-2 hover:bg-slate-800 rounded-xl transition-colors"
+                        className="p-1.5 hover:bg-slate-50 border border-transparent hover:border-slate-200 rounded-lg transition-all"
                       >
-                        {expandedGroups.has(group.id) ? <ChevronUp /> : <ChevronDown />}
+                        {expandedGroups.has(group.id) ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
                       </button>
                     </div>
 
                     {/* Quick Status Badges */}
-                    <div className="flex flex-wrap gap-4 pt-2 border-t border-white/5 mt-4">
+                    <div className="flex flex-wrap gap-2.5 pt-3 border-t border-slate-100 mt-3">
                       {group.items.map((p: any) => (
-                        <div key={p.id} className="flex items-center gap-2 bg-slate-950/50 p-2 pr-4 rounded-2xl border border-white/5">
+                        <div key={p.id} className="flex items-center gap-1.5 bg-slate-50/80 p-1.5 pr-3 rounded-lg border border-slate-100">
                           <PlatformIcon platform={p.platform} postType={p.postType} />
-                          <span className="text-xs font-bold text-slate-300 uppercase">{p.postType || 'REEL'}</span>
+                          <span className="text-[10px] font-black text-slate-600 uppercase tracking-tighter">{p.platform.slice(0, 3)}: {p.postType || 'REEL'}</span>
                           <StatusBadge status={p.status} />
                         </div>
                       ))}
@@ -324,34 +339,41 @@ export default function SocialPostsDashboard() {
 
                 {/* Expanded Details */}
                 {expandedGroups.has(group.id) && (
-                  <div className="bg-slate-950/50 border-t border-white/5 p-6 space-y-4">
-                    <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                      <ListIcon className="w-4 h-4" /> Detalhes das Publicações
+                  <div className="bg-slate-50/50 border-t border-slate-100 p-5 space-y-3">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <ListIcon className="w-3.5 h-3.5 text-slate-400" /> Detalhes das Publicações
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {group.items.map((p: any) => (
-                        <div key={p.id} className="bg-slate-900/50 border border-white/5 p-4 rounded-2xl flex items-center justify-between group">
-                          <div className="flex items-center gap-4">
-                            <PlatformIcon platform={p.platform} postType={p.postType} />
+                        <div key={p.id} className="bg-white border border-slate-200/60 p-3.5 rounded-xl flex items-center justify-between group">
+                          <div className="flex items-center gap-3">
+                            <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-100">
+                              <PlatformIcon platform={p.platform} postType={p.postType} />
+                            </div>
                             <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-white tracking-wide">{p.platform} {p.postType}</span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-slate-800 text-xs tracking-tight">{p.platform} ({p.postType})</span>
                                 <StatusBadge status={p.status} />
                               </div>
-                              <p className="text-xs text-slate-500 mt-1">
+                              <p className="text-[10px] text-slate-400 mt-0.5">
                                 {p.scheduledTo ? `Agendado: ${new Date(p.scheduledTo).toLocaleString('pt-BR')}` : 'Não agendado'}
                               </p>
+                              {p.log && (
+                                <p className="text-[9px] font-mono text-rose-600 mt-1 max-w-xs truncate" title={p.log}>
+                                  Erro: {p.log}
+                                </p>
+                              )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                             {p.status === 'FAILED' && (
                               <button 
                                 onClick={() => retryPublish(p.id)}
-                                className="p-2 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-all"
-                                title="Repetir"
+                                className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg transition-all border border-indigo-100/50"
+                                title="Forçar Postagem Agora"
                               >
-                                <RefreshCcw className="w-4 h-4" />
+                                <RefreshCcw className="w-3.5 h-3.5" />
                               </button>
                             )}
                             {p.postUrl && (
@@ -359,14 +381,12 @@ export default function SocialPostsDashboard() {
                                 href={p.postUrl} 
                                 target="_blank" 
                                 rel="noreferrer"
-                                className="p-2 bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg transition-all"
+                                className="p-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-all border border-emerald-100/50"
+                                title="Ver Post"
                               >
-                                <ExternalLink className="w-4 h-4" />
+                                <ExternalLink className="w-3.5 h-3.5" />
                               </a>
                             )}
-                            <button className="p-2 hover:bg-slate-800 rounded-lg text-slate-500">
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
                           </div>
                         </div>
                       ))}
@@ -378,45 +398,45 @@ export default function SocialPostsDashboard() {
           </div>
         ) : (
           /* Lista Simples (Bento style) */
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {posts.map(post => (
-              <div key={post.id} className="bg-slate-900 border border-white/5 rounded-3xl p-6 hover:border-blue-500/30 transition-all group shadow-xl">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-slate-950 rounded-2xl border border-white/5">
-                      <PlatformIcon platform={post.platform} postType={post.postType} />
+              <div key={post.id} className="bg-white border border-slate-200/60 rounded-2xl p-5 hover:border-indigo-500/30 transition-all group shadow-sm flex flex-col justify-between">
+                <div>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
+                        <PlatformIcon platform={post.platform} postType={post.postType} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider">{post.platform}</h3>
+                        <p className="text-[10px] text-slate-400 font-bold">{post.postType || 'REEL'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-white uppercase tracking-wider">{post.platform}</h3>
-                      <p className="text-xs text-slate-500">{post.postType || 'REEL'}</p>
-                    </div>
+                    <StatusBadge status={post.status} />
                   </div>
-                  <StatusBadge status={post.status} />
+                  
+                  <p className="text-slate-600 text-xs line-clamp-3 mb-4 leading-relaxed">
+                    {post.summary}
+                  </p>
                 </div>
-                
-                <p className="text-slate-300 text-sm line-clamp-3 mb-6 min-h-[60px]">
-                  {post.summary}
-                </p>
 
-                <div className="flex items-center justify-between pt-6 border-t border-white/5">
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-2">
+                  <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
                     <Calendar className="w-3.5 h-3.5" />
                     {new Date(post.createdAt).toLocaleDateString('pt-BR')}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     {post.postUrl && (
                       <a 
                         href={post.postUrl} 
                         target="_blank" 
                         rel="noreferrer"
-                        className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-xl transition-all"
+                        className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all border border-transparent hover:border-indigo-100/50"
+                        title="Ver Postagem"
                       >
-                        <ExternalLink className="w-5 h-5" />
+                        <ExternalLink className="w-4 h-4" />
                       </a>
                     )}
-                    <button className="p-2 text-slate-500 hover:bg-slate-800 rounded-xl transition-all">
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
                   </div>
                 </div>
               </div>
@@ -426,14 +446,14 @@ export default function SocialPostsDashboard() {
 
         {/* Empty State */}
         {!loading && posts.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-32 space-y-6 bg-slate-900/30 rounded-3xl border border-dashed border-slate-800">
-            <div className="p-6 bg-slate-900 rounded-full border border-slate-800">
-              <AlertCircle className="w-12 h-12 text-slate-700" />
+          <div className="flex flex-col items-center justify-center py-20 space-y-4 bg-white rounded-2xl border border-dashed border-slate-200">
+            <div className="p-4 bg-slate-50 rounded-full border border-slate-100">
+              <AlertCircle className="w-8 h-8 text-slate-400" />
             </div>
             <div className="text-center">
-              <h3 className="text-xl font-bold text-white mb-2">Nenhum post encontrado</h3>
-              <p className="text-slate-500 max-w-xs mx-auto">
-                Tente ajustar os filtros ou aguarde as próximas automações.
+              <h3 className="text-base font-bold text-slate-800 mb-1">Nenhum post encontrado</h3>
+              <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                Tente ajustar os filtros ou aguarde as próximas automações gerarem postagens.
               </p>
             </div>
           </div>
@@ -441,22 +461,22 @@ export default function SocialPostsDashboard() {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between bg-slate-900/50 p-6 rounded-3xl border border-white/5">
-        <div className="text-sm text-slate-500">
-          Página <span className="text-white font-bold">{page}</span> de {Math.ceil(total / pageSize)}
+      <div className="flex items-center justify-between bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
+        <div className="text-xs text-slate-500 font-bold">
+          Página <span className="text-slate-800 font-black">{page}</span> de {Math.ceil(total / pageSize) || 1}
         </div>
         <div className="flex gap-2">
           <button 
             disabled={page === 1}
             onClick={() => setPage(p => p - 1)}
-            className="px-6 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-800 transition-all"
+            className="px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all text-slate-600"
           >
             Anterior
           </button>
           <button 
             disabled={page >= Math.ceil(total / pageSize)}
             onClick={() => setPage(p => p + 1)}
-            className="px-6 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-500 transition-all"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 shadow-lg shadow-indigo-600/10 transition-all"
           >
             Próximo
           </button>

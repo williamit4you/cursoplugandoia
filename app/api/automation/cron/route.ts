@@ -44,7 +44,10 @@ export async function GET(req: NextRequest) {
     // Publica stories agendados do shopee-video-pipeline
     const shopeePublisher = await callJson(`${origin}/api/shopee-pipeline/publisher-runner${encodedSecret}`);
 
-    const allOk = taskRuns.ok && mercadoLivre.ok && social.ok && shopeePipeline.ok && shopeePublisher.ok;
+    // Processa cron de perguntas para vídeos
+    const videoQuestions = await callJson(`${origin}/api/video-questions/cron${encodedSecret}`);
+
+    const allOk = taskRuns.ok && mercadoLivre.ok && social.ok && shopeePipeline.ok && shopeePublisher.ok && videoQuestions.ok;
 
     console.log("[api/automation/cron] Results:", {
       taskRuns: { ok: taskRuns.ok, status: taskRuns.status },
@@ -52,6 +55,7 @@ export async function GET(req: NextRequest) {
       social: { ok: social.ok, status: social.status },
       shopeePipeline: { ok: shopeePipeline.ok, status: shopeePipeline.status },
       shopeePublisher: { ok: shopeePublisher.ok, status: shopeePublisher.status },
+      videoQuestions: { ok: videoQuestions.ok, status: videoQuestions.status },
     });
 
     return NextResponse.json({
@@ -61,6 +65,7 @@ export async function GET(req: NextRequest) {
       social,
       shopeePipeline,
       shopeePublisher,
+      videoQuestions,
     });
   } catch (error: any) {
     console.error("[api/automation/cron GET]", error);
