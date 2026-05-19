@@ -23,14 +23,38 @@ type CreatorAsset = {
   active: boolean;
 };
 
+type UiStage =
+  | "idle"
+  | "creating"
+  | "generating_audio"
+  | "audio_done"
+  | "generating_video"
+  | "ready"
+  | "failed";
+
 function statusLabel(status: string) {
   if (status === "DRAFT") return "Pronto para gerar";
-  if (status === "GENERATING_AUDIO") return "Gerando audio";
-  if (status === "AUDIO_READY") return "Audio pronto";
-  if (status === "GENERATING_VIDEO") return "Gerando video";
-  if (status === "READY") return "Video pronto";
+  if (status === "GENERATING_AUDIO") return "Gerando áudio";
+  if (status === "AUDIO_READY") return "Áudio pronto";
+  if (status === "GENERATING_VIDEO") return "Gerando vídeo";
+  if (status === "READY") return "Vídeo pronto";
   if (status === "FAILED") return "Falhou";
   return status;
+}
+
+function stageLabel(stage: UiStage) {
+  if (stage === "idle") return "Aguardando";
+  if (stage === "creating") return "Criando item";
+  if (stage === "generating_audio") return "Chamando API de áudio";
+  if (stage === "audio_done") return "Áudio concluído";
+  if (stage === "generating_video") return "Chamando API de vídeo";
+  if (stage === "ready") return "Vídeo pronto";
+  if (stage === "failed") return "Falhou";
+  return stage;
+}
+
+function isRunningStatus(status: string) {
+  return status === "GENERATING_AUDIO" || status === "GENERATING_VIDEO";
 }
 
 export default function TextoParaVideoPage() {
@@ -38,12 +62,21 @@ export default function TextoParaVideoPage() {
   const [selectedCreatorImageUrl, setSelectedCreatorImageUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [messageSeverity, setMessageSeverity] = useState<"success" | "warning" | "error">("error");
+  const [messageSeverity, setMessageSeverity] = useState<"success" | "info" | "warning" | "error">("info");
   const [current, setCurrent] = useState<SimpleCreatorVideo | null>(null);
   const [recent, setRecent] = useState<SimpleCreatorVideo[]>([]);
   const [assets, setAssets] = useState<CreatorAsset[]>([]);
+  const [uiStage, setUiStage] = useState<UiStage>("idle");
+  const [progressNotes, setProgressNotes] = useState<string[]>([]);
 
   const canCreate = narrationText.trim().length > 0 && !loading;
+
+  const addProgressNote = (note: string) => {
+    setProgressNotes((prev) => {
+      const timestamp = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      return [`${timestamp} - ${note}`, ...prev].slice(0, 12);
+    });
+  };
 
   const loadInitial = async () => {
     try {
@@ -63,12 +96,35 @@ export default function TextoParaVideoPage() {
   const refreshCurrent = async (id: string) => {
     const res = await fetch(`/api/texto-para-video/${id}`, { cache: "no-store" });
     const data = await res.json().catch(() => ({}));
-    if (res.ok) setCurrent(data.item || null);
+    if (res.ok) {
+      setCurrent(data.item || null);
+      return data.item as SimpleCreatorVideo;
+    }
+    return null;
   };
 
   useEffect(() => {
     loadInitial();
   }, []);
+
+  useEffect(() => {
+    if (!current?.id || !isRunningStatus(current.status)) return;
+
+    const timer = window.setInterval(() => {
+      refreshCurrent(current.id).catch(() => null);
+    }, 2000);
+
+    return () => window.clearInterval(timer);
+  }, [current?.id, current?.status]);
+
+  useEffect(() => {
+    if (!current) return;
+    if (current.status === "GENERATING_AUDIO") setUiStage("generating_audio");
+    if (current.status === "AUDIO_READY") setUiStage((prev) => (prev === "generating_video" || prev === "ready" ? prev : "audio_done"));
+    if (current.status === "GENERATING_VIDEO") setUiStage("generating_video");
+    if (current.status === "READY") setUiStage("ready");
+    if (current.status === "FAILED") setUiStage("failed");
+  }, [current]);
 
   const currentStatusLabel = useMemo(() => {
     if (!current) return "";
@@ -79,24 +135,64 @@ export default function TextoParaVideoPage() {
     if (!canCreate) return;
     setLoading(true);
     setMessage(null);
+    setUiStage("creating");
+    setProgressNotes([]);
+    addProgressNote("Criando o item de vídeo no sistema.");
+
+    let createdItem: SimpleCreatorVideo | null = null;
+
     try {
-      const res = await fetch("/api/texto-para-video", {
+      const createRes = await fetch("/api/texto-para-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           narrationText,
           creatorImageUrl: selectedCreatorImageUrl || null,
-          autoGenerate: true,
+          autoGenerate: false,
         }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Falha ao gerar");
-      setCurrent(data.item);
+      const createData = await createRes.json().catch(() => ({}));
+      if (!createRes.ok) throw new Error(createData?.error || "Falha ao criar item");
+
+      createdItem = createData.item as SimpleCreatorVideo;
+      setCurrent(createdItem);
       setNarrationText("");
-      setMessageSeverity("success");
-      setMessage("Video gerado com sucesso.");
+      setUiStage("generating_audio");
+      addProgressNote(`Item criado com ID ${createdItem.id}.`);
+      addProgressNote("Chamando a API de áudio com a voz configurada.");
+      setMessageSeverity("info");
+      setMessage("Item criado. Agora estamos gerando o áudio.");
+
+      const audioRes = await fetch(`/api/texto-para-video/${createdItem.id}/gerar-audio`, { method: "POST" });
+      const audioData = await audioRes.json().catch(() => ({}));
+      if (!audioRes.ok) throw new Error(audioData?.error || "Falha ao gerar áudio");
+
+      const afterAudio = await refreshCurrent(createdItem.id);
+      setUiStage("audio_done");
+      addProgressNote("Áudio concluído com sucesso.");
+      setMessageSeverity("info");
+      setMessage("Áudio pronto. Agora estamos gerando o vídeo.");
+
+      setUiStage("generating_video");
+      addProgressNote("Chamando a API de vídeo com a foto do criador e o áudio gerado.");
+
+      const videoRes = await fetch(`/api/texto-para-video/${createdItem.id}/gerar-video`, { method: "POST" });
+      const videoData = await videoRes.json().catch(() => ({}));
+      if (!videoRes.ok) throw new Error(videoData?.error || "Falha ao gerar vídeo");
+
+      const finalItem = await refreshCurrent(createdItem.id);
       loadInitial();
+      setUiStage("ready");
+      addProgressNote("Vídeo concluído e salvo. Os links finais estão logo abaixo.");
+      setMessageSeverity("success");
+      setMessage("Vídeo pronto. Você pode abrir ou baixar o MP4 na seção de resultado.");
+      if (!finalItem && afterAudio) setCurrent(afterAudio);
     } catch (error: any) {
+      if (createdItem?.id) {
+        await refreshCurrent(createdItem.id).catch(() => null);
+      }
+      setUiStage("failed");
+      addProgressNote(`Fluxo interrompido: ${error?.message || "erro desconhecido"}`);
       setMessageSeverity("error");
       setMessage(error?.message || "Falha ao gerar");
     } finally {
@@ -108,17 +204,22 @@ export default function TextoParaVideoPage() {
     if (!current || loading) return;
     setLoading(true);
     setMessage(null);
+    setUiStage("generating_audio");
+    addProgressNote("Regenerando o áudio manualmente.");
     try {
       const res = await fetch(`/api/texto-para-video/${current.id}/gerar-audio`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Falha ao gerar audio");
+      if (!res.ok) throw new Error(data?.error || "Falha ao gerar áudio");
       await refreshCurrent(current.id);
       loadInitial();
+      setUiStage("audio_done");
+      addProgressNote("Áudio regenerado com sucesso.");
       setMessageSeverity("success");
-      setMessage("Audio regenerado com sucesso.");
+      setMessage("Áudio regenerado com sucesso.");
     } catch (error: any) {
+      setUiStage("failed");
       setMessageSeverity("error");
-      setMessage(error?.message || "Falha ao gerar audio");
+      setMessage(error?.message || "Falha ao gerar áudio");
       await refreshCurrent(current.id);
     } finally {
       setLoading(false);
@@ -129,17 +230,22 @@ export default function TextoParaVideoPage() {
     if (!current || loading) return;
     setLoading(true);
     setMessage(null);
+    setUiStage("generating_video");
+    addProgressNote("Regenerando o vídeo manualmente.");
     try {
       const res = await fetch(`/api/texto-para-video/${current.id}/gerar-video`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Falha ao gerar video");
+      if (!res.ok) throw new Error(data?.error || "Falha ao gerar vídeo");
       await refreshCurrent(current.id);
       loadInitial();
+      setUiStage("ready");
+      addProgressNote("Vídeo regenerado com sucesso.");
       setMessageSeverity("success");
-      setMessage("Video regenerado com sucesso.");
+      setMessage("Vídeo regenerado com sucesso.");
     } catch (error: any) {
+      setUiStage("failed");
       setMessageSeverity("error");
-      setMessage(error?.message || "Falha ao gerar video");
+      setMessage(error?.message || "Falha ao gerar vídeo");
       await refreshCurrent(current.id);
     } finally {
       setLoading(false);
@@ -150,11 +256,10 @@ export default function TextoParaVideoPage() {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Box>
         <Typography variant="h4" sx={{ fontWeight: 900 }}>
-          Texto para Video
+          Texto para Vídeo
         </Typography>
         <Typography sx={{ opacity: 0.8, mt: 1 }}>
-          Escreva o texto e gere o video pronto com sua voz clonada e sua foto falando. Se voce nao escolher uma imagem,
-          o sistema usa a configuracao padrao do pipeline.
+          Escreva o texto e acompanhe o fluxo completo: criação do item, geração do áudio, geração do vídeo e links finais.
         </Typography>
       </Box>
 
@@ -164,13 +269,13 @@ export default function TextoParaVideoPage() {
         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
           <Box sx={{ gridColumn: { xs: "span 12", md: "span 8" } }}>
             <TextField
-              label="Texto para narracao"
+              label="Texto para narração"
               value={narrationText}
               onChange={(event) => setNarrationText(event.target.value)}
               multiline
               rows={8}
               fullWidth
-              placeholder="Digite o roteiro do video..."
+              placeholder="Digite o roteiro do vídeo..."
             />
           </Box>
           <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
@@ -180,9 +285,9 @@ export default function TextoParaVideoPage() {
               value={selectedCreatorImageUrl}
               onChange={(event) => setSelectedCreatorImageUrl(event.target.value)}
               fullWidth
-              helperText="Se vazio, usa a imagem padrao da configuracao."
+              helperText="Se vazio, usa a imagem padrão da configuração."
             >
-              <MenuItem value="">Usar imagem padrao da configuracao</MenuItem>
+              <MenuItem value="">Usar imagem padrão da configuração</MenuItem>
               {assets.map((asset) => (
                 <MenuItem key={asset.id} value={asset.url}>
                   {asset.label ? `${asset.label} - ${asset.url}` : asset.url}
@@ -196,56 +301,129 @@ export default function TextoParaVideoPage() {
                 disabled={!canCreate}
                 style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900, background: "#111827", color: "white" }}
               >
-                {loading ? "Gerando..." : "Gerar video pronto"}
+                {loading ? "Processando..." : "Gerar vídeo pronto"}
               </button>
             </Box>
 
-            {current ? (
-              <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, border: "1px solid rgba(0,0,0,0.08)", background: "rgba(255,255,255,0.5)" }}>
-                <div style={{ fontWeight: 900 }}>Status: {currentStatusLabel}</div>
-                {current.errorMessage ? <div style={{ marginTop: 6, color: "#b91c1c" }}>{current.errorMessage}</div> : null}
-
-                {current.audioUrl ? (
-                  <div style={{ marginTop: 10 }}>
-                    <a href={current.audioUrl} target="_blank" rel="noreferrer">
-                      Abrir audio
-                    </a>
-                  </div>
-                ) : null}
-
-                {current.videoUrl ? (
-                  <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                    <a href={current.videoUrl} target="_blank" rel="noreferrer">
-                      Abrir video
-                    </a>
-                    <a href={current.videoUrl} download>
-                      Baixar MP4
-                    </a>
-                    {current.captionsUrl ? (
-                      <a href={current.captionsUrl} target="_blank" rel="noreferrer">
-                        Abrir legendas (VTT)
-                      </a>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                <Box sx={{ display: "flex", gap: 1.5, mt: 2, flexWrap: "wrap" }}>
-                  <button onClick={gerarAudio} disabled={loading} style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900 }}>
-                    Regenerar audio
-                  </button>
-                  <button
-                    onClick={gerarVideo}
-                    disabled={!current.audioUrl || loading}
-                    style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900 }}
-                  >
-                    Regenerar video
-                  </button>
-                </Box>
-              </Box>
-            ) : null}
+            <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, border: "1px solid rgba(0,0,0,0.08)", background: "rgba(255,255,255,0.55)" }}>
+              <div style={{ fontWeight: 900 }}>Etapa atual: {stageLabel(uiStage)}</div>
+              <div style={{ marginTop: 6, opacity: 0.78, fontSize: 13 }}>
+                Status do backend: {current ? currentStatusLabel : "Nenhum item selecionado"}
+              </div>
+              <div style={{ marginTop: 6, opacity: 0.78, fontSize: 13 }}>
+                {current?.id ? `ID atual: ${current.id}` : "O ID aparecerá aqui assim que o item for criado."}
+              </div>
+            </Box>
           </Box>
         </Box>
       </Paper>
+
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "1.2fr 0.8fr" }, gap: 2 }}>
+        <Paper sx={{ p: 2 }}>
+          <Typography sx={{ fontWeight: 900, mb: 1 }}>Acompanhar geração</Typography>
+          <Box sx={{ display: "grid", gap: 1 }}>
+            <div style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.08)", background: "white" }}>
+              <div style={{ fontWeight: 900 }}>1. Criar item</div>
+              <div style={{ marginTop: 4, opacity: 0.78 }}>
+                {current ? "Item criado e identificado." : uiStage === "creating" ? "Criando agora..." : "Ainda não iniciado."}
+              </div>
+            </div>
+            <div style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.08)", background: "white" }}>
+              <div style={{ fontWeight: 900 }}>2. Gerar áudio</div>
+              <div style={{ marginTop: 4, opacity: 0.78 }}>
+                {current?.status === "AUDIO_READY" || current?.status === "GENERATING_VIDEO" || current?.status === "READY"
+                  ? "Áudio já foi gerado."
+                  : current?.status === "GENERATING_AUDIO"
+                    ? "Chamando a API de áudio e aguardando retorno."
+                    : "Aguardando."}
+              </div>
+            </div>
+            <div style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.08)", background: "white" }}>
+              <div style={{ fontWeight: 900 }}>3. Gerar vídeo</div>
+              <div style={{ marginTop: 4, opacity: 0.78 }}>
+                {current?.status === "READY"
+                  ? "Vídeo finalizado."
+                  : current?.status === "GENERATING_VIDEO"
+                    ? "Chamando a API de vídeo e aguardando renderização."
+                    : "Aguardando."}
+              </div>
+            </div>
+          </Box>
+
+          <Box sx={{ mt: 2 }}>
+            <Typography sx={{ fontWeight: 900, mb: 1 }}>Log desta execução</Typography>
+            <Box sx={{ display: "grid", gap: 1 }}>
+              {progressNotes.length === 0 ? (
+                <div style={{ opacity: 0.7 }}>Os eventos desta execução aparecerão aqui.</div>
+              ) : (
+                progressNotes.map((note) => (
+                  <div
+                    key={note}
+                    style={{ padding: 10, borderRadius: 10, border: "1px solid rgba(0,0,0,0.08)", background: "white", fontSize: 13 }}
+                  >
+                    {note}
+                  </div>
+                ))
+              )}
+            </Box>
+          </Box>
+        </Paper>
+
+        <Paper sx={{ p: 2 }}>
+          <Typography sx={{ fontWeight: 900, mb: 1 }}>Resultado</Typography>
+          {!current ? (
+            <div style={{ opacity: 0.7 }}>O vídeo, o áudio e as legendas aparecerão aqui depois que o item for criado.</div>
+          ) : (
+            <Box sx={{ display: "grid", gap: 1.5 }}>
+              <div style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.08)", background: "white" }}>
+                <div style={{ fontWeight: 900 }}>Status</div>
+                <div style={{ marginTop: 4, opacity: 0.8 }}>{currentStatusLabel}</div>
+                {current.errorMessage ? <div style={{ marginTop: 8, color: "#b91c1c" }}>{current.errorMessage}</div> : null}
+              </div>
+
+              <div style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.08)", background: "white" }}>
+                <div style={{ fontWeight: 900 }}>Onde o vídeo vai aparecer</div>
+                <div style={{ marginTop: 4, opacity: 0.8 }}>
+                  Quando o status virar "Vídeo pronto", os links para abrir e baixar o MP4 ficam nesta mesma seção.
+                </div>
+              </div>
+
+              {current.audioUrl ? (
+                <a href={current.audioUrl} target="_blank" rel="noreferrer" style={{ padding: "10px 12px", borderRadius: 10, background: "white" }}>
+                  Abrir áudio gerado
+                </a>
+              ) : null}
+
+              {current.videoUrl ? (
+                <a href={current.videoUrl} target="_blank" rel="noreferrer" style={{ padding: "10px 12px", borderRadius: 10, background: "white" }}>
+                  Abrir vídeo pronto
+                </a>
+              ) : null}
+
+              {current.videoUrl ? (
+                <a href={current.videoUrl} download style={{ padding: "10px 12px", borderRadius: 10, background: "white" }}>
+                  Baixar MP4
+                </a>
+              ) : null}
+
+              {current.captionsUrl ? (
+                <a href={current.captionsUrl} target="_blank" rel="noreferrer" style={{ padding: "10px 12px", borderRadius: 10, background: "white" }}>
+                  Abrir legendas (VTT)
+                </a>
+              ) : null}
+
+              <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
+                <button onClick={gerarAudio} disabled={!current || loading} style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900 }}>
+                  Regenerar áudio
+                </button>
+                <button onClick={gerarVideo} disabled={!current?.audioUrl || loading} style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900 }}>
+                  Regenerar vídeo
+                </button>
+              </Box>
+            </Box>
+          )}
+        </Paper>
+      </Box>
 
       <Paper sx={{ p: 2 }}>
         <Typography sx={{ fontWeight: 900, mb: 1 }}>Recentes</Typography>
