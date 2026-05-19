@@ -1,17 +1,31 @@
 export const dynamic = "force-static";
 
 export default function PrivacyPage() {
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://plugandoia.cloud").trim().replace(/\/+$/, "");
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="text-3xl font-black tracking-tight text-slate-100">Política de Privacidade</h1>
       <p className="mt-3 text-sm text-slate-300">
-        Última atualização: 18/05/2026
+        Última atualização: 19/05/2026
       </p>
+
+      <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200">
+        <div>
+          <strong>Aplicativo:</strong> PlugandoIA (também referido como “plugandoia”)
+        </div>
+        <div className="mt-1">
+          <strong>Site oficial:</strong>{" "}
+          <a className="underline hover:text-slate-100" href={siteUrl} target="_blank" rel="noreferrer">
+            {siteUrl}
+          </a>
+        </div>
+      </div>
 
       <section className="mt-8 space-y-4 text-sm leading-7 text-slate-200">
         <p>
-          Esta Política de Privacidade explica como a Plugando IA (“Plataforma”) coleta, usa e compartilha informações
-          quando você utiliza nossas páginas públicas (ex.: “link na bio”) e áreas administrativas.
+          Esta Política de Privacidade explica como o aplicativo PlugandoIA (“PlugandoIA”, “Plataforma”) coleta, usa e
+          compartilha informações quando você utiliza nossas páginas públicas (ex.: “link na bio”) e áreas administrativas.
         </p>
 
         <h2 className="pt-4 text-xl font-black tracking-tight text-slate-100">1. Dados que coletamos</h2>
@@ -75,4 +89,3 @@ export default function PrivacyPage() {
     </main>
   );
 }
-

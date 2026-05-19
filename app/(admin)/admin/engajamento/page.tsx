@@ -36,6 +36,7 @@ function normalize(value: unknown) {
   return String(value || "").trim();
 }
 
+
 export default function EngajamentoPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [assets, setAssets] = useState<CreatorAsset[]>([]);
@@ -403,4 +404,3 @@ export default function EngajamentoPage() {
     </Box>
   );
 }
-

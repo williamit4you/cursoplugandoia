@@ -61,7 +61,7 @@ export default async function BioCategoryPage({ params }: { params: { slug: stri
       )}
 
       <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-slate-400">
-        <div>© {new Date().getFullYear()} Plugando IA</div>
+        <div>© {new Date().getFullYear()} PlugandoIA</div>
         <div className="flex items-center gap-4">
           <Link href="/terms" className="hover:text-slate-200">
             Termos
