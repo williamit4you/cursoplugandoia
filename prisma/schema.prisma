@@ -942,6 +942,7 @@ model ColetaDadosShoppe {
   pipelineEvents   ShopeePipelineEvent[]
   storyAd          StoryAd?
   bioProduct       BioProduct?
+  engagementIdeas  EngagementIdea[]
 }
 
 model LinksVideosImagens {
