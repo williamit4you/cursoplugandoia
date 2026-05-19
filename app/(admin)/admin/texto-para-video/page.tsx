@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Box, Paper, TextField, Typography } from "@mui/material";
+import { Alert, Box, MenuItem, Paper, TextField, Typography } from "@mui/material";
 
 type SimpleCreatorVideo = {
   id: string;
@@ -16,21 +16,45 @@ type SimpleCreatorVideo = {
   updatedAt: string;
 };
 
+type CreatorAsset = {
+  id: string;
+  url: string;
+  label: string | null;
+  active: boolean;
+};
+
+function statusLabel(status: string) {
+  if (status === "DRAFT") return "Pronto para gerar";
+  if (status === "GENERATING_AUDIO") return "Gerando audio";
+  if (status === "AUDIO_READY") return "Audio pronto";
+  if (status === "GENERATING_VIDEO") return "Gerando video";
+  if (status === "READY") return "Video pronto";
+  if (status === "FAILED") return "Falhou";
+  return status;
+}
+
 export default function TextoParaVideoPage() {
   const [narrationText, setNarrationText] = useState("");
-  const [creatorImageUrl, setCreatorImageUrl] = useState("");
+  const [selectedCreatorImageUrl, setSelectedCreatorImageUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageSeverity, setMessageSeverity] = useState<"success" | "warning" | "error">("error");
   const [current, setCurrent] = useState<SimpleCreatorVideo | null>(null);
   const [recent, setRecent] = useState<SimpleCreatorVideo[]>([]);
+  const [assets, setAssets] = useState<CreatorAsset[]>([]);
 
-  const canCreate = narrationText.trim().length > 0 && creatorImageUrl.trim().length > 0 && !loading;
+  const canCreate = narrationText.trim().length > 0 && !loading;
 
-  const loadRecent = async () => {
+  const loadInitial = async () => {
     try {
-      const res = await fetch("/api/texto-para-video", { cache: "no-store" });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) setRecent(data.items || []);
+      const [recentRes, assetsRes] = await Promise.all([
+        fetch("/api/texto-para-video", { cache: "no-store" }),
+        fetch("/api/creator-assets?active=true", { cache: "no-store" }),
+      ]);
+      const recentData = await recentRes.json().catch(() => ({}));
+      const assetsData = await assetsRes.json().catch(() => ({}));
+      if (recentRes.ok) setRecent(recentData.items || []);
+      if (assetsRes.ok) setAssets(assetsData.items || []);
     } catch {
       // ignore
     }
@@ -43,19 +67,12 @@ export default function TextoParaVideoPage() {
   };
 
   useEffect(() => {
-    loadRecent();
+    loadInitial();
   }, []);
 
-  const statusLabel = useMemo(() => {
+  const currentStatusLabel = useMemo(() => {
     if (!current) return "";
-    const s = current.status;
-    if (s === "DRAFT") return "Pronto para gerar";
-    if (s === "GENERATING_AUDIO") return "Gerando áudio…";
-    if (s === "AUDIO_READY") return "Áudio pronto";
-    if (s === "GENERATING_VIDEO") return "Gerando vídeo…";
-    if (s === "READY") return "Vídeo pronto";
-    if (s === "FAILED") return "Falhou";
-    return s;
+    return statusLabel(current.status);
   }, [current]);
 
   const create = async () => {
@@ -66,15 +83,22 @@ export default function TextoParaVideoPage() {
       const res = await fetch("/api/texto-para-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ narrationText, creatorImageUrl }),
+        body: JSON.stringify({
+          narrationText,
+          creatorImageUrl: selectedCreatorImageUrl || null,
+          autoGenerate: true,
+        }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Falha ao criar");
+      if (!res.ok) throw new Error(data?.error || "Falha ao gerar");
       setCurrent(data.item);
       setNarrationText("");
-      loadRecent();
-    } catch (e: any) {
-      setMessage(e?.message || "Falha ao criar");
+      setMessageSeverity("success");
+      setMessage("Video gerado com sucesso.");
+      loadInitial();
+    } catch (error: any) {
+      setMessageSeverity("error");
+      setMessage(error?.message || "Falha ao gerar");
     } finally {
       setLoading(false);
     }
@@ -87,11 +111,14 @@ export default function TextoParaVideoPage() {
     try {
       const res = await fetch(`/api/texto-para-video/${current.id}/gerar-audio`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Falha ao gerar áudio");
+      if (!res.ok) throw new Error(data?.error || "Falha ao gerar audio");
       await refreshCurrent(current.id);
-      loadRecent();
-    } catch (e: any) {
-      setMessage(e?.message || "Falha ao gerar áudio");
+      loadInitial();
+      setMessageSeverity("success");
+      setMessage("Audio regenerado com sucesso.");
+    } catch (error: any) {
+      setMessageSeverity("error");
+      setMessage(error?.message || "Falha ao gerar audio");
       await refreshCurrent(current.id);
     } finally {
       setLoading(false);
@@ -105,11 +132,14 @@ export default function TextoParaVideoPage() {
     try {
       const res = await fetch(`/api/texto-para-video/${current.id}/gerar-video`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Falha ao gerar vídeo");
+      if (!res.ok) throw new Error(data?.error || "Falha ao gerar video");
       await refreshCurrent(current.id);
-      loadRecent();
-    } catch (e: any) {
-      setMessage(e?.message || "Falha ao gerar vídeo");
+      loadInitial();
+      setMessageSeverity("success");
+      setMessage("Video regenerado com sucesso.");
+    } catch (error: any) {
+      setMessageSeverity("error");
+      setMessage(error?.message || "Falha ao gerar video");
       await refreshCurrent(current.id);
     } finally {
       setLoading(false);
@@ -120,37 +150,45 @@ export default function TextoParaVideoPage() {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Box>
         <Typography variant="h4" sx={{ fontWeight: 900 }}>
-          Texto → Vídeo
+          Texto para Video
         </Typography>
         <Typography sx={{ opacity: 0.8, mt: 1 }}>
-          Cole o texto, informe a imagem, gere áudio com sua voz e depois o vídeo. No final, baixe o MP4.
+          Escreva o texto e gere o video pronto com sua voz clonada e sua foto falando. Se voce nao escolher uma imagem,
+          o sistema usa a configuracao padrao do pipeline.
         </Typography>
       </Box>
 
-      {message ? <Alert severity="error">{message}</Alert> : null}
+      {message ? <Alert severity={messageSeverity}>{message}</Alert> : null}
 
       <Paper sx={{ p: 2 }}>
         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
           <Box sx={{ gridColumn: { xs: "span 12", md: "span 8" } }}>
             <TextField
-              label="Texto para narração"
+              label="Texto para narracao"
               value={narrationText}
-              onChange={(e) => setNarrationText(e.target.value)}
+              onChange={(event) => setNarrationText(event.target.value)}
               multiline
-              rows={6}
+              rows={8}
               fullWidth
-              placeholder="Digite o texto do vídeo…"
+              placeholder="Digite o roteiro do video..."
             />
           </Box>
           <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
             <TextField
-              label="URL da sua imagem (foto)"
-              value={creatorImageUrl}
-              onChange={(e) => setCreatorImageUrl(e.target.value)}
+              select
+              label="Imagem do criador"
+              value={selectedCreatorImageUrl}
+              onChange={(event) => setSelectedCreatorImageUrl(event.target.value)}
               fullWidth
-              placeholder="https://..."
-              helperText="Use uma URL pública (ex.: MinIO)."
-            />
+              helperText="Se vazio, usa a imagem padrao da configuracao."
+            >
+              <MenuItem value="">Usar imagem padrao da configuracao</MenuItem>
+              {assets.map((asset) => (
+                <MenuItem key={asset.id} value={asset.url}>
+                  {asset.label ? `${asset.label} - ${asset.url}` : asset.url}
+                </MenuItem>
+              ))}
+            </TextField>
 
             <Box sx={{ display: "flex", gap: 1.5, mt: 2, flexWrap: "wrap" }}>
               <button
@@ -158,33 +196,19 @@ export default function TextoParaVideoPage() {
                 disabled={!canCreate}
                 style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900, background: "#111827", color: "white" }}
               >
-                {loading ? "..." : "Criar"}
-              </button>
-              <button
-                onClick={gerarAudio}
-                disabled={!current || loading}
-                style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900 }}
-              >
-                Gerar áudio
-              </button>
-              <button
-                onClick={gerarVideo}
-                disabled={!current || !current.audioUrl || loading}
-                style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900 }}
-              >
-                Gerar vídeo
+                {loading ? "Gerando..." : "Gerar video pronto"}
               </button>
             </Box>
 
             {current ? (
               <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, border: "1px solid rgba(0,0,0,0.08)", background: "rgba(255,255,255,0.5)" }}>
-                <div style={{ fontWeight: 900 }}>Status: {statusLabel}</div>
+                <div style={{ fontWeight: 900 }}>Status: {currentStatusLabel}</div>
                 {current.errorMessage ? <div style={{ marginTop: 6, color: "#b91c1c" }}>{current.errorMessage}</div> : null}
 
                 {current.audioUrl ? (
                   <div style={{ marginTop: 10 }}>
                     <a href={current.audioUrl} target="_blank" rel="noreferrer">
-                      Abrir áudio
+                      Abrir audio
                     </a>
                   </div>
                 ) : null}
@@ -192,7 +216,7 @@ export default function TextoParaVideoPage() {
                 {current.videoUrl ? (
                   <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
                     <a href={current.videoUrl} target="_blank" rel="noreferrer">
-                      Abrir vídeo
+                      Abrir video
                     </a>
                     <a href={current.videoUrl} download>
                       Baixar MP4
@@ -204,6 +228,19 @@ export default function TextoParaVideoPage() {
                     ) : null}
                   </div>
                 ) : null}
+
+                <Box sx={{ display: "flex", gap: 1.5, mt: 2, flexWrap: "wrap" }}>
+                  <button onClick={gerarAudio} disabled={loading} style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900 }}>
+                    Regenerar audio
+                  </button>
+                  <button
+                    onClick={gerarVideo}
+                    disabled={!current.audioUrl || loading}
+                    style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900 }}
+                  >
+                    Regenerar video
+                  </button>
+                </Box>
               </Box>
             ) : null}
           </Box>
@@ -226,9 +263,12 @@ export default function TextoParaVideoPage() {
                 cursor: "pointer",
               }}
             >
-              <div style={{ fontWeight: 900 }}>{item.status}</div>
+              <div style={{ fontWeight: 900 }}>{statusLabel(item.status)}</div>
               <div style={{ opacity: 0.75, fontSize: 12, fontFamily: "monospace" }}>{item.id}</div>
-              <div style={{ marginTop: 6, opacity: 0.85 }}>{item.narrationText.slice(0, 140)}{item.narrationText.length > 140 ? "…" : ""}</div>
+              <div style={{ marginTop: 6, opacity: 0.85 }}>
+                {item.narrationText.slice(0, 140)}
+                {item.narrationText.length > 140 ? "..." : ""}
+              </div>
             </button>
           ))}
           {recent.length === 0 ? <div style={{ opacity: 0.7 }}>Nenhum item ainda.</div> : null}
@@ -237,4 +277,3 @@ export default function TextoParaVideoPage() {
     </Box>
   );
 }
-

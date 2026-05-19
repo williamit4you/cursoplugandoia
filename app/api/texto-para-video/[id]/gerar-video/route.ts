@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { generateModalVideo } from "@/lib/shopee-pipeline/modalClient";
 import { generateApproxVtt } from "@/lib/captions/vtt";
 import { uploadBufferToMinio } from "@/lib/shopee-pipeline/minioUpload";
+import { resolveCreatorVideoDefaults } from "@/lib/creator-video/defaults";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,15 +21,24 @@ export async function POST(_: Request, ctx: { params: { id: string } }) {
   if (!item) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (!item.audioUrl) return NextResponse.json({ error: "Gere o áudio primeiro" }, { status: 400 });
 
+  const defaults = await resolveCreatorVideoDefaults(item.creatorImageUrl);
+  const imageUrl = String(defaults.creatorImageUrl || "").trim();
+  if (!imageUrl) {
+    return NextResponse.json(
+      { error: "Configure uma imagem padrão em userBaseImageUrl ou adicione uma imagem ativa em creator-assets." },
+      { status: 400 }
+    );
+  }
+
   try {
     await prisma.simpleCreatorVideo.update({
       where: { id },
-      data: { status: "GENERATING_VIDEO", errorMessage: null, updatedAt: now() },
+      data: { status: "GENERATING_VIDEO", errorMessage: null, creatorImageUrl: imageUrl, updatedAt: now() },
     });
 
     const seed = Math.floor(Math.random() * 1_000_000_000);
     const generated = await generateModalVideo({
-      imageUrl: item.creatorImageUrl,
+      imageUrl,
       audioUrl: item.audioUrl,
       seed,
     });
@@ -63,4 +73,3 @@ export async function POST(_: Request, ctx: { params: { id: string } }) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

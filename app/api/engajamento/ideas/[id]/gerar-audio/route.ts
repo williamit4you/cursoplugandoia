@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateModalAudio } from "@/lib/shopee-pipeline/modalClient";
+import { resolveCreatorVideoDefaults } from "@/lib/creator-video/defaults";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,8 +22,8 @@ export async function POST(_: Request, ctx: { params: { id: string } }) {
   const item = await prisma.engagementIdea.findUnique({ where: { id } });
   if (!item) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  const config = await prisma.shopeePipelineConfig.findFirst({ orderBy: { createdAt: "desc" } });
-  const voiceRefUrl = String(config?.userVoiceRefUrl || "").trim();
+  const defaults = await resolveCreatorVideoDefaults(item.creatorImageUrl);
+  const voiceRefUrl = String(defaults.voiceRefUrl || "").trim();
   if (!voiceRefUrl) return NextResponse.json({ error: "Config faltando: userVoiceRefUrl" }, { status: 400 });
 
   const targetText = String(item.script || "").trim();
@@ -49,4 +50,3 @@ export async function POST(_: Request, ctx: { params: { id: string } }) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

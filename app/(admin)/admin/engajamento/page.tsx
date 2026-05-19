@@ -1,15 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Alert, Box, MenuItem, Paper, TextField, Typography } from "@mui/material";
-
-type Template = {
-  type: string;
-  name: string;
-  objective: string;
-  personaName: string;
-  guidance: string;
-};
 
 type Idea = {
   id: string;
@@ -30,83 +23,61 @@ type Idea = {
   coleta?: { id: string; titulo: string | null } | null;
 };
 
-type CreatorAsset = { id: string; url: string; label: string | null; active: boolean };
+type CreatorAsset = {
+  id: string;
+  url: string;
+  label: string | null;
+  active: boolean;
+};
 
 function normalize(value: unknown) {
   return String(value || "").trim();
 }
 
+function statusLabel(status: string) {
+  if (status === "DRAFT") return "Rascunho";
+  if (status === "GENERATING_AUDIO") return "Gerando audio";
+  if (status === "AUDIO_READY") return "Audio pronto";
+  if (status === "GENERATING_VIDEO") return "Gerando video";
+  if (status === "READY") return "Video pronto";
+  if (status === "FAILED") return "Falhou";
+  return status;
+}
 
 export default function EngajamentoPage() {
-  const [templates, setTemplates] = useState<Template[]>([]);
   const [assets, setAssets] = useState<CreatorAsset[]>([]);
   const [ideas, setIdeas] = useState<Idea[]>([]);
-  const [selectedId, setSelectedId] = useState<string>("");
+  const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageSeverity, setMessageSeverity] = useState<"success" | "warning" | "error">("error");
 
-  const [coletaId, setColetaId] = useState("");
-  const [templateType, setTemplateType] = useState("");
-  const [personaName, setPersonaName] = useState("");
-
+  const [productUrl, setProductUrl] = useState("");
+  const [selectedCreatorImageUrl, setSelectedCreatorImageUrl] = useState("");
   const [newAssetUrl, setNewAssetUrl] = useState("");
   const [newAssetLabel, setNewAssetLabel] = useState("");
 
-  const selected = useMemo(() => ideas.find((x) => x.id === selectedId) || null, [ideas, selectedId]);
+  const selected = useMemo(() => ideas.find((item) => item.id === selectedId) || null, [ideas, selectedId]);
 
   const loadAll = async () => {
-    setMessage(null);
     try {
-      const [tRes, aRes, iRes] = await Promise.all([
-        fetch("/api/engajamento/templates", { cache: "no-store" }),
+      const [assetsRes, ideasRes] = await Promise.all([
         fetch("/api/creator-assets?active=true", { cache: "no-store" }),
         fetch("/api/engajamento/ideas?take=80", { cache: "no-store" }),
       ]);
-      const tData = await tRes.json().catch(() => ({}));
-      const aData = await aRes.json().catch(() => ({}));
-      const iData = await iRes.json().catch(() => ({}));
-      if (tRes.ok) setTemplates(tData.templates || []);
-      if (aRes.ok) setAssets(aData.items || []);
-      if (iRes.ok) setIdeas(iData.items || []);
-
-      if (!templateType && Array.isArray(tData.templates) && tData.templates.length > 0) {
-        setTemplateType(String(tData.templates[0].type));
-        setPersonaName(String(tData.templates[0].personaName || ""));
-      }
-    } catch (e: any) {
-      setMessage(e?.message || "Falha ao carregar");
+      const assetsData = await assetsRes.json().catch(() => ({}));
+      const ideasData = await ideasRes.json().catch(() => ({}));
+      if (assetsRes.ok) setAssets(assetsData.items || []);
+      if (ideasRes.ok) setIdeas(ideasData.items || []);
+    } catch (error: any) {
+      setMessageSeverity("error");
+      setMessage(error?.message || "Falha ao carregar");
     }
   };
 
   useEffect(() => {
     loadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const generateIdea = async () => {
-    setLoading(true);
-    setMessage(null);
-    try {
-      const res = await fetch("/api/engajamento/ideas/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          coletaId: normalize(coletaId) || null,
-          templateType,
-          personaName: normalize(personaName) || null,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Falha ao gerar");
-      const item = data.item as Idea;
-      setIdeas((prev) => [item, ...prev]);
-      setSelectedId(item.id);
-    } catch (e: any) {
-      setMessage(e?.message || "Falha ao gerar");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const saveAsset = async () => {
     if (!newAssetUrl.trim()) return;
@@ -120,14 +91,59 @@ export default function EngajamentoPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Falha ao salvar imagem");
+
       setAssets((prev) => {
-        const without = prev.filter((x) => x.url !== data.item.url);
-        return [data.item as CreatorAsset, ...without];
+        const withoutDuplicate = prev.filter((item) => item.url !== data.item.url);
+        return [data.item as CreatorAsset, ...withoutDuplicate];
       });
       setNewAssetUrl("");
       setNewAssetLabel("");
-    } catch (e: any) {
-      setMessage(e?.message || "Falha ao salvar");
+      setMessageSeverity("success");
+      setMessage("Imagem salva na galeria.");
+    } catch (error: any) {
+      setMessageSeverity("error");
+      setMessage(error?.message || "Falha ao salvar imagem");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateFromUrl = async () => {
+    const url = normalize(productUrl);
+    if (!url) return;
+
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/engajamento/from-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url,
+          creatorImageUrl: normalize(selectedCreatorImageUrl) || null,
+          autoRender: true,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Falha ao gerar fluxo automatico");
+
+      const createdIdeas = Array.isArray(data.ideas) ? (data.ideas as Idea[]) : [];
+      if (createdIdeas.length === 0) throw new Error("Nenhuma ideia foi criada");
+
+      setIdeas((prev) => [...createdIdeas, ...prev]);
+      setSelectedId(String(data.primaryIdeaId || createdIdeas[0].id));
+      setProductUrl("");
+
+      if (data.autoRenderError) {
+        setMessageSeverity("warning");
+        setMessage(`Ideias criadas, mas a renderizacao automatica falhou: ${data.autoRenderError}`);
+      } else {
+        setMessageSeverity("success");
+        setMessage("Fluxo concluido: ideias criadas e a principal ja voltou com video pronto.");
+      }
+    } catch (error: any) {
+      setMessageSeverity("error");
+      setMessage(error?.message || "Falha ao gerar por URL");
     } finally {
       setLoading(false);
     }
@@ -142,7 +158,7 @@ export default function EngajamentoPage() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data?.error || "Falha ao salvar");
     const item = data.item as Idea;
-    setIdeas((prev) => prev.map((x) => (x.id === id ? { ...(x as any), ...(item as any) } : x)));
+    setIdeas((prev) => prev.map((current) => (current.id === id ? { ...current, ...item } : current)));
   };
 
   const gerarAudio = async () => {
@@ -152,11 +168,14 @@ export default function EngajamentoPage() {
     try {
       const res = await fetch(`/api/engajamento/ideas/${selected.id}/gerar-audio`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Falha ao gerar áudio");
+      if (!res.ok) throw new Error(data?.error || "Falha ao gerar audio");
       await loadAll();
       setSelectedId(selected.id);
-    } catch (e: any) {
-      setMessage(e?.message || "Falha ao gerar áudio");
+      setMessageSeverity("success");
+      setMessage("Audio regenerado com sucesso.");
+    } catch (error: any) {
+      setMessageSeverity("error");
+      setMessage(error?.message || "Falha ao gerar audio");
     } finally {
       setLoading(false);
     }
@@ -169,11 +188,14 @@ export default function EngajamentoPage() {
     try {
       const res = await fetch(`/api/engajamento/ideas/${selected.id}/gerar-video`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Falha ao gerar vídeo");
+      if (!res.ok) throw new Error(data?.error || "Falha ao gerar video");
       await loadAll();
       setSelectedId(selected.id);
-    } catch (e: any) {
-      setMessage(e?.message || "Falha ao gerar vídeo");
+      setMessageSeverity("success");
+      setMessage("Video regenerado com sucesso.");
+    } catch (error: any) {
+      setMessageSeverity("error");
+      setMessage(error?.message || "Falha ao gerar video");
     } finally {
       setLoading(false);
     }
@@ -183,23 +205,31 @@ export default function EngajamentoPage() {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Box>
         <Typography variant="h4" sx={{ fontWeight: 900 }}>
-          Conteúdo (Engajamento)
+          Conteudo de Engajamento
         </Typography>
         <Typography sx={{ opacity: 0.8, mt: 1 }}>
-          Gere ideias por template, edite, gere áudio e vídeo (foto falando) com legendas.
+          Cole a URL do produto e o sistema faz o fluxo automatico: scraping, 3 ideias de engajamento e renderizacao da
+          principal com sua foto falando.
+        </Typography>
+        <Typography sx={{ opacity: 0.75, mt: 1 }}>
+          Para o modo em que voce so escreve e recebe o video pronto, use{" "}
+          <Link href="/admin/texto-para-video" style={{ textDecoration: "underline" }}>
+            Texto para Video
+          </Link>
+          .
         </Typography>
       </Box>
 
-      {message ? <Alert severity="error">{message}</Alert> : null}
+      {message ? <Alert severity={messageSeverity}>{message}</Alert> : null}
 
       <Paper sx={{ p: 2 }}>
-        <Typography sx={{ fontWeight: 900, mb: 1 }}>1) Imagens do criador (galeria)</Typography>
+        <Typography sx={{ fontWeight: 900, mb: 1 }}>1) Galeria do criador</Typography>
         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
           <Box sx={{ gridColumn: { xs: "span 12", md: "span 7" } }}>
             <TextField
               label="URL da imagem"
               value={newAssetUrl}
-              onChange={(e) => setNewAssetUrl(e.target.value)}
+              onChange={(event) => setNewAssetUrl(event.target.value)}
               fullWidth
               placeholder="https://..."
             />
@@ -208,9 +238,9 @@ export default function EngajamentoPage() {
             <TextField
               label="Label (opcional)"
               value={newAssetLabel}
-              onChange={(e) => setNewAssetLabel(e.target.value)}
+              onChange={(event) => setNewAssetLabel(event.target.value)}
               fullWidth
-              placeholder="Ex.: rosto 1, selfie 2..."
+              placeholder="Ex.: rosto principal"
             />
           </Box>
         </Box>
@@ -220,64 +250,50 @@ export default function EngajamentoPage() {
             disabled={loading || !newAssetUrl.trim()}
             style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900, background: "#111827", color: "white" }}
           >
-            {loading ? "..." : "Adicionar imagem"}
+            {loading ? "Salvando..." : "Adicionar imagem"}
           </button>
-          <div style={{ opacity: 0.8, fontSize: 12, paddingTop: 10 }}>
-            {assets.length} imagem(ns) ativas
-          </div>
+          <div style={{ opacity: 0.8, fontSize: 12, paddingTop: 10 }}>{assets.length} imagem(ns) ativas</div>
         </Box>
       </Paper>
 
       <Paper sx={{ p: 2 }}>
-        <Typography sx={{ fontWeight: 900, mb: 1 }}>2) Gerar uma ideia</Typography>
+        <Typography sx={{ fontWeight: 900, mb: 1 }}>2) URL para video pronto</Typography>
         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
-          <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
+          <Box sx={{ gridColumn: { xs: "span 12", md: "span 7" } }}>
             <TextField
-              label="Coleta ID (opcional)"
-              value={coletaId}
-              onChange={(e) => setColetaId(e.target.value)}
+              label="URL do produto"
+              value={productUrl}
+              onChange={(event) => setProductUrl(event.target.value)}
               fullWidth
-              placeholder="cuid da coleta (Shopee)"
-              helperText="Se vazio, gera genérico (melhor com coletaId)."
+              placeholder="https://shopee.com.br/..."
+              helperText="Fluxo automatico: scrape do produto, gera 3 ideias e renderiza a principal."
             />
           </Box>
-          <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
+          <Box sx={{ gridColumn: { xs: "span 12", md: "span 5" } }}>
             <TextField
               select
               fullWidth
-              label="Template"
-              value={templateType}
-              onChange={(e) => {
-                const type = String(e.target.value);
-                setTemplateType(type);
-                const t = templates.find((x) => x.type === type);
-                if (t?.personaName) setPersonaName(t.personaName);
-              }}
+              label="Imagem do criador"
+              value={selectedCreatorImageUrl}
+              onChange={(event) => setSelectedCreatorImageUrl(String(event.target.value))}
+              helperText="Se deixar vazio, usa a imagem padrao da configuracao/pipeline."
             >
-              {templates.map((t) => (
-                <MenuItem key={t.type} value={t.type}>
-                  {t.name}
+              <MenuItem value="">Usar imagem padrao da configuracao</MenuItem>
+              {assets.map((asset) => (
+                <MenuItem key={asset.id} value={asset.url}>
+                  {asset.label ? `${asset.label} - ${asset.url}` : asset.url}
                 </MenuItem>
               ))}
             </TextField>
           </Box>
-          <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
-            <TextField
-              label="Persona (opcional)"
-              value={personaName}
-              onChange={(e) => setPersonaName(e.target.value)}
-              fullWidth
-              placeholder="IA caçadora de produtos"
-            />
-          </Box>
         </Box>
         <Box sx={{ display: "flex", gap: 1.5, mt: 2 }}>
           <button
-            onClick={generateIdea}
-            disabled={loading || !templateType}
+            onClick={generateFromUrl}
+            disabled={loading || !normalize(productUrl)}
             style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900, background: "#111827", color: "white" }}
           >
-            {loading ? "Gerando..." : "Gerar ideia"}
+            {loading ? "Gerando..." : "Gerar ideias + video principal"}
           </button>
         </Box>
       </Paper>
@@ -301,7 +317,7 @@ export default function EngajamentoPage() {
               >
                 <div style={{ fontWeight: 900 }}>{item.hook}</div>
                 <div style={{ opacity: 0.75, fontSize: 12 }}>
-                  {item.templateType} · {item.status}
+                  {statusLabel(item.status)} · {item.templateType}
                   {item.coleta?.titulo ? ` · ${item.coleta.titulo}` : ""}
                 </div>
                 {item.errorMessage ? <div style={{ marginTop: 6, color: "#b91c1c", fontSize: 12 }}>{item.errorMessage}</div> : null}
@@ -317,26 +333,40 @@ export default function EngajamentoPage() {
             <div style={{ opacity: 0.7 }}>Selecione uma ideia.</div>
           ) : (
             <Box sx={{ display: "grid", gap: 2 }}>
+              <Alert severity={selected.status === "FAILED" ? "error" : "info"}>
+                Status atual: {statusLabel(selected.status)}
+              </Alert>
+
               <TextField
                 label="Hook"
                 value={selected.hook}
-                onChange={(e) => setIdeas((prev) => prev.map((x) => (x.id === selected.id ? { ...x, hook: e.target.value } : x)))}
+                onChange={(event) =>
+                  setIdeas((prev) => prev.map((item) => (item.id === selected.id ? { ...item, hook: event.target.value } : item)))
+                }
                 onBlur={() => patchIdea(selected.id, { hook: selected.hook })}
                 fullWidth
               />
+
               <TextField
-                label="Script (locução)"
+                label="Script (locucao)"
                 value={selected.script}
-                onChange={(e) => setIdeas((prev) => prev.map((x) => (x.id === selected.id ? { ...x, script: e.target.value } : x)))}
+                onChange={(event) =>
+                  setIdeas((prev) => prev.map((item) => (item.id === selected.id ? { ...item, script: event.target.value } : item)))
+                }
                 onBlur={() => patchIdea(selected.id, { script: selected.script })}
                 fullWidth
                 multiline
                 rows={8}
               />
+
               <TextField
-                label="CTA comentário (opcional)"
+                label="CTA comentario (opcional)"
                 value={selected.ctaComment || ""}
-                onChange={(e) => setIdeas((prev) => prev.map((x) => (x.id === selected.id ? { ...x, ctaComment: e.target.value } : x)))}
+                onChange={(event) =>
+                  setIdeas((prev) =>
+                    prev.map((item) => (item.id === selected.id ? { ...item, ctaComment: event.target.value } : item))
+                  )
+                }
                 onBlur={() => patchIdea(selected.id, { ctaComment: selected.ctaComment || "" })}
                 fullWidth
               />
@@ -345,46 +375,38 @@ export default function EngajamentoPage() {
                 select
                 label="Imagem do criador"
                 value={selected.creatorImageUrl || ""}
-                onChange={(e) => {
-                  const url = String(e.target.value);
-                  setIdeas((prev) => prev.map((x) => (x.id === selected.id ? { ...x, creatorImageUrl: url } : x)));
+                onChange={(event) => {
+                  const url = String(event.target.value);
+                  setIdeas((prev) => prev.map((item) => (item.id === selected.id ? { ...item, creatorImageUrl: url } : item)));
                   patchIdea(selected.id, { creatorImageUrl: url }).catch(() => null);
                 }}
                 fullWidth
-                helperText="Obrigatório para gerar o vídeo."
+                helperText="Se vazio, a regeneracao usa a imagem padrao da configuracao."
               >
-                <MenuItem value="">(selecione)</MenuItem>
-                {assets.map((a) => (
-                  <MenuItem key={a.id} value={a.url}>
-                    {a.label ? `${a.label} — ${a.url}` : a.url}
+                <MenuItem value="">Usar imagem padrao da configuracao</MenuItem>
+                {assets.map((asset) => (
+                  <MenuItem key={asset.id} value={asset.url}>
+                    {asset.label ? `${asset.label} - ${asset.url}` : asset.url}
                   </MenuItem>
                 ))}
               </TextField>
 
               <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
-                <button
-                  onClick={gerarAudio}
-                  disabled={loading}
-                  style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900 }}
-                >
-                  Gerar áudio
+                <button onClick={gerarAudio} disabled={loading} style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900 }}>
+                  Gerar audio novamente
                 </button>
-                <button
-                  onClick={gerarVideo}
-                  disabled={loading || !selected.audioUrl || !selected.creatorImageUrl}
-                  style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900 }}
-                >
-                  Gerar vídeo
+                <button onClick={gerarVideo} disabled={loading || !selected.audioUrl} style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900 }}>
+                  Gerar video novamente
                 </button>
                 {selected.audioUrl ? (
                   <a href={selected.audioUrl} target="_blank" rel="noreferrer" style={{ paddingTop: 10 }}>
-                    Abrir áudio
+                    Abrir audio
                   </a>
                 ) : null}
                 {selected.videoUrl ? (
                   <>
                     <a href={selected.videoUrl} target="_blank" rel="noreferrer" style={{ paddingTop: 10 }}>
-                      Abrir vídeo
+                      Abrir video
                     </a>
                     <a href={selected.videoUrl} download style={{ paddingTop: 10 }}>
                       Baixar MP4
