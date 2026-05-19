@@ -97,6 +97,23 @@ export default async function PropagandasPage({
         </Link>
       </div>
 
+      {/* Explanatory Banner */}
+      <div className="mb-6 p-4 bg-emerald-50/40 border border-emerald-100 rounded-2xl flex items-start gap-3">
+        <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-600 shrink-0">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <div className="space-y-1">
+          <h4 className="text-sm font-bold text-emerald-900">Como funcionam as Propagandas?</h4>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Estes são vídeos curtos com foco comercial criados para promover links de afiliados. 
+          </p>
+          <p className="text-xs text-slate-500 leading-relaxed mt-1">
+            Eles podem ser criados de forma <strong>Manual</strong> (no botão "Criar propaganda") ou ser gerados <strong>Automaticamente</strong> pelos robôs de scraping e automação de ofertas da <Link href="/admin/shopee-pipeline" className="text-emerald-700 font-bold hover:underline">Shopee</Link> e do <Link href="/admin/mercado-livre-pipeline" className="text-emerald-700 font-bold hover:underline">Mercado Livre</Link>. Uma vez prontos, os vídeos gerados são automaticamente programados e agendados na <Link href="/admin/social" className="text-emerald-700 font-bold hover:underline">Fila Social</Link> para postagem.
+          </p>
+        </div>
+      </div>
+
+
       <form className="mb-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm" method="get">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
           <div className="md:col-span-6">

@@ -227,6 +227,7 @@ type ScraperRun = {
 
 type AiUsageLog = {
   id: string;
+  postId?: string | null;
   operation: string;
   model: string;
   promptTokens: number;
@@ -1065,6 +1066,14 @@ export default function ScraperConfigPage() {
                                 <span>📥 {log.promptTokens} in · 📤 {log.completionTokens} out · Total: {log.totalTokens}</span>
                                 {log.outputSummary && (
                                   <span className="italic text-slate-400">&quot;{log.outputSummary.slice(0, 70)}...&quot;</span>
+                                )}
+                                {log.postId && (
+                                  <a
+                                    href={`/admin/posts/${log.postId}`}
+                                    className="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded transition-all text-[9px] uppercase tracking-wide cursor-pointer ml-2"
+                                  >
+                                    Ver Notícia
+                                  </a>
                                 )}
                               </div>
                               <span className="font-mono text-emerald-600 font-bold">{formatCost(log.costUsd)}</span>

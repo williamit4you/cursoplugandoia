@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
         aiUsageLogs: {
           select: {
             id: true,
+            postId: true,
             operation: true,
             model: true,
             promptTokens: true,

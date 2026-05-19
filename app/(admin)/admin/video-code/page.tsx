@@ -121,7 +121,7 @@ export default async function VideoCodeProjectsPage({
             Vídeos com código
           </h1>
           <p className="text-gray-500 mt-1">
-            Tabela com filtros, paginação e ordenação.
+            Seus vídeos gerados programaticamente usando templates e renderizadores HTML/Remotion.
           </p>
         </div>
         <Link
@@ -134,6 +134,23 @@ export default async function VideoCodeProjectsPage({
           Novo projeto
         </Link>
       </div>
+
+      {/* Explanatory Banner */}
+      <div className="mb-6 p-4 bg-indigo-50/40 border border-indigo-100 rounded-2xl flex items-start gap-3">
+        <div className="p-2 bg-indigo-50 rounded-xl border border-indigo-100 text-indigo-600 shrink-0">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <div className="space-y-1">
+          <h4 className="text-sm font-bold text-indigo-900">Como são criados os vídeos com código?</h4>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Estes vídeos usam modelos de código dinâmicos (como o Remotion) para animar elementos visuais, títulos e imagens de fundo junto com a narração de voz (TTS). 
+          </p>
+          <p className="text-xs text-slate-500 leading-relaxed mt-1">
+            Eles nascem de duas formas: <strong>Manualmente</strong>, ao clicar em "Novo projeto" e inserir uma ideia de roteiro, ou <strong>Automaticamente</strong>, através da automação de Q&A na tela <Link href="/admin/video-questions" className="text-indigo-600 font-bold hover:underline">Perguntas → vídeos</Link>, onde o robô lê as dúvidas da fila e renderiza os vídeos de forma agendada no background.
+          </p>
+        </div>
+      </div>
+
 
       <form className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm mb-4" method="get">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">

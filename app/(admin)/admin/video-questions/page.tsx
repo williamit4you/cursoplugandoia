@@ -72,7 +72,7 @@ export default function VideoQuestionsPage() {
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [enqueueing, setEnqueueing] = useState<string | null>(null);
-  const [showHelp, setShowHelp] = useState(false);
+  const [showHelp, setShowHelp] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 

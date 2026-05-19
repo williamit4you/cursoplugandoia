@@ -153,17 +153,31 @@ export default function SocialPostsDashboard() {
     }
   };
 
-  const retryPublish = async (id: string) => {
-    setLoadingId(id);
+  const checkOrPublish = async (post: any) => {
+    setLoadingId(post.id);
     try {
-      const res = await fetch("/api/social/publish", {
+      const pathname =
+        post.platform === "YOUTUBE"
+          ? "/api/social/publish-youtube"
+          : post.platform === "TIKTOK"
+            ? "/api/social/publish-tiktok"
+            : post.postType === "STORY"
+              ? "/api/social/publish-story"
+              : "/api/social/publish";
+
+      const res = await fetch(pathname, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ socialPostId: id }),
+        body: JSON.stringify({ socialPostId: post.id }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Falha ao publicar");
-      toast.success("Publicação iniciada!");
+      if (!res.ok) throw new Error(data.error || "Falha ao processar publicação");
+      
+      if (data.stillProcessing) {
+        toast.info("A Meta ainda está processando o vídeo no container assíncrono. Aguarde um minuto.");
+      } else {
+        toast.success("Publicação executada/atualizada com sucesso!");
+      }
       fetchPosts(true);
     } catch (err: any) {
       toast.error(err.message);
@@ -221,7 +235,10 @@ export default function SocialPostsDashboard() {
         <div className="space-y-1">
           <h4 className="text-sm font-bold text-indigo-900">Como funciona a Fila de Stories / Social?</h4>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Esta fila armazena as postagens geradas que estão aguardando publicação. O robô em background varre esta tabela periodicamente, executa os envios agendados via API (Meta Graph API, YouTube API, etc.) e atualiza o status. Caso uma publicação falhe, você pode revisar o erro nos detalhes do post ou tentar forçar a publicação manualmente clicando no botão de repetição.
+            Esta fila armazena as postagens geradas que estão aguardando publicação. O robô em background varre esta tabela periodicamente, executa os envios agendados via API (Meta Graph API, YouTube API, etc.) e atualiza o status.
+          </p>
+          <p className="text-xs text-slate-500 leading-relaxed mt-1">
+            <strong className="text-indigo-800">Nota sobre "Meta processando" / "Processando":</strong> No Instagram/Facebook, o vídeo é enviado em duas fases. A primeira cria o container e o vídeo entra em fila de processamento na Meta (status "Processando"). A postagem final ocorre no próximo ciclo do cron <code className="bg-indigo-50 px-1 py-0.5 rounded font-mono text-[10px]">/api/social/cron</code>. Se este cron não estiver rodando no seu servidor, o post parecerá travado. Você pode clicar no botão <strong>"Sincronizar/Publicar"</strong> (<RefreshCcw className="w-2.5 h-2.5 inline" />) ao lado do post para verificar o status e publicá-lo imediatamente.
           </p>
         </div>
       </div>
@@ -367,13 +384,18 @@ export default function SocialPostsDashboard() {
                           </div>
 
                           <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {p.status === 'FAILED' && (
+                            {(p.status === 'FAILED' || p.status === 'PROCESSING_MEDIA' || p.status === 'PUBLISHING') && (
                               <button 
-                                onClick={() => retryPublish(p.id)}
-                                className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg transition-all border border-indigo-100/50"
-                                title="Forçar Postagem Agora"
+                                onClick={() => checkOrPublish(p)}
+                                className={`p-1.5 rounded-lg transition-all border ${
+                                  p.status === 'FAILED' 
+                                    ? 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-600 hover:text-white' 
+                                    : 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-600 hover:text-white'
+                                }`}
+                                title={p.status === 'FAILED' ? "Tentar Publicar Novamente" : "Verificar Status / Publicar na Meta"}
+                                disabled={loadingId === p.id}
                               >
-                                <RefreshCcw className="w-3.5 h-3.5" />
+                                <RefreshCcw className={`w-3.5 h-3.5 ${loadingId === p.id ? 'animate-spin' : ''}`} />
                               </button>
                             )}
                             {p.postUrl && (
@@ -426,6 +448,20 @@ export default function SocialPostsDashboard() {
                     {new Date(post.createdAt).toLocaleDateString('pt-BR')}
                   </div>
                   <div className="flex items-center gap-1.5">
+                    {(post.status === 'FAILED' || post.status === 'PROCESSING_MEDIA' || post.status === 'PUBLISHING') && (
+                      <button 
+                        onClick={() => checkOrPublish(post)}
+                        className={`p-1.5 rounded-lg transition-all border ${
+                          post.status === 'FAILED' 
+                            ? 'bg-rose-50 text-rose-600 border-rose-100/50 hover:bg-rose-600 hover:text-white' 
+                            : 'bg-amber-50 text-amber-600 border-amber-100/50 hover:bg-amber-600 hover:text-white'
+                        }`}
+                        title={post.status === 'FAILED' ? "Tentar Publicar Novamente" : "Verificar Status / Publicar na Meta"}
+                        disabled={loadingId === post.id}
+                      >
+                        <RefreshCcw className={`w-3.5 h-3.5 ${loadingId === post.id ? 'animate-spin' : ''}`} />
+                      </button>
+                    )}
                     {post.postUrl && (
                       <a 
                         href={post.postUrl} 
