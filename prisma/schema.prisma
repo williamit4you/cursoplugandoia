@@ -1120,3 +1120,19 @@ model BioClick {
   @@index([bioProductId])
   @@index([createdAt])
 }
+
+model SimpleCreatorVideo {
+  id             String   @id @default(cuid())
+  narrationText  String
+  creatorImageUrl String
+  audioUrl       String?
+  videoUrl       String?
+  captionsUrl    String?
+  status         String   @default("DRAFT") // DRAFT | GENERATING_AUDIO | AUDIO_READY | GENERATING_VIDEO | READY | FAILED
+  errorMessage   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}

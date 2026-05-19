@@ -71,6 +71,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Coleta Shopee", icon: <StorefrontIcon />, path: "/admin/coleta-shopee" },
     { text: "Shopee Pipeline", icon: <StorefrontIcon />, path: "/admin/shopee-pipeline" },
     { text: "Bio Analytics", icon: <StorefrontIcon />, path: "/admin/bio-analytics" },
+    { text: "Texto → Vídeo", icon: <VideoCameraBackIcon />, path: "/admin/texto-para-video" },
     { text: "Tasks", icon: <ChecklistIcon />, path: "/admin/tasks" },
     { text: "Execuções", icon: <PlayArrowIcon />, path: "/admin/task-runs" },
     { text: "Agendamentos", icon: <EventIcon />, path: "/admin/schedules" },
