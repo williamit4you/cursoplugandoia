@@ -1136,3 +1136,43 @@ model SimpleCreatorVideo {
   @@index([status])
   @@index([createdAt])
 }
+
+model CreatorAsset {
+  id        String   @id @default(cuid())
+  kind      String   @default("IMAGE") // IMAGE (MVP)
+  label     String?
+  url       String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind])
+  @@index([active])
+  @@unique([url])
+}
+
+model EngagementIdea {
+  id            String   @id @default(cuid())
+  coletaId      String?
+  templateType  String
+  personaName   String?
+  hook          String
+  script        String
+  onScreenText  Json     @default("[]")
+  ctaComment    String?
+  status        String   @default("DRAFT") // DRAFT | APPROVED | GENERATING_AUDIO | AUDIO_READY | GENERATING_VIDEO | READY | FAILED | DISMISSED
+  creatorImageUrl String?
+  audioUrl      String?
+  videoUrl      String?
+  captionsUrl   String?
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  coleta        ColetaDadosShoppe? @relation(fields: [coletaId], references: [id], onDelete: SetNull)
+
+  @@index([coletaId])
+  @@index([templateType])
+  @@index([status])
+  @@index([createdAt])
+}
