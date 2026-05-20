@@ -74,6 +74,17 @@ export default function SocialPostsDashboard() {
   const [platformFilter, setPlatformFilter] = useState("ALL");
   const [q, setQ] = useState("");
 
+  // Permite deep-link: /admin/social?q=...
+  useEffect(() => {
+    try {
+      const usp = new URLSearchParams(window.location.search);
+      const qParam = (usp.get("q") || "").trim();
+      if (qParam) setQ(qParam);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const fetchPosts = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {

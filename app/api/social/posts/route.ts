@@ -68,6 +68,9 @@ export async function GET(req: NextRequest) {
       where.OR = [
         { summary: { contains: q, mode: "insensitive" } },
         { postUrl: { contains: q, mode: "insensitive" } },
+        { videoUrl: { contains: q, mode: "insensitive" } },
+        { log: { contains: q, mode: "insensitive" } },
+        { id: { equals: q } },
       ];
     }
 

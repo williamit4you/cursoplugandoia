@@ -1333,6 +1333,133 @@ export default function ShopeePipelinePage() {
                         </div>
                       </div>
                     ) : null}
+
+                    {focusedStepName === "CREATE_STORY_AD" ? (
+                      <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-slate-900">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <div className="text-sm font-extrabold">Acompanhar postagem</div>
+                            <div className="mt-1 text-xs text-slate-600">
+                              O agendamento cria um <b>StoryAd</b>. Quando o horÃ¡rio (<code>scheduledAt</code>) chega, o publisher cria os <b>SocialPosts</b> e publica (YouTube/Meta/TikTok).
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {selected?.videoFinalUrl ? (
+                              <Button
+                                size="small"
+                                variant="contained"
+                                href={`/admin/social?q=${encodeURIComponent(String(selected.videoFinalUrl))}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                sx={{ textTransform: "none" }}
+                              >
+                                Abrir na Fila Social
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {(() => {
+                          const storyAd = (selected as any)?.storyAd;
+                          if (!storyAd?.id) {
+                            return (
+                              <div className="mt-3 text-xs text-slate-500">
+                                StoryAd ainda nÃ£o estÃ¡ carregado neste item.
+                              </div>
+                            );
+                          }
+
+                          const publications = Array.isArray(storyAd.publications) ? storyAd.publications : [];
+                          const readSocialPostId = (payload: any) => {
+                            try {
+                              const id = payload?.socialPostId;
+                              return id ? String(id) : null;
+                            } catch {
+                              return null;
+                            }
+                          };
+
+                          return (
+                            <div className="mt-3 grid gap-3 md:grid-cols-3">
+                              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                                <div className="text-xs font-extrabold text-slate-500">StoryAd</div>
+                                <div className="mt-1 text-xs text-slate-700">
+                                  <b>ID:</b> <code>{storyAd.id}</code>
+                                </div>
+                                <div className="mt-1 text-xs text-slate-700">
+                                  <b>Status:</b> {String(storyAd.status || "-")}
+                                </div>
+                                <div className="mt-1 text-xs text-slate-700">
+                                  <b>scheduledAt:</b> {formatDate(storyAd.scheduledAt)}
+                                </div>
+                              </div>
+
+                              <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                                <div className="text-xs font-extrabold text-slate-500">PublicaÃ§Ãµes</div>
+                                {publications.length ? (
+                                  <div className="mt-2 overflow-auto">
+                                    <table className="min-w-full text-xs">
+                                      <thead>
+                                        <tr className="text-left text-slate-500">
+                                          <th className="py-1 pr-3">Plataforma</th>
+                                          <th className="py-1 pr-3">Status</th>
+                                          <th className="py-1 pr-3">Link</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="text-slate-700">
+                                        {publications.map((p: any) => {
+                                          const socialPostId = readSocialPostId(p?.responsePayload);
+                                          return (
+                                            <tr key={p.id} className="border-t border-slate-200">
+                                              <td className="py-1 pr-3 font-bold">{String(p.platform || "-")}</td>
+                                              <td className="py-1 pr-3">{String(p.status || "-")}</td>
+                                              <td className="py-1 pr-3">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                  {socialPostId ? (
+                                                    <a
+                                                      href={`/admin/social?q=${encodeURIComponent(socialPostId)}`}
+                                                      target="_blank"
+                                                      rel="noreferrer"
+                                                      className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 font-bold text-slate-700 hover:bg-slate-50"
+                                                    >
+                                                      Fila Social
+                                                      <OpenInNewIcon sx={{ fontSize: 14 }} />
+                                                    </a>
+                                                  ) : (
+                                                    <span className="text-slate-400">Aguardando gerar SocialPost</span>
+                                                  )}
+                                                  {p?.publishedUrl ? (
+                                                    <a
+                                                      href={String(p.publishedUrl)}
+                                                      target="_blank"
+                                                      rel="noreferrer"
+                                                      className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-bold text-emerald-700 hover:bg-emerald-100"
+                                                    >
+                                                      Abrir publicado
+                                                      <OpenInNewIcon sx={{ fontSize: 14 }} />
+                                                    </a>
+                                                  ) : null}
+                                                  {p?.errorMessage ? (
+                                                    <span className="text-rose-700 font-bold">{String(p.errorMessage)}</span>
+                                                  ) : null}
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ) : (
+                                  <div className="mt-2 text-xs text-slate-400">Nenhuma publicaÃ§Ã£o cadastrada.</div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    ) : null}
+
                     {(() => {
                       const step = (selected.pipelineSteps || []).find((p) => p.stepName === focusedStepName) as any;
                       if (!step) {
