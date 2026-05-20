@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
+import { markSocialCronError, markSocialCronFinished, markSocialCronRunning } from "@/lib/socialCronState";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -38,9 +39,14 @@ async function appendPostLog(id: string, message: string) {
 export async function GET(req: NextRequest) {
   try {
     await requireAdminOrCronSecret(req);
+    const startedAt = new Date();
 
     const limit = Math.min(10, Math.max(1, Number(req.nextUrl.searchParams.get("limit") || 5)));
     const now = new Date();
+
+    // snapshot: mark running (in-memory) for the UI
+    markSocialCronRunning(startedAt);
+
     const posts = await prisma.socialPost.findMany({
       where: {
         OR: [
@@ -97,12 +103,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ checked: posts.length, results });
+    markSocialCronFinished({ ok: true, checked: posts.length, results, finishedAt: new Date() });
+    return NextResponse.json({ checked: posts.length, results, startedAt: startedAt.toISOString() });
   } catch (error: any) {
     console.error("[api/social/cron GET]", error);
+    markSocialCronError(error?.message || "Falha no cron social");
+    const status = error?.message === "Unauthorized" ? 401 : 500;
     return NextResponse.json(
       { error: error?.message || "Falha no cron social" },
-      { status: 500 }
+      { status }
     );
   }
 }

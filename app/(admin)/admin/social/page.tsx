@@ -13,7 +13,6 @@ import {
   XCircle, 
   AlertCircle,
   Play,
-  X,
   Trash2,
   Calendar,
   LayoutGrid,
@@ -66,24 +65,12 @@ export default function SocialPostsDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [cronLoading, setCronLoading] = useState(false);
+  const [cronStatus, setCronStatus] = useState<any | null>(null);
+  const [cronStatusError, setCronStatusError] = useState<string | null>(null);
   const [groupByVideo, setGroupByVideo] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [editOpen, setEditOpen] = useState(false);
-  const [editPost, setEditPost] = useState<any | null>(null);
-  const [editSaving, setEditSaving] = useState(false);
-  const [editForm, setEditForm] = useState<{
-    platform: string;
-    postType: string;
-    scheduledTo: string;
-    summary: string;
-    videoUrl: string;
-  }>({
-    platform: "META",
-    postType: "REEL",
-    scheduledTo: "",
-    summary: "",
-    videoUrl: "",
-  });
+  // Edição/agendamento agora fica numa página dedicada:
+  // `/admin/social/posts/[id]`
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -125,9 +112,40 @@ export default function SocialPostsDashboard() {
     }
   }, [page, pageSize, statusFilter, platformFilter, q]);
 
+  const formatAgo = (iso?: string | null) => {
+    if (!iso) return "—";
+    const t = new Date(iso).getTime();
+    if (!Number.isFinite(t)) return "—";
+    const diffSec = Math.max(0, Math.floor((Date.now() - t) / 1000));
+    if (diffSec < 60) return `há ${diffSec}s`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `há ${diffMin}m`;
+    const diffH = Math.floor(diffMin / 60);
+    return `há ${diffH}h`;
+  };
+
+  const fetchCronStatus = useCallback(async (silent = false) => {
+    if (!silent) setCronStatusError(null);
+    try {
+      const res = await fetch("/api/social/cron-status", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.ok === false) throw new Error(data?.error || "Falha ao ler status do cron");
+      setCronStatus(data);
+      if (!silent) setCronStatusError(null);
+    } catch (err: any) {
+      if (!silent) setCronStatusError(err?.message || "Falha ao ler status do cron");
+    }
+  }, []);
+
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
+
+  useEffect(() => {
+    fetchCronStatus();
+    const t = setInterval(() => fetchCronStatus(true), 5000);
+    return () => clearInterval(t);
+  }, [fetchCronStatus]);
 
   const runSocialCron = useCallback(async () => {
     setCronLoading(true);
@@ -137,12 +155,13 @@ export default function SocialPostsDashboard() {
       if (!res.ok) throw new Error(data.error || "Falha ao rodar cron social");
       toast.success(`Cron social executado (checked=${data.checked ?? 0}).`);
       fetchPosts(true);
+      fetchCronStatus(true);
     } catch (err: any) {
       toast.error(err.message || "Falha ao rodar cron social");
     } finally {
       setCronLoading(false);
     }
-  }, [fetchPosts]);
+  }, [fetchPosts, fetchCronStatus]);
 
   // Auto-refresh for processing posts
   useEffect(() => {
@@ -160,96 +179,7 @@ export default function SocialPostsDashboard() {
     setExpandedGroups(next);
   };
 
-  const toDateTimeLocal = (value?: string | null) => {
-    if (!value) return "";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "";
-    const pad2 = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-  };
-
-  const openEdit = (post: any) => {
-    setEditPost(post);
-    setEditForm({
-      platform: String(post?.platform || "META"),
-      postType: String(post?.postType || "REEL"),
-      scheduledTo: toDateTimeLocal(post?.scheduledTo || null),
-      summary: String(post?.summary || ""),
-      videoUrl: String(post?.videoUrl || ""),
-    });
-    setEditOpen(true);
-  };
-
-  const closeEdit = () => {
-    setEditOpen(false);
-    setEditPost(null);
-  };
-
-  const saveEdit = async (opts?: { resetPublication?: boolean }) => {
-    if (!editPost?.id) return;
-    setEditSaving(true);
-    try {
-      const payload: any = {
-        platform: editForm.platform,
-        postType: editForm.postType,
-        summary: editForm.summary,
-        videoUrl: editForm.videoUrl,
-        scheduledTo: editForm.scheduledTo ? new Date(editForm.scheduledTo).toISOString() : null,
-      };
-      if (opts?.resetPublication) {
-        payload.status = "SCHEDULED";
-        payload.resetPublication = true;
-      }
-
-      const res = await fetch(`/api/social/posts/${editPost.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Falha ao salvar ediÃ§Ã£o");
-      toast.success("Post atualizado.");
-      closeEdit();
-      fetchPosts(true);
-    } catch (err: any) {
-      toast.error(err.message || "Falha ao salvar ediÃ§Ã£o");
-    } finally {
-      setEditSaving(false);
-    }
-  };
-
-  const cloneToPlatforms = async (platforms: string[]) => {
-    if (!editPost?.id) return;
-    const unique = Array.from(new Set(platforms.map((p) => String(p || "").trim().toUpperCase()).filter(Boolean)));
-    if (!unique.length) return;
-
-    setEditSaving(true);
-    try {
-      for (const platform of unique) {
-        const res = await fetch("/api/social/posts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            platform,
-            postType: platform === "META" ? editForm.postType : "REEL",
-            summary: editForm.summary,
-            videoUrl: editForm.videoUrl,
-            status: "SCHEDULED",
-            scheduledTo: editForm.scheduledTo ? new Date(editForm.scheduledTo).toISOString() : null,
-          }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || `Falha ao criar post para ${platform}`);
-      }
-      toast.success("CÃ³pias criadas na Fila Social.");
-      closeEdit();
-      fetchPosts(true);
-    } catch (err: any) {
-      toast.error(err.message || "Falha ao criar cÃ³pias");
-    } finally {
-      setEditSaving(false);
-    }
-  };
+  const editHref = (id: string) => `/admin/social/posts/${encodeURIComponent(String(id))}`;
 
   const groupedRows = useMemo(() => {
     if (!groupByVideo) return [];
@@ -385,6 +315,145 @@ export default function SocialPostsDashboard() {
           <p className="text-xs text-slate-500 leading-relaxed mt-1">
             <strong className="text-indigo-800">Nota sobre "Meta processando" / "Processando":</strong> No Instagram/Facebook, o vídeo é enviado em duas fases. A primeira cria o container e o vídeo entra em fila de processamento na Meta (status "Processando"). A postagem final ocorre no próximo ciclo do cron <code className="bg-indigo-50 px-1 py-0.5 rounded font-mono text-[10px]">/api/social/cron</code>. Se este cron não estiver rodando no seu servidor, o post parecerá travado. Você pode clicar no botão <strong>"Sincronizar/Publicar"</strong> (<RefreshCcw className="w-2.5 h-2.5 inline" />) ao lado do post para verificar o status e publicá-lo imediatamente.
           </p>
+        </div>
+      </div>
+
+      {/* Cron Monitor */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="space-y-1">
+            <h3 className="text-sm font-black text-slate-800 tracking-tight flex items-center gap-2">
+              <RefreshCcw className="w-4 h-4 text-indigo-600" />
+              Cron Social (monitor)
+            </h3>
+            <p className="text-xs text-slate-500 font-medium">
+              Mostra o que o cron vai pegar agora e o Ãºltimo resultado executado.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black border ${
+                cronStatus?.state?.running
+                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                  : "bg-slate-50 text-slate-700 border-slate-200"
+              }`}
+            >
+              <span
+                className={`inline-block w-2 h-2 rounded-full ${
+                  cronStatus?.state?.running ? "bg-amber-500 animate-pulse" : "bg-slate-400"
+                }`}
+              />
+              {cronStatus?.state?.running ? `Rodando (${formatAgo(cronStatus?.state?.runningSince)})` : "Ocioso"}
+            </span>
+            <button
+              onClick={() => fetchCronStatus()}
+              className="px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-black text-slate-700"
+              title="Atualizar status"
+            >
+              Atualizar
+            </button>
+            <button
+              onClick={runSocialCron}
+              disabled={cronLoading}
+              className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 border border-indigo-600 rounded-xl text-xs font-black text-white disabled:opacity-50"
+              title="Executar /api/social/cron agora"
+            >
+              Rodar agora
+            </button>
+          </div>
+        </div>
+
+        {cronStatusError ? (
+          <div className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">
+            {cronStatusError}
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Prontos p/ postar</div>
+            <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.dueScheduled ?? "—"}</div>
+            <div className="mt-1 text-[10px] text-slate-500">SCHEDULED com horÃ¡rio {"\u2264"} agora</div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Futuros</div>
+            <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.scheduledFuture ?? "—"}</div>
+            <div className="mt-1 text-[10px] text-slate-500">SCHEDULED com horÃ¡rio {">"} agora</div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Processando</div>
+            <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.processing ?? "—"}</div>
+            <div className="mt-1 text-[10px] text-slate-500">PROCESSING_MEDIA / PUBLISHING</div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Falhas</div>
+            <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.failed ?? "—"}</div>
+            <div className="mt-1 text-[10px] text-slate-500">Status FAILED</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs font-black text-slate-800 uppercase tracking-wider">O que o cron pegaria agora</div>
+              <div className="text-[10px] text-slate-500 font-mono">serverTime: {cronStatus?.serverTime ? new Date(cronStatus.serverTime).toLocaleTimeString("pt-BR") : "—"}</div>
+            </div>
+            <div className="mt-3 space-y-2">
+              {(cronStatus?.preview || []).slice(0, 10).map((p: any) => (
+                <div key={p.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <div className="min-w-0">
+                    <div className="text-xs font-black text-slate-800 truncate">{p.platform} ({p.postType})</div>
+                    <div className="text-[10px] text-slate-500 font-mono truncate">{p.id}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] font-black text-slate-700">{p.status}</div>
+                    <div className="text-[10px] text-slate-500">
+                      {p.scheduledTo ? new Date(p.scheduledTo).toLocaleString("pt-BR") : "—"}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {Array.isArray(cronStatus?.preview) && cronStatus.preview.length === 0 ? (
+                <div className="text-xs text-slate-400 font-bold">Nada para fazer agora.</div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs font-black text-slate-800 uppercase tracking-wider">Ãšltima execuÃ§Ã£o</div>
+              <div className="text-[10px] text-slate-500">
+                finalizou: {cronStatus?.state?.lastFinishedAt ? `${formatAgo(cronStatus.state.lastFinishedAt)} (${new Date(cronStatus.state.lastFinishedAt).toLocaleTimeString("pt-BR")})` : "—"}
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className={`px-2 py-1 rounded-lg text-[10px] font-black border ${cronStatus?.state?.lastOk ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
+                {cronStatus?.state?.lastOk == null ? "N/A" : cronStatus.state.lastOk ? "OK" : "ERRO"}
+              </span>
+              <span className="px-2 py-1 rounded-lg text-[10px] font-black border bg-slate-50 text-slate-700 border-slate-200">
+                checked={cronStatus?.state?.lastChecked ?? "—"}
+              </span>
+              {cronStatus?.state?.lastErrorMessage ? (
+                <span className="px-2 py-1 rounded-lg text-[10px] font-black border bg-rose-50 text-rose-700 border-rose-200">
+                  {String(cronStatus.state.lastErrorMessage).slice(0, 120)}
+                </span>
+              ) : null}
+            </div>
+            <div className="mt-3 space-y-2">
+              {(cronStatus?.state?.lastResults || []).slice(0, 10).map((r: any, idx: number) => (
+                <div key={idx} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-xs font-black text-slate-800 truncate">{String(r.platform || r?.data?.platform || r.id || "item")}</div>
+                    <div className="text-[10px] font-black text-slate-700">{r.ok ? "OK" : "FAIL"}</div>
+                  </div>
+                  {r.id ? <div className="text-[10px] text-slate-500 font-mono truncate">{String(r.id)}</div> : null}
+                </div>
+              ))}
+              {Array.isArray(cronStatus?.state?.lastResults) && cronStatus.state.lastResults.length === 0 ? (
+                <div className="text-xs text-slate-400 font-bold">Ainda sem execuÃ§Ãµes.</div>
+              ) : null}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -529,13 +598,13 @@ export default function SocialPostsDashboard() {
                           </div>
 
                           <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => openEdit(p)}
+                            <a
+                              href={editHref(p.id)}
                               className="p-1.5 bg-slate-50 text-slate-600 hover:bg-slate-200 rounded-lg transition-all border border-slate-100/50"
                               title="Editar / Reagendar"
                             >
                               <MoreVertical className="w-3.5 h-3.5" />
-                            </button>
+                            </a>
                             {(p.status === 'FAILED' || p.status === 'PROCESSING_MEDIA' || p.status === 'PUBLISHING') && (
                               <button 
                                 onClick={() => checkOrPublish(p)}
@@ -600,13 +669,13 @@ export default function SocialPostsDashboard() {
                     {new Date(post.createdAt).toLocaleDateString('pt-BR')}
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => openEdit(post)}
+                    <a
+                      href={editHref(post.id)}
                       className="p-1.5 bg-slate-50 text-slate-600 hover:bg-slate-200 rounded-lg transition-all border border-slate-100/50"
                       title="Editar / Reagendar"
                     >
                       <MoreVertical className="w-3.5 h-3.5" />
-                    </button>
+                    </a>
                     {(post.status === 'FAILED' || post.status === 'PROCESSING_MEDIA' || post.status === 'PUBLISHING') && (
                       <button 
                         onClick={() => checkOrPublish(post)}
@@ -678,142 +747,6 @@ export default function SocialPostsDashboard() {
         </div>
       </div>
 
-      {/* Edit Modal */}
-      {editOpen && editPost ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 p-4">
-              <div>
-                <div className="text-sm font-black text-slate-900">Editar postagem</div>
-                <div className="mt-0.5 text-[11px] text-slate-500 font-mono">{String(editPost.id)}</div>
-              </div>
-              <button
-                onClick={closeEdit}
-                className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50"
-                title="Fechar"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-4 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Plataforma</label>
-                  <select
-                    value={editForm.platform}
-                    onChange={(e) => setEditForm((s) => ({ ...s, platform: e.target.value }))}
-                    className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-50"
-                  >
-                    <option value="META">Meta (Instagram)</option>
-                    <option value="YOUTUBE">YouTube</option>
-                    <option value="TIKTOK">TikTok</option>
-                    <option value="LINKEDIN">LinkedIn</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Tipo</label>
-                  <select
-                    value={editForm.postType}
-                    onChange={(e) => setEditForm((s) => ({ ...s, postType: e.target.value }))}
-                    className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-50"
-                  >
-                    <option value="REEL">REEL</option>
-                    <option value="STORY">STORY</option>
-                  </select>
-                  <div className="mt-1 text-[10px] text-slate-500">
-                    Para YouTube/TikTok, o sistema trata como vÃ­deo curto (Shorts/Reels).
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Agendar para</label>
-                  <input
-                    type="datetime-local"
-                    value={editForm.scheduledTo}
-                    onChange={(e) => setEditForm((s) => ({ ...s, scheduledTo: e.target.value }))}
-                    className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-50"
-                  />
-                  <div className="mt-1 text-[10px] text-slate-500">Deixe vazio para nÃ£o agendar.</div>
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Video URL</label>
-                  <input
-                    type="text"
-                    value={editForm.videoUrl}
-                    onChange={(e) => setEditForm((s) => ({ ...s, videoUrl: e.target.value }))}
-                    className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-50"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Legenda / descriÃ§Ã£o</label>
-                <textarea
-                  value={editForm.summary}
-                  onChange={(e) => setEditForm((s) => ({ ...s, summary: e.target.value }))}
-                  rows={5}
-                  className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-50"
-                />
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">AÃ§Ãµes rÃ¡pidas</div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    onClick={() => cloneToPlatforms(["YOUTUBE"])}
-                    disabled={editSaving}
-                    className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-                  >
-                    Criar cÃ³pia no YouTube
-                  </button>
-                  <button
-                    onClick={() => cloneToPlatforms(["TIKTOK"])}
-                    disabled={editSaving}
-                    className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-                  >
-                    Criar cÃ³pia no TikTok
-                  </button>
-                  <button
-                    onClick={() => cloneToPlatforms(["META"])}
-                    disabled={editSaving}
-                    className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-                  >
-                    Criar cÃ³pia na Meta
-                  </button>
-                </div>
-                <div className="mt-2 text-[10px] text-slate-500">
-                  As cÃ³pias usam o mesmo vÃ­deo/legenda e o mesmo horÃ¡rio do campo “Agendar para”. Depois vocÃª pode editar cada uma separadamente.
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-t border-slate-100 p-4">
-              <div className="text-[10px] text-slate-500">
-                Dica: para republicar um post jÃ¡ postado/erro, use “Reagendar + reset”.
-              </div>
-              <div className="flex flex-wrap justify-end gap-2">
-                <button
-                  onClick={() => saveEdit()}
-                  disabled={editSaving}
-                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-                >
-                  Salvar
-                </button>
-                <button
-                  onClick={() => saveEdit({ resetPublication: true })}
-                  disabled={editSaving}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-black hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  Reagendar + reset
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
