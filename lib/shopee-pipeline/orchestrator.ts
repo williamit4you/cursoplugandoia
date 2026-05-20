@@ -743,6 +743,24 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
         const message = error?.message || "Falha ao fazer merge dos videos";
         const retryDecision = decideRetry({ attempt, maxAttempts: 3, baseDelayMinutes: 30 });
         const finishedAt = now();
+        const workerBase = String(process.env.WORKER_FASTAPI_BASE_URL || process.env.FASTAPI_URL || "http://127.0.0.1:8000")
+          .trim()
+          .replace(/\/+$/, "");
+        const cause: any = error?.cause;
+        const errorDetails = {
+          error: message,
+          name: error?.name || null,
+          workerBaseUrl: workerBase,
+          targetUrl: `${workerBase}/merge-videos`,
+          cause: cause
+            ? {
+                name: cause?.name || null,
+                code: cause?.code || null,
+                message: cause?.message ? String(cause.message) : String(cause),
+              }
+            : null,
+          stack: typeof error?.stack === "string" ? error.stack.slice(0, 8000) : null,
+        };
 
         await upsertPipelineStep({
           coletaId: item.id,
@@ -754,6 +772,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           durationMs: finishedAt.getTime() - startedAt.getTime(),
           nextRetryAt: retryDecision.nextRetryAt,
           errorMessage: message,
+          responsePayload: safeTruncateJson(errorDetails, 20000),
         });
 
         await prisma.coletaDadosShoppe.update({
@@ -770,7 +789,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           level: retryDecision.retry ? "WARN" : "ERROR",
           stepName,
           message: retryDecision.retry ? "Merge falhou. Reagendado." : "Merge falhou. Marcado como FAILED.",
-          metadata: { error: message, nextRetryAt: retryDecision.nextRetryAt },
+          metadata: { error: message, nextRetryAt: retryDecision.nextRetryAt, details: errorDetails },
         });
 
         return { ok: false, itemId: item.id, error: message, retry: retryDecision.retry, nextRetryAt: retryDecision.nextRetryAt };
