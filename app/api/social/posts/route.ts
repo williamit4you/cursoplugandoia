@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -93,5 +94,39 @@ export async function GET(req: NextRequest) {
       { error: "Failed to fetch posts" },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    await requireAdminOrCronSecret(req);
+    const body = await req.json().catch(() => ({}));
+
+    const platform = String(body.platform || "META").trim().toUpperCase();
+    const postType = String(body.postType || "REEL").trim().toUpperCase();
+    const summary = String(body.summary || "").trim();
+    const videoUrl = String(body.videoUrl || "").trim();
+    const status = String(body.status || "SCHEDULED").trim().toUpperCase();
+    const scheduledTo = body.scheduledTo ? new Date(String(body.scheduledTo)) : null;
+
+    if (!videoUrl) return NextResponse.json({ error: "videoUrl is required" }, { status: 400 });
+    if (!summary) return NextResponse.json({ error: "summary is required" }, { status: 400 });
+
+    const created = await prisma.socialPost.create({
+      data: {
+        platform,
+        postType,
+        summary,
+        videoUrl,
+        status,
+        scheduledTo,
+      },
+    });
+
+    return NextResponse.json(created);
+  } catch (error: any) {
+    const status = error?.message === "Unauthorized" ? 401 : 500;
+    console.error("[api/social/posts POST]", error);
+    return NextResponse.json({ error: error?.message || "Failed to create social post" }, { status });
   }
 }

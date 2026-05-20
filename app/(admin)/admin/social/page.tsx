@@ -13,6 +13,7 @@ import {
   XCircle, 
   AlertCircle,
   Play,
+  X,
   Trash2,
   Calendar,
   LayoutGrid,
@@ -67,6 +68,22 @@ export default function SocialPostsDashboard() {
   const [cronLoading, setCronLoading] = useState(false);
   const [groupByVideo, setGroupByVideo] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [editOpen, setEditOpen] = useState(false);
+  const [editPost, setEditPost] = useState<any | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editForm, setEditForm] = useState<{
+    platform: string;
+    postType: string;
+    scheduledTo: string;
+    summary: string;
+    videoUrl: string;
+  }>({
+    platform: "META",
+    postType: "REEL",
+    scheduledTo: "",
+    summary: "",
+    videoUrl: "",
+  });
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -141,6 +158,97 @@ export default function SocialPostsDashboard() {
     if (next.has(id)) next.delete(id);
     else next.add(id);
     setExpandedGroups(next);
+  };
+
+  const toDateTimeLocal = (value?: string | null) => {
+    if (!value) return "";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  };
+
+  const openEdit = (post: any) => {
+    setEditPost(post);
+    setEditForm({
+      platform: String(post?.platform || "META"),
+      postType: String(post?.postType || "REEL"),
+      scheduledTo: toDateTimeLocal(post?.scheduledTo || null),
+      summary: String(post?.summary || ""),
+      videoUrl: String(post?.videoUrl || ""),
+    });
+    setEditOpen(true);
+  };
+
+  const closeEdit = () => {
+    setEditOpen(false);
+    setEditPost(null);
+  };
+
+  const saveEdit = async (opts?: { resetPublication?: boolean }) => {
+    if (!editPost?.id) return;
+    setEditSaving(true);
+    try {
+      const payload: any = {
+        platform: editForm.platform,
+        postType: editForm.postType,
+        summary: editForm.summary,
+        videoUrl: editForm.videoUrl,
+        scheduledTo: editForm.scheduledTo ? new Date(editForm.scheduledTo).toISOString() : null,
+      };
+      if (opts?.resetPublication) {
+        payload.status = "SCHEDULED";
+        payload.resetPublication = true;
+      }
+
+      const res = await fetch(`/api/social/posts/${editPost.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Falha ao salvar ediÃ§Ã£o");
+      toast.success("Post atualizado.");
+      closeEdit();
+      fetchPosts(true);
+    } catch (err: any) {
+      toast.error(err.message || "Falha ao salvar ediÃ§Ã£o");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const cloneToPlatforms = async (platforms: string[]) => {
+    if (!editPost?.id) return;
+    const unique = Array.from(new Set(platforms.map((p) => String(p || "").trim().toUpperCase()).filter(Boolean)));
+    if (!unique.length) return;
+
+    setEditSaving(true);
+    try {
+      for (const platform of unique) {
+        const res = await fetch("/api/social/posts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            platform,
+            postType: platform === "META" ? editForm.postType : "REEL",
+            summary: editForm.summary,
+            videoUrl: editForm.videoUrl,
+            status: "SCHEDULED",
+            scheduledTo: editForm.scheduledTo ? new Date(editForm.scheduledTo).toISOString() : null,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Falha ao criar post para ${platform}`);
+      }
+      toast.success("CÃ³pias criadas na Fila Social.");
+      closeEdit();
+      fetchPosts(true);
+    } catch (err: any) {
+      toast.error(err.message || "Falha ao criar cÃ³pias");
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const groupedRows = useMemo(() => {
@@ -421,6 +529,13 @@ export default function SocialPostsDashboard() {
                           </div>
 
                           <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => openEdit(p)}
+                              className="p-1.5 bg-slate-50 text-slate-600 hover:bg-slate-200 rounded-lg transition-all border border-slate-100/50"
+                              title="Editar / Reagendar"
+                            >
+                              <MoreVertical className="w-3.5 h-3.5" />
+                            </button>
                             {(p.status === 'FAILED' || p.status === 'PROCESSING_MEDIA' || p.status === 'PUBLISHING') && (
                               <button 
                                 onClick={() => checkOrPublish(p)}
@@ -485,6 +600,13 @@ export default function SocialPostsDashboard() {
                     {new Date(post.createdAt).toLocaleDateString('pt-BR')}
                   </div>
                   <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => openEdit(post)}
+                      className="p-1.5 bg-slate-50 text-slate-600 hover:bg-slate-200 rounded-lg transition-all border border-slate-100/50"
+                      title="Editar / Reagendar"
+                    >
+                      <MoreVertical className="w-3.5 h-3.5" />
+                    </button>
                     {(post.status === 'FAILED' || post.status === 'PROCESSING_MEDIA' || post.status === 'PUBLISHING') && (
                       <button 
                         onClick={() => checkOrPublish(post)}
@@ -555,6 +677,143 @@ export default function SocialPostsDashboard() {
           </button>
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {editOpen && editPost ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 p-4">
+              <div>
+                <div className="text-sm font-black text-slate-900">Editar postagem</div>
+                <div className="mt-0.5 text-[11px] text-slate-500 font-mono">{String(editPost.id)}</div>
+              </div>
+              <button
+                onClick={closeEdit}
+                className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50"
+                title="Fechar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Plataforma</label>
+                  <select
+                    value={editForm.platform}
+                    onChange={(e) => setEditForm((s) => ({ ...s, platform: e.target.value }))}
+                    className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-50"
+                  >
+                    <option value="META">Meta (Instagram)</option>
+                    <option value="YOUTUBE">YouTube</option>
+                    <option value="TIKTOK">TikTok</option>
+                    <option value="LINKEDIN">LinkedIn</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Tipo</label>
+                  <select
+                    value={editForm.postType}
+                    onChange={(e) => setEditForm((s) => ({ ...s, postType: e.target.value }))}
+                    className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-50"
+                  >
+                    <option value="REEL">REEL</option>
+                    <option value="STORY">STORY</option>
+                  </select>
+                  <div className="mt-1 text-[10px] text-slate-500">
+                    Para YouTube/TikTok, o sistema trata como vÃ­deo curto (Shorts/Reels).
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Agendar para</label>
+                  <input
+                    type="datetime-local"
+                    value={editForm.scheduledTo}
+                    onChange={(e) => setEditForm((s) => ({ ...s, scheduledTo: e.target.value }))}
+                    className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-50"
+                  />
+                  <div className="mt-1 text-[10px] text-slate-500">Deixe vazio para nÃ£o agendar.</div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Video URL</label>
+                  <input
+                    type="text"
+                    value={editForm.videoUrl}
+                    onChange={(e) => setEditForm((s) => ({ ...s, videoUrl: e.target.value }))}
+                    className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-50"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Legenda / descriÃ§Ã£o</label>
+                <textarea
+                  value={editForm.summary}
+                  onChange={(e) => setEditForm((s) => ({ ...s, summary: e.target.value }))}
+                  rows={5}
+                  className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-50"
+                />
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">AÃ§Ãµes rÃ¡pidas</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => cloneToPlatforms(["YOUTUBE"])}
+                    disabled={editSaving}
+                    className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    Criar cÃ³pia no YouTube
+                  </button>
+                  <button
+                    onClick={() => cloneToPlatforms(["TIKTOK"])}
+                    disabled={editSaving}
+                    className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    Criar cÃ³pia no TikTok
+                  </button>
+                  <button
+                    onClick={() => cloneToPlatforms(["META"])}
+                    disabled={editSaving}
+                    className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    Criar cÃ³pia na Meta
+                  </button>
+                </div>
+                <div className="mt-2 text-[10px] text-slate-500">
+                  As cÃ³pias usam o mesmo vÃ­deo/legenda e o mesmo horÃ¡rio do campo “Agendar para”. Depois vocÃª pode editar cada uma separadamente.
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-t border-slate-100 p-4">
+              <div className="text-[10px] text-slate-500">
+                Dica: para republicar um post jÃ¡ postado/erro, use “Reagendar + reset”.
+              </div>
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  onClick={() => saveEdit()}
+                  disabled={editSaving}
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                >
+                  Salvar
+                </button>
+                <button
+                  onClick={() => saveEdit({ resetPublication: true })}
+                  disabled={editSaving}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-black hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  Reagendar + reset
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
