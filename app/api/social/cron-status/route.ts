@@ -19,6 +19,15 @@ export async function GET(req: NextRequest) {
     const now = new Date();
     const state = getSocialCronState();
 
+    const youtubeSettings = await prisma.integrationSettings.findUnique({ where: { platform: "YOUTUBE" } }).catch(() => null);
+    const youtube = {
+      isActive: Boolean(youtubeSettings?.isActive),
+      hasClientId: Boolean(youtubeSettings?.apiKey),
+      hasClientSecret: Boolean(youtubeSettings?.apiSecret),
+      hasRefreshToken: Boolean(youtubeSettings?.refreshToken),
+      updatedAt: youtubeSettings?.updatedAt ? new Date(youtubeSettings.updatedAt).toISOString() : null,
+    };
+
     const [dueScheduled, scheduledFuture, processing, failed] = await Promise.all([
       prisma.socialPost.count({ where: { status: "SCHEDULED", scheduledTo: { lte: now } } as any }),
       prisma.socialPost.count({ where: { status: "SCHEDULED", scheduledTo: { gt: now } } as any }),
@@ -50,6 +59,7 @@ export async function GET(req: NextRequest) {
       ok: true,
       serverTime: now.toISOString(),
       state,
+      integrations: { youtube },
       stats: { dueScheduled, scheduledFuture, processing, failed },
       preview,
     });
@@ -58,4 +68,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: error?.message || "Failed to read social cron status" }, { status });
   }
 }
-

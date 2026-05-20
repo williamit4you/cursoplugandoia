@@ -21,7 +21,10 @@ export async function publishYouTubeVideo({
   redirectUri: string;
 }) {
   const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
-  oauth2Client.setCredentials({ access_token: accessToken, refresh_token: refreshToken });
+  // Não confie em `access_token` persistido (pode estar expirado e sem `expiry_date`).
+  // Use o `refresh_token` para sempre obter um access token válido antes do upload.
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  await oauth2Client.getAccessToken();
 
   const youtube = google.youtube({ version: "v3", auth: oauth2Client });
 

@@ -392,6 +392,90 @@ export default function SocialPostsDashboard() {
           </div>
         </div>
 
+        {/* Integrations quick check */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-black text-slate-800 uppercase tracking-wider">IntegraÃ§Ãµes (check rÃ¡pido)</div>
+            <a
+              href="/admin/integrations"
+              className="text-[11px] font-black text-indigo-700 hover:underline"
+              title="Abrir Hub de IntegraÃ§Ãµes"
+            >
+              abrir /admin/integrations
+            </a>
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">YouTube</div>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span
+                  className={`px-2 py-1 rounded-lg text-[10px] font-black border ${
+                    cronStatus?.integrations?.youtube?.isActive
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-slate-50 text-slate-700 border-slate-200"
+                  }`}
+                >
+                  {cronStatus?.integrations?.youtube?.isActive ? "Ativo" : "Inativo"}
+                </span>
+                <span
+                  className={`px-2 py-1 rounded-lg text-[10px] font-black border ${
+                    cronStatus?.integrations?.youtube?.hasClientId ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
+                  }`}
+                >
+                  clientId
+                </span>
+                <span
+                  className={`px-2 py-1 rounded-lg text-[10px] font-black border ${
+                    cronStatus?.integrations?.youtube?.hasClientSecret ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
+                  }`}
+                >
+                  secret
+                </span>
+                <span
+                  className={`px-2 py-1 rounded-lg text-[10px] font-black border ${
+                    cronStatus?.integrations?.youtube?.hasRefreshToken ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
+                  }`}
+                >
+                  refresh
+                </span>
+              </div>
+              <div className="mt-2 text-[10px] text-slate-500">
+                Atualizado:{" "}
+                {cronStatus?.integrations?.youtube?.updatedAt ? formatAgo(cronStatus.integrations.youtube.updatedAt) : "â€”"}
+              </div>
+              <div className="mt-2">
+                <a
+                  href="/api/integrations/youtube/status?check=1"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] font-black text-slate-700 hover:underline"
+                  title="Testa se o refresh token consegue gerar access token (abre em nova aba)"
+                >
+                  Testar autenticaÃ§Ã£o
+                </a>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Cron pega</div>
+              <div className="mt-2 text-xs text-slate-700">
+                <b>SCHEDULED</b> com <b>scheduledTo</b> {"\u2264"} agora, ou <b>PROCESSING_MEDIA</b> (Meta em 2 fases).
+              </div>
+              <div className="mt-2 text-[10px] text-slate-500">
+                Se vocÃª agendar no futuro, ele sÃ³ publica quando chegar a hora.
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Dica</div>
+              <div className="mt-2 text-xs text-slate-700">
+                Para forÃ§ar, abra o editor do post e use <b>Publicar agora</b>.
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between gap-2">
