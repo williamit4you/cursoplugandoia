@@ -58,7 +58,8 @@ export async function POST(req: NextRequest) {
       const creationId = await createInstagramContainer(
         socialPost.videoUrl,
         settings.instagramId,
-        settings.accessToken
+        settings.accessToken,
+        socialPost.summary
       );
 
       await prisma.socialPost.update({

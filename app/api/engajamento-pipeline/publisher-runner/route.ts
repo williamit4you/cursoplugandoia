@@ -31,7 +31,8 @@ function addMinutes(date: Date, minutes: number) {
 function publicationPath(platform: "TIKTOK" | "YOUTUBE" | "INSTAGRAM") {
   if (platform === "TIKTOK") return "/api/social/publish-tiktok";
   if (platform === "YOUTUBE") return "/api/social/publish-youtube";
-  return "/api/social/publish-story";
+  // Instagram: publicar como REEL (usa o fluxo padrão /api/social/publish)
+  return "/api/social/publish";
 }
 
 function socialPlatform(platform: "TIKTOK" | "YOUTUBE" | "INSTAGRAM") {
@@ -40,8 +41,19 @@ function socialPlatform(platform: "TIKTOK" | "YOUTUBE" | "INSTAGRAM") {
 }
 
 function postType(platform: "TIKTOK" | "YOUTUBE" | "INSTAGRAM") {
-  if (platform === "INSTAGRAM") return "STORY";
+  // Instagram no pipeline vai como REEL (não Story 24h)
   return "REEL";
+}
+
+function buildSummary(ad: { title: string; description: string; affiliateUrl?: string | null }) {
+  const parts: string[] = [];
+  const title = (ad.title || "").trim();
+  const description = (ad.description || "").trim();
+  if (title) parts.push(title);
+  if (description) parts.push(description);
+  const affiliateUrl = (ad.affiliateUrl || "").trim();
+  if (affiliateUrl) parts.push(`Produto com desconto (link de afiliado): ${affiliateUrl}`);
+  return parts.join("\n\n").slice(0, 1800);
 }
 
 async function callPublisher(req: NextRequest, pathname: string, socialPostId: string) {
@@ -113,7 +125,7 @@ export async function GET(req: NextRequest) {
             ? socialPost
             : await prisma.socialPost.create({
                 data: {
-                  summary: `${ad.title}\n\n${ad.description}`.slice(0, 1800),
+                  summary: buildSummary(ad),
                   videoUrl: ad.videoUrl,
                   status: "SCHEDULED",
                   scheduledTo: ad.scheduledAt || current,
@@ -148,7 +160,13 @@ export async function GET(req: NextRequest) {
               where: { id: pub.id },
               data: {
                 status: "PUBLISHED" as any,
-                publishedUrl: refreshed?.postUrl || refreshed?.youtubePostUrl || refreshed?.tiktokPostUrl || refreshed?.metaStoryPostUrl || null,
+                publishedUrl:
+                  refreshed?.postUrl ||
+                  refreshed?.youtubePostUrl ||
+                  refreshed?.tiktokPostUrl ||
+                  refreshed?.metaReelPostUrl ||
+                  refreshed?.metaStoryPostUrl ||
+                  null,
                 responsePayload: { socialPostId: ensured.id, publisher: call.data || null },
                 nextRetryAt: null,
                 errorMessage: null,

@@ -95,14 +95,17 @@ export async function publishFacebookStory24h(
 export async function createInstagramContainer(
   videoUrl: string,
   instagramId: string,
-  accessToken: string
+  accessToken: string,
+  caption?: string
 ): Promise<string> {
+  const trimmedCaption = (caption || "").trim();
   const res = await fetch(`https://graph.facebook.com/v19.0/${instagramId}/media`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       media_type: "REELS",
       video_url: videoUrl,
+      ...(trimmedCaption ? { caption: trimmedCaption } : {}),
       access_token: accessToken,
     }),
   });

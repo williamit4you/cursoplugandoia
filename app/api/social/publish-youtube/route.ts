@@ -36,9 +36,23 @@ export async function POST(req: NextRequest) {
     const protocol = host.includes("localhost") ? "http" : "https";
     const redirectUri = `${protocol}://${host}/api/integrations/youtube/callback`;
 
+    const firstLineTitle = (socialPost.summary || "")
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .find(Boolean);
+
+    const title = (firstLineTitle || "Novo vídeo").slice(0, 100);
+
+    const shouldAppendShortsTag = socialPost.postType === "REEL";
+    const descriptionBase = socialPost.summary || "";
+    const hasShortsTag = /(^|\s)#shorts(\s|$)/i.test(descriptionBase);
+    const description = shouldAppendShortsTag && !hasShortsTag
+      ? `${descriptionBase}\n\n#shorts`
+      : descriptionBase;
+
     const videoId = await publishYouTubeVideo({
-      title: socialPost.summary.slice(0, 100),
-      description: socialPost.summary,
+      title,
+      description,
       videoUrl: socialPost.videoUrl,
       accessToken: settings.accessToken || "",
       refreshToken: settings.refreshToken,
