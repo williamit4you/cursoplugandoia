@@ -479,7 +479,7 @@ model ScraperConfig {
   useScheduledTimes Boolean  @default(false)   // true = horários fixos; false = intervalo
   isEnabled         Boolean  @default(true)
   // Limites
-  maxArticlesPerRun Int      @default(3)       // 3 | 5 | 7 | 10
+  maxArticlesPerRun Int      @default(3)       // 1 | 3 | 5 | 7 | 10
   // Modelo de IA
   aiModel           String   @default("gpt-4o-mini")
   aiTemperature     Float    @default(0.7)

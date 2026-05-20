@@ -988,7 +988,20 @@ export async function runEngagementPipelineOnce(params?: { origin?: string }) {
         if (!videoUrl) throw new Error("videoFinalUrl ausente para criar StoryAd.");
         if (!affiliateUrl) throw new Error("affiliateUrl ausente para criar StoryAd.");
 
-        const scheduledAt = addMinutes(now(), 30);
+        // Evita postar "em lote": agenda sempre com espaçamento mínimo de 1h
+        // (se já existir coisa agendada, empurra para 1h após o último agendamento).
+        const minDelayMinutes = 60;
+        const minSpacingMinutes = 60;
+        const minStart = addMinutes(now(), minDelayMinutes);
+        const latestScheduled = await prisma.storyAd.findFirst({
+          where: { status: "SCHEDULED" as any, scheduledAt: { not: null } },
+          orderBy: { scheduledAt: "desc" },
+          select: { scheduledAt: true },
+        });
+        const scheduledAt =
+          latestScheduled?.scheduledAt && latestScheduled.scheduledAt > minStart
+            ? addMinutes(latestScheduled.scheduledAt, minSpacingMinutes)
+            : minStart;
 
         await upsertPipelineStep({
           coletaId: item.id,

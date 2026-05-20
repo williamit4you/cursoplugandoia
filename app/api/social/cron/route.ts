@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,12 +37,7 @@ async function appendPostLog(id: string, message: string) {
 
 export async function GET(req: NextRequest) {
   try {
-    const secret = req.nextUrl.searchParams.get("secret");
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && secret !== cronSecret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await requireAdminOrCronSecret(req);
 
     const limit = Math.min(10, Math.max(1, Number(req.nextUrl.searchParams.get("limit") || 5)));
     const now = new Date();

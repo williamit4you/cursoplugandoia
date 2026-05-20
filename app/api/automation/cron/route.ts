@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,14 +21,17 @@ async function callJson(url: string) {
 export async function GET(req: NextRequest) {
   try {
     const secret = req.nextUrl.searchParams.get("secret");
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && secret !== cronSecret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await requireAdminOrCronSecret(req);
 
     const origin = baseUrl(req);
     const encodedSecret = secret ? `?secret=${encodeURIComponent(secret)}` : "";
+
+    // Chamadas internas via fetch não enviam cookies/sessão. Sem `secret`, os demais crons vão falhar.
+    // Para debug manual no admin, rode apenas o Social Cron.
+    if (!secret) {
+      const social = await callJson(`${origin}/api/social/cron`);
+      return NextResponse.json({ ok: social.ok, social, note: "Executed only /api/social/cron (missing ?secret=...)" });
+    }
 
     // Processa tasks de automação pendentes (Shopee, Mercado Livre via Task Engine)
     const taskRuns = await callJson(`${origin}/api/task-runs/cron${encodedSecret}`);

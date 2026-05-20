@@ -64,6 +64,7 @@ export default function SocialPostsDashboard() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [cronLoading, setCronLoading] = useState(false);
   const [groupByVideo, setGroupByVideo] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
@@ -98,6 +99,21 @@ export default function SocialPostsDashboard() {
 
   useEffect(() => {
     fetchPosts();
+  }, [fetchPosts]);
+
+  const runSocialCron = useCallback(async () => {
+    setCronLoading(true);
+    try {
+      const res = await fetch("/api/social/cron", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Falha ao rodar cron social");
+      toast.success(`Cron social executado (checked=${data.checked ?? 0}).`);
+      fetchPosts(true);
+    } catch (err: any) {
+      toast.error(err.message || "Falha ao rodar cron social");
+    } finally {
+      setCronLoading(false);
+    }
   }, [fetchPosts]);
 
   // Auto-refresh for processing posts
@@ -210,6 +226,16 @@ export default function SocialPostsDashboard() {
           >
             <RefreshCcw className={`w-4 h-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
           </button>
+
+          <button 
+            onClick={runSocialCron}
+            disabled={cronLoading}
+            className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm disabled:opacity-50"
+            title="Rodar cron agora"
+          >
+            <Play className={`w-4 h-4 text-slate-500 ${cronLoading ? 'animate-pulse' : ''}`} />
+          </button>
+
           <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200/60">
             <button 
               onClick={() => setGroupByVideo(true)}

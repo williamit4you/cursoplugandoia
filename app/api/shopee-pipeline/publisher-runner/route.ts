@@ -87,7 +87,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const limit = Math.min(10, Math.max(1, Number(req.nextUrl.searchParams.get("limit") || 5)));
+    // Por padrão, publica 1 por vez para evitar "lote" (ex.: 3 uploads simultâneos no YouTube).
+    const limit = Math.min(10, Math.max(1, Number(req.nextUrl.searchParams.get("limit") || 1)));
     const current = now();
 
     const due = await prisma.storyAd.findMany({

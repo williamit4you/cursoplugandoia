@@ -56,12 +56,16 @@ export async function POST(req: NextRequest) {
     // Busca o único registro existente (ScraperConfig é um singleton por design)
     const existing = await prisma.scraperConfig.findFirst();
 
+    const maxArticlesRaw = Number(body.maxArticlesPerRun ?? 3);
+    const maxArticlesAllowed = new Set([1, 3, 5, 7, 10]);
+    const maxArticlesPerRun = maxArticlesAllowed.has(maxArticlesRaw) ? maxArticlesRaw : 3;
+
     const updateData = {
       intervalHours: body.intervalHours ?? 6,
       scheduledTimes: body.scheduledTimes ?? "[]",
       useScheduledTimes: body.useScheduledTimes ?? false,
       isEnabled: body.isEnabled ?? true,
-      maxArticlesPerRun: body.maxArticlesPerRun ?? 3,
+      maxArticlesPerRun,
       aiModel: body.aiModel ?? "gpt-4o-mini",
       aiTemperature: body.aiTemperature ?? 0.7,
       systemPrompt: body.systemPrompt ?? DEFAULT_PROMPT,

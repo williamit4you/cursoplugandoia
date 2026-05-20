@@ -645,7 +645,7 @@ export default function ScraperConfigPage() {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-400 uppercase block">Máx. artigos por coleta</label>
                 <div className="flex gap-2">
-                  {[3, 5, 7, 10].map(n => (
+                  {[1, 3, 5, 7, 10].map(n => (
                     <button
                       key={n}
                       onClick={() => setConfig(c => ({ ...c, maxArticlesPerRun: n }))}
