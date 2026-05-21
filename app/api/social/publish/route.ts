@@ -19,7 +19,7 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
  * O frontend chama este endpoint repetidamente a cada 30s até receber { success: true }.
  */
 export async function POST(req: NextRequest) {
-  let targetSocialPostId: string | null = null;
+  let targetSocialPostId: string | undefined = undefined;
   try {
     const body = await req.json();
     const { socialPostId, bypassTimeCheck } = body;

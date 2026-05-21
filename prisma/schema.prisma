@@ -233,6 +233,8 @@ model SocialPost {
   tiktokPostUrl     String?
   linkedinPostUrl   String?
   views       Int      @default(0) // Visualizações
+  clicksCount     Int                @default(0)
+  clicks          SocialPostClick[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -247,6 +249,20 @@ model SocialPost {
 
   @@index([automationTaskId])
   @@index([automationTaskRunId])
+}
+
+model SocialPostClick {
+  id           String     @id @default(cuid())
+  socialPostId String
+  socialPost   SocialPost @relation(fields: [socialPostId], references: [id], onDelete: Cascade)
+  platform     String     // e.g. "YOUTUBE", "TIKTOK", "LINKEDIN", "META"
+  referrer     String?
+  userAgent    String?
+  ipHash       String?    // SHA-256 hash of client IP
+  createdAt    DateTime   @default(now())
+
+  @@index([socialPostId])
+  @@index([createdAt])
 }
 
 model CodeVideoProject {
@@ -284,12 +300,56 @@ model CodeVideoProject {
   errorMessage     String?
   log              String?
 
+  pipelineStatus     ShopeePipelineStatus       @default(PENDING)
+  videoStatus        String?                    // RENDERING | COMPLETED | FAILED
+  attemptCount       Int                        @default(0)
+  lastError          String?
+  
+  // Relations to track logging
+  pipelineSteps      CodeVideoPipelineStep[]
+  pipelineEvents     CodeVideoPipelineEvent[]
+
   socialPosts      SocialPost[]
   automationAssetBundles AutomationAssetBundle[]
   question         VideoQuestion?
 
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+}
+
+model CodeVideoPipelineStep {
+  id              String   @id @default(cuid())
+  projectId       String
+  project         CodeVideoProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stepName        String
+  status          ShopeePipelineStepStatus @default(PENDING)
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  durationMs      Int?
+  attempt         Int      @default(1)
+  nextRetryAt     DateTime?
+  errorCode       String?
+  errorMessage    String?
+  requestPayload  Json?
+  responsePayload Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+model CodeVideoPipelineEvent {
+  id        String   @id @default(cuid())
+  projectId String
+  project   CodeVideoProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stepName  String?
+  level     String   @default("INFO") // INFO | ERROR | WARN
+  message   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+  @@index([createdAt])
 }
 
 model VideoQuestionConfig {
@@ -335,8 +395,52 @@ model VideoQuestion {
   codeVideoProjectId String? @unique
   codeVideoProject   CodeVideoProject? @relation(fields: [codeVideoProjectId], references: [id])
 
+  pipelineStatus     ShopeePipelineStatus         @default(PENDING)
+  videoStatus        String?                      // RENDERING | COMPLETED | FAILED
+  attemptCount       Int                          @default(0)
+  lastError          String?
+  
+  // Relations to track logging
+  pipelineSteps      VideoQuestionPipelineStep[]
+  pipelineEvents     VideoQuestionPipelineEvent[]
+
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+model VideoQuestionPipelineStep {
+  id              String   @id @default(cuid())
+  questionId      String
+  question        VideoQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  stepName        String
+  status          ShopeePipelineStepStatus @default(PENDING)
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  durationMs      Int?
+  attempt         Int      @default(1)
+  nextRetryAt     DateTime?
+  errorCode       String?
+  errorMessage    String?
+  requestPayload  Json?
+  responsePayload Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([questionId])
+}
+
+model VideoQuestionPipelineEvent {
+  id          String   @id @default(cuid())
+  questionId  String
+  question    VideoQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  stepName    String?
+  level       String   @default("INFO") // INFO | ERROR | WARN
+  message     String
+  metadata  Json?
+  createdAt   DateTime @default(now())
+
+  @@index([questionId])
+  @@index([createdAt])
 }
 
 model Lead {
@@ -564,6 +668,16 @@ model MercadoLivreAffiliatePick {
   codeVideoProjectId  String?
   errorMessage        String?
   metadataJson        String    @default("{}")
+
+  pipelineStatus      ShopeePipelineStatus @default(PENDING)
+  videoStatus         String?            // RENDERING | COMPLETED | FAILED
+  attemptCount        Int                @default(0)
+  lastError           String?
+  // Media outputs
+  audioUrl            String?
+  copyVideoUrl        String?
+  videoFinalUrl       String?
+
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
@@ -611,6 +725,16 @@ model ShopeeAffiliatePick {
   codeVideoProjectId String?
   errorMessage      String?
   metadataJson      String   @default("{}")
+
+  pipelineStatus      ShopeePipelineStatus @default(PENDING)
+  videoStatus         String?            // RENDERING | COMPLETED | FAILED
+  attemptCount        Int                @default(0)
+  lastError           String?
+  // Media outputs
+  audioUrl            String?
+  copyVideoUrl        String?
+  videoFinalUrl       String?
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

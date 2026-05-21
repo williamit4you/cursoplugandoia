@@ -10,7 +10,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 export async function POST(req: NextRequest) {
-  let targetSocialPostId: string | null = null;
+  let targetSocialPostId: string | undefined = undefined;
   try {
     const { socialPostId } = await req.json();
     targetSocialPostId = socialPostId;

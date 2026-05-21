@@ -13,7 +13,14 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: NextRequest, ctx: { params: { id: string } }) {
   try {
     const id = ctx.params.id;
-    const project = await prisma.codeVideoProject.findUnique({ where: { id } });
+    const project = await prisma.codeVideoProject.findUnique({
+      where: { id },
+      include: {
+        pipelineSteps: {
+          orderBy: { updatedAt: "asc" }
+        }
+      }
+    });
     if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(project);
   } catch {

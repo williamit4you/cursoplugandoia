@@ -43,11 +43,14 @@ export async function POST(req: NextRequest) {
     const voiceRefUrl = String(defaults.voiceRefUrl || "");
 
     // 1) Create/find coleta for that URL
-    const existing = await prisma.coletaDadosShoppe.findUnique({ where: { url }, select: { id: true } }).catch(() => null);
+    const existing = await prisma.coletaDadosShoppe.findFirst({
+      where: { url, pipelineKind: "ENGAGEMENT" },
+      select: { id: true },
+    }).catch(() => null);
     const coleta =
       existing?.id
         ? await prisma.coletaDadosShoppe.findUnique({ where: { id: existing.id } })
-        : await prisma.coletaDadosShoppe.create({ data: { url } });
+        : await prisma.coletaDadosShoppe.create({ data: { url, pipelineKind: "ENGAGEMENT" } });
     if (!coleta) return NextResponse.json({ error: "Falha ao criar/encontrar coleta" }, { status: 500 });
 
     // 2) Ensure scrape data is present

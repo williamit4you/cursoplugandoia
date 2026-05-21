@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { searchPexelsMedia, type PexelsAsset } from "@/lib/pexels";
+import { logCodeVideoPipelineEvent, upsertCodeVideoPipelineStep } from "@/lib/video-code/logger";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -330,6 +331,19 @@ export async function POST(req: NextRequest) {
       data: { status: "GENERATING", errorMessage: null },
     });
 
+    await upsertCodeVideoPipelineStep({
+      projectId,
+      stepName: "GENERATE_SCRIPT",
+      status: "RUNNING",
+      attempt: 1,
+      startedAt: new Date(),
+    });
+    await logCodeVideoPipelineEvent({
+      projectId,
+      stepName: "GENERATE_SCRIPT",
+      message: "Iniciando geração de roteiro e cenas do projeto por IA...",
+    });
+
     const formatHint =
       project.aspectRatio === "LANDSCAPE_16_9"
         ? "YouTube (16:9, 1920x1080)"
@@ -461,6 +475,20 @@ export async function POST(req: NextRequest) {
         where: { id: projectId },
         data: { status: "FAILED", errorMessage: msg },
       });
+      await upsertCodeVideoPipelineStep({
+        projectId,
+        stepName: "GENERATE_SCRIPT",
+        status: "FAILED",
+        attempt: 1,
+        finishedAt: new Date(),
+        errorMessage: msg,
+      });
+      await logCodeVideoPipelineEvent({
+        projectId,
+        level: "ERROR",
+        stepName: "GENERATE_SCRIPT",
+        message: `Falha na API da OpenAI: ${msg}`,
+      });
       return NextResponse.json({ error: msg }, { status: 500 });
     }
 
@@ -470,6 +498,20 @@ export async function POST(req: NextRequest) {
       await prisma.codeVideoProject.update({
         where: { id: projectId },
         data: { status: "FAILED", errorMessage: "Failed to parse JSON from model output" },
+      });
+      await upsertCodeVideoPipelineStep({
+        projectId,
+        stepName: "GENERATE_SCRIPT",
+        status: "FAILED",
+        attempt: 1,
+        finishedAt: new Date(),
+        errorMessage: "Falha ao analisar JSON retornado da OpenAI",
+      });
+      await logCodeVideoPipelineEvent({
+        projectId,
+        level: "ERROR",
+        stepName: "GENERATE_SCRIPT",
+        message: "Erro: Resposta da OpenAI não continha um JSON de roteiro válido",
       });
       return NextResponse.json({ error: "Failed to parse JSON from model output" }, { status: 500 });
     }
@@ -523,6 +565,20 @@ export async function POST(req: NextRequest) {
         videoSpecJson: JSON.stringify(videoSpec, null, 2),
         errorMessage: null,
       },
+    });
+
+    await upsertCodeVideoPipelineStep({
+      projectId,
+      stepName: "GENERATE_SCRIPT",
+      status: "SUCCESS",
+      attempt: 1,
+      finishedAt: new Date(),
+    });
+    await logCodeVideoPipelineEvent({
+      projectId,
+      level: "INFO",
+      stepName: "GENERATE_SCRIPT",
+      message: `Roteiro e ${scenes.length} cenas gerados com sucesso!`,
     });
 
     return NextResponse.json(updated);

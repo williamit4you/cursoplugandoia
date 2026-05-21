@@ -14,7 +14,7 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
  * Publica o vídeo do SocialPost no TikTok via Content Posting API v2.
  */
 export async function POST(req: NextRequest) {
-  let targetSocialPostId: string | null = null;
+  let targetSocialPostId: string | undefined = undefined;
   try {
     const { socialPostId } = await req.json();
     targetSocialPostId = socialPostId;

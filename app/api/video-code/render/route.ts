@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { logCodeVideoPipelineEvent, upsertCodeVideoPipelineStep } from "@/lib/video-code/logger";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -137,10 +138,12 @@ async function renderWithExternalService(params: {
 }
 
 export async function POST(req: NextRequest) {
+  let activeProjectId: string | null = null;
   try {
     const body = await req.json();
     const projectId = String(body?.projectId ?? "").trim();
     if (!projectId) return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+    activeProjectId = projectId;
 
     const project = await prisma.codeVideoProject.findUnique({ where: { id: projectId } });
     if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -151,6 +154,19 @@ export async function POST(req: NextRequest) {
     await prisma.codeVideoProject.update({
       where: { id: projectId },
       data: { status: "RENDERING", errorMessage: null },
+    });
+
+    await upsertCodeVideoPipelineStep({
+      projectId,
+      stepName: "RENDER_VIDEO",
+      status: "RUNNING",
+      attempt: 1,
+      startedAt: new Date(),
+    });
+    await logCodeVideoPipelineEvent({
+      projectId,
+      stepName: "RENDER_VIDEO",
+      message: "Iniciando síntese de áudio TTS e renderização Remotion no serviço de vídeo...",
     });
 
     const externalResult = await renderWithExternalService({
@@ -177,6 +193,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    await upsertCodeVideoPipelineStep({
+      projectId,
+      stepName: "RENDER_VIDEO",
+      status: "SUCCESS",
+      attempt: 1,
+      finishedAt: new Date(),
+    });
+    await logCodeVideoPipelineEvent({
+      projectId,
+      level: "INFO",
+      stepName: "RENDER_VIDEO",
+      message: "Vídeo compilado e renderizado com sucesso!",
+      metadata: { videoUrl: externalResult.videoUrl, audioUrl: externalResult.audioUrl },
+    });
+
     await enqueueProductAdSocialPosts(updated, externalResult.videoUrl);
 
     return NextResponse.json(updated);
@@ -184,17 +215,30 @@ export async function POST(req: NextRequest) {
     const msg = error?.message || "Failed to render";
     console.error("[RENDER_ERROR]", error);
 
-    try {
-      const body = await req.clone().json();
-      const pId = String(body?.projectId ?? "").trim();
-      if (pId) {
+    if (activeProjectId) {
+      try {
         await prisma.codeVideoProject.update({
-          where: { id: pId },
+          where: { id: activeProjectId },
           data: { status: "FAILED", errorMessage: msg, renderProgress: 0 },
         });
+
+        await upsertCodeVideoPipelineStep({
+          projectId: activeProjectId,
+          stepName: "RENDER_VIDEO",
+          status: "FAILED",
+          attempt: 1,
+          finishedAt: new Date(),
+          errorMessage: msg,
+        });
+        await logCodeVideoPipelineEvent({
+          projectId: activeProjectId,
+          level: "ERROR",
+          stepName: "RENDER_VIDEO",
+          message: `Falha na renderização do vídeo: ${msg}`,
+        });
+      } catch (dbErr) {
+        console.error("Failed to write failure log to DB", dbErr);
       }
-    } catch {
-      // ignore secondary failure
     }
 
     return NextResponse.json({ error: msg }, { status: 500 });

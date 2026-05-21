@@ -11,7 +11,6 @@ export async function GET(req: NextRequest) {
     await requireAdminOrCronSecret(req);
     const status = await getRunpodManagerStatus();
     return NextResponse.json({
-      ok: true,
       defaults: getRunpodManagerDefaults(),
       ...status,
       docsUrl: `${req.nextUrl.origin}/api/runpod/control/docs`,

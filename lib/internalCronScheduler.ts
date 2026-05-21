@@ -37,7 +37,7 @@ async function runInternalCronTick() {
     if (!result?.skipped) {
       console.log("[internal-cron] Shopee pipeline executado", {
         nextCronRunAt: result?.nextCronRunAt,
-        runs: result?.runs?.length || 0,
+        runs: (result as any)?.runs?.length || 0,
       });
     }
   } catch (error: any) {

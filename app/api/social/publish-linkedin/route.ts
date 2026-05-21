@@ -14,7 +14,7 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
  * Publica um post no LinkedIn com o resumo, imagem de capa e link para o artigo.
  */
 export async function POST(req: NextRequest) {
-  let targetSocialPostId: string | null = null;
+  let targetSocialPostId: string | undefined = undefined;
   try {
     const { socialPostId } = await req.json();
     targetSocialPostId = socialPostId;

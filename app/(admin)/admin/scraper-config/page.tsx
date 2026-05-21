@@ -1010,7 +1010,7 @@ export default function ScraperConfigPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {runs.map(run => {
-                  const statusCfg: Record<string, { bg: string; color: string; label: string }> = {
+                  const statusCfg: Record<string, { bg: string; label: string }> = {
                     RUNNING:  { bg: "bg-blue-50 text-blue-700 border-blue-200/60", label: "⏳ Rodando" },
                     SUCCESS:  { bg: "bg-emerald-50 text-emerald-700 border-emerald-200/60", label: "✅ Sucesso" },
                     PARTIAL:  { bg: "bg-amber-50 text-amber-700 border-amber-200/60", label: "⚠️ Parcial" },

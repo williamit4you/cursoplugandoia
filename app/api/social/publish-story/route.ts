@@ -22,7 +22,7 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
  *  - Fase 2: checa status e publica se FINISHED
  */
 export async function POST(req: NextRequest) {
-  let targetSocialPostId: string | null = null;
+  let targetSocialPostId: string | undefined = undefined;
   try {
     const { socialPostId } = await req.json();
     targetSocialPostId = socialPostId;
