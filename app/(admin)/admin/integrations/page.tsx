@@ -1,7 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Box, Typography, Paper, TextField, Button, Switch, FormControlLabel, Alert, Divider } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Paper,
+  TextField,
+  Button,
+  Switch,
+  FormControlLabel,
+  Alert,
+  Divider,
+  InputAdornment,
+  IconButton,
+  CircularProgress,
+} from "@mui/material";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -35,6 +50,15 @@ export default function IntegrationsPage() {
   const [youtubeClientSecret, setYoutubeClientSecret] = useState("");
   const [youtubeRefreshToken, setYoutubeRefreshToken] = useState("");
   const [youtubeActive, setYoutubeActive] = useState(false);
+  const [showYoutubeClientSecret, setShowYoutubeClientSecret] = useState(false);
+  const [initialYoutubeClientId, setInitialYoutubeClientId] = useState("");
+  const [initialYoutubeClientSecret, setInitialYoutubeClientSecret] = useState("");
+  const [youtubeAuthCheck, setYoutubeAuthCheck] = useState<{
+    loading: boolean;
+    ok: boolean | null;
+    message: string;
+    updatedAt: string | null;
+  }>({ loading: false, ok: null, message: "", updatedAt: null });
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -81,6 +105,8 @@ export default function IntegrationsPage() {
           setYoutubeClientSecret(youtube.apiSecret || "");
           setYoutubeRefreshToken(youtube.refreshToken || "");
           setYoutubeActive(youtube.isActive);
+          setInitialYoutubeClientId(youtube.apiKey || "");
+          setInitialYoutubeClientSecret(youtube.apiSecret || "");
         }
 
         setLoading(false);
@@ -183,6 +209,10 @@ export default function IntegrationsPage() {
     setSaving(true);
     setMsg({ type: "", text: "" });
     try {
+      const credsChanged =
+        youtubeClientId.trim() !== initialYoutubeClientId.trim() ||
+        youtubeClientSecret.trim() !== initialYoutubeClientSecret.trim();
+
       const res = await fetch("/api/integrations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -191,14 +221,50 @@ export default function IntegrationsPage() {
           apiKey: youtubeClientId,
           apiSecret: youtubeClientSecret,
           isActive: youtubeActive,
+          ...(credsChanged ? { refreshToken: null, accessToken: null } : {}),
         }),
       });
       if (!res.ok) throw new Error("Erro ao salvar YouTube.");
       toast.success("Credenciais do YouTube salvas com sucesso! Agora você pode se autenticar.");
+      if (credsChanged) {
+        setYoutubeRefreshToken("");
+        setYoutubeAuthCheck({ loading: false, ok: null, message: "", updatedAt: null });
+      }
+      setInitialYoutubeClientId(youtubeClientId);
+      setInitialYoutubeClientSecret(youtubeClientSecret);
     } catch (err: any) {
       toast.error(err.message || "Falha ao salvar YouTube.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCheckYouTubeAuth = async () => {
+    setYoutubeAuthCheck({ loading: true, ok: null, message: "", updatedAt: null });
+    try {
+      const res = await fetch("/api/integrations/youtube/status?check=1", { method: "GET" });
+      const data = await res.json().catch(() => ({}));
+      const updatedAt = data?.basic?.updatedAt || null;
+
+      if (!res.ok || data?.ok === false) {
+        const message = data?.error || "Falha ao validar autenticação do YouTube. Reautentique.";
+        setYoutubeAuthCheck({ loading: false, ok: false, message, updatedAt });
+        return;
+      }
+
+      setYoutubeAuthCheck({
+        loading: false,
+        ok: true,
+        message: "OK: refresh token válido e access token gerado com sucesso.",
+        updatedAt,
+      });
+    } catch (e: any) {
+      setYoutubeAuthCheck({
+        loading: false,
+        ok: false,
+        message: e?.message || "Erro ao checar status do YouTube.",
+        updatedAt: null,
+      });
     }
   };
 
@@ -523,9 +589,28 @@ export default function IntegrationsPage() {
           />
           <TextField
             label="Client Secret"
-            fullWidth variant="outlined" size="small" type="password"
+            fullWidth
+            variant="outlined"
+            size="small"
+            type={showYoutubeClientSecret ? "text" : "password"}
             value={youtubeClientSecret}
             onChange={(e) => setYoutubeClientSecret(e.target.value)}
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label={showYoutubeClientSecret ? "Ocultar Client Secret" : "Mostrar Client Secret"}
+                      onClick={() => setShowYoutubeClientSecret((v) => !v)}
+                      edge="end"
+                      size="small"
+                    >
+                      {showYoutubeClientSecret ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
         </Box>
 
@@ -535,9 +620,28 @@ export default function IntegrationsPage() {
           </Button>
 
           {youtubeRefreshToken ? (
-            <Typography variant="body2" sx={{ color: 'green', fontWeight: 'bold' }}>
-              ✅ Conta Autenticada
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2" sx={{ color: 'green', fontWeight: 'bold' }}>
+              Conta autenticada (refresh token salvo)
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleCheckYouTubeAuth}
+                disabled={youtubeAuthCheck.loading}
+                sx={{ textTransform: "none" }}
+              >
+                {youtubeAuthCheck.loading ? <CircularProgress size={16} /> : "Testar agora"}
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleAuthYouTube}
+                sx={{ bgcolor: "#FF0000", "&:hover": { bgcolor: "#cc0000" }, textTransform: "none" }}
+              >
+                Reautenticar
+              </Button>
+            </Box>
           ) : (
             <Button
               variant="contained"
@@ -549,6 +653,17 @@ export default function IntegrationsPage() {
             </Button>
           )}
         </Box>
+
+        {youtubeAuthCheck.ok !== null && (
+          <Alert severity={youtubeAuthCheck.ok ? "success" : "error"} sx={{ mb: 3 }}>
+            {youtubeAuthCheck.message}
+            {youtubeAuthCheck.updatedAt ? (
+              <span style={{ display: "block", marginTop: 4, fontSize: 12, opacity: 0.8 }}>
+                Ultima atualizacao: {new Date(youtubeAuthCheck.updatedAt).toLocaleString("pt-BR")}
+              </span>
+            ) : null}
+          </Alert>
+        )}
 
         <Box sx={{ bgcolor: '#fef2f2', p: 2, borderRadius: 2, mb: 3 }}>
           <Typography variant="body2" color="textSecondary" sx={{ fontSize: 12 }}>

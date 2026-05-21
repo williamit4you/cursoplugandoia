@@ -54,21 +54,55 @@ export async function POST(req: NextRequest) {
           scheduledTo = new Date(lastScheduled.scheduledTo.getTime() + 60 * 60 * 1000); // +1 hora
         }
 
-        const newSocialPost = await prisma.socialPost.create({
-          data: {
-            postId: upsertedPost.id,
-            summary: body.summary,
-            videoUrl: body.videoUrl,
-            status: "SCHEDULED",
-            scheduledTo: scheduledTo,
-            log: `Agendado automaticamente para respeitar limite de tráfego.`
-          }
+        const scraperConfig = await prisma.scraperConfig.findFirst({
+          orderBy: { createdAt: "desc" }
         });
+
+        const platformsToCreate: { platform: string; postType: string }[] = [];
+        if (scraperConfig) {
+          if (scraperConfig.autoPublishReels) {
+            platformsToCreate.push({ platform: "META", postType: "REEL" });
+          }
+          if (scraperConfig.autoPublishStory) {
+            platformsToCreate.push({ platform: "META", postType: "STORY" });
+          }
+          if (scraperConfig.autoPublishTikTok) {
+            platformsToCreate.push({ platform: "TIKTOK", postType: "REEL" });
+          }
+          if (scraperConfig.autoPublishLinkedIn) {
+            platformsToCreate.push({ platform: "LINKEDIN", postType: "REEL" });
+          }
+          if (scraperConfig.autoPublishYouTube) {
+            platformsToCreate.push({ platform: "YOUTUBE", postType: "REEL" });
+          }
+        }
+
+        // Se nenhuma plataforma estiver marcada para auto-publicar, cria o rascunho/agendamento padrão
+        if (platformsToCreate.length === 0) {
+          platformsToCreate.push({ platform: "META", postType: "REEL" });
+        }
+
+        const createdPosts = [];
+        for (const item of platformsToCreate) {
+          const newSocialPost = await prisma.socialPost.create({
+            data: {
+              postId: upsertedPost.id,
+              summary: body.summary,
+              videoUrl: body.videoUrl,
+              platform: item.platform,
+              postType: item.postType,
+              status: "SCHEDULED",
+              scheduledTo: scheduledTo,
+              log: `Agendado automaticamente para respeitar limite de tráfego para a plataforma ${item.platform} (${item.postType}).`
+            }
+          });
+          createdPosts.push(newSocialPost);
+        }
 
         return NextResponse.json({
           success: true,
           post: upsertedPost.id,
-          socialPostId: newSocialPost.id,
+          socialPostId: createdPosts[0].id,
         });
       }
     }

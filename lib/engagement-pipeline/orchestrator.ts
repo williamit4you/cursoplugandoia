@@ -446,8 +446,15 @@ export async function runEngagementPipelineOnce(params?: { origin?: string }) {
           where: { pipelineKind: "ENGAGEMENT" as any },
           orderBy: { createdAt: "desc" },
         });
-        const voiceRefUrl = config?.userVoiceRefUrl || null;
-        if (!voiceRefUrl) throw new Error("Pipeline config missing userVoiceRefUrl");
+        let voiceRefUrl = config?.userVoiceRefUrl || null;
+        if (!voiceRefUrl) {
+          const salesConfig = await prisma.shopeePipelineConfig.findFirst({
+            where: { pipelineKind: "SALES" as any },
+            orderBy: { createdAt: "desc" },
+          });
+          voiceRefUrl = salesConfig?.userVoiceRefUrl || null;
+        }
+        if (!voiceRefUrl) throw new Error("Pipeline config missing userVoiceRefUrl (and fallback SALES config also missing it)");
 
         const copy = String(item.aiPromptEngajamento || "").trim();
         if (!copy) throw new Error("Ideia de engajamento (aiPromptEngajamento) ausente");
@@ -565,8 +572,15 @@ export async function runEngagementPipelineOnce(params?: { origin?: string }) {
           orderBy: { createdAt: "desc" },
         });
 
-        const imageUrl = config?.userBaseImageUrl || null;
-        if (!imageUrl) throw new Error("Pipeline config missing userBaseImageUrl");
+        let imageUrl = config?.userBaseImageUrl || null;
+        if (!imageUrl) {
+          const salesConfig = await prisma.shopeePipelineConfig.findFirst({
+            where: { pipelineKind: "SALES" as any },
+            orderBy: { createdAt: "desc" },
+          });
+          imageUrl = salesConfig?.userBaseImageUrl || null;
+        }
+        if (!imageUrl) throw new Error("Pipeline config missing userBaseImageUrl (and fallback SALES config also missing it)");
         if (!item.audioUrl) throw new Error("audioUrl ausente");
 
         await prisma.coletaDadosShoppe.update({

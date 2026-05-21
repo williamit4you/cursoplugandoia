@@ -19,13 +19,33 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
  * O frontend chama este endpoint repetidamente a cada 30s até receber { success: true }.
  */
 export async function POST(req: NextRequest) {
+  let targetSocialPostId: string | null = null;
   try {
     const body = await req.json();
     const { socialPostId, bypassTimeCheck } = body;
+    targetSocialPostId = socialPostId;
 
-    const socialPost = await prisma.socialPost.findUnique({ where: { id: socialPostId } });
+    let socialPost = await prisma.socialPost.findUnique({ where: { id: socialPostId } });
     if (!socialPost) {
       return NextResponse.json({ error: "Post não encontrado" }, { status: 404 });
+    }
+
+    // Resolvendo post irmão se houver incompatibilidade de plataforma
+    if (socialPost.platform !== "META" || socialPost.postType !== "REEL") {
+      const sister = await prisma.socialPost.findFirst({
+        where: {
+          postId: socialPost.postId,
+          codeVideoProjectId: socialPost.codeVideoProjectId,
+          automationTaskId: socialPost.automationTaskId,
+          automationTaskRunId: socialPost.automationTaskRunId,
+          platform: "META",
+          postType: "REEL",
+        },
+      });
+      if (sister) {
+        socialPost = sister;
+        targetSocialPostId = sister.id;
+      }
     }
 
     if (!bypassTimeCheck) {
@@ -46,7 +66,7 @@ export async function POST(req: NextRequest) {
       const current = socialPost.log || "";
       const updated = current ? `${current}\n${now} ${msg}` : `${now} ${msg}`;
       await prisma.socialPost.update({
-        where: { id: socialPostId },
+        where: { id: targetSocialPostId },
         data: { log: updated },
       });
     };
@@ -63,7 +83,7 @@ export async function POST(req: NextRequest) {
       );
 
       await prisma.socialPost.update({
-        where: { id: socialPostId },
+        where: { id: targetSocialPostId },
         data: {
           status: "PROCESSING_MEDIA",
           metaContainerId: creationId,
@@ -131,7 +151,7 @@ export async function POST(req: NextRequest) {
     const finalStatus = errors.length === 0 ? "POSTED" : igId ? "POSTED" : "FAILED";
 
     await prisma.socialPost.update({
-      where: { id: socialPostId },
+      where: { id: targetSocialPostId },
       data: {
         status: finalStatus,
         postedAt: finalStatus === "POSTED" ? new Date() : undefined,
@@ -144,6 +164,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: finalStatus === "POSTED", igId, fbId, errors, phase: 2 });
   } catch (error: any) {
     console.error("Publishing error:", error);
-    return NextResponse.json({ error: error.message || "Erro interno" }, { status: 500 });
+    const errorMessage = error.message || "Erro interno";
+    const logEntry = `[${new Date().toLocaleTimeString("pt-BR")}] ❌ Falha crítica de publicação: ${errorMessage}`;
+
+    if (targetSocialPostId) {
+      try {
+        const currentPost = await prisma.socialPost.findUnique({ where: { id: targetSocialPostId } });
+        await prisma.socialPost.update({
+          where: { id: targetSocialPostId },
+          data: {
+            status: "FAILED",
+            log: currentPost?.log ? `${currentPost.log}\n${logEntry}` : logEntry,
+          },
+        });
+      } catch (dbErr) {
+        console.error("Failed to update SocialPost status to FAILED:", dbErr);
+      }
+    }
+
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

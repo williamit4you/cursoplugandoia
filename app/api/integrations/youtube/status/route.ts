@@ -21,10 +21,23 @@ function originFromReq(req: NextRequest) {
 
 function formatGoogleError(err: any) {
   const code = err?.code || err?.response?.status || null;
-  const message =
+  const rawMsg =
+    err?.response?.data?.error_description ||
     err?.response?.data?.error?.message ||
     err?.message ||
     "Falha desconhecida ao validar autenticação do YouTube";
+
+  let message = rawMsg;
+  const isInvalidGrant =
+    rawMsg.toLowerCase().includes("invalid_grant") ||
+    rawMsg.toLowerCase().includes("expired") ||
+    rawMsg.toLowerCase().includes("revoked") ||
+    String(err?.response?.data?.error).includes("invalid_grant");
+
+  if (isInvalidGrant) {
+    message = "Erro de autenticação (invalid_grant): O token de acesso expirou ou foi revogado. Se a sua tela de consentimento OAuth do Google Cloud Console estiver em modo 'Teste' (Testing), o Google expira o refresh token automaticamente após 7 dias. Solução: Clique no botão 'Autenticar com YouTube' abaixo para reautenticar. Para resolver isso de forma permanente, mude o status de publicação da tela de consentimento OAuth no console do Google Cloud para 'Em Produção' (In Production).";
+  }
+
   const causeMessage = err?.cause?.message || null;
   return { code, message, causeMessage };
 }
@@ -56,7 +69,7 @@ export async function GET(req: NextRequest) {
     const oauth2Client = new google.auth.OAuth2(settings.apiKey, settings.apiSecret, redirectUri);
     oauth2Client.setCredentials({ refresh_token: settings.refreshToken });
 
-    // Isso valida se o refresh token ainda funciona (gera access token novo).
+    // Tenta obter/renovar o access token
     const accessToken = await oauth2Client.getAccessToken();
     const tokenValue = typeof accessToken === "string" ? accessToken : accessToken?.token;
 
@@ -67,7 +80,16 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ ok: true, basic, authOk: true });
+    // Executa chamada real para testar permissão da API do YouTube
+    const youtube = google.youtube({ version: "v3", auth: oauth2Client });
+    const channelRes = await youtube.channels.list({
+      part: ["snippet"],
+      mine: true,
+    });
+
+    const channelName = channelRes.data.items?.[0]?.snippet?.title || "Canal não identificado";
+
+    return NextResponse.json({ ok: true, basic, authOk: true, channelName });
   } catch (error: any) {
     const status = error?.message === "Unauthorized" ? 401 : 500;
     const formatted = formatGoogleError(error);

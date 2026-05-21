@@ -48,10 +48,24 @@ export async function GET(req: NextRequest) {
     // Publica stories agendados do shopee-video-pipeline
     const shopeePublisher = await callJson(`${origin}/api/shopee-pipeline/publisher-runner${encodedSecret}`);
 
+    // Orquestrador do pipeline de engajamento
+    const engajamentoPipeline = await callJson(`${origin}/api/engajamento-pipeline/cron${encodedSecret}`);
+
+    // Publica stories do pipeline de engajamento
+    const engajamentoPublisher = await callJson(`${origin}/api/engajamento-pipeline/publisher-runner${encodedSecret}`);
+
     // Processa cron de perguntas para vídeos
     const videoQuestions = await callJson(`${origin}/api/video-questions/cron${encodedSecret}`);
 
-    const allOk = taskRuns.ok && mercadoLivre.ok && social.ok && shopeePipeline.ok && shopeePublisher.ok && videoQuestions.ok;
+    const allOk =
+      taskRuns.ok &&
+      mercadoLivre.ok &&
+      social.ok &&
+      shopeePipeline.ok &&
+      shopeePublisher.ok &&
+      engajamentoPipeline.ok &&
+      engajamentoPublisher.ok &&
+      videoQuestions.ok;
 
     console.log("[api/automation/cron] Results:", {
       taskRuns: { ok: taskRuns.ok, status: taskRuns.status },
@@ -59,6 +73,8 @@ export async function GET(req: NextRequest) {
       social: { ok: social.ok, status: social.status },
       shopeePipeline: { ok: shopeePipeline.ok, status: shopeePipeline.status },
       shopeePublisher: { ok: shopeePublisher.ok, status: shopeePublisher.status },
+      engajamentoPipeline: { ok: engajamentoPipeline.ok, status: engajamentoPipeline.status },
+      engajamentoPublisher: { ok: engajamentoPublisher.ok, status: engajamentoPublisher.status },
       videoQuestions: { ok: videoQuestions.ok, status: videoQuestions.status },
     });
 
@@ -69,6 +85,8 @@ export async function GET(req: NextRequest) {
       social,
       shopeePipeline,
       shopeePublisher,
+      engajamentoPipeline,
+      engajamentoPublisher,
       videoQuestions,
     });
   } catch (error: any) {

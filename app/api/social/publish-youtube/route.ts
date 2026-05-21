@@ -10,15 +10,34 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 export async function POST(req: NextRequest) {
+  let targetSocialPostId: string | null = null;
   try {
     const { socialPostId } = await req.json();
+    targetSocialPostId = socialPostId;
 
-    const socialPost = await prisma.socialPost.findUnique({
+    let socialPost = await prisma.socialPost.findUnique({
       where: { id: socialPostId },
     });
 
     if (!socialPost) {
       return NextResponse.json({ error: "Post social não encontrado" }, { status: 404 });
+    }
+
+    // Resolvendo post irmão se houver incompatibilidade de plataforma
+    if (socialPost.platform !== "YOUTUBE") {
+      const sister = await prisma.socialPost.findFirst({
+        where: {
+          postId: socialPost.postId,
+          codeVideoProjectId: socialPost.codeVideoProjectId,
+          automationTaskId: socialPost.automationTaskId,
+          automationTaskRunId: socialPost.automationTaskRunId,
+          platform: "YOUTUBE",
+        },
+      });
+      if (sister) {
+        socialPost = sister;
+        targetSocialPostId = sister.id;
+      }
     }
 
     const settings = await prisma.integrationSettings.findUnique({
@@ -65,7 +84,7 @@ export async function POST(req: NextRequest) {
 
     const logEntry = `[${new Date().toLocaleTimeString("pt-BR")}] 🎥 Publicado no YouTube! ID: ${videoId}`;
     await prisma.socialPost.update({
-      where: { id: socialPostId },
+      where: { id: targetSocialPostId },
       data: {
         status: "POSTED",
         postedAt: new Date(),
@@ -82,6 +101,22 @@ export async function POST(req: NextRequest) {
     
     // Tenta extrair mensagem de erro do Google
     const errorMessage = error.response?.data?.error?.message || error.message || "Erro desconhecido ao publicar no YouTube";
+    const logEntry = `[${new Date().toLocaleTimeString("pt-BR")}] ❌ Falha ao publicar no YouTube: ${errorMessage}`;
+
+    if (targetSocialPostId) {
+      try {
+        const currentPost = await prisma.socialPost.findUnique({ where: { id: targetSocialPostId } });
+        await prisma.socialPost.update({
+          where: { id: targetSocialPostId },
+          data: {
+            status: "FAILED",
+            log: currentPost?.log ? `${currentPost.log}\n${logEntry}` : logEntry,
+          },
+        });
+      } catch (dbErr) {
+        console.error("Failed to update SocialPost status to FAILED:", dbErr);
+      }
+    }
     
     return NextResponse.json(
       { error: errorMessage },
