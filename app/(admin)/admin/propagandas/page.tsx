@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import Link from "next/link";
+import PipelinePropagandasView from "@/components/PipelinePropagandasView";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -111,6 +112,10 @@ export default async function PropagandasPage({
             Eles podem ser criados de forma <strong>Manual</strong> (no botão "Criar propaganda") ou ser gerados <strong>Automaticamente</strong> pelos robôs de scraping e automação de ofertas da <Link href="/admin/shopee-pipeline" className="text-emerald-700 font-bold hover:underline">Shopee</Link> e do <Link href="/admin/mercado-livre-pipeline" className="text-emerald-700 font-bold hover:underline">Mercado Livre</Link>. Uma vez prontos, os vídeos gerados são automaticamente programados e agendados na <Link href="/admin/social" className="text-emerald-700 font-bold hover:underline">Fila Social</Link> para postagem.
           </p>
         </div>
+      </div>
+
+      <div className="mb-6">
+        <PipelinePropagandasView initialData={items} />
       </div>
 
 

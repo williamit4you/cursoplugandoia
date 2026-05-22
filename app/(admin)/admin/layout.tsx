@@ -55,21 +55,22 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
 
   const menuItems = [
     { text: "Dashboard", icon: <DashboardIcon className="text-indigo-400" />, path: "/admin/dashboard" },
-    { text: "Posts", icon: <ArticleIcon />, path: "/admin/posts" },
-    { text: "Fontes (Scraping)", icon: <LinkIcon />, path: "/admin/scrapers" },
+    
+    // NEW PIPELINE ROUTES
+    { text: "Pipeline: Scrapings", icon: <StorefrontIcon className="text-emerald-500" />, path: "/admin/scrapers" },
+    { text: "Pipeline: Code Video", icon: <CodeIcon className="text-blue-500" />, path: "/admin/video-code" },
+    { text: "Pipeline: Propagandas", icon: <CampaignIcon className="text-orange-500" />, path: "/admin/propagandas" },
+    { text: "Pipeline: Q&A", icon: <QuizIcon className="text-purple-500" />, path: "/admin/video-questions" },
+    // END NEW PIPELINE ROUTES
+
+    { text: "Posts & Engajamento", icon: <ArticleIcon />, path: "/admin/posts" },
     { text: "Integrações N8N", icon: <WebhookIcon />, path: "/admin/integrations" },
     { text: "Fila de Stories", icon: <VideoCameraBackIcon />, path: "/admin/social" },
-    { text: "Calendário Social", icon: <VideoCameraBackIcon />, path: "/admin/social/calendar" },
-    { text: "Vídeos com código", icon: <CodeIcon />, path: "/admin/video-code" },
-    { text: "Propagandas", icon: <CampaignIcon />, path: "/admin/propagandas" },
+    { text: "Calendário Social", icon: <EventIcon />, path: "/admin/social/calendar" },
     { text: "Mercado Livre", icon: <ShoppingCartIcon />, path: "/admin/mercado-livre" },
-    { text: "Perguntas → vídeos", icon: <QuizIcon />, path: "/admin/video-questions" },
     { text: "YT Analytics", icon: <YouTubeIcon />, path: "/admin/youtube-analytics" },
     { text: "Config. Scraper", icon: <SettingsIcon />, path: "/admin/scraper-config" },
     { text: "Config. Perguntas", icon: <SettingsIcon />, path: "/admin/video-questions-config" },
-    { text: "Shopee", icon: <StorefrontIcon />, path: "/admin/shopee" },
-    { text: "Coleta Shopee", icon: <StorefrontIcon />, path: "/admin/coleta-shopee" },
-    { text: "Shopee Pipeline", icon: <StorefrontIcon />, path: "/admin/shopee-pipeline" },
     { text: "Bio Analytics", icon: <StorefrontIcon />, path: "/admin/bio-analytics" },
     { text: "Texto → Vídeo", icon: <VideoCameraBackIcon />, path: "/admin/texto-para-video" },
     { text: "Engajamento Shopee", icon: <VideoCameraBackIcon />, path: "/admin/engajamento-shopee" },

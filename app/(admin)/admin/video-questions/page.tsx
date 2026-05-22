@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import PipelineQuestionsView from "@/components/PipelineQuestionsView";
 
 const SECRET = process.env.NEXT_PUBLIC_WORKER_SECRET || "super-secret-worker-key-123";
 
@@ -378,6 +379,10 @@ export default function VideoQuestionsPage() {
           </div>
         </div>
       )}
+
+      <div className="mb-6">
+        <PipelineQuestionsView initialData={questions} />
+      </div>
 
       {/* Busca e Filtros */}
       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm mb-6">

@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import Link from "next/link";
+import PipelineVideoCodeView from "@/components/PipelineVideoCodeView";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -149,6 +150,10 @@ export default async function VideoCodeProjectsPage({
             Eles nascem de duas formas: <strong>Manualmente</strong>, ao clicar em "Novo projeto" e inserir uma ideia de roteiro, ou <strong>Automaticamente</strong>, através da automação de Q&A na tela <Link href="/admin/video-questions" className="text-indigo-600 font-bold hover:underline">Perguntas → vídeos</Link>, onde o robô lê as dúvidas da fila e renderiza os vídeos de forma agendada no background.
           </p>
         </div>
+      </div>
+
+      <div className="mb-6">
+        <PipelineVideoCodeView initialData={projects} />
       </div>
 
 
