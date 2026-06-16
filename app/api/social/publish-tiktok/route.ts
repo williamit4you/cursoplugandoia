@@ -10,6 +10,36 @@ export const runtime = "nodejs";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
+function tiktokConfigError(settings: {
+  isActive?: boolean | null;
+  refreshToken?: string | null;
+  accessToken?: string | null;
+} | null) {
+  const method = (process.env.TIKTOK_UPLOAD_METHOD || "browser").toLowerCase();
+
+  if (!settings) {
+    return "TikTok nao configurado. Abra o Hub de Integracoes, ative o TikTok e salve o Session ID.";
+  }
+
+  if (!settings.isActive) {
+    return "TikTok inativo. Abra o Hub de Integracoes e ligue a chave do TikTok.";
+  }
+
+  if (method === "browser" && !String(settings.refreshToken || "").trim()) {
+    return "TikTok sem Session ID. No Hub de Integracoes, preencha o campo Session ID para o tiktok-uploader.";
+  }
+
+  if (method === "official" && !String(settings.accessToken || "").trim()) {
+    return "TikTok sem Access Token. No modo official, preencha o Access Token no Hub de Integracoes.";
+  }
+
+  if (method === "auto" && !String(settings.refreshToken || "").trim() && !String(settings.accessToken || "").trim()) {
+    return "TikTok sem credenciais. Preencha o Session ID ou o Access Token no Hub de Integracoes.";
+  }
+
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   let targetSocialPostId: string | undefined = undefined;
 
@@ -48,17 +78,18 @@ export async function POST(req: NextRequest) {
       where: { platform: "TIKTOK" },
     });
 
-    if (!settings?.isActive) {
+    const configError = tiktokConfigError(settings);
+    if (configError) {
       return NextResponse.json(
-        { error: "TikTok nao configurado ou inativo. Configure em Hub de Integracoes." },
+        { error: configError },
         { status: 400 }
       );
     }
 
     const title = socialPost.post?.title || socialPost.summary?.slice(0, 150) || "Nova noticia";
     const { publishId, method } = await publishTikTokVideo(socialPost.videoUrl, title, {
-      accessToken: settings.accessToken,
-      sessionId: settings.refreshToken,
+      accessToken: settings!.accessToken,
+      sessionId: settings!.refreshToken,
     });
 
     const logEntry = `[${new Date().toLocaleTimeString("pt-BR")}] TikTok enviado via ${method}. Publish ID: ${publishId}`;

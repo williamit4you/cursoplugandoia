@@ -388,6 +388,11 @@ export default function SocialPostEditorPage() {
 
           <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm space-y-2">
             <div className="text-xs font-black text-slate-800 uppercase tracking-wider">Links</div>
+            {String(form.platform).toUpperCase() === "TIKTOK" ? (
+              <div className="rounded-xl border border-cyan-100 bg-cyan-50 px-3 py-2 text-[11px] text-cyan-900">
+                Para publicar no TikTok por esta tela, o Hub de Integracoes precisa estar com o TikTok ativado e com o Session ID salvo.
+              </div>
+            ) : null}
             {post?.postUrl ? (
               <a
                 href={String(post.postUrl)}
@@ -427,4 +432,3 @@ export default function SocialPostEditorPage() {
     </div>
   );
 }
-
