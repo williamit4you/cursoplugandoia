@@ -65,7 +65,10 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
 
     { text: "Posts & Engajamento", icon: <ArticleIcon />, path: "/admin/posts" },
     { text: "Integrações N8N", icon: <WebhookIcon />, path: "/admin/integrations" },
-    { text: "Fila de Stories", icon: <VideoCameraBackIcon />, path: "/admin/social" },
+    { text: "Fila Social", icon: <VideoCameraBackIcon />, path: "/admin/social" },
+    { text: "Social: YouTube", icon: <YouTubeIcon />, path: "/admin/social/youtube" },
+    { text: "Social: Instagram", icon: <VideoCameraBackIcon />, path: "/admin/social/instagram" },
+    { text: "Social: TikTok", icon: <VideoCameraBackIcon />, path: "/admin/social/tiktok" },
     { text: "Calendário Social", icon: <EventIcon />, path: "/admin/social/calendar" },
     { text: "Mercado Livre", icon: <ShoppingCartIcon />, path: "/admin/mercado-livre" },
     { text: "YT Analytics", icon: <YouTubeIcon />, path: "/admin/youtube-analytics" },

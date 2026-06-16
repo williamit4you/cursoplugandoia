@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { 
   Search, 
   Filter, 
@@ -24,6 +26,37 @@ import {
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Image from "next/image";
+
+const SOCIAL_VIEWS = {
+  ALL: {
+    platform: "ALL",
+    title: "Fila Social",
+    description: "Gerencie e monitore as publicacoes automaticas em todas as redes.",
+    badge: "Visao geral",
+    accent: "text-indigo-600",
+  },
+  YOUTUBE: {
+    platform: "YOUTUBE",
+    title: "Fila Social: YouTube",
+    description: "Acompanhe apenas os videos agendados e publicados no YouTube.",
+    badge: "YouTube",
+    accent: "text-rose-500",
+  },
+  META: {
+    platform: "META",
+    title: "Fila Social: Instagram",
+    description: "Veja apenas os posts do Instagram/Meta com foco no fluxo visual dessa plataforma.",
+    badge: "Instagram / Meta",
+    accent: "text-pink-500",
+  },
+  TIKTOK: {
+    platform: "TIKTOK",
+    title: "Fila Social: TikTok",
+    description: "Veja apenas os videos agendados e publicados no TikTok.",
+    badge: "TikTok",
+    accent: "text-cyan-500",
+  },
+} as const;
 
 // Configuração de Status
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; pulse?: boolean }> = {
@@ -60,6 +93,7 @@ function PlatformIcon({ platform, postType }: { platform: string; postType?: str
 }
 
 export default function SocialPostsDashboard() {
+  const pathname = usePathname();
   const [posts, setPosts] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -78,6 +112,15 @@ export default function SocialPostsDashboard() {
   const [platformFilter, setPlatformFilter] = useState("ALL");
   const [q, setQ] = useState("");
 
+  const currentView = useMemo(() => {
+    if (pathname?.endsWith("/youtube")) return SOCIAL_VIEWS.YOUTUBE;
+    if (pathname?.endsWith("/instagram")) return SOCIAL_VIEWS.META;
+    if (pathname?.endsWith("/tiktok")) return SOCIAL_VIEWS.TIKTOK;
+    return SOCIAL_VIEWS.ALL;
+  }, [pathname]);
+
+  const lockedPlatform = currentView.platform !== "ALL";
+
   // Permite deep-link: /admin/social?q=...
   useEffect(() => {
     try {
@@ -88,6 +131,11 @@ export default function SocialPostsDashboard() {
       // ignore
     }
   }, []);
+
+  useEffect(() => {
+    setPlatformFilter(currentView.platform);
+    setPage(1);
+  }, [currentView.platform]);
 
   const fetchPosts = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -259,12 +307,17 @@ export default function SocialPostsDashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm">
         <div className="space-y-1">
           <h1 className="text-2xl font-black tracking-tight text-slate-800 flex items-center gap-2">
-            <Share2 className="w-6 h-6 text-indigo-600" />
-            Fila Social
+            <Share2 className={`w-6 h-6 ${currentView.accent}`} />
+            {currentView.title}
           </h1>
           <p className="text-slate-500 text-sm font-medium">
-            Gerencie e monitore as publicações automáticas em todas as redes.
+            {currentView.description}
           </p>
+          <div className="pt-1">
+            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-600">
+              {currentView.badge}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -302,6 +355,31 @@ export default function SocialPostsDashboard() {
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2 bg-white p-3 rounded-2xl border border-slate-200/60 shadow-sm">
+        {[
+          { href: "/admin/social", label: "Visao Geral" },
+          { href: "/admin/social/youtube", label: "YouTube" },
+          { href: "/admin/social/instagram", label: "Instagram" },
+          { href: "/admin/social/tiktok", label: "TikTok" },
+          { href: "/admin/social/calendar", label: "Calendario" },
+        ].map((item) => {
+          const active = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`rounded-xl px-3 py-2 text-xs font-black transition-all ${
+                active
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/15"
+                  : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </div>
+
       {/* Info Card Explaining functionality */}
       <div className="p-4 bg-indigo-50/40 border border-indigo-100 rounded-2xl flex items-start gap-3">
         <div className="p-2 bg-indigo-50 rounded-xl border border-indigo-100 text-indigo-600 shrink-0">
@@ -315,6 +393,11 @@ export default function SocialPostsDashboard() {
           <p className="text-xs text-slate-500 leading-relaxed mt-1">
             <strong className="text-indigo-800">Nota sobre "Meta processando" / "Processando":</strong> No Instagram/Facebook, o vídeo é enviado em duas fases. A primeira cria o container e o vídeo entra em fila de processamento na Meta (status "Processando"). A postagem final ocorre no próximo ciclo do cron <code className="bg-indigo-50 px-1 py-0.5 rounded font-mono text-[10px]">/api/social/cron</code>. Se este cron não estiver rodando no seu servidor, o post parecerá travado. Você pode clicar no botão <strong>"Sincronizar/Publicar"</strong> (<RefreshCcw className="w-2.5 h-2.5 inline" />) ao lado do post para verificar o status e publicá-lo imediatamente.
           </p>
+          {lockedPlatform ? (
+            <p className="text-xs text-slate-500 leading-relaxed mt-1">
+              Esta visualizacao esta focada apenas em <strong>{currentView.badge}</strong> para reduzir ruido e facilitar o acompanhamento da fila.
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -542,7 +625,7 @@ export default function SocialPostsDashboard() {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
+      <div className={`grid grid-cols-1 ${lockedPlatform ? "md:grid-cols-3" : "md:grid-cols-4"} gap-4 bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm`}>
         <div className="relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
           <input 
@@ -570,20 +653,26 @@ export default function SocialPostsDashboard() {
           </select>
         </div>
 
-        <div className="relative">
-          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <select 
-            value={platformFilter}
-            onChange={(e) => setPlatformFilter(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-100 rounded-xl py-2.5 pl-11 pr-4 appearance-none focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-200 focus:bg-white text-xs font-medium text-slate-700"
-          >
-            <option value="ALL">Todas as Plataformas</option>
-            <option value="META">Meta (IG/FB)</option>
-            <option value="YOUTUBE">YouTube</option>
-            <option value="TIKTOK">TikTok</option>
-            <option value="LINKEDIN">LinkedIn</option>
-          </select>
-        </div>
+        {lockedPlatform ? (
+          <div className="flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-black text-slate-600">
+            Plataforma fixa: {currentView.badge}
+          </div>
+        ) : (
+          <div className="relative">
+            <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <select 
+              value={platformFilter}
+              onChange={(e) => setPlatformFilter(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-100 rounded-xl py-2.5 pl-11 pr-4 appearance-none focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-200 focus:bg-white text-xs font-medium text-slate-700"
+            >
+              <option value="ALL">Todas as Plataformas</option>
+              <option value="META">Meta (IG/FB)</option>
+              <option value="YOUTUBE">YouTube</option>
+              <option value="TIKTOK">TikTok</option>
+              <option value="LINKEDIN">LinkedIn</option>
+            </select>
+          </div>
+        )}
 
         <div className="flex items-center justify-end text-xs text-slate-500 font-bold">
           {total} postagens encontradas

@@ -25,6 +25,87 @@ function addMinutes(date: Date, minutes: number) {
   return new Date(date.getTime() + minutes * 60 * 1000);
 }
 
+const STORY_PUBLICATION_PLATFORMS = ["TIKTOK", "YOUTUBE", "INSTAGRAM"] as const;
+
+function storyPublicationToSocialPlatform(platform: (typeof STORY_PUBLICATION_PLATFORMS)[number]) {
+  return platform === "INSTAGRAM" ? "META" : platform;
+}
+
+function buildStorySocialSummary(params: {
+  title: string;
+  description: string;
+  affiliateUrl: string;
+}) {
+  const parts = [params.title.trim(), params.description.trim(), params.affiliateUrl.trim()]
+    .filter(Boolean)
+    .map((value, index) => (index === 2 ? `Produto com desconto (link de afiliado): ${value}` : value));
+  return parts.join("\n\n").slice(0, 1800);
+}
+
+async function ensureStorySocialPosts(params: {
+  storyAdId: string;
+  scheduledAt: Date | null;
+  title: string;
+  description: string;
+  videoUrl: string;
+  affiliateUrl: string;
+}) {
+  const summary = buildStorySocialSummary({
+    title: params.title,
+    description: params.description,
+    affiliateUrl: params.affiliateUrl,
+  });
+
+  const storyAd = await prisma.storyAd.findUnique({
+    where: { id: params.storyAdId },
+    include: { publications: true },
+  });
+  if (!storyAd) throw new Error("StoryAd nao encontrado ao preparar SocialPosts.");
+
+  for (const platform of STORY_PUBLICATION_PLATFORMS) {
+    const publication = storyAd.publications.find((item) => item.platform === (platform as any));
+    if (!publication) continue;
+
+    const payload = publication.responsePayload as any;
+    const existingSocialPostId = payload?.socialPostId ? String(payload.socialPostId) : null;
+    if (existingSocialPostId) continue;
+
+    const socialPlatform = storyPublicationToSocialPlatform(platform);
+    const existingSocialPost = await prisma.socialPost.findFirst({
+      where: {
+        platform: socialPlatform,
+        postType: "REEL",
+        videoUrl: params.videoUrl,
+        scheduledTo: params.scheduledAt,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const socialPost =
+      existingSocialPost ||
+      (await prisma.socialPost.create({
+        data: {
+          summary,
+          videoUrl: params.videoUrl,
+          status: "SCHEDULED",
+          scheduledTo: params.scheduledAt,
+          platform: socialPlatform,
+          postType: "REEL",
+        },
+      }));
+
+    await prisma.storyPublication.update({
+      where: { id: publication.id },
+      data: {
+        responsePayload: {
+          ...(payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {}),
+          socialPostId: socialPost.id,
+        },
+      },
+    });
+  }
+}
+
 function isLockExpired(lockedAt: Date | null, current: Date) {
   if (!lockedAt) return true;
   return current.getTime() - lockedAt.getTime() > LOCK_TTL_MS;
@@ -1006,6 +1087,14 @@ export async function runEngagementPipelineOnce(params?: { origin?: string }) {
       try {
         const existing = await prisma.storyAd.findUnique({ where: { coletaId: item.id }, include: { publications: true } });
         if (existing?.id) {
+          await ensureStorySocialPosts({
+            storyAdId: existing.id,
+            scheduledAt: existing.scheduledAt,
+            title: existing.title,
+            description: existing.description,
+            videoUrl: existing.videoUrl,
+            affiliateUrl: existing.affiliateUrl,
+          });
           await prisma.coletaDadosShoppe.update({
             where: { id: item.id },
             data: { pipelineStatus: existing.scheduledAt ? ("SCHEDULED" as any) : ("READY_FOR_STORY" as any), nextRunAt: existing.scheduledAt || null, lastError: null },
@@ -1060,6 +1149,15 @@ export async function runEngagementPipelineOnce(params?: { origin?: string }) {
           },
         });
 
+        await ensureStorySocialPosts({
+          storyAdId: storyAd.id,
+          scheduledAt,
+          title,
+          description,
+          videoUrl,
+          affiliateUrl,
+        });
+
         const finishedAt = now();
         await upsertPipelineStep({
           coletaId: item.id,
@@ -1069,7 +1167,7 @@ export async function runEngagementPipelineOnce(params?: { origin?: string }) {
           startedAt,
           finishedAt,
           durationMs: finishedAt.getTime() - startedAt.getTime(),
-          responsePayload: { storyAdId: storyAd.id },
+          responsePayload: { storyAdId: storyAd.id, socialPostsCreated: true },
         });
 
         await prisma.coletaDadosShoppe.update({

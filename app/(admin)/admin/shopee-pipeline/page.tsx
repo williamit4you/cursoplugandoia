@@ -1484,7 +1484,7 @@ export default function ShopeePipelinePage() {
                           <div>
                             <div className="text-sm font-extrabold">Acompanhar postagem</div>
                             <div className="mt-1 text-xs text-slate-600">
-                              O agendamento cria um <b>StoryAd</b>. Quando o horÃ¡rio (<code>scheduledAt</code>) chega, o publisher cria os <b>SocialPosts</b> e publica (YouTube/Meta/TikTok).
+                              O agendamento cria um <b>StoryAd</b> e os <b>SocialPosts</b> imediatamente. Quando o horÃ¡rio (<code>scheduledAt</code>) chega, o publisher apenas consome esses posts e publica em YouTube, Meta e TikTok.
                             </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
@@ -1570,7 +1570,7 @@ export default function ShopeePipelinePage() {
                                                       <OpenInNewIcon sx={{ fontSize: 14 }} />
                                                     </a>
                                                   ) : (
-                                                    <span className="text-slate-400">Aguardando gerar SocialPost</span>
+                                                    <span className="text-slate-400">SocialPost ainda nao vinculado</span>
                                                   )}
                                                   {p?.publishedUrl ? (
                                                     <a
