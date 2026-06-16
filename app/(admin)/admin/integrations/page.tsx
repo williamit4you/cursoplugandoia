@@ -37,6 +37,7 @@ export default function IntegrationsPage() {
   const [tiktokClientKey, setTiktokClientKey] = useState("");
   const [tiktokClientSecret, setTiktokClientSecret] = useState("");
   const [tiktokAccessToken, setTiktokAccessToken] = useState("");
+  const [tiktokSessionId, setTiktokSessionId] = useState("");
   const [tiktokActive, setTiktokActive] = useState(false);
 
   // LinkedIn Settings
@@ -88,6 +89,7 @@ export default function IntegrationsPage() {
           setTiktokClientKey(tiktok.apiKey || "");
           setTiktokClientSecret(tiktok.apiSecret || "");
           setTiktokAccessToken(tiktok.accessToken || "");
+          setTiktokSessionId(tiktok.refreshToken || "");
           setTiktokActive(tiktok.isActive);
         }
 
@@ -169,6 +171,7 @@ export default function IntegrationsPage() {
           apiKey: tiktokClientKey,
           apiSecret: tiktokClientSecret,
           accessToken: tiktokAccessToken,
+          refreshToken: tiktokSessionId,
           isActive: tiktokActive,
         }),
       });
@@ -448,10 +451,7 @@ export default function IntegrationsPage() {
           <Box>
             <Typography variant="h6" sx={{ fontWeight: "bold" }} color="#010101">🎵 TikTok</Typography>
             <Typography variant="body2" color="textSecondary">
-              Configure as credenciais do app TikTok para publicação automática de vídeos.{" "}
-              <a href="https://developers.tiktok.com" target="_blank" rel="noreferrer" style={{ color: '#6366f1' }}>
-                developers.tiktok.com
-              </a>
+              Configure a publicacao automatica via <code>tiktok-uploader</code>. O <code>sessionid</code> e a credencial principal.
             </Typography>
           </Box>
           <FormControlLabel
@@ -464,14 +464,14 @@ export default function IntegrationsPage() {
 
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 3 }}>
           <TextField
-            label="Client Key"
+            label="Client Key (opcional)"
             fullWidth variant="outlined" size="small"
             placeholder="awk..."
             value={tiktokClientKey}
             onChange={(e) => setTiktokClientKey(e.target.value)}
           />
           <TextField
-            label="Client Secret"
+            label="Client Secret (opcional)"
             fullWidth variant="outlined" size="small" type="password"
             value={tiktokClientSecret}
             onChange={(e) => setTiktokClientSecret(e.target.value)}
@@ -479,18 +479,31 @@ export default function IntegrationsPage() {
         </Box>
 
         <TextField
-          label="Access Token (Long-lived)"
+          label="Access Token (opcional)"
           fullWidth variant="outlined" multiline rows={3}
           placeholder="act..."
           value={tiktokAccessToken}
           onChange={(e) => setTiktokAccessToken(e.target.value)}
-          helperText="Token de longa duração com escopo video.publish. Renovar a cada 90 dias."
+          helperText="Legado. Deixe em branco se voce for usar apenas o tiktok-uploader."
+          sx={{ mb: 2 }}
+        />
+
+        <TextField
+          label="Session ID (principal)"
+          fullWidth
+          variant="outlined"
+          multiline
+          rows={3}
+          placeholder="sessionid..."
+          value={tiktokSessionId}
+          onChange={(e) => setTiktokSessionId(e.target.value)}
+          helperText="Obrigatorio para o modo principal via tiktok-uploader. Extraia do navegador ja autenticado no TikTok."
           sx={{ mb: 3 }}
         />
 
         <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 2, mb: 3 }}>
           <Typography variant="body2" color="textSecondary" sx={{ fontSize: 12 }}>
-            ℹ️ Usa a <strong>Content Posting API v2</strong> — método Direct Post via URL pull. Vídeos publicados ficam em revisão por ~24h antes de aparecer publicamente.
+            ℹ️ A aplicacao usa por padrao o <strong>tiktok-uploader</strong> no servidor. A API oficial do TikTok fica apenas como alternativa opcional.
           </Typography>
         </Box>
 

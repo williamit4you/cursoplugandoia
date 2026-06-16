@@ -5,16 +5,14 @@ import { Pool } from "pg";
 import { publishTikTokVideo } from "@/lib/tiktokApi";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
-/**
- * POST /api/social/publish-tiktok
- * Publica o vídeo do SocialPost no TikTok via Content Posting API v2.
- */
 export async function POST(req: NextRequest) {
   let targetSocialPostId: string | undefined = undefined;
+
   try {
     const { socialPostId } = await req.json();
     targetSocialPostId = socialPostId;
@@ -23,11 +21,11 @@ export async function POST(req: NextRequest) {
       where: { id: socialPostId },
       include: { post: { select: { title: true } } },
     });
+
     if (!socialPost) {
-      return NextResponse.json({ error: "Post não encontrado" }, { status: 404 });
+      return NextResponse.json({ error: "Post nao encontrado" }, { status: 404 });
     }
 
-    // Resolvendo post irmão se houver incompatibilidade de plataforma
     if (socialPost.platform !== "TIKTOK") {
       const sister = await prisma.socialPost.findFirst({
         where: {
@@ -39,6 +37,7 @@ export async function POST(req: NextRequest) {
         },
         include: { post: { select: { title: true } } },
       });
+
       if (sister) {
         socialPost = sister;
         targetSocialPostId = sister.id;
@@ -48,21 +47,22 @@ export async function POST(req: NextRequest) {
     const settings = await prisma.integrationSettings.findUnique({
       where: { platform: "TIKTOK" },
     });
-    if (!settings?.accessToken || !settings.isActive) {
+
+    if (!settings?.isActive) {
       return NextResponse.json(
-        { error: "TikTok não configurado ou inativo. Configure em Hub de Integrações." },
+        { error: "TikTok nao configurado ou inativo. Configure em Hub de Integracoes." },
         { status: 400 }
       );
     }
 
-    const title = socialPost.post?.title || socialPost.summary?.slice(0, 150) || "Nova notícia";
-    const publishId = await publishTikTokVideo(
-      socialPost.videoUrl,
-      title,
-      settings.accessToken
-    );
+    const title = socialPost.post?.title || socialPost.summary?.slice(0, 150) || "Nova noticia";
+    const { publishId, method } = await publishTikTokVideo(socialPost.videoUrl, title, {
+      accessToken: settings.accessToken,
+      sessionId: settings.refreshToken,
+    });
 
-    const logEntry = `[${new Date().toLocaleTimeString("pt-BR")}] 🎵 Enviado ao TikTok! Publish ID: ${publishId}`;
+    const logEntry = `[${new Date().toLocaleTimeString("pt-BR")}] TikTok enviado via ${method}. Publish ID: ${publishId}`;
+
     await prisma.socialPost.update({
       where: { id: targetSocialPostId },
       data: {
@@ -75,15 +75,18 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, publishId });
+    return NextResponse.json({ success: true, publishId, method });
   } catch (error: any) {
     console.error("TikTok publishing error:", error);
     const errorMessage = error.message || "Erro ao publicar no TikTok";
-    const logEntry = `[${new Date().toLocaleTimeString("pt-BR")}] ❌ Falha ao publicar no TikTok: ${errorMessage}`;
+    const logEntry = `[${new Date().toLocaleTimeString("pt-BR")}] Falha ao publicar no TikTok: ${errorMessage}`;
 
     if (targetSocialPostId) {
       try {
-        const currentPost = await prisma.socialPost.findUnique({ where: { id: targetSocialPostId } });
+        const currentPost = await prisma.socialPost.findUnique({
+          where: { id: targetSocialPostId },
+        });
+
         await prisma.socialPost.update({
           where: { id: targetSocialPostId },
           data: {

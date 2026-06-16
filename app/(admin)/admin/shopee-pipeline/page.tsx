@@ -302,6 +302,15 @@ function truncateJson(value: unknown, maxLen = 900) {
   return `${text.slice(0, maxLen)}\n…(truncado)`;
 }
 
+function buildManualPostDescription(item?: Partial<ColetaItem> | null) {
+  const preferred = [item?.aiPromptVendas, item?.descricao, item?.detalhes];
+  for (const value of preferred) {
+    const text = String(value || "").trim();
+    if (text) return text;
+  }
+  return "";
+}
+
 function renderProviderEvents(metadata: any) {
   const events = metadata?.events;
   if (!Array.isArray(events) || events.length === 0) return null;
@@ -588,6 +597,55 @@ export default function ShopeePipelinePage() {
       // ignore
     }
   };
+
+  const copyToClipboard = useCallback(async (label: string, value?: string | null) => {
+    const text = String(value || "").trim();
+    if (!text) {
+      setSnackbar({
+        open: true,
+        severity: "warning",
+        message: `${label} ainda não está disponível neste item.`,
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message: `${label} copiado.`,
+      });
+    } catch {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: `Não foi possível copiar ${label.toLowerCase()}.`,
+      });
+    }
+  }, []);
+
+  const openExternalUrl = useCallback((url?: string | null) => {
+    const text = String(url || "").trim();
+    if (!text) {
+      setSnackbar({
+        open: true,
+        severity: "warning",
+        message: "Link ainda não está disponível neste item.",
+      });
+      return;
+    }
+
+    try {
+      window.open(text, "_blank", "noopener,noreferrer");
+    } catch {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: "Não foi possível abrir o link.",
+      });
+    }
+  }, []);
 
   const focusStep = async (stepName: string) => {
     if (!selected?.id) return;
@@ -1244,6 +1302,92 @@ export default function ShopeePipelinePage() {
               </Typography>
 
               <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
+
+              {(() => {
+                const title = String(selected.titulo || "").trim();
+                const description = buildManualPostDescription(selected);
+                const videoUrl = String(selected.videoFinalUrl || "").trim();
+                const affiliateUrl = String(selected.affiliateUrl || "").trim();
+                const packageText = [
+                  `Titulo: ${title || "-"}`,
+                  `Descricao: ${description || "-"}`,
+                  `Video: ${videoUrl || "-"}`,
+                  `Afiliado: ${affiliateUrl || "-"}`,
+                ].join("\n\n");
+
+                const fields = [
+                  { label: "Titulo", value: title, multiline: false },
+                  { label: "Descricao", value: description, multiline: true },
+                  { label: "Link do video", value: videoUrl, multiline: true, isUrl: true },
+                  { label: "Link de afiliado", value: affiliateUrl, multiline: true, isUrl: true },
+                ];
+
+                return (
+                  <Card variant="outlined" sx={{ borderColor: "rgba(34,197,94,0.25)", bgcolor: "rgba(34,197,94,0.07)" }}>
+                    <CardContent>
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
+                            Postagem manual
+                          </Typography>
+                          <Typography variant="caption" className="text-slate-300">
+                            Copie daqui e cole no TikTok, sem depender da API.
+                          </Typography>
+                        </div>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="success"
+                          onClick={() => copyToClipboard("pacote completo", packageText)}
+                          sx={{ textTransform: "none", fontWeight: 800 }}
+                        >
+                          Copiar tudo
+                        </Button>
+                      </div>
+
+                      <div className="mt-4 grid gap-3">
+                        {fields.map((field) => (
+                          <div key={field.label} className="rounded-xl border border-white/10 bg-black/10 p-3">
+                            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs font-extrabold uppercase tracking-wide text-emerald-300">
+                                  {field.label}
+                                </div>
+                                <pre className={`mt-2 whitespace-pre-wrap break-words rounded-lg bg-black/20 p-3 text-sm text-slate-100 ${field.multiline ? "min-h-[84px]" : ""}`}>
+{field.value || "-"}
+                                </pre>
+                              </div>
+                              <div className="flex shrink-0 items-center gap-2">
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="success"
+                                  onClick={() => copyToClipboard(field.label, field.value)}
+                                  sx={{ textTransform: "none" }}
+                                >
+                                  Copiar
+                                </Button>
+                                {field.isUrl ? (
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="inherit"
+                                    startIcon={<OpenInNewIcon fontSize="small" />}
+                                    onClick={() => openExternalUrl(field.value)}
+                                    sx={{ textTransform: "none" }}
+                                  >
+                                    Abrir
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
 
               <Card variant="outlined" sx={{ borderColor: "rgba(255,255,255,0.10)", bgcolor: "rgba(255,255,255,0.04)" }}>
                 <CardContent>
