@@ -130,6 +130,14 @@ function resolvePythonCommand() {
   );
 }
 
+function resolveOptionalCommand(command: string) {
+  try {
+    return whichSync(command);
+  } catch {
+    return null;
+  }
+}
+
 async function runUploaderCli(
   tempDir: string,
   videoPath: string,
@@ -143,9 +151,9 @@ async function runUploaderCli(
 
   const cookiesPath = await createCookiesFile(tempDir, authValue);
   const usePythonRunner = configuredCommand === "" || configuredCommand === "tiktok-uploader";
-  const command = usePythonRunner ? resolvePythonCommand() : configuredCommand;
+  const baseCommand = usePythonRunner ? resolvePythonCommand() : configuredCommand;
 
-  const args = usePythonRunner
+  const baseArgs = usePythonRunner
     ? [
         path.join(tempDir, "tiktok-upload-runner.py"),
         videoPath,
@@ -156,7 +164,7 @@ async function runUploaderCli(
       ]
     : ["-v", videoPath, "-d", description.slice(0, 2200), "-c", cookiesPath];
 
-  if (!usePythonRunner && headless) args.push("--headless");
+  if (!usePythonRunner && headless) baseArgs.push("--headless");
 
   if (usePythonRunner) {
     const runnerScript = [
@@ -173,6 +181,10 @@ async function runUploaderCli(
     ].join("\n");
     await fs.writeFile(path.join(tempDir, "tiktok-upload-runner.py"), runnerScript, "utf8");
   }
+
+  const shouldUseXvfb = !headless && !process.env.DISPLAY && Boolean(resolveOptionalCommand("xvfb-run"));
+  const command = shouldUseXvfb ? "xvfb-run" : baseCommand;
+  const args = shouldUseXvfb ? ["-a", baseCommand, ...baseArgs] : baseArgs;
 
   return await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
     const child = spawn(command, args, {
@@ -197,7 +209,7 @@ async function runUploaderCli(
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {
         reject(
           new Error(
-            `Nao foi possivel encontrar o uploader do TikTok (${command}). Verifique se a imagem do app foi rebuildada com python3, tiktok-uploader e Playwright.`
+            `Nao foi possivel encontrar o uploader do TikTok (${command}). Verifique se a imagem do app foi rebuildada com python3, tiktok-uploader, Playwright e xvfb.`
           )
         );
         return;
