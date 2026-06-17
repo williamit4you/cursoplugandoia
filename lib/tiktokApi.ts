@@ -83,6 +83,35 @@ async function downloadVideoToTemp(videoUrl: string, title: string) {
   return { tempDir, videoPath };
 }
 
+function looksLikeCookiesFile(input: string) {
+  const value = input.trim();
+  return (
+    value.includes("\n") ||
+    value.includes("\r") ||
+    value.includes("\t") ||
+    value.includes("# Netscape HTTP Cookie File") ||
+    value.includes("sessionid\t") ||
+    value.includes("sessionid_ss\t")
+  );
+}
+
+async function createCookiesFile(tempDir: string, authValue: string) {
+  const cookiesPath = path.join(tempDir, "cookies.txt");
+  const trimmed = authValue.trim();
+
+  const cookiesContent = looksLikeCookiesFile(trimmed)
+    ? trimmed
+    : [
+        "# Netscape HTTP Cookie File",
+        `.tiktok.com\tTRUE\t/\tFALSE\t2147483647\tsessionid\t${trimmed}`,
+        `.tiktok.com\tTRUE\t/\tFALSE\t2147483647\tsessionid_ss\t${trimmed}`,
+        "",
+      ].join("\n");
+
+  await fs.writeFile(cookiesPath, cookiesContent, "utf8");
+  return cookiesPath;
+}
+
 function resolvePythonCommand() {
   const configured = process.env.TIKTOK_UPLOADER_PYTHON_COMMAND?.trim();
   const candidates = configured ? [configured] : ["python3", "python"];
@@ -105,13 +134,14 @@ async function runUploaderCli(
   tempDir: string,
   videoPath: string,
   description: string,
-  sessionId: string
+  authValue: string
 ) {
   const configuredCommand = (process.env.TIKTOK_UPLOADER_COMMAND || "tiktok-uploader").trim();
   const browser = (process.env.TIKTOK_UPLOADER_BROWSER || "chromium").trim() || "chromium";
   const headless = (process.env.TIKTOK_UPLOADER_HEADLESS || "true").toLowerCase() !== "false";
   const cwd = process.env.TIKTOK_UPLOADER_WORKDIR || process.cwd();
 
+  const cookiesPath = await createCookiesFile(tempDir, authValue);
   const usePythonRunner = configuredCommand === "" || configuredCommand === "tiktok-uploader";
   const command = usePythonRunner ? resolvePythonCommand() : configuredCommand;
 
@@ -120,11 +150,11 @@ async function runUploaderCli(
         path.join(tempDir, "tiktok-upload-runner.py"),
         videoPath,
         description.slice(0, 2200),
-        sessionId,
+        cookiesPath,
         browser,
         headless ? "true" : "false",
       ]
-    : ["-v", videoPath, "-d", description.slice(0, 2200), "-s", sessionId];
+    : ["-v", videoPath, "-d", description.slice(0, 2200), "-c", cookiesPath];
 
   if (!usePythonRunner && headless) args.push("--headless");
 
@@ -133,10 +163,10 @@ async function runUploaderCli(
       "import sys",
       "from tiktok_uploader.upload import TikTokUploader",
       "",
-      "video_path, description, session_id, browser, headless_raw = sys.argv[1:6]",
+      "video_path, description, cookies_path, browser, headless_raw = sys.argv[1:6]",
       "headless = headless_raw.lower() == 'true'",
       "",
-      "with TikTokUploader(sessionid=session_id, browser=browser, headless=headless) as uploader:",
+      "with TikTokUploader(cookies=cookies_path, browser=browser, headless=headless) as uploader:",
       "    ok = uploader.upload_video(filename=video_path, description=description)",
       "    if not ok:",
       "        raise SystemExit(1)",
@@ -198,12 +228,12 @@ async function runUploaderCli(
 async function publishViaBrowserUploader(
   videoUrl: string,
   title: string,
-  sessionId: string
+  authValue: string
 ): Promise<TikTokPublishResult> {
   const { tempDir, videoPath } = await downloadVideoToTemp(videoUrl, title);
 
   try {
-    const { stdout } = await runUploaderCli(tempDir, videoPath, title, sessionId);
+    const { stdout } = await runUploaderCli(tempDir, videoPath, title, authValue);
 
     return {
       publishId: `browser:${Date.now()}`,

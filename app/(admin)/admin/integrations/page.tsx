@@ -451,7 +451,7 @@ export default function IntegrationsPage() {
           <Box>
             <Typography variant="h6" sx={{ fontWeight: "bold" }} color="#010101">🎵 TikTok</Typography>
             <Typography variant="body2" color="textSecondary">
-              Configure a publicacao automatica via <code>tiktok-uploader</code>. O <code>sessionid</code> e a credencial principal.
+              Configure a publicacao automatica via <code>tiktok-uploader</code>. Cole o <code>cookies.txt</code> completo ou, em ultimo caso, apenas o <code>sessionid</code>.
             </Typography>
           </Box>
           <FormControlLabel
@@ -489,15 +489,15 @@ export default function IntegrationsPage() {
         />
 
         <TextField
-          label="Session ID (principal)"
+          label="Cookies.txt ou Session ID"
           fullWidth
           variant="outlined"
           multiline
-          rows={3}
-          placeholder="sessionid..."
+          rows={5}
+          placeholder="# Netscape HTTP Cookie File..."
           value={tiktokSessionId}
           onChange={(e) => setTiktokSessionId(e.target.value)}
-          helperText="Obrigatorio para o modo principal via tiktok-uploader. Extraia do navegador ja autenticado no TikTok."
+          helperText="Preferencialmente cole o cookies.txt exportado do navegador ja autenticado no TikTok. O sessionid puro continua aceito como fallback."
           sx={{ mb: 3 }}
         />
 

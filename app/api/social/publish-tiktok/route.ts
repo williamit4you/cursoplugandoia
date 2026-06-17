@@ -18,7 +18,7 @@ function tiktokConfigError(settings: {
   const method = (process.env.TIKTOK_UPLOAD_METHOD || "browser").toLowerCase();
 
   if (!settings) {
-    return "TikTok nao configurado. Abra o Hub de Integracoes, ative o TikTok e salve o Session ID.";
+    return "TikTok nao configurado. Abra o Hub de Integracoes, ative o TikTok e salve o cookies.txt ou Session ID.";
   }
 
   if (!settings.isActive) {
@@ -26,7 +26,7 @@ function tiktokConfigError(settings: {
   }
 
   if (method === "browser" && !String(settings.refreshToken || "").trim()) {
-    return "TikTok sem Session ID. No Hub de Integracoes, preencha o campo Session ID para o tiktok-uploader.";
+    return "TikTok sem credencial de navegador. No Hub de Integracoes, preencha o campo cookies.txt ou Session ID para o tiktok-uploader.";
   }
 
   if (method === "official" && !String(settings.accessToken || "").trim()) {
@@ -34,7 +34,7 @@ function tiktokConfigError(settings: {
   }
 
   if (method === "auto" && !String(settings.refreshToken || "").trim() && !String(settings.accessToken || "").trim()) {
-    return "TikTok sem credenciais. Preencha o Session ID ou o Access Token no Hub de Integracoes.";
+    return "TikTok sem credenciais. Preencha o cookies.txt/Session ID ou o Access Token no Hub de Integracoes.";
   }
 
   return null;
