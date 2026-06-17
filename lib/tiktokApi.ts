@@ -148,6 +148,9 @@ async function runUploaderCli(
   const browser = (process.env.TIKTOK_UPLOADER_BROWSER || "chromium").trim() || "chromium";
   const headless = (process.env.TIKTOK_UPLOADER_HEADLESS || "true").toLowerCase() !== "false";
   const cwd = process.env.TIKTOK_UPLOADER_WORKDIR || process.cwd();
+  const chromiumExecutablePath =
+    (process.env.TIKTOK_CHROMIUM_EXECUTABLE_PATH || "/usr/bin/chromium").trim() ||
+    "/usr/bin/chromium";
 
   const cookiesPath = await createCookiesFile(tempDir, authValue);
   const usePythonRunner = configuredCommand === "" || configuredCommand === "tiktok-uploader";
@@ -161,6 +164,7 @@ async function runUploaderCli(
         cookiesPath,
         browser,
         headless ? "true" : "false",
+        chromiumExecutablePath,
       ]
     : ["-v", videoPath, "-d", description.slice(0, 2200), "-c", cookiesPath];
 
@@ -169,15 +173,44 @@ async function runUploaderCli(
   if (usePythonRunner) {
     const runnerScript = [
       "import sys",
-      "from tiktok_uploader.upload import TikTokUploader",
+      "from playwright.sync_api import sync_playwright",
+      "from tiktok_uploader import config",
+      "from tiktok_uploader.auth import AuthBackend",
+      "from tiktok_uploader.upload import complete_upload_form",
       "",
-      "video_path, description, cookies_path, browser, headless_raw = sys.argv[1:6]",
+      "video_path, description, cookies_path, browser, headless_raw, executable_path = sys.argv[1:7]",
       "headless = headless_raw.lower() == 'true'",
       "",
-      "with TikTokUploader(cookies=cookies_path, browser=browser, headless=headless) as uploader:",
-      "    ok = uploader.upload_video(filename=video_path, description=description)",
-      "    if not ok:",
-      "        raise SystemExit(1)",
+      "auth = AuthBackend(cookies=cookies_path)",
+      "playwright = sync_playwright().start()",
+      "browser_type = playwright.chromium",
+      "launch_args = {",
+      "    'headless': headless,",
+      "    'executable_path': executable_path,",
+      "    'args': [",
+      "        '--disable-blink-features=AutomationControlled',",
+      "        '--disable-crash-reporter',",
+      "        '--disable-crashpad',",
+      "        '--no-sandbox',",
+      "    ],",
+      "}",
+      "browser_instance = browser_type.launch(**launch_args)",
+      "context = browser_instance.new_context(",
+      "    viewport={'width': 1280, 'height': 720},",
+      "    user_agent=config.disguising.user_agent,",
+      "    locale='en-US',",
+      ")",
+      "context.add_init_script(\"\"\"",
+      "Object.defineProperty(navigator, 'webdriver', { get: () => undefined });",
+      "\"\"\")",
+      "page = context.new_page()",
+      "page.set_default_timeout(config.implicit_wait * 1000)",
+      "page = auth.authenticate_agent(page)",
+      "try:",
+      "    complete_upload_form(page, video_path, description, None, False, None, None, 'everyone', 1, headless)",
+      "finally:",
+      "    browser_instance.close()",
+      "    playwright.stop()",
     ].join("\n");
     await fs.writeFile(path.join(tempDir, "tiktok-upload-runner.py"), runnerScript, "utf8");
   }
