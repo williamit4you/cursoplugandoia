@@ -66,6 +66,7 @@ WORKDIR /app
 ARG INSTALL_CHROMIUM=0
 ARG INSTALL_TIKTOK_UPLOADER=1
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV TIKTOK_UPLOADER_VENV=/opt/tiktok-uploader-venv
 RUN if [ "$INSTALL_CHROMIUM" = "1" ] || [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; then \
       apk add --no-cache \
         python3 \
@@ -83,9 +84,10 @@ RUN if [ "$INSTALL_CHROMIUM" = "1" ] || [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; th
         libc6-compat ; \
     fi \
     && if [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; then \
-      python3 -m pip install --no-cache-dir --upgrade pip && \
-      python3 -m pip install --no-cache-dir tiktok-uploader && \
-      python3 -m playwright install chromium && \
+      python3 -m venv "$TIKTOK_UPLOADER_VENV" && \
+      "$TIKTOK_UPLOADER_VENV/bin/pip" install --no-cache-dir --upgrade pip && \
+      "$TIKTOK_UPLOADER_VENV/bin/pip" install --no-cache-dir tiktok-uploader playwright && \
+      "$TIKTOK_UPLOADER_VENV/bin/python" -m playwright install chromium && \
       chmod -R a+rX /ms-playwright ; \
     fi
 
@@ -95,6 +97,7 @@ ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 ENV REMOTION_CHROME_BIN=/usr/bin/chromium-browser
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV TIKTOK_UPLOADER_BROWSER=chromium
+ENV PATH="/opt/tiktok-uploader-venv/bin:${PATH}"
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
