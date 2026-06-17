@@ -1,7 +1,9 @@
-FROM node:22-alpine AS builder
+FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
-RUN apk add --no-cache libc6-compat openssl
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -60,7 +62,7 @@ RUN npx prisma generate
 
 RUN npm run build
 
-FROM node:22-alpine AS runner
+FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 
 ARG INSTALL_CHROMIUM=0
@@ -68,21 +70,23 @@ ARG INSTALL_TIKTOK_UPLOADER=1
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV TIKTOK_UPLOADER_VENV=/opt/tiktok-uploader-venv
 RUN if [ "$INSTALL_CHROMIUM" = "1" ] || [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; then \
-      apk add --no-cache \
+      apt-get update && \
+      apt-get install -y --no-install-recommends \
         python3 \
-        py3-pip \
+        python3-venv \
+        python3-pip \
         chromium \
-        nss \
-        freetype \
-        harfbuzz \
+        libnss3 \
+        libfreetype6 \
+        libharfbuzz0b \
         ca-certificates \
-        ttf-freefont \
-        libc6-compat ; \
+        fonts-freefont-ttf ; \
     else \
-      apk add --no-cache \
-        ca-certificates \
-        libc6-compat ; \
+      apt-get update && \
+      apt-get install -y --no-install-recommends \
+        ca-certificates ; \
     fi \
+    && rm -rf /var/lib/apt/lists/* \
     && if [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; then \
       python3 -m venv "$TIKTOK_UPLOADER_VENV" && \
       "$TIKTOK_UPLOADER_VENV/bin/pip" install --no-cache-dir --upgrade pip && \
@@ -94,7 +98,7 @@ RUN if [ "$INSTALL_CHROMIUM" = "1" ] || [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; th
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--dns-result-order=ipv4first"
-ENV REMOTION_CHROME_BIN=/usr/bin/chromium-browser
+ENV REMOTION_CHROME_BIN=/usr/bin/chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV TIKTOK_UPLOADER_BROWSER=chromium
 ENV PATH="/opt/tiktok-uploader-venv/bin:${PATH}"
