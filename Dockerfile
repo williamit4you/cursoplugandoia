@@ -77,6 +77,7 @@ RUN if [ "$INSTALL_CHROMIUM" = "1" ] || [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; th
         python3-pip \
         chromium \
         xvfb \
+        xauth \
         libnss3 \
         libfreetype6 \
         libharfbuzz0b \
