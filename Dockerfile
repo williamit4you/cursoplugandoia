@@ -64,8 +64,12 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 
 ARG INSTALL_CHROMIUM=0
-RUN if [ "$INSTALL_CHROMIUM" = "1" ]; then \
+ARG INSTALL_TIKTOK_UPLOADER=1
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN if [ "$INSTALL_CHROMIUM" = "1" ] || [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; then \
       apk add --no-cache \
+        python3 \
+        py3-pip \
         chromium \
         nss \
         freetype \
@@ -77,6 +81,12 @@ RUN if [ "$INSTALL_CHROMIUM" = "1" ]; then \
       apk add --no-cache \
         ca-certificates \
         libc6-compat ; \
+    fi \
+    && if [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; then \
+      python3 -m pip install --no-cache-dir --upgrade pip && \
+      python3 -m pip install --no-cache-dir tiktok-uploader && \
+      python3 -m playwright install chromium && \
+      chmod -R a+rX /ms-playwright ; \
     fi
 
 ENV NODE_ENV=production
@@ -84,6 +94,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 ENV REMOTION_CHROME_BIN=/usr/bin/chromium-browser
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV TIKTOK_UPLOADER_BROWSER=chromium
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import { spawn } from "child_process";
+import { sync as whichSync } from "which";
 
 type TikTokPublishSettings = {
   accessToken?: string | null;
@@ -82,30 +83,70 @@ async function downloadVideoToTemp(videoUrl: string, title: string) {
   return { tempDir, videoPath };
 }
 
-async function createCookiesFile(tempDir: string, sessionId: string) {
-  const cookiesPath = path.join(tempDir, "cookies.txt");
-  const cookiesContent = [
-    "# Netscape HTTP Cookie File",
-    `.tiktok.com\tTRUE\t/\tFALSE\t2147483647\tsessionid\t${sessionId}`,
-    "",
-  ].join("\n");
-  await fs.writeFile(cookiesPath, cookiesContent, "utf8");
-  return cookiesPath;
+function resolvePythonCommand() {
+  const configured = process.env.TIKTOK_UPLOADER_PYTHON_COMMAND?.trim();
+  const candidates = configured ? [configured] : ["python3", "python"];
+
+  for (const candidate of candidates) {
+    try {
+      whichSync(candidate);
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+
+  throw new Error(
+    "Python nao encontrado no servidor. Instale python3 para usar o uploader do TikTok."
+  );
 }
 
-async function runUploaderCli(videoPath: string, description: string, cookiesPath: string) {
-  const command = process.env.TIKTOK_UPLOADER_COMMAND || "tiktok-uploader";
-  const browser = process.env.TIKTOK_UPLOADER_BROWSER || "chrome";
+async function runUploaderCli(
+  tempDir: string,
+  videoPath: string,
+  description: string,
+  sessionId: string
+) {
+  const configuredCommand = (process.env.TIKTOK_UPLOADER_COMMAND || "tiktok-uploader").trim();
+  const browser = (process.env.TIKTOK_UPLOADER_BROWSER || "chromium").trim() || "chromium";
   const headless = (process.env.TIKTOK_UPLOADER_HEADLESS || "true").toLowerCase() !== "false";
   const cwd = process.env.TIKTOK_UPLOADER_WORKDIR || process.cwd();
 
-  const args = ["-v", videoPath, "-d", description.slice(0, 2200), "-c", cookiesPath];
-  if (headless) args.push("--headless");
+  const usePythonRunner = configuredCommand === "" || configuredCommand === "tiktok-uploader";
+  const command = usePythonRunner ? resolvePythonCommand() : configuredCommand;
+
+  const args = usePythonRunner
+    ? [
+        path.join(tempDir, "tiktok-upload-runner.py"),
+        videoPath,
+        description.slice(0, 2200),
+        sessionId,
+        browser,
+        headless ? "true" : "false",
+      ]
+    : ["-v", videoPath, "-d", description.slice(0, 2200), "-s", sessionId];
+
+  if (!usePythonRunner && headless) args.push("--headless");
+
+  if (usePythonRunner) {
+    const runnerScript = [
+      "import sys",
+      "from tiktok_uploader.upload import TikTokUploader",
+      "",
+      "video_path, description, session_id, browser, headless_raw = sys.argv[1:6]",
+      "headless = headless_raw.lower() == 'true'",
+      "",
+      "with TikTokUploader(sessionid=session_id, browser=browser, headless=headless) as uploader:",
+      "    ok = uploader.upload_video(filename=video_path, description=description)",
+      "    if not ok:",
+      "        raise SystemExit(1)",
+    ].join("\n");
+    await fs.writeFile(path.join(tempDir, "tiktok-upload-runner.py"), runnerScript, "utf8");
+  }
 
   return await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
-      shell: true,
       env: {
         ...process.env,
         TIKTOK_UPLOADER_BROWSER: browser,
@@ -123,6 +164,15 @@ async function runUploaderCli(videoPath: string, description: string, cookiesPat
       stderr += chunk.toString();
     });
     child.on("error", (error) => {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        reject(
+          new Error(
+            `Nao foi possivel encontrar o uploader do TikTok (${command}). Verifique se a imagem do app foi rebuildada com python3, tiktok-uploader e Playwright.`
+          )
+        );
+        return;
+      }
+
       reject(
         new Error(
           `Nao foi possivel iniciar o uploader do TikTok (${command}): ${error.message}`
@@ -153,8 +203,7 @@ async function publishViaBrowserUploader(
   const { tempDir, videoPath } = await downloadVideoToTemp(videoUrl, title);
 
   try {
-    const cookiesPath = await createCookiesFile(tempDir, sessionId);
-    const { stdout } = await runUploaderCli(videoPath, title, cookiesPath);
+    const { stdout } = await runUploaderCli(tempDir, videoPath, title, sessionId);
 
     return {
       publishId: `browser:${Date.now()}`,
