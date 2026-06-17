@@ -104,9 +104,16 @@ ENV REMOTION_CHROME_BIN=/usr/bin/chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV TIKTOK_UPLOADER_BROWSER=chromium
 ENV PATH="/opt/tiktok-uploader-venv/bin:${PATH}"
+ENV HOME=/home/nextjs
+ENV XDG_CONFIG_HOME=/home/nextjs/.config
+ENV XDG_CACHE_HOME=/home/nextjs/.cache
+ENV XDG_RUNTIME_DIR=/tmp/runtime-nextjs
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
+RUN mkdir -p /home/nextjs/.config /home/nextjs/.cache /tmp/runtime-nextjs \
+    && chown -R nextjs:nodejs /home/nextjs /tmp/runtime-nextjs \
+    && chmod 700 /tmp/runtime-nextjs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
