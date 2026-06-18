@@ -69,25 +69,33 @@ async function ensureStorySocialPosts(params: {
 
     const payload = publication.responsePayload as any;
     const existingSocialPostId = payload?.socialPostId ? String(payload.socialPostId) : null;
-    if (existingSocialPostId) continue;
-
     const socialPlatform = storyPublicationToSocialPlatform(platform);
     const scheduledTo = await computeNextSocialQueueTime({
       platform: socialPlatform,
       desiredAt: params.scheduledAt,
-    });
-    const existingSocialPost = await prisma.socialPost.findFirst({
-      where: {
-        platform: socialPlatform,
-        postType: "REEL",
-        videoUrl: params.videoUrl,
-      },
-      orderBy: { createdAt: "desc" },
+      excludeSocialPostId: existingSocialPostId,
     });
 
-    const socialPost =
-      existingSocialPost ||
-      (await prisma.socialPost.create({
+    let socialPost = existingSocialPostId
+      ? await prisma.socialPost.findUnique({
+          where: { id: existingSocialPostId },
+        })
+      : null;
+
+    if (socialPost) {
+      socialPost = await prisma.socialPost.update({
+        where: { id: socialPost.id },
+        data: {
+          summary,
+          videoUrl: params.videoUrl,
+          status: socialPost.status === "POSTED" ? socialPost.status : "SCHEDULED",
+          scheduledTo,
+          platform: socialPlatform,
+          postType: "REEL",
+        },
+      });
+    } else {
+      socialPost = await prisma.socialPost.create({
         data: {
           summary,
           videoUrl: params.videoUrl,
@@ -96,7 +104,8 @@ async function ensureStorySocialPosts(params: {
           platform: socialPlatform,
           postType: "REEL",
         },
-      }));
+      });
+    }
 
     await prisma.storyPublication.update({
       where: { id: publication.id },

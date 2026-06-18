@@ -22,6 +22,7 @@ export async function computeNextSocialQueueTime(params: {
   platform: string;
   desiredAt?: Date | null;
   spacingHours?: number;
+  excludeSocialPostId?: string | null;
 }) {
   const platform = String(params.platform || "").trim().toUpperCase();
   const current = now();
@@ -30,11 +31,13 @@ export async function computeNextSocialQueueTime(params: {
   const desiredAt = requestedAt > minimumAllowed ? requestedAt : minimumAllowed;
   const spacingHours = Number.isFinite(params.spacingHours) ? Number(params.spacingHours) : DEFAULT_SPACING_HOURS;
   const recentThreshold = new Date(current.getTime() - RECENT_WINDOW_MS);
+  const excludeSocialPostId = params.excludeSocialPostId ? String(params.excludeSocialPostId).trim() : null;
 
   const [latestScheduled, latestPosted] = await Promise.all([
     prisma.socialPost.findFirst({
       where: {
         platform,
+        ...(excludeSocialPostId ? { id: { not: excludeSocialPostId } } : {}),
         status: { in: ["SCHEDULED", "PUBLISHING", "POSTED"] },
         scheduledTo: { not: null },
       },
@@ -44,6 +47,7 @@ export async function computeNextSocialQueueTime(params: {
     prisma.socialPost.findFirst({
       where: {
         platform,
+        ...(excludeSocialPostId ? { id: { not: excludeSocialPostId } } : {}),
         status: "POSTED",
         postedAt: { not: null },
       },
