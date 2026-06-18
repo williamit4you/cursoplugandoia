@@ -199,6 +199,17 @@ function externalRenderServiceUrl() {
   return value ? value.replace(/\/+$/, "") : "";
 }
 
+async function downloadUrlToBuffer(url: string) {
+  const res = await fetch(url, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(10 * 60 * 1000),
+  });
+  if (!res.ok) {
+    throw new Error(`Falha ao baixar arquivo temporario (${res.status})`);
+  }
+  return Buffer.from(await res.arrayBuffer());
+}
+
 async function renderWithExternalService(params: {
   projectId: string;
   project: any;
@@ -232,17 +243,52 @@ async function renderNewsAsTalkingHead(project: any) {
   if (!imageUrl) throw new Error("Config faltando: userBaseImageUrl/creator asset para gerar video da noticia");
   if (!narrationText) throw new Error("narrationText ausente para gerar audio da noticia");
 
-  const audioResult = project.audioUrl
-    ? { audio_url: String(project.audioUrl).trim() }
-    : await generateModalAudio({
-        voiceRefUrl,
-        targetText: narrationText,
-        seed: Math.floor(Math.random() * 1_000_000_000),
-      });
+  let stableAudioUrl = String(project.audioUrl || "").trim();
+  if (!stableAudioUrl) {
+    await logCodeVideoPipelineEvent({
+      projectId: project.id,
+      stepName: "RENDER_VIDEO",
+      message: "Gerando audio do resumo via Modal...",
+    }).catch(() => null);
+
+    const audioResult = await generateModalAudio({
+      voiceRefUrl,
+      targetText: narrationText,
+      seed: Math.floor(Math.random() * 1_000_000_000),
+    });
+
+    await logCodeVideoPipelineEvent({
+      projectId: project.id,
+      stepName: "RENDER_VIDEO",
+      message: "Baixando audio temporario retornado pela Modal...",
+      metadata: { modalAudioUrl: String(audioResult.audio_url || "").trim() || null },
+    }).catch(() => null);
+
+    const audioBuffer = await downloadUrlToBuffer(String(audioResult.audio_url || "").trim());
+    stableAudioUrl = await uploadBufferToMinio({
+      buffer: audioBuffer,
+      key: `news-engagement/audio/${project.id}.mp3`,
+      contentType: "audio/mpeg",
+    });
+
+    await logCodeVideoPipelineEvent({
+      projectId: project.id,
+      stepName: "RENDER_VIDEO",
+      message: "Audio salvo no MinIO com URL estavel.",
+      metadata: { audioUrl: stableAudioUrl },
+    }).catch(() => null);
+  }
+
+  await logCodeVideoPipelineEvent({
+    projectId: project.id,
+    stepName: "RENDER_VIDEO",
+    message: "Enviando imagem base + audio estavel para gerar o video falado...",
+    metadata: { imageUrl, audioUrl: stableAudioUrl },
+  }).catch(() => null);
 
   const videoResult = await generateModalVideo({
     imageUrl,
-    audioUrl: String(audioResult.audio_url || "").trim(),
+    audioUrl: stableAudioUrl,
     seed: Math.floor(Math.random() * 1_000_000_000),
   });
 
@@ -253,7 +299,7 @@ async function renderNewsAsTalkingHead(project: any) {
   }).catch(() => null);
 
   return {
-    audioUrl: String(audioResult.audio_url || "").trim(),
+    audioUrl: stableAudioUrl,
     videoUrl: String(videoResult.video_url || "").trim(),
     captionsUrl,
   };
