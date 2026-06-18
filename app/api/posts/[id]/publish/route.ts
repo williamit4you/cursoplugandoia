@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { triggerNewsVideoGenerationForPost } from "@/lib/newsArticleVideoTrigger";
 
 export const dynamic = "force-dynamic";
 
@@ -42,11 +43,10 @@ export async function POST(
       }).catch((err) => console.error("[N8N webhook]", err));
     }
 
-    fetch(new URL(`/api/posts/${params.id}/generate-video`, req.url), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ trigger: "post_publish_refresh" }),
-      cache: "no-store",
+    triggerNewsVideoGenerationForPost({
+      baseUrl: req.url,
+      postId: params.id,
+      trigger: "post_publish_refresh",
     }).catch((err) => console.error("[post publish -> auto video]", err));
 
     return NextResponse.json({ success: true });

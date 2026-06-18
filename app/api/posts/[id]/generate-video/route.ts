@@ -2,26 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { ensureNewsVideoProjectForPost } from "@/lib/newsArticleVideo";
 import { logCodeVideoPipelineEvent, upsertCodeVideoPipelineStep } from "@/lib/video-code/logger";
+import { POST as runVideoCodeProjectPost } from "@/app/api/video-code/projects/[id]/run/route";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 900;
 
-function baseUrl(req: NextRequest) {
-  const host = req.headers.get("host") || "localhost:3000";
-  const forwardedProto = req.headers.get("x-forwarded-proto");
-  const protocol = forwardedProto || (host.includes("localhost") ? "http" : "https");
-  return `${protocol}://${host}`;
-}
-
 async function callRunPipeline(req: NextRequest, projectId: string) {
-  const runUrl = `${baseUrl(req)}/api/video-code/projects/${projectId}/run`;
-  const res = await fetch(runUrl, {
+  const runReq = new NextRequest(new URL(`/api/video-code/projects/${projectId}/run`, req.url), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ trigger: "post_create_or_update" }),
-    cache: "no-store",
   });
+  const res = await runVideoCodeProjectPost(runReq, { params: { id: projectId } });
   const data = await res.json().catch(() => ({}));
   return {
     ok: res.ok,

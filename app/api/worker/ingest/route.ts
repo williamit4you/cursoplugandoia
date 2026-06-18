@@ -4,6 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
 import { buildTitleCoverDataUrl } from "@/lib/titleCover"
 import { computeNextSocialQueueTime } from "@/lib/socialQueueSchedule"
+import { triggerNewsVideoGenerationForPost } from "@/lib/newsArticleVideoTrigger";
 
 const connectionString = process.env.DATABASE_URL!
 const pool = new Pool({ connectionString })
@@ -45,11 +46,10 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    fetch(`${baseUrl(req)}/api/posts/${upsertedPost.id}/generate-video`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ trigger: "worker_ingest" }),
-      cache: "no-store",
+    triggerNewsVideoGenerationForPost({
+      baseUrl: baseUrl(req),
+      postId: upsertedPost.id,
+      trigger: "worker_ingest",
     }).catch((err) => console.error("[worker ingest -> auto video]", err));
 
     if (body.videoUrl) {

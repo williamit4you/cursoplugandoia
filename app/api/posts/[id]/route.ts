@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { triggerNewsVideoGenerationForPost } from "@/lib/newsArticleVideoTrigger";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -41,11 +42,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       },
     });
 
-    fetch(`${baseUrl(req)}/api/posts/${post.id}/generate-video`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ trigger: "post_update" }),
-      cache: "no-store",
+    triggerNewsVideoGenerationForPost({
+      baseUrl: baseUrl(req),
+      postId: post.id,
+      trigger: "post_update",
     }).catch((err) => console.error("[update post -> auto video]", err));
 
     if (status === "PUBLISHED") {
