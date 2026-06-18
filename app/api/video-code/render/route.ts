@@ -35,6 +35,10 @@ function normalizeSocialPlatforms(value: unknown) {
   return platforms.length > 0 ? Array.from(new Set(platforms)) : [];
 }
 
+function defaultNewsPlatforms(platforms: string[]) {
+  return platforms.length > 0 ? platforms : ["TIKTOK", "YOUTUBE", "INSTAGRAM"];
+}
+
 function buildProductAdSocialSummary(project: any, metadata: any) {
   const productName = String(metadata?.productName || project.title || "Produto recomendado").trim();
   const description = String(project.description || metadata?.productDescription || "").trim();
@@ -127,8 +131,7 @@ async function enqueueNewsSocialPosts(project: any, videoUrl: string) {
   const newsAutomation = metadata?.newsAutomation;
   if (!newsAutomation || newsAutomation.autoScheduleSocial !== true) return;
 
-  const platforms = normalizeSocialPlatforms(newsAutomation.platforms);
-  if (platforms.length === 0) return;
+  const platforms = defaultNewsPlatforms(normalizeSocialPlatforms(newsAutomation.platforms));
 
   const summary = buildNewsSocialSummary(project, metadata);
   const postId = metadata?.postId ? String(metadata.postId) : null;

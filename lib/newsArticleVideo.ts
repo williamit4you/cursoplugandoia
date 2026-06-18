@@ -54,7 +54,9 @@ function resolvePlatforms(config: {
   if (config.autoPublishTikTok) platforms.push("TIKTOK");
   if (config.autoPublishLinkedIn) platforms.push("LINKEDIN");
   if (config.autoPublishYouTube) platforms.push("YOUTUBE");
-  return Array.from(new Set(platforms));
+  const unique = Array.from(new Set(platforms));
+  if (unique.length > 0) return unique;
+  return ["INSTAGRAM", "TIKTOK", "YOUTUBE"];
 }
 
 export async function shouldAutoGenerateNewsVideo() {

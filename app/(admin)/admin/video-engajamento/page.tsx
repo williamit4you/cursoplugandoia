@@ -86,6 +86,12 @@ const STEP_ORDER = [
   { key: "ENQUEUE_SOCIAL", label: "Fila social", description: "Quando o MP4 fica pronto, o sistema cria os agendamentos nas redes." },
 ] as const;
 
+const SOCIAL_TRACKED_PLATFORMS = [
+  { platform: "TIKTOK", label: "TikTok" },
+  { platform: "YOUTUBE", label: "YouTube" },
+  { platform: "META", label: "Instagram" },
+] as const;
+
 function isStepSuccess(status: string) {
   return status === "SUCCESS" || status === "DONE";
 }
@@ -162,6 +168,13 @@ function stepError(item: VideoEngagementItem, key: string) {
 
 function socialPublishedUrl(post: SocialPost) {
   return post.postUrl || post.youtubePostUrl || post.metaReelPostUrl || post.metaStoryPostUrl || post.tiktokPostUrl || post.linkedinPostUrl || null;
+}
+
+function socialLabel(platform: string) {
+  if (platform === "META") return "Instagram";
+  if (platform === "YOUTUBE") return "YouTube";
+  if (platform === "TIKTOK") return "TikTok";
+  return platform;
 }
 
 function truncateJson(value: unknown, maxLen = 2400) {
@@ -452,9 +465,16 @@ export default function VideoEngajamentoPage() {
     () => orderedEvents.filter((event) => (focusedStepDef.key ? event.stepName === focusedStepDef.key : true)),
     [orderedEvents, focusedStepDef]
   );
+  const selectedSocialSlots = useMemo(() => {
+    if (!selected) return [];
+    return SOCIAL_TRACKED_PLATFORMS.map((slot) => ({
+      ...slot,
+      post: selected.socialPosts.find((item) => item.platform === slot.platform) || null,
+    }));
+  }, [selected]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden">
       <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm">
         <h1 className="text-2xl font-black text-slate-800 tracking-tight">Video Engajamento</h1>
         <p className="text-slate-500 text-sm font-medium mt-1">
@@ -565,20 +585,20 @@ export default function VideoEngajamentoPage() {
 
       {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr] gap-6">
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-            <div className="flex flex-1 gap-3">
+      <div className="grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+        <div className="min-w-0 space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-1 min-w-0 flex-col gap-3 md:flex-row">
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar por titulo do artigo, slug ou id"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-300 focus:bg-white"
+                className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-300 focus:bg-white"
               />
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none md:w-[180px]"
               >
                 <option value="ALL">Todos</option>
                 <option value="DONE">Prontos</option>
@@ -587,7 +607,7 @@ export default function VideoEngajamentoPage() {
                 <option value="FAILED">Falhou</option>
               </select>
             </div>
-            <button onClick={() => loadItems(true)} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-black text-white">
+            <button onClick={() => loadItems(true)} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-black text-white xl:self-auto">
               {refreshing ? "Atualizando..." : "Atualizar"}
             </button>
           </div>
@@ -611,12 +631,12 @@ export default function VideoEngajamentoPage() {
                 <div
                   key={item.id}
                   onClick={() => setSelectedId(item.id)}
-                  className={`w-full cursor-pointer text-left bg-white rounded-2xl border shadow-sm p-4 transition-all ${
+                  className={`w-full min-w-0 cursor-pointer text-left bg-white rounded-2xl border shadow-sm p-4 transition-all ${
                     selectedId === item.id ? "border-indigo-300 ring-2 ring-indigo-100" : "border-slate-200/60 hover:border-slate-300"
                   }`}
                 >
                   <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                    <div className="min-w-0 space-y-2">
+                    <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase ${statusBadge(item.status)}`}>
                           {item.status}
@@ -650,14 +670,14 @@ export default function VideoEngajamentoPage() {
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 lg:justify-end">
+                    <div className="flex w-full flex-wrap gap-2 lg:w-auto lg:justify-end">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedId(item.id);
                           setDetailOpen(true);
                         }}
-                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-700"
+                        className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-700 sm:flex-none"
                       >
                         Abrir pipeline
                       </button>
@@ -666,7 +686,7 @@ export default function VideoEngajamentoPage() {
                           href={item.videoUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700"
+                          className="flex-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-center text-xs font-black text-emerald-700 sm:flex-none"
                           onClick={(e) => e.stopPropagation()}
                         >
                           Ver video
@@ -676,7 +696,7 @@ export default function VideoEngajamentoPage() {
                         <Link
                           href={articleUrl}
                           target="_blank"
-                          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-700"
+                          className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center text-xs font-black text-slate-700 sm:flex-none"
                           onClick={(e) => e.stopPropagation()}
                         >
                           Ver artigo
@@ -688,7 +708,7 @@ export default function VideoEngajamentoPage() {
                             e.stopPropagation();
                             triggerManual(item.linkedPost!.id);
                           }}
-                          className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700"
+                          className="flex-1 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-center text-xs font-black text-indigo-700 sm:flex-none"
                         >
                           {runningPostId === item.linkedPost.id ? "Rodando..." : "Rodar agora"}
                         </button>
@@ -701,26 +721,26 @@ export default function VideoEngajamentoPage() {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {selected ? (
             <>
               <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 space-y-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
                     <div className="text-xs uppercase font-black text-slate-400">Detalhe</div>
-                    <div className="text-xl font-black text-slate-800 mt-1">{selected.linkedPost?.title || selected.title || "Video sem titulo"}</div>
+                    <div className="mt-1 break-words text-xl font-black text-slate-800">{selected.linkedPost?.title || selected.title || "Video sem titulo"}</div>
                     <div className="text-xs text-slate-500 mt-1">Projeto {selected.id} • Criado em {fmtDate(selected.createdAt)}</div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <a
                       href={`/admin/video-code/${selected.id}`}
-                      className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-700"
+                      className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center text-xs font-black text-slate-700"
                     >
                       Abrir projeto
                     </a>
                     <button
                       onClick={() => setDetailOpen(true)}
-                      className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700"
+                      className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-center text-xs font-black text-indigo-700"
                     >
                       Abrir pipeline
                     </button>
@@ -747,7 +767,7 @@ export default function VideoEngajamentoPage() {
                         <button
                           key={step.key}
                           onClick={() => setFocusedStepKey(step.key)}
-                          className={`group grid grid-cols-[42px_1fr] gap-3 rounded-2xl border p-3 text-left transition ${
+                          className={`group grid min-w-0 grid-cols-[42px_minmax(0,1fr)] gap-3 rounded-2xl border p-3 text-left transition ${
                             isFocused ? `${tone.border} ${tone.bg} ring-2 ring-indigo-100` : "border-slate-200 bg-white hover:border-slate-300"
                           }`}
                         >
@@ -777,7 +797,7 @@ export default function VideoEngajamentoPage() {
 
                 {selected.errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{selected.errorMessage}</div>}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 xl:grid-cols-3">
                   <div className="rounded-2xl border border-slate-200 p-3">
                     <div className="text-xs uppercase font-black text-slate-400">Audio</div>
                     <div className="mt-2">
@@ -817,7 +837,54 @@ export default function VideoEngajamentoPage() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 space-y-3">
+              <div className="min-w-0 bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 space-y-3">
+                <div className="text-sm font-black text-slate-800">Acompanhamento das plataformas</div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {selectedSocialSlots.map((slot) => {
+                    const publishedUrl = slot.post ? socialPublishedUrl(slot.post) : null;
+                    return (
+                      <div key={slot.platform} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-sm font-black text-slate-900">{slot.label}</div>
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-black uppercase ${
+                              slot.post ? statusBadge(slot.post.status) : "border-slate-200 bg-white text-slate-500"
+                            }`}
+                          >
+                            {slot.post ? slot.post.status : "NAO CRIADO"}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-xs text-slate-500">
+                          {slot.post
+                            ? `Agendado: ${fmtDate(slot.post.scheduledTo)} • Publicado: ${fmtDate(slot.post.postedAt)}`
+                            : "O pipeline ainda nao criou este item social para acompanhar/publicar."}
+                        </div>
+                        {publishedUrl ? (
+                          <a
+                            href={publishedUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700"
+                          >
+                            Ver publicacao
+                          </a>
+                        ) : slot.post?.videoUrl ? (
+                          <a
+                            href={slot.post.videoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-black text-sky-700"
+                          >
+                            Ver video da fila
+                          </a>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="min-w-0 bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 space-y-3">
                 <div className="text-sm font-black text-slate-800">Publicacao nas redes</div>
                 {selected.socialPosts.length === 0 && <div className="text-sm text-slate-400">Nenhum item social criado ainda.</div>}
                 {selected.socialPosts.map((social) => {
@@ -855,7 +922,7 @@ export default function VideoEngajamentoPage() {
                 })}
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 space-y-3">
+              <div className="min-w-0 bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="text-sm font-black text-slate-800">Log do fluxo</div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -891,7 +958,7 @@ export default function VideoEngajamentoPage() {
                       </div>
                       <div className="mt-2 text-sm font-medium text-slate-700">{event.message}</div>
                       {event.metadata && (
-                        <pre className="mt-3 overflow-x-auto rounded-xl bg-slate-900/95 p-3 text-[11px] text-slate-100">
+                        <pre className="mt-3 max-w-full overflow-x-auto rounded-xl bg-slate-900/95 p-3 text-[11px] text-slate-100">
                           {JSON.stringify(event.metadata, null, 2)}
                         </pre>
                       )}
@@ -910,7 +977,7 @@ export default function VideoEngajamentoPage() {
 
       {detailOpen && selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 py-6">
-          <div className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl">
+          <div className="relative flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
               <div className="min-w-0">
                 <div className="text-3xl font-black tracking-tight text-slate-900">Detalhes do Pipeline</div>
@@ -971,7 +1038,7 @@ export default function VideoEngajamentoPage() {
                   <div className="text-xs text-slate-500">Clique numa etapa para ver os logs e payloads dela.</div>
                 </div>
 
-                <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-5">
+                <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-5">
                   {STEP_ORDER.map((step, index) => {
                     const state = stepStatus(selected, step.key);
                     const tone = stepTone(state);
@@ -981,7 +1048,7 @@ export default function VideoEngajamentoPage() {
                       <button
                         key={step.key}
                         onClick={() => setFocusedStepKey(step.key)}
-                        className={`relative rounded-3xl border p-4 text-left transition ${isFocused ? `${tone.border} ${tone.bg} ring-2 ring-indigo-100` : "border-slate-200 bg-slate-50 hover:border-slate-300"}`}
+                        className={`relative min-w-0 rounded-3xl border p-4 text-left transition ${isFocused ? `${tone.border} ${tone.bg} ring-2 ring-indigo-100` : "border-slate-200 bg-slate-50 hover:border-slate-300"}`}
                       >
                         <div className="flex items-center gap-3">
                           <div className={`flex h-11 w-11 items-center justify-center rounded-full text-sm font-black text-white ring-4 ${tone.dot}`}>
@@ -1002,8 +1069,8 @@ export default function VideoEngajamentoPage() {
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-                <div className="space-y-5">
+              <div className="mt-5 grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+                <div className="min-w-0 space-y-5">
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                     <div className="flex items-center justify-between gap-3">
                       <div>
@@ -1024,7 +1091,7 @@ export default function VideoEngajamentoPage() {
                         Esta etapa ainda nao registrou execucao.
                       </div>
                     ) : (
-                      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
                           <div className="text-xs uppercase font-black text-slate-400">Execucao</div>
                           <div className="mt-3 grid grid-cols-2 gap-3">
@@ -1062,13 +1129,13 @@ export default function VideoEngajamentoPage() {
                           <div className="text-xs uppercase font-black text-slate-400">Payloads</div>
                           <div className="mt-3">
                             <div className="text-[11px] font-black uppercase text-slate-400">Request</div>
-                            <pre className="mt-2 max-h-40 overflow-auto rounded-xl bg-slate-950 p-3 text-[11px] text-slate-100">
+                            <pre className="mt-2 max-h-40 max-w-full overflow-auto rounded-xl bg-slate-950 p-3 text-[11px] text-slate-100">
                               {truncateJson(focusedStepRecord.requestPayload)}
                             </pre>
                           </div>
                           <div className="mt-3">
                             <div className="text-[11px] font-black uppercase text-slate-400">Response</div>
-                            <pre className="mt-2 max-h-40 overflow-auto rounded-xl bg-slate-950 p-3 text-[11px] text-slate-100">
+                            <pre className="mt-2 max-h-40 max-w-full overflow-auto rounded-xl bg-slate-950 p-3 text-[11px] text-slate-100">
                               {truncateJson(focusedStepRecord.responsePayload)}
                             </pre>
                           </div>
@@ -1106,8 +1173,8 @@ export default function VideoEngajamentoPage() {
                   </div>
                 </div>
 
-                <div className="space-y-5">
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="min-w-0 space-y-5">
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                       <div className="text-xs uppercase font-black text-slate-400">Status</div>
                       <div className="mt-3">
@@ -1160,6 +1227,53 @@ export default function VideoEngajamentoPage() {
                   </div>
 
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="text-xl font-black text-slate-900">Distribuicao social</div>
+                    <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                      {selectedSocialSlots.map((slot) => {
+                        const publishedUrl = slot.post ? socialPublishedUrl(slot.post) : null;
+                        return (
+                          <div key={slot.platform} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-sm font-black text-slate-900">{slot.label}</div>
+                              <span
+                                className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-black uppercase ${
+                                  slot.post ? statusBadge(slot.post.status) : "border-slate-200 bg-white text-slate-500"
+                                }`}
+                              >
+                                {slot.post ? slot.post.status : "NAO CRIADO"}
+                              </span>
+                            </div>
+                            <div className="mt-2 text-xs text-slate-500">
+                              {slot.post
+                                ? `Agendado: ${fmtDate(slot.post.scheduledTo)} • Publicado: ${fmtDate(slot.post.postedAt)}`
+                                : "Este canal ainda nao recebeu item social deste video."}
+                            </div>
+                            {publishedUrl ? (
+                              <a
+                                href={publishedUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-3 inline-flex rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700"
+                              >
+                                Ver publicacao
+                              </a>
+                            ) : slot.post?.videoUrl ? (
+                              <a
+                                href={slot.post.videoUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-3 inline-flex rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-black text-sky-700"
+                              >
+                                Ver video da fila
+                              </a>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                     <div className="text-xl font-black text-slate-900">Publicacao nas redes</div>
                     <div className="mt-4 space-y-3">
                       {selected.socialPosts.length === 0 && <div className="text-sm text-slate-400">Nenhum item social criado ainda.</div>}
@@ -1170,7 +1284,7 @@ export default function VideoEngajamentoPage() {
                             <div className="flex items-start justify-between gap-3">
                               <div>
                                 <div className="text-sm font-black text-slate-900">
-                                  {social.platform} • {social.postType}
+                                  {socialLabel(social.platform)} • {social.postType}
                                 </div>
                                 <div className="mt-1 text-xs text-slate-500">
                                   Agendado: {fmtDate(social.scheduledTo)} • Publicado: {fmtDate(social.postedAt)}
