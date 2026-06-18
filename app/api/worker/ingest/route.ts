@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
 import { buildTitleCoverDataUrl } from "@/lib/titleCover"
+import { computeNextSocialQueueTime } from "@/lib/socialQueueSchedule"
 
 const connectionString = process.env.DATABASE_URL!
 const pool = new Pool({ connectionString })
@@ -44,16 +45,6 @@ export async function POST(req: NextRequest) {
       });
 
       if (!existingSocial) {
-        let scheduledTo = new Date();
-        const lastScheduled = await prisma.socialPost.findFirst({
-          where: { status: { in: ["SCHEDULED", "POSTED"] } },
-          orderBy: { scheduledTo: 'desc' }
-        });
-
-        if (lastScheduled && lastScheduled.scheduledTo && lastScheduled.scheduledTo > scheduledTo) {
-          scheduledTo = new Date(lastScheduled.scheduledTo.getTime() + 60 * 60 * 1000); // +1 hora
-        }
-
         const scraperConfig = await prisma.scraperConfig.findFirst({
           orderBy: { createdAt: "desc" }
         });
@@ -84,6 +75,10 @@ export async function POST(req: NextRequest) {
 
         const createdPosts = [];
         for (const item of platformsToCreate) {
+          const scheduledTo = await computeNextSocialQueueTime({
+            platform: item.platform,
+            desiredAt: new Date(),
+          });
           const newSocialPost = await prisma.socialPost.create({
             data: {
               postId: upsertedPost.id,

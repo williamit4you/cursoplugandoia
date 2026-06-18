@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { safeJsonParse } from "@/lib/tasks/catalog";
 import { searchShopeeAffiliateProducts } from "@/lib/shopee/openApi";
 import { computeNextScheduleTimes, parseTimeSlots } from "@/lib/tasks/schedule";
+import { computeNextSocialQueueTime } from "@/lib/socialQueueSchedule";
 import {
   refreshMercadoLivreAccessToken,
   resolveMercadoLivreAffiliateUrl,
@@ -447,6 +448,12 @@ async function handleStep(params: {
     });
 
     for (const [index, platform] of platforms.entries()) {
+      const normalizedPlatform = platform === "INSTAGRAM_REELS" || platform === "INSTAGRAM_STORIES" ? "META" : platform;
+      const normalizedPostType = platform === "INSTAGRAM_STORIES" ? "STORY" : "REEL";
+      const queuedAt = await computeNextSocialQueueTime({
+        platform: normalizedPlatform,
+        desiredAt: scheduleTimes[index] || new Date(Date.now() + (index + 1) * 60_000),
+      });
       const social = await prisma.socialPost.create({
         data: {
           postId: null,
@@ -454,9 +461,9 @@ async function handleStep(params: {
           summary,
           videoUrl,
           status: "SCHEDULED",
-          scheduledTo: scheduleTimes[index] || new Date(Date.now() + (index + 1) * 60_000),
-          platform: platform === "INSTAGRAM_REELS" || platform === "INSTAGRAM_STORIES" ? "META" : platform,
-          postType: platform === "INSTAGRAM_STORIES" ? "STORY" : "REEL",
+          scheduledTo: queuedAt,
+          platform: normalizedPlatform,
+          postType: normalizedPostType,
           log: `[${new Date().toLocaleTimeString("pt-BR")}] Agendado via AutomationTask ${task.slug}`,
           automationTaskId: task.id,
           automationTaskRunId: run.id,

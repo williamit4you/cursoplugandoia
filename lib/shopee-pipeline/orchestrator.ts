@@ -7,6 +7,7 @@ import { generateModalAudio, generateModalVideo } from "@/lib/shopee-pipeline/mo
 import { uploadBufferToMinio } from "@/lib/shopee-pipeline/minioUpload";
 import { mergeProductAndCopyVideos } from "@/lib/shopee-pipeline/merge";
 import { generateShopeeAffiliateShortLink } from "@/lib/shopee/openApi";
+import { computeNextSocialQueueTime } from "@/lib/socialQueueSchedule";
 import { v4 as uuidv4 } from "uuid";
 
 const LOCK_TTL_MS = 30 * 60 * 1000;
@@ -71,12 +72,15 @@ async function ensureStorySocialPosts(params: {
     if (existingSocialPostId) continue;
 
     const socialPlatform = storyPublicationToSocialPlatform(platform);
+    const scheduledTo = await computeNextSocialQueueTime({
+      platform: socialPlatform,
+      desiredAt: params.scheduledAt,
+    });
     const existingSocialPost = await prisma.socialPost.findFirst({
       where: {
         platform: socialPlatform,
         postType: "REEL",
         videoUrl: params.videoUrl,
-        scheduledTo: params.scheduledAt,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -88,7 +92,7 @@ async function ensureStorySocialPosts(params: {
           summary,
           videoUrl: params.videoUrl,
           status: "SCHEDULED",
-          scheduledTo: params.scheduledAt,
+          scheduledTo,
           platform: socialPlatform,
           postType: "REEL",
         },
@@ -100,9 +104,31 @@ async function ensureStorySocialPosts(params: {
         responsePayload: {
           ...(payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {}),
           socialPostId: socialPost.id,
+          scheduledTo: socialPost.scheduledTo?.toISOString?.() || null,
         },
       },
     });
+  }
+
+  const publications = await prisma.storyPublication.findMany({
+    where: { storyAdId: params.storyAdId },
+    select: { responsePayload: true },
+  });
+  const socialPostIds = publications
+    .map((item) => String((item.responsePayload as any)?.socialPostId || "").trim())
+    .filter(Boolean);
+  if (socialPostIds.length > 0) {
+    const earliest = await prisma.socialPost.findFirst({
+      where: { id: { in: socialPostIds }, scheduledTo: { not: null } },
+      orderBy: { scheduledTo: "asc" },
+      select: { scheduledTo: true },
+    });
+    if (earliest?.scheduledTo) {
+      await prisma.storyAd.update({
+        where: { id: params.storyAdId },
+        data: { scheduledAt: earliest.scheduledTo },
+      });
+    }
   }
 }
 
@@ -1096,20 +1122,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
         if (!videoUrl) throw new Error("videoFinalUrl ausente para criar StoryAd.");
         if (!affiliateUrl) throw new Error("affiliateUrl ausente para criar StoryAd.");
 
-        // Evita postar "em lote": agenda sempre com espaçamento mínimo de 1h
-        // (se já existir coisa agendada, empurra para 1h após o último agendamento).
-        const minDelayMinutes = 60;
-        const minSpacingMinutes = 60;
-        const minStart = addMinutes(now(), minDelayMinutes);
-        const latestScheduled = await prisma.storyAd.findFirst({
-          where: { status: "SCHEDULED" as any, scheduledAt: { not: null } },
-          orderBy: { scheduledAt: "desc" },
-          select: { scheduledAt: true },
-        });
-        const scheduledAt =
-          latestScheduled?.scheduledAt && latestScheduled.scheduledAt > minStart
-            ? addMinutes(latestScheduled.scheduledAt, minSpacingMinutes)
-            : minStart;
+        const scheduledAt = addMinutes(now(), 1);
 
         await upsertPipelineStep({
           coletaId: item.id,
@@ -1144,6 +1157,12 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           affiliateUrl,
         });
 
+        const refreshedStoryAd = await prisma.storyAd.findUnique({
+          where: { id: storyAd.id },
+          select: { scheduledAt: true },
+        });
+        const effectiveScheduledAt = refreshedStoryAd?.scheduledAt || scheduledAt;
+
         const finishedAt = now();
         await upsertPipelineStep({
           coletaId: item.id,
@@ -1153,16 +1172,16 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           startedAt,
           finishedAt,
           durationMs: finishedAt.getTime() - startedAt.getTime(),
-          responsePayload: { storyAdId: storyAd.id, socialPostsCreated: true },
+          responsePayload: { storyAdId: storyAd.id, socialPostsCreated: true, scheduledAt: effectiveScheduledAt },
         });
 
         await prisma.coletaDadosShoppe.update({
           where: { id: item.id },
-          data: { pipelineStatus: "SCHEDULED" as any, nextRunAt: scheduledAt, lastError: null },
+          data: { pipelineStatus: "SCHEDULED" as any, nextRunAt: effectiveScheduledAt, lastError: null },
         });
 
-        await logPipelineEvent({ coletaId: item.id, stepName, message: "StoryAd criado e publicacoes agendadas.", metadata: { storyAdId: storyAd.id, scheduledAt } });
-        return { ok: true, itemId: item.id, ran: stepName, storyAdId: storyAd.id, scheduledAt };
+        await logPipelineEvent({ coletaId: item.id, stepName, message: "StoryAd criado e publicacoes agendadas.", metadata: { storyAdId: storyAd.id, scheduledAt: effectiveScheduledAt } });
+        return { ok: true, itemId: item.id, ran: stepName, storyAdId: storyAd.id, scheduledAt: effectiveScheduledAt };
       } catch (error: any) {
         const message = error?.message || "Falha ao criar StoryAd";
         const retryDecision = decideRetry({ attempt, maxAttempts: 3, baseDelayMinutes: 30 });

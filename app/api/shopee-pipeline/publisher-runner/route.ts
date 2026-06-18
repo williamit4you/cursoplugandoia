@@ -135,6 +135,31 @@ export async function GET(req: NextRequest) {
                 },
               });
 
+          if (ensured?.scheduledTo && ensured.scheduledTo > current) {
+            await prisma.storyPublication.update({
+              where: { id: pub.id },
+              data: {
+                status: "RETRY_SCHEDULED" as any,
+                nextRetryAt: ensured.scheduledTo,
+                responsePayload: {
+                  ...(pub.responsePayload as any || {}),
+                  socialPostId: ensured.id,
+                  scheduledTo: ensured.scheduledTo.toISOString(),
+                },
+                errorMessage: null,
+              },
+            });
+            adResults.push({
+              publicationId: pub.id,
+              platform,
+              ok: true,
+              skipped: true,
+              reason: "Aguardando horario da fila social",
+              scheduledTo: ensured.scheduledTo,
+            });
+            continue;
+          }
+
           if (!existingSocialPostId) {
             await prisma.storyPublication.update({
               where: { id: pub.id },
