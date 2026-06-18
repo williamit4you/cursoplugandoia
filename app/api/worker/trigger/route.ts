@@ -1,24 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { Pool } from "pg"
 
-const connectionString = process.env.DATABASE_URL!
-const pool = new Pool({ connectionString })
-const adapter = new PrismaPg(pool)
-const prisma = new PrismaClient({ adapter })
+import { createManualScrapeTestRun } from "@/lib/manualScrapeTest";
 
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   try {
-    // Apenas guardamos no banco de dados a flag "isActive": true simulando que o botão foi apertado!
-    await prisma.integrationSettings.upsert({
-      where: { platform: "MOTOR_TRIGGER" },
-      update: { isActive: true },
-      create: { platform: "MOTOR_TRIGGER", isActive: true }
+    const run = await createManualScrapeTestRun();
+    return NextResponse.json({
+      success: true,
+      message: "Manual scrape test queued",
+      runId: run.id,
+      status: run.status,
+      summary: run.summary,
+      steps: run.steps,
     });
-
-    return NextResponse.json({ success: true, message: "Manual scrape test queued" });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to trigger" }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || "Failed to trigger" }, { status: 500 });
   }
 }
