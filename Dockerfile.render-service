@@ -27,10 +27,11 @@ ENV REMOTION_CHROME_BIN=/usr/bin/chromium-browser
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 COPY render-service/package.json ./render-service/package.json
+COPY render-service/package-lock.json ./render-service/package-lock.json
 COPY render-service/tsconfig.json ./render-service/tsconfig.json
 
 WORKDIR /app/render-service
-RUN npm install
+RUN npm ci
 
 WORKDIR /app
 COPY render-service ./render-service

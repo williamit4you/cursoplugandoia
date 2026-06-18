@@ -6,21 +6,22 @@
     "start": "tsx src/server.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1032.0",
-    "@remotion/bundler": "^4.0.0",
-    "@remotion/renderer": "^4.0.0",
-    "dotenv": "^17.4.2",
-    "got-scraping": "^4.2.1",
-    "puppeteer-core": "^24.9.0",
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "remotion": "^4.0.0"
+    "@aws-sdk/client-s3": "3.1032.0",
+    "@remotion/bundler": "4.0.365",
+    "@remotion/renderer": "4.0.365",
+    "dotenv": "17.4.2",
+    "esbuild": "0.25.0",
+    "got-scraping": "4.2.1",
+    "puppeteer-core": "24.9.0",
+    "puppeteer-extra": "3.3.6",
+    "puppeteer-extra-plugin-stealth": "2.11.2",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "remotion": "4.0.365"
   },
   "devDependencies": {
-    "@types/node": "^20.11.30",
-    "tsx": "^4.21.0",
-    "typescript": "^5.4.5"
+    "@types/node": "20.11.30",
+    "tsx": "4.21.0",
+    "typescript": "5.4.5"
   }
 }
