@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { logCodeVideoPipelineEvent, upsertCodeVideoPipelineStep } from "@/lib/video-code/logger";
+import { computeNextSocialQueueTime } from "@/lib/socialQueueSchedule";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -21,7 +22,7 @@ function safeJsonParse(text: string) {
 }
 
 function normalizeSocialPlatforms(value: unknown) {
-  const allowed = new Set(["YOUTUBE", "INSTAGRAM", "TIKTOK"]);
+  const allowed = new Set(["YOUTUBE", "INSTAGRAM", "TIKTOK", "LINKEDIN"]);
   const raw = Array.isArray(value) ? value : [];
   const platforms = raw
     .map((item) => String(item || "").toUpperCase())
@@ -107,6 +108,88 @@ async function enqueueProductAdSocialPosts(project: any, videoUrl: string) {
       data: { status: "SCHEDULED", errorMessage: null },
     });
   }
+}
+
+function buildNewsSocialSummary(project: any, metadata: any) {
+  const title = String(project.title || "Resumo da noticia").trim();
+  const description = String(project.description || "").trim();
+  const articleUrl = String(metadata?.articleUrl || "").trim();
+  return [title, description, articleUrl ? `Leia a materia completa: ${articleUrl}` : ""]
+    .filter(Boolean)
+    .join("\n\n")
+    .slice(0, 4500);
+}
+
+async function enqueueNewsSocialPosts(project: any, videoUrl: string) {
+  const metadata = safeJsonParse(project.metadataJson || "{}") || {};
+  const newsAutomation = metadata?.newsAutomation;
+  if (!newsAutomation || newsAutomation.autoScheduleSocial !== true) return;
+
+  const platforms = normalizeSocialPlatforms(newsAutomation.platforms);
+  if (platforms.length === 0) return;
+
+  const summary = buildNewsSocialSummary(project, metadata);
+  const postId = metadata?.postId ? String(metadata.postId) : null;
+  let createdCount = 0;
+
+  for (const platform of platforms) {
+    const socialPlatform = platform === "INSTAGRAM" ? "META" : platform;
+    const postType = "REEL";
+
+    const existing = await prisma.socialPost.findFirst({
+      where: {
+        codeVideoProjectId: project.id,
+        platform: socialPlatform,
+        postType,
+        status: { not: "FAILED" },
+      },
+    });
+    if (existing) continue;
+
+    const scheduledTo = await computeNextSocialQueueTime({
+      platform: socialPlatform,
+      desiredAt: new Date(),
+    });
+
+    await prisma.socialPost.create({
+      data: {
+        postId,
+        codeVideoProjectId: project.id,
+        summary,
+        videoUrl,
+        status: "SCHEDULED",
+        scheduledTo,
+        platform: socialPlatform,
+        postType,
+        log: `[${new Date().toLocaleTimeString("pt-BR")}] Enfileirado automaticamente a partir de artigo criado`,
+      },
+    });
+    createdCount += 1;
+  }
+
+  await upsertCodeVideoPipelineStep({
+    projectId: project.id,
+    stepName: "ENQUEUE_SOCIAL",
+    status: "SUCCESS",
+    attempt: 1,
+    startedAt: new Date(),
+    finishedAt: new Date(),
+    responsePayload: {
+      createdCount,
+      platforms,
+      postId,
+    },
+  }).catch(() => null);
+
+  await logCodeVideoPipelineEvent({
+    projectId: project.id,
+    stepName: "ENQUEUE_SOCIAL",
+    message:
+      createdCount > 0
+        ? `Video pronto e enfileirado automaticamente para ${createdCount} plataforma(s).`
+        : "Video pronto, mas nenhuma nova fila social precisou ser criada.",
+    metadata: { platforms, createdCount, postId },
+  }).catch(() => null);
 }
 
 function externalRenderServiceUrl() {
@@ -209,6 +292,7 @@ export async function POST(req: NextRequest) {
     });
 
     await enqueueProductAdSocialPosts(updated, externalResult.videoUrl);
+    await enqueueNewsSocialPosts(updated, externalResult.videoUrl);
 
     return NextResponse.json(updated);
   } catch (error: any) {

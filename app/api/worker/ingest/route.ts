@@ -10,6 +10,13 @@ const pool = new Pool({ connectionString })
 const adapter = new PrismaPg(pool)
 const prisma = new PrismaClient({ adapter })
 
+function baseUrl(req: NextRequest) {
+  const host = req.headers.get("host") || "localhost:3000";
+  const forwardedProto = req.headers.get("x-forwarded-proto");
+  const protocol = forwardedProto || (host.includes("localhost") ? "http" : "https");
+  return `${protocol}://${host}`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -37,6 +44,13 @@ export async function POST(req: NextRequest) {
         coverImage: body.coverImage || buildTitleCoverDataUrl(body.title),
       }
     });
+
+    fetch(`${baseUrl(req)}/api/posts/${upsertedPost.id}/generate-video`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trigger: "worker_ingest" }),
+      cache: "no-store",
+    }).catch((err) => console.error("[worker ingest -> auto video]", err));
 
     if (body.videoUrl) {
       // Deduplicação: só cria SocialPost se ainda não existir para este post

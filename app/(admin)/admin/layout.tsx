@@ -64,6 +64,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     // END NEW PIPELINE ROUTES
 
     { text: "Posts & Engajamento", icon: <ArticleIcon />, path: "/admin/posts" },
+    { text: "Video Engajamento", icon: <VideoCameraBackIcon />, path: "/admin/video-engajamento" },
     { text: "Integrações N8N", icon: <WebhookIcon />, path: "/admin/integrations" },
     { text: "Fila Social", icon: <VideoCameraBackIcon />, path: "/admin/social" },
     { text: "Social: YouTube", icon: <YouTubeIcon />, path: "/admin/social/youtube" },

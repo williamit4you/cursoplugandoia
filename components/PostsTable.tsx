@@ -80,6 +80,27 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
     }
   };
 
+  const handleGenerateVideo = async (id: string) => {
+    setLoadingId(id + "-video");
+    try {
+      const res = await fetch(`/api/posts/${id}/generate-video`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trigger: "manual_posts_table" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || "Erro ao iniciar video");
+        return;
+      }
+      toast.success(data.alreadyDone ? "Video ja estava pronto." : data.alreadyRunning ? "Video ja estava em processamento." : "Fluxo de video iniciado.");
+    } catch {
+      toast.error("Erro de conexao ao iniciar video");
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <ToastContainer theme="colored" />
@@ -216,6 +237,23 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
                           )}
                         </button>
                       )}
+
+                      <button
+                        disabled={loadingId === item.id + "-video"}
+                        onClick={() => handleGenerateVideo(item.id)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 text-violet-700 text-[10px] font-black rounded-lg transition-all active:scale-95 disabled:opacity-50 border border-violet-200/50"
+                      >
+                        {loadingId === item.id + "-video" ? (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-violet-700"></div>
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h6a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            VIDEO
+                          </>
+                        )}
+                      </button>
 
                       <button
                         disabled={loadingId === item.id + "-linkedin"}

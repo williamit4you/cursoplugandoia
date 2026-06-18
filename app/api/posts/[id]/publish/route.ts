@@ -42,6 +42,13 @@ export async function POST(
       }).catch((err) => console.error("[N8N webhook]", err));
     }
 
+    fetch(new URL(`/api/posts/${params.id}/generate-video`, req.url), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trigger: "post_publish_refresh" }),
+      cache: "no-store",
+    }).catch((err) => console.error("[post publish -> auto video]", err));
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("Post publish error:", error);
