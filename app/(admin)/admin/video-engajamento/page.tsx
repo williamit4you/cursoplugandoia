@@ -63,6 +63,16 @@ type PipelineEvent = {
   metadata?: any;
 };
 
+type InternalCronStatus = {
+  enabled?: boolean;
+  started?: boolean;
+  running?: boolean;
+  tickMs?: number;
+  lastTickAt?: string | null;
+  lastResult?: any;
+  lastError?: string | null;
+};
+
 const STEP_ORDER = [
   { key: "QUEUE_FROM_POST", label: "Fila do artigo" },
   { key: "AUTO_START", label: "Disparo" },
@@ -157,6 +167,7 @@ export default function VideoEngajamentoPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<VideoEngagementItem | null>(null);
   const [events, setEvents] = useState<PipelineEvent[]>([]);
+  const [internalCron, setInternalCron] = useState<InternalCronStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [runningPostId, setRunningPostId] = useState<string | null>(null);
@@ -176,6 +187,9 @@ export default function VideoEngajamentoPage() {
       const res = await fetch(`/api/video-engagement/items?${qs.toString()}`, { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Falha ao carregar videos");
+      const cronRes = await fetch("/api/video-engagement/internal-cron", { cache: "no-store" }).catch(() => null);
+      const cronData = cronRes?.ok ? await cronRes.json().catch(() => null) : null;
+      setInternalCron(cronData && typeof cronData === "object" ? cronData : null);
       const nextItems = Array.isArray(data.items) ? data.items : [];
       setItems(nextItems);
       if (!keepSelection) return;
@@ -209,6 +223,10 @@ export default function VideoEngajamentoPage() {
   useEffect(() => {
     loadItems(false);
   }, [query, status]);
+
+  useEffect(() => {
+    fetch("/api/video-engagement/internal-cron", { cache: "no-store" }).catch(() => null);
+  }, []);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -310,6 +328,13 @@ export default function VideoEngajamentoPage() {
   const selectedStageLabel = useMemo(() => currentStageLabel(selected), [selected]);
   const selectedIsRunning = useMemo(() => isProjectActivelyProcessing(selected), [selected]);
   const liveTailEvents = useMemo(() => events.slice(-5).reverse(), [events]);
+  const cronSummary = useMemo(() => {
+    if (!internalCron) return "Cron ainda nao consultado.";
+    if (internalCron.lastError) return `Erro: ${internalCron.lastError}`;
+    if (internalCron.lastResult?.skipped) return `Pulou: ${internalCron.lastResult.reason || "sem item elegivel"}`;
+    if (internalCron.lastResult?.runs?.length) return `Ultimo ciclo processou ${internalCron.lastResult.runs.length} item(ns).`;
+    return internalCron.running ? "Cron em execucao agora." : "Cron ativo aguardando proximo ciclo.";
+  }, [internalCron]);
   const streamBadge = useMemo(() => {
     if (streamState === "live") return { label: "Log ao vivo conectado", cls: "border-emerald-200 bg-emerald-50 text-emerald-700" };
     if (streamState === "connecting") return { label: "Conectando ao log ao vivo...", cls: "border-sky-200 bg-sky-50 text-sky-700" };
@@ -400,6 +425,30 @@ export default function VideoEngajamentoPage() {
         <div className="bg-white rounded-2xl border border-rose-200/60 p-4 shadow-sm">
           <div className="text-xs uppercase font-black text-rose-500">Falhas</div>
           <div className="text-2xl font-black text-rose-700 mt-1">{counts.failed}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-sm">
+          <div className="text-xs uppercase font-black text-slate-400">Cron</div>
+          <div className="text-sm font-black text-slate-800 mt-1">
+            {internalCron?.enabled ? (internalCron?.started ? "Ativo" : "Habilitado") : "Desativado"}
+          </div>
+          <div className="text-xs text-slate-500 mt-1">{internalCron?.running ? "Rodando agora" : "Em espera"}</div>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-sm">
+          <div className="text-xs uppercase font-black text-slate-400">Ultimo Tick</div>
+          <div className="text-sm font-black text-slate-800 mt-1">{fmtDate(internalCron?.lastTickAt)}</div>
+          <div className="text-xs text-slate-500 mt-1">
+            Intervalo: {internalCron?.tickMs ? `${Math.round(internalCron.tickMs / 1000)}s` : "-"}
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-sm md:col-span-2">
+          <div className="text-xs uppercase font-black text-slate-400">Resumo do Cron</div>
+          <div className="text-sm font-black text-slate-800 mt-1">{cronSummary}</div>
+          <div className="text-xs text-slate-500 mt-1">
+            Diagnostico: <code>/api/video-engagement/internal-cron</code> • manual: <code>/api/video-engagement/cron</code>
+          </div>
         </div>
       </div>
 
