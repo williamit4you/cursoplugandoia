@@ -4,6 +4,11 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { logCodeVideoPipelineEvent, upsertCodeVideoPipelineStep } from "@/lib/video-code/logger";
 import { computeNextSocialQueueTime } from "@/lib/socialQueueSchedule";
+import { generateModalAudio, generateModalVideo } from "@/lib/shopee-pipeline/modalClient";
+import { uploadBufferToMinio } from "@/lib/shopee-pipeline/minioUpload";
+import { resolveCreatorVideoDefaults } from "@/lib/creator-video/defaults";
+import { generateApproxVtt } from "@/lib/captions/vtt";
+import { isNewsVideoProject, parseProjectMetadata } from "@/lib/newsVideoProject";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -42,10 +47,7 @@ function buildProductAdSocialSummary(project: any, metadata: any) {
 }
 
 function resolveSocialScheduleTime(rawScheduledTo: Date | null, now = new Date()) {
-  const bufferMinutes = Math.min(
-    6 * 60,
-    Math.max(0, Number(process.env.SOCIAL_SCHEDULE_BUFFER_MINUTES || 45))
-  );
+  const bufferMinutes = Math.min(6 * 60, Math.max(0, Number(process.env.SOCIAL_SCHEDULE_BUFFER_MINUTES || 45)));
   const minTime = new Date(now.getTime() + bufferMinutes * 60 * 1000);
   if (!rawScheduledTo || !Number.isFinite(rawScheduledTo.getTime())) return minTime;
   return rawScheduledTo > minTime ? rawScheduledTo : minTime;
@@ -121,7 +123,7 @@ function buildNewsSocialSummary(project: any, metadata: any) {
 }
 
 async function enqueueNewsSocialPosts(project: any, videoUrl: string) {
-  const metadata = safeJsonParse(project.metadataJson || "{}") || {};
+  const metadata = parseProjectMetadata(project.metadataJson || "{}") || {};
   const newsAutomation = metadata?.newsAutomation;
   if (!newsAutomation || newsAutomation.autoScheduleSocial !== true) return;
 
@@ -220,6 +222,43 @@ async function renderWithExternalService(params: {
   return data;
 }
 
+async function renderNewsAsTalkingHead(project: any) {
+  const defaults = await resolveCreatorVideoDefaults(null, "ENGAGEMENT");
+  const voiceRefUrl = String(defaults.voiceRefUrl || "").trim();
+  const imageUrl = String(defaults.creatorImageUrl || "").trim();
+  const narrationText = String(project.narrationText || "").trim();
+
+  if (!voiceRefUrl) throw new Error("Config faltando: userVoiceRefUrl para gerar audio da noticia");
+  if (!imageUrl) throw new Error("Config faltando: userBaseImageUrl/creator asset para gerar video da noticia");
+  if (!narrationText) throw new Error("narrationText ausente para gerar audio da noticia");
+
+  const audioResult = project.audioUrl
+    ? { audio_url: String(project.audioUrl).trim() }
+    : await generateModalAudio({
+        voiceRefUrl,
+        targetText: narrationText,
+        seed: Math.floor(Math.random() * 1_000_000_000),
+      });
+
+  const videoResult = await generateModalVideo({
+    imageUrl,
+    audioUrl: String(audioResult.audio_url || "").trim(),
+    seed: Math.floor(Math.random() * 1_000_000_000),
+  });
+
+  const captionsUrl = await uploadBufferToMinio({
+    buffer: Buffer.from(generateApproxVtt({ text: narrationText }), "utf8"),
+    key: `news-engagement/${project.id}.vtt`,
+    contentType: "text/vtt; charset=utf-8",
+  }).catch(() => null);
+
+  return {
+    audioUrl: String(audioResult.audio_url || "").trim(),
+    videoUrl: String(videoResult.video_url || "").trim(),
+    captionsUrl,
+  };
+}
+
 export async function POST(req: NextRequest) {
   let activeProjectId: string | null = null;
   try {
@@ -231,8 +270,11 @@ export async function POST(req: NextRequest) {
     const project = await prisma.codeVideoProject.findUnique({ where: { id: projectId } });
     if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+    const isNewsProject = isNewsVideoProject(project);
     const videoSpec = safeJsonParse(project.videoSpecJson || "");
-    if (!videoSpec) return NextResponse.json({ error: "videoSpecJson is invalid JSON" }, { status: 400 });
+    if (!isNewsProject && !videoSpec) {
+      return NextResponse.json({ error: "videoSpecJson is invalid JSON" }, { status: 400 });
+    }
 
     await prisma.codeVideoProject.update({
       where: { id: projectId },
@@ -249,28 +291,33 @@ export async function POST(req: NextRequest) {
     await logCodeVideoPipelineEvent({
       projectId,
       stepName: "RENDER_VIDEO",
-      message: "Iniciando síntese de áudio TTS e renderização Remotion no serviço de vídeo...",
+      message: isNewsProject
+        ? "Iniciando geracao de audio e video falado da noticia via Modal..."
+        : "Iniciando sintese de audio TTS e renderizacao no servico de video...",
     });
 
-    const externalResult = await renderWithExternalService({
-      projectId,
-      project: {
-        aspectRatio: project.aspectRatio,
-        fps: project.fps,
-        narrationText: project.narrationText,
-        audioUrl: project.audioUrl,
-        ttsVoice: project.ttsVoice,
-        ttsSpeed: project.ttsSpeed,
-      },
-      videoSpec,
-    });
+    const result = isNewsProject
+      ? await renderNewsAsTalkingHead(project)
+      : await renderWithExternalService({
+          projectId,
+          project: {
+            aspectRatio: project.aspectRatio,
+            fps: project.fps,
+            narrationText: project.narrationText,
+            audioUrl: project.audioUrl,
+            ttsVoice: project.ttsVoice,
+            ttsSpeed: project.ttsSpeed,
+          },
+          videoSpec,
+        });
 
     const updated = await prisma.codeVideoProject.update({
       where: { id: projectId },
       data: {
         status: "DONE",
-        videoUrl: externalResult.videoUrl,
-        audioUrl: externalResult.audioUrl || project.audioUrl,
+        videoUrl: result.videoUrl,
+        audioUrl: result.audioUrl || project.audioUrl,
+        captionsUrl: result.captionsUrl || project.captionsUrl,
         renderProgress: 100,
         errorMessage: null,
       },
@@ -287,12 +334,16 @@ export async function POST(req: NextRequest) {
       projectId,
       level: "INFO",
       stepName: "RENDER_VIDEO",
-      message: "Vídeo compilado e renderizado com sucesso!",
-      metadata: { videoUrl: externalResult.videoUrl, audioUrl: externalResult.audioUrl },
+      message: isNewsProject ? "Audio e video falado da noticia gerados com sucesso!" : "Video compilado e renderizado com sucesso!",
+      metadata: {
+        videoUrl: result.videoUrl,
+        audioUrl: result.audioUrl || null,
+        captionsUrl: result.captionsUrl || null,
+      },
     });
 
-    await enqueueProductAdSocialPosts(updated, externalResult.videoUrl);
-    await enqueueNewsSocialPosts(updated, externalResult.videoUrl);
+    await enqueueProductAdSocialPosts(updated, result.videoUrl);
+    await enqueueNewsSocialPosts(updated, result.videoUrl);
 
     return NextResponse.json(updated);
   } catch (error: any) {
@@ -318,7 +369,7 @@ export async function POST(req: NextRequest) {
           projectId: activeProjectId,
           level: "ERROR",
           stepName: "RENDER_VIDEO",
-          message: `Falha na renderização do vídeo: ${msg}`,
+          message: `Falha na renderizacao do video: ${msg}`,
         });
       } catch (dbErr) {
         console.error("Failed to write failure log to DB", dbErr);

@@ -4,6 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { searchPexelsMedia, type PexelsAsset } from "@/lib/pexels";
 import { logCodeVideoPipelineEvent, upsertCodeVideoPipelineStep } from "@/lib/video-code/logger";
+import { isNewsVideoProject, parseProjectMetadata } from "@/lib/newsVideoProject";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -43,13 +44,8 @@ function extractJsonObject(text: string) {
 }
 
 function safeParseMetadata(text: string | null | undefined): ProductAdMetadata {
-  if (!text) return {};
-  try {
-    const parsed = JSON.parse(text);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
+  const parsed = parseProjectMetadata(text);
+  return parsed && typeof parsed === "object" ? parsed : {};
 }
 
 const ALLOWED_TEMPLATES = new Set([
@@ -324,6 +320,7 @@ export async function POST(req: NextRequest) {
     if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const metadata = safeParseMetadata(project.metadataJson);
+    const isNewsProject = isNewsVideoProject(project);
     const isProductAd = project.projectType === "PRODUCT_AD";
 
     await prisma.codeVideoProject.update({
@@ -348,6 +345,126 @@ export async function POST(req: NextRequest) {
       project.aspectRatio === "LANDSCAPE_16_9"
         ? "YouTube (16:9, 1920x1080)"
         : "TikTok/Reels (9:16, 1080x1920)";
+
+    if (isNewsProject) {
+      const system = [
+        "Voce e um redator de noticias e roteirista de videos curtos em portugues do Brasil.",
+        "Sua tarefa e resumir uma materia em um texto curto, claro e falado, para video de ate 1 minuto.",
+        "Responda APENAS com JSON valido.",
+        "Campos obrigatorios: title, description, narrationText.",
+        "O narrationText deve ser somente o texto a ser narrado em voz alta, sem marcacoes.",
+        "O texto deve soar natural, direto e profissional.",
+        `O narrationText deve caber em aproximadamente ${project.videoDurationSec} segundos.`,
+      ].join("\n");
+
+      const user = [
+        `TITULO DO ARTIGO: ${project.title || metadata?.postTitle || ""}`,
+        `RESUMO/CHAMADA: ${project.description || ""}`,
+        `CONTEUDO BASE: ${project.ideaPrompt || ""}`,
+        `URL DA MATERIA: ${String((metadata as any)?.articleUrl || "").trim()}`,
+        `FORMATO: ${formatHint}`,
+        "",
+        "Gere um resumo falado curto para video vertical com linguagem jornalistica simples.",
+        "A description deve ser curta e descrever o conteudo do video.",
+        "O title deve ser uma versao curta do titulo da noticia.",
+      ].join("\n");
+
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.4,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user },
+          ],
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = data?.error?.message || "OpenAI request failed";
+        await prisma.codeVideoProject.update({
+          where: { id: projectId },
+          data: { status: "FAILED", errorMessage: msg },
+        });
+        await upsertCodeVideoPipelineStep({
+          projectId,
+          stepName: "GENERATE_SCRIPT",
+          status: "FAILED",
+          attempt: 1,
+          finishedAt: new Date(),
+          errorMessage: msg,
+        });
+        await logCodeVideoPipelineEvent({
+          projectId,
+          level: "ERROR",
+          stepName: "GENERATE_SCRIPT",
+          message: `Falha na API da OpenAI: ${msg}`,
+        });
+        return NextResponse.json({ error: msg }, { status: 500 });
+      }
+
+      const text = String(data?.choices?.[0]?.message?.content ?? "");
+      const parsed = extractJsonObject(text);
+      if (!parsed) {
+        await prisma.codeVideoProject.update({
+          where: { id: projectId },
+          data: { status: "FAILED", errorMessage: "Failed to parse JSON from model output" },
+        });
+        await upsertCodeVideoPipelineStep({
+          projectId,
+          stepName: "GENERATE_SCRIPT",
+          status: "FAILED",
+          attempt: 1,
+          finishedAt: new Date(),
+          errorMessage: "Falha ao analisar JSON retornado da OpenAI",
+        });
+        await logCodeVideoPipelineEvent({
+          projectId,
+          level: "ERROR",
+          stepName: "GENERATE_SCRIPT",
+          message: "Erro: Resposta da OpenAI nao continha um JSON de resumo valido",
+        });
+        return NextResponse.json({ error: "Failed to parse JSON from model output" }, { status: 500 });
+      }
+
+      const updated = await prisma.codeVideoProject.update({
+        where: { id: projectId },
+        data: {
+          status: "READY",
+          title: String(parsed.title ?? project.title ?? "").trim() || project.title || null,
+          description: String(parsed.description ?? project.description ?? "").trim() || project.description || null,
+          narrationText: String(parsed.narrationText ?? "").trim() || null,
+          promptPreview: user,
+          videoSpecJson: JSON.stringify({
+            mode: "CREATOR_TALKING_HEAD",
+            source: "news_summary",
+          }),
+          errorMessage: null,
+        },
+      });
+
+      await upsertCodeVideoPipelineStep({
+        projectId,
+        stepName: "GENERATE_SCRIPT",
+        status: "SUCCESS",
+        attempt: 1,
+        finishedAt: new Date(),
+      });
+      await logCodeVideoPipelineEvent({
+        projectId,
+        level: "INFO",
+        stepName: "GENERATE_SCRIPT",
+        message: "Resumo do artigo gerado com sucesso para narracao.",
+      });
+
+      return NextResponse.json(updated);
+    }
 
     const system = [
       isProductAd
