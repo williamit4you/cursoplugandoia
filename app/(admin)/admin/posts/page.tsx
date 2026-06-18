@@ -4,6 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 import PostsTable from "@/components/PostsTable";
+import QuickScrapeTestButton from "@/components/QuickScrapeTestButton";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -25,12 +26,15 @@ export default async function PostsPage() {
           Gerencie artigos e publicacoes do site. O video-engajamento automatico nasce junto com o post, mesmo em rascunho.
         </p>
         <div className="mt-4">
-          <Link
-            href="/admin/video-engajamento"
-            className="inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-black text-violet-700"
-          >
-            Abrir rastreamento de Video Engajamento
-          </Link>
+          <div className="flex flex-wrap items-start gap-3">
+            <Link
+              href="/admin/video-engajamento"
+              className="inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-black text-violet-700"
+            >
+              Abrir rastreamento de Video Engajamento
+            </Link>
+            <QuickScrapeTestButton />
+          </div>
         </div>
       </div>
       <PostsTable initialData={posts} />
