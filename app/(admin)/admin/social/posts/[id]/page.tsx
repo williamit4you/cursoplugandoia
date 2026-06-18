@@ -8,11 +8,15 @@ import "react-toastify/dist/ReactToastify.css";
 import {
   ArrowLeft,
   Calendar,
+  CheckCircle2,
   Copy,
   ExternalLink,
+  LoaderCircle,
+  Logs,
   RefreshCcw,
   Save,
   Trash2,
+  XCircle,
 } from "lucide-react";
 
 function toDateTimeLocal(value?: string | null) {
@@ -43,6 +47,44 @@ function publisherPath(platform: string, postType?: string) {
   return "/api/social/publish";
 }
 
+const TIKTOK_PROGRESS_STEPS = [
+  { key: "start", label: "Requisicao disparada", match: ["Iniciando publicacao no TikTok"] },
+  { key: "auth", label: "Conectando na conta", match: ["Authenticating browser with cookies", "Authenticating browser with sessionid"] },
+  { key: "browser", label: "Browser aberto", match: ["Create a chromium browser instance", "chromium browser instance"] },
+  { key: "upload-page", label: "Abrindo tela de upload", match: ["Navigating to upload page"] },
+  { key: "upload-file", label: "Enviando video", match: ["Uploading video file", "Posting /tmp", "Posting "] },
+  { key: "description", label: "Preenchendo descricao", match: ["Setting description"] },
+  { key: "post", label: "Clicando em publicar", match: ["Clicking the post button", "Trying to click on the button again"] },
+  { key: "confirmed", label: "Confirmado pelo TikTok", match: ["TIKTOK_UPLOAD_CONFIRMED", "TikTok enviado via browser"] },
+];
+
+function parseLogLines(log?: string | null) {
+  return String(log || "").split("\n").map((line) => line.trim()).filter(Boolean);
+}
+
+function buildTikTokProgress(log?: string | null, status?: string | null) {
+  const lines = parseLogLines(log);
+  const failed = String(status || "").toUpperCase() === "FAILED" || lines.some((line) => /falha ao publicar no tiktok|traceback|failed to upload|error:/i.test(line));
+  const completed = String(status || "").toUpperCase() === "POSTED" && lines.some((line) => /TikTok enviado via browser|TIKTOK_UPLOAD_CONFIRMED/i.test(line));
+  const steps = TIKTOK_PROGRESS_STEPS.map((step) => {
+    const detail = lines.find((line) => step.match.some((snippet) => line.includes(snippet))) || "";
+    return { ...step, detail, state: detail ? "done" : "pending" as "done" | "pending" | "active" | "error" };
+  });
+  const lastDoneIndex = steps.reduce((acc, step, index) => (step.state === "done" ? index : acc), -1);
+  if (!failed && !completed && lastDoneIndex >= 0 && lastDoneIndex < steps.length - 1) {
+    steps[lastDoneIndex + 1].state = "active";
+  }
+  if (failed) {
+    const errorIndex = Math.min(lastDoneIndex + 1, steps.length - 1);
+    if (errorIndex >= 0) steps[errorIndex].state = "error";
+  }
+  if (completed) {
+    const confirmedIndex = steps.findIndex((step) => step.key === "confirmed");
+    if (confirmedIndex >= 0) steps[confirmedIndex].state = "done";
+  }
+  return { steps, lines };
+}
+
 export default function SocialPostEditorPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -50,6 +92,7 @@ export default function SocialPostEditorPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [post, setPost] = useState<any | null>(null);
 
   const [form, setForm] = useState<{
@@ -68,9 +111,9 @@ export default function SocialPostEditorPage() {
     summary: "",
   });
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!id) return;
-    setLoading(true);
+    if (!opts?.silent) setLoading(true);
     try {
       const res = await fetch(`/api/social/posts?id=${encodeURIComponent(id)}`, { cache: "no-store" });
       const data = await res.json().catch(() => null);
@@ -85,15 +128,23 @@ export default function SocialPostEditorPage() {
         summary: String(data.summary || ""),
       });
     } catch (err: any) {
-      toast.error(err.message || "Falha ao carregar post");
+      if (!opts?.silent) toast.error(err.message || "Falha ao carregar post");
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!publishing || !id) return;
+    const interval = setInterval(() => {
+      void load({ silent: true });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [publishing, id, load]);
 
   const dirty = useMemo(() => {
     if (!post) return false;
@@ -143,6 +194,7 @@ export default function SocialPostEditorPage() {
   const publishNow = useCallback(async () => {
     if (!id) return;
     setSaving(true);
+    setPublishing(true);
     try {
       const path = publisherPath(form.platform, form.postType);
       const res = await fetch(path, {
@@ -158,6 +210,8 @@ export default function SocialPostEditorPage() {
       toast.error(err.message || "Falha ao publicar");
     } finally {
       setSaving(false);
+      setPublishing(false);
+      await load({ silent: true });
     }
   }, [form.platform, form.postType, id, load]);
 
@@ -189,6 +243,11 @@ export default function SocialPostEditorPage() {
       }
     },
     [form.postType, form.scheduledTo, form.summary, form.videoUrl, post, router]
+  );
+
+  const tiktokProgress = useMemo(
+    () => (String(form.platform).toUpperCase() === "TIKTOK" ? buildTikTokProgress(post?.log, post?.status) : null),
+    [form.platform, post?.log, post?.status]
   );
 
   const remove = useCallback(async () => {
@@ -240,7 +299,7 @@ export default function SocialPostEditorPage() {
             title="Publicar agora (ou checar status)"
           >
             <RefreshCcw className={`w-4 h-4 ${saving ? "animate-spin" : ""}`} />
-            Publicar agora
+            {publishing ? "Publicando..." : "Publicar agora"}
           </button>
           <button
             onClick={() => save()}
@@ -419,6 +478,47 @@ export default function SocialPostEditorPage() {
 
           <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm space-y-2">
             <div className="text-xs font-black text-slate-800 uppercase tracking-wider">Log</div>
+            {String(form.platform).toUpperCase() === "TIKTOK" && tiktokProgress ? (
+              <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800">
+                  <Logs className="h-4 w-4" />
+                  Fluxo da Publicacao
+                </div>
+                <div className="mt-3 space-y-2">
+                  {tiktokProgress.steps.map((step) => (
+                    <div
+                      key={step.key}
+                      className={`flex items-start gap-3 rounded-xl border px-3 py-2 text-xs ${
+                        step.state === "done"
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                          : step.state === "active"
+                            ? "border-indigo-200 bg-indigo-50 text-indigo-900"
+                            : step.state === "error"
+                              ? "border-rose-200 bg-rose-50 text-rose-900"
+                              : "border-slate-200 bg-white text-slate-500"
+                      }`}
+                    >
+                      {step.state === "done" ? (
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                      ) : step.state === "active" ? (
+                        <LoaderCircle className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+                      ) : step.state === "error" ? (
+                        <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      ) : (
+                        <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-slate-300" />
+                      )}
+                      <div className="space-y-1">
+                        <div className="font-black">{step.label}</div>
+                        {step.detail ? <div className="text-[11px] opacity-80">{step.detail}</div> : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 text-[11px] font-medium text-slate-600">
+                  {publishing ? "Atualizando automaticamente a cada 2 segundos..." : "Ao publicar, as etapas vao aparecendo aqui em tempo real."}
+                </div>
+              </div>
+            ) : null}
             <pre className="max-h-60 overflow-auto rounded-xl bg-slate-50 border border-slate-200 p-3 text-[11px] text-slate-700 whitespace-pre-wrap">
               {post?.log ? String(post.log) : "—"}
             </pre>

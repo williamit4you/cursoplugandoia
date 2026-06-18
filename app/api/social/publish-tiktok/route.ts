@@ -10,6 +10,23 @@ export const runtime = "nodejs";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
+async function appendPostLog(id: string, message: string) {
+  const currentPost = await prisma.socialPost.findUnique({
+    where: { id },
+    select: { log: true },
+  });
+
+  const hasTimestamp = /^\[\d{2}:\d{2}:\d{2}\]/.test(message);
+  const line = hasTimestamp ? message : `[${new Date().toLocaleTimeString("pt-BR")}] ${message}`;
+
+  await prisma.socialPost.update({
+    where: { id },
+    data: {
+      log: currentPost?.log ? `${currentPost.log}\n${line}` : line,
+    },
+  });
+}
+
 function tiktokConfigError(settings: {
   isActive?: boolean | null;
   refreshToken?: string | null;
@@ -86,10 +103,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    await prisma.socialPost.update({
+      where: { id: targetSocialPostId },
+      data: {
+        status: "PUBLISHING",
+      },
+    });
+    await appendPostLog(targetSocialPostId!, "Iniciando publicacao no TikTok...");
+
     const title = socialPost.post?.title || socialPost.summary?.slice(0, 150) || "Nova noticia";
     const { publishId, method } = await publishTikTokVideo(socialPost.videoUrl, title, {
       accessToken: settings!.accessToken,
       sessionId: settings!.refreshToken,
+    }, {
+      onProgress: async (event) => {
+        if (!targetSocialPostId) return;
+        await appendPostLog(targetSocialPostId, event.message);
+      },
     });
 
     const logEntry = `[${new Date().toLocaleTimeString("pt-BR")}] TikTok enviado via ${method}. Publish ID: ${publishId}`;

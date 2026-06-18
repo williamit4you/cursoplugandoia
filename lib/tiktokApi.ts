@@ -9,6 +9,15 @@ type TikTokPublishSettings = {
   sessionId?: string | null;
 };
 
+type TikTokProgressEvent = {
+  level: "info" | "success" | "error";
+  message: string;
+};
+
+type TikTokPublishOptions = {
+  onProgress?: (event: TikTokProgressEvent) => void | Promise<void>;
+};
+
 type TikTokPublishResult = {
   publishId: string;
   method: "official" | "browser";
@@ -142,7 +151,8 @@ async function runUploaderCli(
   tempDir: string,
   videoPath: string,
   description: string,
-  authValue: string
+  authValue: string,
+  options?: TikTokPublishOptions
 ) {
   const configuredCommand = (process.env.TIKTOK_UPLOADER_COMMAND || "tiktok-uploader").trim();
   const browser = (process.env.TIKTOK_UPLOADER_BROWSER || "chromium").trim() || "chromium";
@@ -234,14 +244,19 @@ async function runUploaderCli(
       "",
       "def _wait_for_publish_confirmation(page):",
       "    success_snippets = [",
-      "        'uploaded',",
-      "        'uploading',",
-      "        'your video is being uploaded',",
       "        'successfully posted',",
       "        'successfully uploaded',",
       "        'video scheduled',",
       "        'posted successfully',",
+      "        'upload complete',",
+      "        'published successfully',",
+      "    ]",
+      "    weak_snippets = [",
+      "        'uploading',",
       "        'processing',",
+      "        'your video is being uploaded',",
+      "        'copyright check',",
+      "        'checking',",
       "    ]",
       "    post_button_selectors = [",
       "        'button[data-e2e=\"post_video_button\"]',",
@@ -273,8 +288,11 @@ async function runUploaderCli(
       "            except Exception:",
       "                pass",
       "",
-      "        if not button_still_visible and ('upload' not in page_text or '100%' in page_text):",
+      "        if not button_still_visible and '/manage' in current_url:",
       "            return",
+      "",
+      "        if not button_still_visible and any(snippet in page_text for snippet in weak_snippets):",
+      "            continue",
       "",
       "    page.screenshot(path='/tmp/tiktok-publish-confirmation-error.png', full_page=True)",
       "    raise RuntimeError('O TikTok nao confirmou a publicacao. O botao de publicar pode nao ter sido concluido ou a tela pode ter exibido algum bloqueio.')",
@@ -333,12 +351,41 @@ async function runUploaderCli(
 
     let stdout = "";
     let stderr = "";
+    let stdoutBuffer = "";
+    let stderrBuffer = "";
+
+    const emitLines = (source: "stdout" | "stderr", chunkText: string) => {
+      const nextBuffer = source === "stdout" ? stdoutBuffer + chunkText : stderrBuffer + chunkText;
+      const parts = nextBuffer.split(/\r?\n/);
+      const remainder = parts.pop() || "";
+
+      for (const rawLine of parts) {
+        const line = rawLine.replace(/\x1b\[[0-9;]*m/g, "").trim();
+        if (!line) continue;
+        void options?.onProgress?.({
+          level:
+            source === "stderr" || /failed|error|traceback/i.test(line)
+              ? "error"
+              : /confirmed|success|posted|uploaded via|uploaded$/i.test(line)
+                ? "success"
+                : "info",
+          message: line,
+        });
+      }
+
+      if (source === "stdout") stdoutBuffer = remainder;
+      else stderrBuffer = remainder;
+    };
 
     child.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
+      const text = chunk.toString();
+      stdout += text;
+      emitLines("stdout", text);
     });
     child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
+      const text = chunk.toString();
+      stderr += text;
+      emitLines("stderr", text);
     });
     child.on("error", (error) => {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {
@@ -375,12 +422,13 @@ async function runUploaderCli(
 async function publishViaBrowserUploader(
   videoUrl: string,
   title: string,
-  authValue: string
+  authValue: string,
+  options?: TikTokPublishOptions
 ): Promise<TikTokPublishResult> {
   const { tempDir, videoPath } = await downloadVideoToTemp(videoUrl, title);
 
   try {
-    const { stdout } = await runUploaderCli(tempDir, videoPath, title, authValue);
+    const { stdout } = await runUploaderCli(tempDir, videoPath, title, authValue, options);
 
     if (!stdout.includes("TIKTOK_UPLOAD_CONFIRMED")) {
       throw new Error(
@@ -400,7 +448,8 @@ async function publishViaBrowserUploader(
 export async function publishTikTokVideo(
   videoUrl: string,
   title: string,
-  settings: TikTokPublishSettings
+  settings: TikTokPublishSettings,
+  options?: TikTokPublishOptions
 ): Promise<TikTokPublishResult> {
   const method = getTikTokUploadMethod();
   const accessToken = settings.accessToken?.trim();
@@ -409,7 +458,7 @@ export async function publishTikTokVideo(
 
   if ((method === "browser" || method === "auto") && sessionId) {
     try {
-      return await publishViaBrowserUploader(videoUrl, title, sessionId);
+      return await publishViaBrowserUploader(videoUrl, title, sessionId, options);
     } catch (error: any) {
       if (method === "browser") throw error;
     }
