@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 type SocialPost = {
@@ -71,6 +71,53 @@ const STEP_ORDER = [
   { key: "ENQUEUE_SOCIAL", label: "Fila social" },
 ] as const;
 
+function isStepSuccess(status: string) {
+  return status === "SUCCESS" || status === "DONE";
+}
+
+function isStepRunning(status: string) {
+  return status === "RUNNING" || status === "GENERATING" || status === "RENDERING" || status === "READY";
+}
+
+function isProjectActivelyProcessing(item: VideoEngagementItem | null) {
+  if (!item) return false;
+  if (item.status === "FAILED" || item.status === "DONE") return false;
+  if (item.videoUrl) return false;
+  return true;
+}
+
+function computeProgress(item: VideoEngagementItem | null) {
+  if (!item) return 0;
+  let completed = 0;
+
+  for (const step of STEP_ORDER) {
+    const status = stepStatus(item, step.key);
+    if (isStepSuccess(status)) {
+      completed += 1;
+    } else if (isStepRunning(status)) {
+      completed += 0.5;
+    }
+  }
+
+  return Math.max(0, Math.min(100, Math.round((completed / STEP_ORDER.length) * 100)));
+}
+
+function currentStageLabel(item: VideoEngagementItem | null) {
+  if (!item) return "Nenhum projeto selecionado.";
+  if (item.status === "FAILED") return "Falhou. Veja o erro e o log abaixo.";
+  if (item.status === "DONE") return "Video finalizado. Agora o foco e a fila social/publicacao.";
+
+  for (const step of STEP_ORDER) {
+    const status = stepStatus(item, step.key);
+    if (status === "FAILED") return `${step.label} falhou. Veja o log abaixo.`;
+    if (isStepRunning(status)) return `${step.label} em andamento...`;
+  }
+
+  const firstPending = STEP_ORDER.find((step) => stepStatus(item, step.key) === "PENDING");
+  if (firstPending) return `Aguardando inicio de ${firstPending.label}...`;
+  return "Aguardando atualizacao do projeto...";
+}
+
 function fmtDate(value?: string | null) {
   if (!value) return "-";
   const date = new Date(value);
@@ -116,6 +163,9 @@ export default function VideoEngajamentoPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("ALL");
   const [error, setError] = useState<string | null>(null);
+  const [streamState, setStreamState] = useState<"idle" | "connecting" | "live" | "reconnecting" | "closed">("idle");
+  const [lastStreamEventAt, setLastStreamEventAt] = useState<string | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   const loadItems = async (keepSelection = true) => {
     setRefreshing(true);
@@ -166,12 +216,60 @@ export default function VideoEngajamentoPage() {
   }, [selectedId]);
 
   useEffect(() => {
+    if (!selectedId) return;
+
+    eventSourceRef.current?.close();
+    setStreamState("connecting");
+
+    const since = new Date().toISOString();
+    const source = new EventSource(`/api/video-code/projects/${selectedId}/events/stream?since=${encodeURIComponent(since)}`);
+    eventSourceRef.current = source;
+
+    source.onmessage = (event) => {
+      try {
+        const parsed = JSON.parse(event.data);
+        if (parsed?.type === "connected") {
+          setStreamState("live");
+          return;
+        }
+        if (parsed?.type === "error") {
+          setStreamState("reconnecting");
+          return;
+        }
+        if (parsed?.type === "event" && parsed.payload) {
+          const nextEvent = parsed.payload as PipelineEvent;
+          setEvents((prev) => {
+            if (prev.some((item) => item.id === nextEvent.id)) return prev;
+            return [...prev, nextEvent];
+          });
+          setLastStreamEventAt(new Date().toISOString());
+          loadSelected(selectedId).catch(() => null);
+          loadItems(true).catch(() => null);
+        }
+      } catch {
+        setStreamState("reconnecting");
+      }
+    };
+
+    source.onerror = () => {
+      setStreamState("reconnecting");
+    };
+
+    return () => {
+      source.close();
+      eventSourceRef.current = null;
+      setStreamState("closed");
+    };
+  }, [selectedId]);
+
+  useEffect(() => {
+    const intervalMs = isProjectActivelyProcessing(selected) ? 2500 : 10000;
     const timer = window.setInterval(() => {
       loadItems(true).catch(() => null);
       if (selectedId) loadSelected(selectedId).catch(() => null);
-    }, 10000);
+    }, intervalMs);
     return () => window.clearInterval(timer);
-  }, [selectedId, query, status]);
+  }, [selectedId, query, status, selected]);
 
   const counts = useMemo(() => {
     return items.reduce(
@@ -208,6 +306,17 @@ export default function VideoEngajamentoPage() {
     }
   };
 
+  const selectedProgress = useMemo(() => computeProgress(selected), [selected]);
+  const selectedStageLabel = useMemo(() => currentStageLabel(selected), [selected]);
+  const selectedIsRunning = useMemo(() => isProjectActivelyProcessing(selected), [selected]);
+  const liveTailEvents = useMemo(() => events.slice(-5).reverse(), [events]);
+  const streamBadge = useMemo(() => {
+    if (streamState === "live") return { label: "Log ao vivo conectado", cls: "border-emerald-200 bg-emerald-50 text-emerald-700" };
+    if (streamState === "connecting") return { label: "Conectando ao log ao vivo...", cls: "border-sky-200 bg-sky-50 text-sky-700" };
+    if (streamState === "reconnecting") return { label: "Reconectando log ao vivo...", cls: "border-amber-200 bg-amber-50 text-amber-700" };
+    return { label: "Log ao vivo inativo", cls: "border-slate-200 bg-slate-50 text-slate-600" };
+  }, [streamState]);
+
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm">
@@ -215,6 +324,64 @@ export default function VideoEngajamentoPage() {
         <p className="text-slate-500 text-sm font-medium mt-1">
           Acompanha os videos gerados a partir de artigos. O automatico tenta criar o video assim que o post nasce, mesmo em rascunho.
         </p>
+        {selected && (
+          <div className={`mt-4 rounded-2xl border px-4 py-4 ${selectedIsRunning ? "border-sky-200 bg-sky-50" : "border-slate-200 bg-slate-50"}`}>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="text-xs uppercase font-black tracking-wide text-slate-400">Status atual</div>
+                <div className="mt-1 text-lg font-black text-slate-800">{selectedStageLabel}</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {selectedIsRunning ? "Auto-refresh acelerado ativo enquanto este projeto estiver processando." : "Projeto parado, pronto ou com falha."}
+                </div>
+                <div className={`mt-3 inline-flex rounded-full border px-3 py-1 text-[11px] font-black ${streamBadge.cls}`}>
+                  {streamBadge.label}
+                  {lastStreamEventAt ? ` • ultimo evento ${fmtDate(lastStreamEventAt)}` : ""}
+                </div>
+              </div>
+              <div className="min-w-[180px]">
+                <div className="flex items-center justify-between text-xs font-black text-slate-500">
+                  <span>Progresso estimado</span>
+                  <span>{selectedProgress}%</span>
+                </div>
+                <div className="mt-2 h-3 overflow-hidden rounded-full bg-white ring-1 ring-slate-200">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${selectedIsRunning ? "bg-sky-500" : selected?.status === "DONE" ? "bg-emerald-500" : selected?.status === "FAILED" ? "bg-rose-500" : "bg-slate-400"}`}
+                    style={{ width: `${selectedProgress}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
+              <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2">
+                <div className="text-[11px] font-black uppercase tracking-wide text-slate-300">Terminal ao vivo</div>
+                <div className="text-[10px] font-bold text-slate-500">ultimas 5 linhas</div>
+              </div>
+              <div className="space-y-2 px-4 py-3 font-mono text-[11px]">
+                {liveTailEvents.length === 0 && (
+                  <div className="text-slate-500">Aguardando eventos do fluxo...</div>
+                )}
+                {liveTailEvents.map((event) => (
+                  <div key={event.id} className="flex gap-3 text-slate-200">
+                    <span className="shrink-0 text-slate-500">{fmtDate(event.createdAt)}</span>
+                    <span
+                      className={`shrink-0 font-black uppercase ${
+                        event.level === "ERROR"
+                          ? "text-rose-400"
+                          : event.level === "WARN"
+                            ? "text-amber-300"
+                            : "text-emerald-400"
+                      }`}
+                    >
+                      {event.level}
+                    </span>
+                    <span className="shrink-0 text-sky-300">{event.stepName || "FLOW"}</span>
+                    <span className="min-w-0 flex-1 break-words text-slate-100">{event.message}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -310,12 +477,23 @@ export default function VideoEngajamentoPage() {
                       <div className="text-lg font-black text-slate-800 truncate">
                         {item.linkedPost?.title || item.title || "Video sem titulo"}
                       </div>
-                      <div className="text-xs text-slate-500">
-                        Projeto {item.id} • Atualizado em {fmtDate(item.updatedAt)}
+                    <div className="text-xs text-slate-500">
+                      Projeto {item.id} • Atualizado em {fmtDate(item.updatedAt)}
+                    </div>
+                    <div className="text-xs font-semibold text-slate-600">
+                      {currentStageLabel(item)}
+                    </div>
+                    <div className="pt-1">
+                      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${isProjectActivelyProcessing(item) ? "bg-sky-500" : item.status === "DONE" ? "bg-emerald-500" : item.status === "FAILED" ? "bg-rose-500" : "bg-slate-400"}`}
+                          style={{ width: `${computeProgress(item)}%` }}
+                        />
                       </div>
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {item.socialPosts.map((social) => (
-                          <span
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {item.socialPosts.map((social) => (
+                        <span
                             key={social.id}
                             className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase ${statusBadge(social.status)}`}
                           >
@@ -400,6 +578,11 @@ export default function VideoEngajamentoPage() {
                             {stepState}
                           </span>
                         </div>
+                        {isStepRunning(stepState) && (
+                          <div className="mt-2 text-xs font-semibold text-sky-700">
+                            Esta etapa esta rodando agora.
+                          </div>
+                        )}
                         {err && <div className="mt-2 text-xs text-rose-700">{err}</div>}
                       </div>
                     );
@@ -486,7 +669,12 @@ export default function VideoEngajamentoPage() {
               </div>
 
               <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 space-y-3">
-                <div className="text-sm font-black text-slate-800">Log do fluxo</div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-sm font-black text-slate-800">Log do fluxo</div>
+                  <div className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-black ${streamBadge.cls}`}>
+                    {streamBadge.label}
+                  </div>
+                </div>
                 <div className="max-h-[420px] overflow-y-auto space-y-2">
                   {events.length === 0 && <div className="text-sm text-slate-400">Sem eventos registrados ainda.</div>}
                   {events.map((event) => (

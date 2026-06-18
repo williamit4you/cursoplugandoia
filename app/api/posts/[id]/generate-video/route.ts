@@ -14,6 +14,22 @@ function baseUrl(req: NextRequest) {
   return `${protocol}://${host}`;
 }
 
+async function callRunPipeline(req: NextRequest, projectId: string) {
+  const runUrl = `${baseUrl(req)}/api/video-code/projects/${projectId}/run`;
+  const res = await fetch(runUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ trigger: "post_create_or_update" }),
+    cache: "no-store",
+  });
+  const data = await res.json().catch(() => ({}));
+  return {
+    ok: res.ok,
+    status: res.status,
+    data,
+  };
+}
+
 export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
   try {
     const ensured = await ensureNewsVideoProjectForPost(ctx.params.id);
@@ -44,28 +60,42 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
         stepName: "AUTO_START",
         message: "Disparando execucao automatica de roteiro e renderizacao do video.",
       }).catch(() => null);
-      const runUrl = `${baseUrl(req)}/api/video-code/projects/${project.id}/run`;
-      fetch(runUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trigger: "post_create_or_update" }),
-        cache: "no-store",
-      }).catch((error) => {
-        console.error("[api/posts/[id]/generate-video POST] background run failed", error);
-        logCodeVideoPipelineEvent({
+
+      const runCall = await callRunPipeline(req, project.id);
+      if (!runCall.ok) {
+        const errMessage = String(runCall.data?.error || `Falha ao executar pipeline de video (HTTP ${runCall.status})`);
+        await upsertCodeVideoPipelineStep({
+          projectId: project.id,
+          stepName: "AUTO_START",
+          status: "FAILED",
+          attempt: 1,
+          finishedAt: new Date(),
+          errorMessage: errMessage,
+          responsePayload: runCall.data || null,
+        }).catch(() => null);
+        await logCodeVideoPipelineEvent({
           projectId: project.id,
           level: "ERROR",
           stepName: "AUTO_START",
-          message: "Falha ao iniciar a execucao automatica em background.",
-          metadata: { error: error?.message || String(error) },
+          message: errMessage,
+          metadata: runCall.data || null,
         }).catch(() => null);
-      });
+        return NextResponse.json({ error: errMessage, projectId: project.id }, { status: 500 });
+      }
+
       await upsertCodeVideoPipelineStep({
         projectId: project.id,
         stepName: "AUTO_START",
         status: "SUCCESS",
         attempt: 1,
         finishedAt: new Date(),
+        responsePayload: runCall.data || null,
+      }).catch(() => null);
+      await logCodeVideoPipelineEvent({
+        projectId: project.id,
+        stepName: "AUTO_START",
+        message: "Execucao automatica concluida com sucesso.",
+        metadata: runCall.data || null,
       }).catch(() => null);
     } else if (isDone) {
       await logCodeVideoPipelineEvent({
