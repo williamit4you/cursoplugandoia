@@ -28,6 +28,8 @@ type RenderRequest = {
   videoSpec: any;
 };
 
+let renderQueue: Promise<void> = Promise.resolve();
+
 function json(res: http.ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(body));
@@ -39,6 +41,66 @@ function safeJsonParse(text: string) {
   } catch {
     return null;
   }
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function removeIfExists(targetPath: string | null | undefined) {
+  if (!targetPath) return;
+  try {
+    await fs.rm(targetPath, { recursive: true, force: true });
+  } catch {
+    // ignore cleanup failures
+  }
+}
+
+async function withRenderLock<T>(fn: () => Promise<T>) {
+  const previous = renderQueue;
+  let release!: () => void;
+  renderQueue = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  await previous;
+  try {
+    return await fn();
+  } finally {
+    release();
+  }
+}
+
+async function bundleWithRetry(bundleFn: (args: any) => Promise<string>, entryPoint: string) {
+  let lastError: any = null;
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      if (attempt > 1) {
+        console.warn(`[render-service] Retry do bundle Remotion (${attempt}/3) apos falha do esbuild.`);
+      }
+
+      return await bundleFn({
+        entryPoint,
+        webpackOverride: (config: any) => config,
+      });
+    } catch (error: any) {
+      lastError = error;
+      const message = String(error?.message || "");
+      const retryable =
+        /EPIPE/i.test(message) ||
+        /The service is no longer running/i.test(message) ||
+        /esbuild/i.test(message);
+
+      if (!retryable || attempt === 3) {
+        throw error;
+      }
+
+      await wait(1200 * attempt);
+    }
+  }
+
+  throw lastError || new Error("Falha ao gerar bundle Remotion.");
 }
 
 function totalDurationInFramesFromSpec(videoSpec: any, fps: number) {
@@ -369,91 +431,101 @@ async function transcribeAudio(audioUrl: string) {
 }
 
 async function renderProject(payload: RenderRequest) {
-  const { projectId, project, videoSpec } = payload;
-  if (!projectId) throw new Error("projectId is required");
-  if (!videoSpec) throw new Error("videoSpec is required");
+  return withRenderLock(async () => {
+    const { projectId, project, videoSpec } = payload;
+    if (!projectId) throw new Error("projectId is required");
+    if (!videoSpec) throw new Error("videoSpec is required");
 
-  const bucketName = process.env.MINIO_BUCKET_NAME || "uploads";
-  const publicBase = process.env.MINIO_PUBLIC_URL;
-  if (!publicBase) throw new Error("MINIO_PUBLIC_URL not configured");
+    const bucketName = process.env.MINIO_BUCKET_NAME || "uploads";
+    const publicBase = process.env.MINIO_PUBLIC_URL;
+    if (!publicBase) throw new Error("MINIO_PUBLIC_URL not configured");
 
-  await ensureBucket(bucketName);
+    await ensureBucket(bucketName);
 
-  let audioUrl = project.audioUrl || null;
-  if (!audioUrl && project.narrationText && project.narrationText.trim().length > 0) {
-    const mp3 = await generateNarrationMp3({
-      text: project.narrationText,
-      voice: project.ttsVoice || "pt-BR-AntonioNeural",
-      speed: project.ttsSpeed || "+5%",
-    });
+    let audioUrl = project.audioUrl || null;
+    if (!audioUrl && project.narrationText && project.narrationText.trim().length > 0) {
+      const mp3 = await generateNarrationMp3({
+        text: project.narrationText,
+        voice: project.ttsVoice || "pt-BR-AntonioNeural",
+        speed: project.ttsSpeed || "+5%",
+      });
 
-    const audioKey = `code-video-audio-${projectId}.mp3`;
-    console.log(`[render-service] Uploading audio: ${audioKey} to ${bucketName}`);
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: bucketName,
-        Key: audioKey,
-        Body: mp3,
-        ContentType: "audio/mpeg",
-      })
-    );
-    audioUrl = `${publicBase}/${audioKey}`;
-  }
+      const audioKey = `code-video-audio-${projectId}.mp3`;
+      console.log(`[render-service] Uploading audio: ${audioKey} to ${bucketName}`);
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: bucketName,
+          Key: audioKey,
+          Body: mp3,
+          ContentType: "audio/mpeg",
+        })
+      );
+      audioUrl = `${publicBase}/${audioKey}`;
+    }
 
-  const transcription = audioUrl ? await transcribeAudio(audioUrl) : null;
+    const transcription = audioUrl ? await transcribeAudio(audioUrl) : null;
 
-  // eslint-disable-next-line no-eval
-  const req = eval("require") as (name: string) => any;
-  const { bundle } = req("@remotion/bundler") as typeof import("@remotion/bundler");
-  const { getCompositions, renderMedia } = req("@remotion/renderer") as typeof import("@remotion/renderer");
+    // eslint-disable-next-line no-eval
+    const req = eval("require") as (name: string) => any;
+    const { bundle } = req("@remotion/bundler") as typeof import("@remotion/bundler");
+    const { getCompositions, renderMedia } = req("@remotion/renderer") as typeof import("@remotion/renderer");
 
-  const entryPoint = path.resolve(process.cwd(), "remotion", "index.ts");
-  const bundleLocation = await bundle({ entryPoint, webpackOverride: (config: any) => config });
-  const browserPath = process.env.REMOTION_CHROME_BIN || undefined;
+    const entryPoint = path.resolve(process.cwd(), "remotion", "index.ts");
+    const browserPath = process.env.REMOTION_CHROME_BIN || undefined;
+    const outDir = path.resolve(process.cwd(), ".remotion-temp", projectId);
+    await fs.mkdir(outDir, { recursive: true });
 
-  const compositions = await getCompositions(bundleLocation, {
-    inputProps: { videoSpec, audioUrl, transcription },
-    browserExecutable: browserPath,
+    let bundleLocation: string | null = null;
+    const localMp4 = path.join(outDir, `code-video-${projectId}.mp4`);
+
+    try {
+      bundleLocation = await bundleWithRetry(bundle, entryPoint);
+
+      const compositions = await getCompositions(bundleLocation, {
+        inputProps: { videoSpec, audioUrl, transcription },
+        browserExecutable: browserPath,
+      });
+
+      const compositionId = project.aspectRatio === "LANDSCAPE_16_9" ? "VideoLandscape" : "VideoPortrait";
+      const comp = compositions.find((item: any) => item.id === compositionId);
+      if (!comp) throw new Error(`Composition not found: ${compositionId}`);
+
+      const fps = project.fps || 30;
+      const durationInFrames = totalDurationInFramesFromSpec(videoSpec, fps);
+      const composition = { ...comp, fps, durationInFrames };
+
+      await renderMedia({
+        composition,
+        serveUrl: bundleLocation,
+        codec: "h264",
+        outputLocation: localMp4,
+        inputProps: { videoSpec, audioUrl, transcription },
+        browserExecutable: browserPath,
+      });
+
+      const buffer = await fs.readFile(localMp4);
+      const key = `code-video-${projectId}.mp4`;
+      console.log(`[render-service] Uploading video: ${key} to ${bucketName}`);
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: bucketName,
+          Key: key,
+          Body: buffer,
+          ContentType: "video/mp4",
+        })
+      );
+
+      return {
+        projectId,
+        audioUrl,
+        videoUrl: `${publicBase}/${key}`,
+      };
+    } finally {
+      await removeIfExists(localMp4);
+      await removeIfExists(bundleLocation);
+      await removeIfExists(outDir);
+    }
   });
-
-  const compositionId = project.aspectRatio === "LANDSCAPE_16_9" ? "VideoLandscape" : "VideoPortrait";
-  const comp = compositions.find((item: any) => item.id === compositionId);
-  if (!comp) throw new Error(`Composition not found: ${compositionId}`);
-
-  const fps = project.fps || 30;
-  const durationInFrames = totalDurationInFramesFromSpec(videoSpec, fps);
-  const composition = { ...comp, fps, durationInFrames };
-
-  const outDir = path.resolve(process.cwd(), ".remotion-temp");
-  await fs.mkdir(outDir, { recursive: true });
-  const localMp4 = path.join(outDir, `code-video-${projectId}.mp4`);
-
-  await renderMedia({
-    composition,
-    serveUrl: bundleLocation,
-    codec: "h264",
-    outputLocation: localMp4,
-    inputProps: { videoSpec, audioUrl, transcription },
-    browserExecutable: browserPath,
-  });
-
-  const buffer = await fs.readFile(localMp4);
-  const key = `code-video-${projectId}.mp4`;
-  console.log(`[render-service] Uploading video: ${key} to ${bucketName}`);
-  await s3Client.send(
-    new PutObjectCommand({
-      Bucket: bucketName,
-      Key: key,
-      Body: buffer,
-      ContentType: "video/mp4",
-    })
-  );
-
-  return {
-    projectId,
-    audioUrl,
-    videoUrl: `${publicBase}/${key}`,
-  };
 }
 
 const server = http.createServer(async (req, res) => {
