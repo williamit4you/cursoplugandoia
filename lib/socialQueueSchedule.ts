@@ -4,9 +4,14 @@ import { prisma } from "@/lib/prisma";
 
 const RECENT_WINDOW_MS = 60 * 60 * 1000;
 const DEFAULT_SPACING_HOURS = 3;
+const MIN_LEAD_MINUTES = 30;
 
 function addHours(date: Date, hours: number) {
   return new Date(date.getTime() + hours * 60 * 60 * 1000);
+}
+
+function addMinutes(date: Date, minutes: number) {
+  return new Date(date.getTime() + minutes * 60 * 1000);
 }
 
 function now() {
@@ -19,9 +24,12 @@ export async function computeNextSocialQueueTime(params: {
   spacingHours?: number;
 }) {
   const platform = String(params.platform || "").trim().toUpperCase();
-  const desiredAt = params.desiredAt ? new Date(params.desiredAt) : now();
+  const current = now();
+  const minimumAllowed = addMinutes(current, MIN_LEAD_MINUTES);
+  const requestedAt = params.desiredAt ? new Date(params.desiredAt) : current;
+  const desiredAt = requestedAt > minimumAllowed ? requestedAt : minimumAllowed;
   const spacingHours = Number.isFinite(params.spacingHours) ? Number(params.spacingHours) : DEFAULT_SPACING_HOURS;
-  const recentThreshold = new Date(now().getTime() - RECENT_WINDOW_MS);
+  const recentThreshold = new Date(current.getTime() - RECENT_WINDOW_MS);
 
   const [latestScheduled, latestPosted] = await Promise.all([
     prisma.socialPost.findFirst({
@@ -45,12 +53,14 @@ export async function computeNextSocialQueueTime(params: {
   ]);
 
   if (latestScheduled?.scheduledTo && latestScheduled.scheduledTo >= recentThreshold) {
-    return addHours(latestScheduled.scheduledTo, spacingHours);
+    const nextFromQueue = addHours(latestScheduled.scheduledTo, spacingHours);
+    return nextFromQueue > minimumAllowed ? nextFromQueue : minimumAllowed;
   }
 
   if (latestPosted?.postedAt && latestPosted.postedAt >= recentThreshold) {
-    return addHours(latestPosted.postedAt, spacingHours);
+    const nextFromLastPost = addHours(latestPosted.postedAt, spacingHours);
+    return nextFromLastPost > minimumAllowed ? nextFromLastPost : minimumAllowed;
   }
 
-  return desiredAt;
+  return desiredAt > minimumAllowed ? desiredAt : minimumAllowed;
 }
