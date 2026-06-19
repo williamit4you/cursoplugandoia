@@ -21,6 +21,31 @@ type ScrapedComparisonProduct = {
   normalizedPayload: Record<string, any>;
 };
 
+function deriveTitleFromUrl(url: string) {
+  try {
+    const pathname = new URL(url).pathname;
+    const slug = pathname.split("/").filter(Boolean).pop() || "";
+    const cleaned = slug.replace(/-i\.\d+\.\d+.*$/i, "").replace(/[-_]+/g, " ").trim();
+    if (!cleaned) return "Produto Shopee";
+    return cleaned
+      .split(" ")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  } catch {
+    return "Produto Shopee";
+  }
+}
+
+function isSuspiciousShopeeTitle(value: unknown) {
+  const text = String(value || "").trim();
+  if (!text) return true;
+  if (text.toLowerCase() === "shopee__domain") return true;
+  if (/^\d[\d\s\-_.]{5,}$/i.test(text)) return true;
+  if (text.length < 6) return true;
+  return false;
+}
+
 function isShopeeDomain(hostname: string) {
   const host = hostname.toLowerCase();
   return host.includes("shopee.");
@@ -49,8 +74,12 @@ async function scrapeShopeeViaRenderService(sourceUrl: string): Promise<ScrapedC
     : null;
 
   const description = trimText(String(data?.descricao || data?.detalhes || "").replace(/\s+/g, " ").trim(), 320) || null;
+  const resolvedTitle = isSuspiciousShopeeTitle(data?.titulo)
+    ? deriveTitleFromUrl(sourceUrl)
+    : trimText(String(data?.titulo || "").replace(/\s+/g, " ").trim(), 160) || deriveTitleFromUrl(sourceUrl);
+
   const normalizedPayload = {
-    productTitle: trimText(String(data?.titulo || "").replace(/\s+/g, " ").trim(), 160) || null,
+    productTitle: resolvedTitle,
     brand: null,
     storeName: "Shopee",
     priceText: null,
