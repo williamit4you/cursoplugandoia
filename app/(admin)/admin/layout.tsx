@@ -23,6 +23,7 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import ChecklistIcon from "@mui/icons-material/Checklist";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import EventIcon from "@mui/icons-material/Event";
+import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import React, { useEffect, useState } from "react";
@@ -85,6 +86,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Tasks", icon: <ChecklistIcon />, path: "/admin/tasks" },
     { text: "Execuções", icon: <PlayArrowIcon />, path: "/admin/task-runs" },
     { text: "Agendamentos", icon: <EventIcon />, path: "/admin/schedules" },
+    { text: "Comparativos", icon: <CompareArrowsIcon />, path: "/admin/comparativos" },
   ];
 
   return (

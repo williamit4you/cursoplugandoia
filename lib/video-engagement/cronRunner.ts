@@ -33,16 +33,22 @@ async function pickEligibleProject() {
   return prisma.codeVideoProject.findFirst({
     where: {
       videoUrl: null,
-      OR: [
-        { metadataJson: { contains: "\"newsAutomation\"" } },
-        { metadataJson: { contains: "\"postId\":\"" } },
-      ],
-      OR: [
-        { status: "DRAFT" },
-        { status: "FAILED" },
-        { status: "READY" },
-        { status: "GENERATING", updatedAt: { lt: staleBefore } },
-        { status: "RENDERING", updatedAt: { lt: staleBefore } },
+      AND: [
+        {
+          OR: [
+            { metadataJson: { contains: "\"newsAutomation\"" } },
+            { metadataJson: { contains: "\"postId\":\"" } },
+          ],
+        },
+        {
+          OR: [
+            { status: "DRAFT" },
+            { status: "FAILED" },
+            { status: "READY" },
+            { status: "GENERATING", updatedAt: { lt: staleBefore } },
+            { status: "RENDERING", updatedAt: { lt: staleBefore } },
+          ],
+        },
       ],
     },
     orderBy: [{ updatedAt: "asc" }, { createdAt: "asc" }],
@@ -83,7 +89,7 @@ export async function runVideoEngagementCron() {
   for (let index = 0; index < limit; index += 1) {
     const result = await runVideoEngagementOnce();
     runs.push(result);
-    if (result?.skipped || result?.error) break;
+    if (result?.skipped || ("error" in result && result.error)) break;
   }
 
   const first = runs[0];

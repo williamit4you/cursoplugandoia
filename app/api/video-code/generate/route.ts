@@ -14,6 +14,7 @@ const prisma = new PrismaClient({ adapter });
 export const dynamic = "force-dynamic";
 
 type ProductAdMetadata = {
+  postTitle?: string;
   productName?: string;
   productDescription?: string;
   productTechnicalDetails?: string;

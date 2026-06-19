@@ -8,6 +8,7 @@ type SocialPost = {
   platform: string;
   postType: string;
   status: string;
+  videoUrl?: string | null;
   scheduledTo?: string | null;
   postedAt?: string | null;
   postUrl?: string | null;
