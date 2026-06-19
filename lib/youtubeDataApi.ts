@@ -18,6 +18,7 @@ async function getYoutubeClient(): Promise<youtube_v3.Youtube> {
       youtubeIntegration.apiSecret, // Client Secret
     );
     
+    
     oauth2Client.setCredentials({ 
       refresh_token: youtubeIntegration.refreshToken 
     });
