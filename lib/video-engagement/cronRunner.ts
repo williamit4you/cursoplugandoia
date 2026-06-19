@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { POST as runVideoCodeProjectPost } from "@/app/api/video-code/projects/[id]/run/route";
+import { ensureNewsSocialPostsForProject } from "@/lib/newsSocialQueue";
 
 function cronEnabled() {
   const raw = String(process.env.VIDEO_ENGAGEMENT_CRON_ENABLED || "").trim().toLowerCase();
@@ -86,12 +87,44 @@ export async function runVideoEngagementCron() {
   }
 
   const first = runs[0];
+  const completedProjects = await prisma.codeVideoProject.findMany({
+    where: {
+      videoUrl: { not: null },
+      OR: [
+        { metadataJson: { contains: "\"newsAutomation\"" } },
+        { metadataJson: { contains: "\"postId\":\"" } },
+      ],
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 10,
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      metadataJson: true,
+      videoUrl: true,
+    },
+  });
+
+  const reconciledSocial = [];
+  for (const project of completedProjects) {
+    const result = await ensureNewsSocialPostsForProject(project);
+    if (result.createdCount > 0) {
+      reconciledSocial.push({
+        projectId: project.id,
+        createdCount: result.createdCount,
+        createdPlatforms: result.createdPlatforms,
+      });
+    }
+  }
+
   return {
     ok: true,
     enabled: true,
     staleMinutes: staleMinutes(),
     maxItemsPerRun: limit,
     runs,
+    reconciledSocial,
     ...(first?.skipped ? { skipped: true, reason: first.reason } : {}),
   };
 }

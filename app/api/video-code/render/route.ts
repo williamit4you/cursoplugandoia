@@ -8,7 +8,8 @@ import { generateModalAudio, generateModalVideo } from "@/lib/shopee-pipeline/mo
 import { uploadBufferToMinio } from "@/lib/shopee-pipeline/minioUpload";
 import { resolveCreatorVideoDefaults } from "@/lib/creator-video/defaults";
 import { generateApproxVtt } from "@/lib/captions/vtt";
-import { isNewsVideoProject, parseProjectMetadata } from "@/lib/newsVideoProject";
+import { isNewsVideoProject } from "@/lib/newsVideoProject";
+import { ensureNewsSocialPostsForProject } from "@/lib/newsSocialQueue";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -33,10 +34,6 @@ function normalizeSocialPlatforms(value: unknown) {
     .map((item) => String(item || "").toUpperCase())
     .filter((item) => allowed.has(item));
   return platforms.length > 0 ? Array.from(new Set(platforms)) : [];
-}
-
-function defaultNewsPlatforms(platforms: string[]) {
-  return platforms.length > 0 ? platforms : ["TIKTOK", "YOUTUBE", "INSTAGRAM"];
 }
 
 function buildProductAdSocialSummary(project: any, metadata: any) {
@@ -116,84 +113,30 @@ async function enqueueProductAdSocialPosts(project: any, videoUrl: string) {
   }
 }
 
-function buildNewsSocialSummary(project: any, metadata: any) {
-  const title = String(project.title || "Resumo da noticia").trim();
-  const description = String(project.description || "").trim();
-  const articleUrl = String(metadata?.articleUrl || "").trim();
-  return [title, description, articleUrl ? `Leia a materia completa: ${articleUrl}` : ""]
-    .filter(Boolean)
-    .join("\n\n")
-    .slice(0, 4500);
-}
-
 async function enqueueNewsSocialPosts(project: any, videoUrl: string) {
-  const metadata = parseProjectMetadata(project.metadataJson || "{}") || {};
-  const newsAutomation = metadata?.newsAutomation;
-  if (!newsAutomation || newsAutomation.autoScheduleSocial !== true) return;
+  const result = await ensureNewsSocialPostsForProject({
+    id: project.id,
+    title: project.title,
+    description: project.description,
+    metadataJson: project.metadataJson,
+    videoUrl,
+  });
 
-  const platforms = defaultNewsPlatforms(normalizeSocialPlatforms(newsAutomation.platforms));
-
-  const summary = buildNewsSocialSummary(project, metadata);
-  const postId = metadata?.postId ? String(metadata.postId) : null;
-  let createdCount = 0;
-
-  for (const platform of platforms) {
-    const socialPlatform = platform === "INSTAGRAM" ? "META" : platform;
-    const postType = "REEL";
-
-    const existing = await prisma.socialPost.findFirst({
-      where: {
-        codeVideoProjectId: project.id,
-        platform: socialPlatform,
-        postType,
-        status: { not: "FAILED" },
-      },
-    });
-    if (existing) continue;
-
-    const scheduledTo = await computeNextSocialQueueTime({
-      platform: socialPlatform,
-      desiredAt: new Date(),
-    });
-
-    await prisma.socialPost.create({
-      data: {
-        postId,
-        codeVideoProjectId: project.id,
-        summary,
-        videoUrl,
-        status: "SCHEDULED",
-        scheduledTo,
-        platform: socialPlatform,
-        postType,
-        log: `[${new Date().toLocaleTimeString("pt-BR")}] Enfileirado automaticamente a partir de artigo criado`,
-      },
-    });
-    createdCount += 1;
+  if (result.createdCount === 0) {
+    await logCodeVideoPipelineEvent({
+      projectId: project.id,
+      stepName: "ENQUEUE_SOCIAL",
+      message: "Video pronto, mas nenhuma nova fila social precisou ser criada.",
+      metadata: result,
+    }).catch(() => null);
+    return;
   }
-
-  await upsertCodeVideoPipelineStep({
-    projectId: project.id,
-    stepName: "ENQUEUE_SOCIAL",
-    status: "SUCCESS",
-    attempt: 1,
-    startedAt: new Date(),
-    finishedAt: new Date(),
-    responsePayload: {
-      createdCount,
-      platforms,
-      postId,
-    },
-  }).catch(() => null);
 
   await logCodeVideoPipelineEvent({
     projectId: project.id,
     stepName: "ENQUEUE_SOCIAL",
-    message:
-      createdCount > 0
-        ? `Video pronto e enfileirado automaticamente para ${createdCount} plataforma(s).`
-        : "Video pronto, mas nenhuma nova fila social precisou ser criada.",
-    metadata: { platforms, createdCount, postId },
+    message: `Video pronto e enfileirado automaticamente para ${result.createdCount} plataforma(s).`,
+    metadata: result,
   }).catch(() => null);
 }
 

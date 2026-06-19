@@ -92,6 +92,18 @@ function PlatformIcon({ platform, postType }: { platform: string; postType?: str
   return <Share2 className="w-4 h-4 text-slate-400" />;
 }
 
+function HealthPill({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <span
+      className={`px-2 py-1 rounded-lg text-[10px] font-black border ${
+        ok ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
 export default function SocialPostsDashboard() {
   const pathname = usePathname();
   const [posts, setPosts] = useState<any[]>([]);
@@ -555,6 +567,57 @@ export default function SocialPostsDashboard() {
               <div className="mt-2 text-xs text-slate-700">
                 Para forÃ§ar, abra o editor do post e use <b>Publicar agora</b>.
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-black text-slate-800 uppercase tracking-wider">Diagnostico TikTok</div>
+            <a
+              href="/admin/integrations"
+              className="text-[11px] font-black text-indigo-700 hover:underline"
+              title="Abrir Hub de Integracoes"
+            >
+              revisar integracao
+            </a>
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">Estado</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <HealthPill ok={Boolean(cronStatus?.integrations?.tiktok?.isActive)} label={cronStatus?.integrations?.tiktok?.isActive ? "Ativo" : "Inativo"} />
+                <HealthPill ok={Boolean(cronStatus?.integrations?.tiktok?.hasSession)} label="sessao" />
+                <HealthPill ok={Boolean(cronStatus?.integrations?.tiktok?.hasAccessToken)} label="token" />
+              </div>
+              <div className="mt-2 text-[10px] text-slate-500">
+                Metodo atual: <span className="font-black text-slate-700">{String(cronStatus?.integrations?.tiktok?.method || "browser")}</span>
+              </div>
+              <div className="mt-1 text-[10px] text-slate-500">
+                Atualizado: {cronStatus?.integrations?.tiktok?.updatedAt ? formatAgo(cronStatus.integrations.tiktok.updatedAt) : "-"}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">O que bloqueia</div>
+              <div className="mt-2 text-xs text-slate-700">
+                Se o metodo for <b>browser</b>, o TikTok precisa de <b>sessao/cookies</b> validos. Estar ativo sem sessao nao publica.
+              </div>
+              <div className="mt-2 text-xs text-slate-700">
+                Se o metodo for <b>official</b>, ele precisa de <b>access token</b>.
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">Proximo passo</div>
+              <div className="mt-2 text-xs text-slate-700">
+                Abra um item da fila TikTok e confira o <b>log</b>. Se falhou, ali deve aparecer a mensagem real devolvida pelo publicador.
+              </div>
+              {currentView.platform === "TIKTOK" && cronStatus?.integrations?.tiktok?.isActive && !cronStatus?.integrations?.tiktok?.hasSession && !cronStatus?.integrations?.tiktok?.hasAccessToken ? (
+                <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-[11px] font-bold text-amber-800">
+                  O TikTok esta ativo, mas sem sessao nem token salvos.
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

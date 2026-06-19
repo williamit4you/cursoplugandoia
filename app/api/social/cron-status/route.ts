@@ -20,12 +20,29 @@ export async function GET(req: NextRequest) {
     const state = getSocialCronState();
 
     const youtubeSettings = await prisma.integrationSettings.findUnique({ where: { platform: "YOUTUBE" } }).catch(() => null);
+    const tiktokSettings = await prisma.integrationSettings.findUnique({ where: { platform: "TIKTOK" } }).catch(() => null);
+    const metaSettings = await prisma.integrationSettings.findUnique({ where: { platform: "META" } }).catch(() => null);
     const youtube = {
       isActive: Boolean(youtubeSettings?.isActive),
       hasClientId: Boolean(youtubeSettings?.apiKey),
       hasClientSecret: Boolean(youtubeSettings?.apiSecret),
       hasRefreshToken: Boolean(youtubeSettings?.refreshToken),
       updatedAt: youtubeSettings?.updatedAt ? new Date(youtubeSettings.updatedAt).toISOString() : null,
+    };
+    const tiktokMethod = String(process.env.TIKTOK_UPLOAD_METHOD || "browser").toLowerCase();
+    const tiktok = {
+      isActive: Boolean(tiktokSettings?.isActive),
+      method: tiktokMethod,
+      hasSession: Boolean(tiktokSettings?.refreshToken),
+      hasAccessToken: Boolean(tiktokSettings?.accessToken),
+      updatedAt: tiktokSettings?.updatedAt ? new Date(tiktokSettings.updatedAt).toISOString() : null,
+    };
+    const meta = {
+      isActive: Boolean(metaSettings?.isActive),
+      hasPageId: Boolean(metaSettings?.pageId),
+      hasInstagramId: Boolean(metaSettings?.instagramId),
+      hasAccessToken: Boolean(metaSettings?.accessToken),
+      updatedAt: metaSettings?.updatedAt ? new Date(metaSettings.updatedAt).toISOString() : null,
     };
 
     const [dueScheduled, scheduledFuture, processing, failed] = await Promise.all([
@@ -59,7 +76,7 @@ export async function GET(req: NextRequest) {
       ok: true,
       serverTime: now.toISOString(),
       state,
-      integrations: { youtube },
+      integrations: { youtube, tiktok, meta },
       stats: { dueScheduled, scheduledFuture, processing, failed },
       preview,
     });
