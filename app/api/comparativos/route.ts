@@ -13,6 +13,39 @@ function parsePageParam(value: string | null, fallback: number) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+type InputComparisonLink = {
+  affiliateUrl: string;
+  productUrl: string;
+};
+
+function normalizeIncomingLinks(input: unknown): InputComparisonLink[] {
+  if (!Array.isArray(input)) return [];
+  const normalized = input
+    .map((entry) => {
+      if (typeof entry === "string") {
+        const value = String(entry || "").trim();
+        return value ? { affiliateUrl: value, productUrl: value } : null;
+      }
+      if (!entry || typeof entry !== "object") return null;
+      const affiliateUrl = String((entry as any).affiliateUrl || "").trim();
+      const productUrl = String((entry as any).productUrl || "").trim();
+      const fallback = affiliateUrl || productUrl;
+      if (!fallback) return null;
+      return {
+        affiliateUrl: affiliateUrl || fallback,
+        productUrl: productUrl || fallback,
+      };
+    })
+    .filter(Boolean) as InputComparisonLink[];
+
+  const deduped = new Map<string, InputComparisonLink>();
+  for (const item of normalized) {
+    const key = `${item.affiliateUrl}__${item.productUrl}`;
+    if (!deduped.has(key)) deduped.set(key, item);
+  }
+  return Array.from(deduped.values());
+}
+
 export async function GET(req: NextRequest) {
   const session = await requireServerSession();
   if (!session?.user) {
@@ -78,9 +111,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const theme = normalizeTheme(body.theme || "");
     const targetYear = Number.parseInt(String(body.targetYear || currentComparisonYear()), 10) || currentComparisonYear();
-    const links = uniqueStrings(
-      Array.isArray(body.links) ? body.links.map((item: unknown) => String(item || "")) : []
-    );
+    const links = normalizeIncomingLinks(body.links);
 
     if (!theme) {
       return NextResponse.json({ error: "Tema e obrigatorio" }, { status: 400 });
@@ -109,13 +140,13 @@ export async function POST(req: NextRequest) {
         createdByUserId: String((session.user as any).id || ""),
         items: {
           create: links.map((link, index) => {
-            const url = new URL(link);
+            const url = new URL(link.productUrl);
             return {
               sortOrder: index + 1,
-              sourceUrl: link,
-              affiliateUrl: link,
+              sourceUrl: link.productUrl,
+              affiliateUrl: link.affiliateUrl,
               sourceDomain: url.hostname.replace(/^www\./, ""),
-              storeName: isSupportedComparisonUrl(link) ? undefined : "Nao suportado",
+              storeName: isSupportedComparisonUrl(link.productUrl) ? undefined : "Nao suportado",
             };
           }),
         },

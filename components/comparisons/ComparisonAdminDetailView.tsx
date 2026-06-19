@@ -112,9 +112,12 @@ export default function ComparisonAdminDetailView({ initialItem }: { initialItem
                       <div className="text-xs font-black uppercase tracking-wide text-slate-400">#{index + 1}</div>
                       <div className="mt-1 font-black text-slate-800">{product.productTitle || "Titulo ainda nao identificado"}</div>
                       <div className="mt-1 text-sm font-medium text-slate-500">{product.storeName || product.sourceDomain}</div>
-                      <a href={product.affiliateUrl} target="_blank" rel="noreferrer" className="mt-2 block text-xs font-semibold text-indigo-600 hover:underline">
+                      <div className="mt-2 text-[11px] font-black uppercase tracking-wide text-slate-400">Link publico de afiliado</div>
+                      <a href={product.affiliateUrl} target="_blank" rel="noreferrer" className="mt-1 block text-xs font-semibold text-indigo-600 hover:underline">
                         {product.affiliateUrl}
                       </a>
+                      <div className="mt-3 text-[11px] font-black uppercase tracking-wide text-slate-400">Link final usado no scraping</div>
+                      <div className="mt-1 break-all text-xs font-medium text-slate-500">{product.sourceUrl}</div>
                     </div>
                     <div className="text-right">
                       <div className="text-sm font-black text-slate-700">{product.priceText || "Preco nao encontrado"}</div>

@@ -1,10 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { buildComparisonTitle, normalizeTheme, uniqueStrings } from "@/lib/comparisons/utils";
+import { buildComparisonTitle, normalizeTheme } from "@/lib/comparisons/utils";
 import { requireServerSession } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+type InputComparisonLink = {
+  affiliateUrl: string;
+  productUrl: string;
+};
+
+function normalizeIncomingLinks(input: unknown): InputComparisonLink[] {
+  if (!Array.isArray(input)) return [];
+  const normalized = input
+    .map((entry) => {
+      if (typeof entry === "string") {
+        const value = String(entry || "").trim();
+        return value ? { affiliateUrl: value, productUrl: value } : null;
+      }
+      if (!entry || typeof entry !== "object") return null;
+      const affiliateUrl = String((entry as any).affiliateUrl || "").trim();
+      const productUrl = String((entry as any).productUrl || "").trim();
+      const fallback = affiliateUrl || productUrl;
+      if (!fallback) return null;
+      return {
+        affiliateUrl: affiliateUrl || fallback,
+        productUrl: productUrl || fallback,
+      };
+    })
+    .filter(Boolean) as InputComparisonLink[];
+
+  const deduped = new Map<string, InputComparisonLink>();
+  for (const item of normalized) {
+    const key = `${item.affiliateUrl}__${item.productUrl}`;
+    if (!deduped.has(key)) deduped.set(key, item);
+  }
+  return Array.from(deduped.values());
+}
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   const session = await requireServerSession();
@@ -45,7 +78,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const theme = normalizeTheme(body.theme || current.theme);
     const targetYear = Number.parseInt(String(body.targetYear || current.targetYear || new Date().getFullYear()), 10);
     const nextStatus = String(body.status || current.status).trim().toUpperCase();
-    const links = Array.isArray(body.links) ? uniqueStrings(body.links.map((item: string) => String(item || ""))) : null;
+    const links = Array.isArray(body.links) ? normalizeIncomingLinks(body.links) : null;
 
     await prisma.$transaction(async (tx) => {
       await tx.affiliateComparison.update({
@@ -67,16 +100,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           },
         });
 
-        const existingSourceUrls = new Set(current.items.map((item) => item.sourceUrl));
-        const newLinks = links.filter((link) => !existingSourceUrls.has(link));
+        const existingSourceUrls = new Set(current.items.map((item) => `${item.affiliateUrl}__${item.sourceUrl}`));
+        const newLinks = links.filter((link) => !existingSourceUrls.has(`${link.affiliateUrl}__${link.productUrl}`));
         if (newLinks.length > 0) {
           await tx.affiliateComparisonItem.createMany({
             data: newLinks.map((link, index) => ({
               comparisonId: current.id,
               sortOrder: current.items.length + index + 1,
-              sourceUrl: link,
-              affiliateUrl: link,
-              sourceDomain: new URL(link).hostname.replace(/^www\./, ""),
+              sourceUrl: link.productUrl,
+              affiliateUrl: link.affiliateUrl,
+              sourceDomain: new URL(link.productUrl).hostname.replace(/^www\./, ""),
             })),
           });
         }

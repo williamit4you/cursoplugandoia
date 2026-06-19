@@ -17,11 +17,19 @@ type ComparisonItem = {
   createdAt: string;
 };
 
+type ComparisonLinkInput = {
+  affiliateUrl: string;
+  productUrl: string;
+};
+
 export default function ComparisonsAdminView({ initialItems }: { initialItems: ComparisonItem[] }) {
   const [items, setItems] = useState(initialItems);
   const [theme, setTheme] = useState("");
   const [targetYear, setTargetYear] = useState(new Date().getFullYear());
-  const [links, setLinks] = useState(["", ""]);
+  const [links, setLinks] = useState<ComparisonLinkInput[]>([
+    { affiliateUrl: "", productUrl: "" },
+    { affiliateUrl: "", productUrl: "" },
+  ]);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,12 +63,14 @@ export default function ComparisonsAdminView({ initialItems }: { initialItems: C
     }
   }
 
-  function updateLink(index: number, value: string) {
-    setLinks((current) => current.map((item, i) => (i === index ? value : item)));
+  function updateLink(index: number, field: keyof ComparisonLinkInput, value: string) {
+    setLinks((current) =>
+      current.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+    );
   }
 
   function addLinkField() {
-    setLinks((current) => [...current, ""]);
+    setLinks((current) => [...current, { affiliateUrl: "", productUrl: "" }]);
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -79,7 +89,10 @@ export default function ComparisonsAdminView({ initialItems }: { initialItems: C
       setSuccess("Comparativo criado e colocado em processamento.");
       setTheme("");
       setTargetYear(new Date().getFullYear());
-      setLinks(["", ""]);
+      setLinks([
+        { affiliateUrl: "", productUrl: "" },
+        { affiliateUrl: "", productUrl: "" },
+      ]);
       await reload();
     } catch (err: any) {
       setError(err?.message || "Falha ao criar comparativo");
@@ -148,13 +161,30 @@ export default function ComparisonsAdminView({ initialItems }: { initialItems: C
             </button>
           </div>
           {links.map((link, index) => (
-            <input
-              key={index}
-              value={link}
-              onChange={(e) => updateLink(index, e.target.value)}
-              placeholder={`Link ${index + 1}`}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-50"
-            />
+            <div key={index} className="grid gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-[11px] font-black uppercase tracking-wide text-slate-500">
+                  Link de afiliado {index + 1}
+                </label>
+                <input
+                  value={link.affiliateUrl}
+                  onChange={(e) => updateLink(index, "affiliateUrl", e.target.value)}
+                  placeholder="Link que o usuario final vai clicar"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-black uppercase tracking-wide text-slate-500">
+                  Link final do produto {index + 1}
+                </label>
+                <input
+                  value={link.productUrl}
+                  onChange={(e) => updateLink(index, "productUrl", e.target.value)}
+                  placeholder="Link redirecionado usado apenas no scraping"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                />
+              </div>
+            </div>
           ))}
         </div>
 
@@ -170,7 +200,7 @@ export default function ComparisonsAdminView({ initialItems }: { initialItems: C
             {loading ? "Salvando..." : "Criar comparativo"}
           </button>
           <p className="text-xs font-medium text-slate-500">
-            Ao salvar, o scraping e a geracao do artigo comecam automaticamente.
+            O scraping usa o link final do produto. A pagina publica mostra somente o link de afiliado.
           </p>
         </div>
       </form>
