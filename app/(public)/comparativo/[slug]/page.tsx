@@ -40,10 +40,15 @@ export default async function ComparisonArticlePage({ params }: { params: { slug
 
   if (!item || item.status !== "PUBLISHED") notFound();
 
+  const visibleItems = item.items.filter((product: any) => {
+    const title = String(product?.productTitle || "").trim();
+    return Boolean(title) && !/^produto\s+\d+$/i.test(title);
+  });
+
   await prisma.affiliateComparison.update({
     where: { id: item.id },
     data: { views: { increment: 1 } },
   });
 
-  return <PublicComparisonArticle item={item} />;
+  return <PublicComparisonArticle item={{ ...item, items: visibleItems }} />;
 }

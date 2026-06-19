@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 
+type EditableComparisonLink = {
+  affiliateUrl: string;
+  productUrl: string;
+};
+
 type ComparisonDetail = {
   id: string;
   title: string;
@@ -22,6 +27,25 @@ export default function ComparisonAdminDetailView({ initialItem }: { initialItem
   const [item, setItem] = useState(initialItem);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [theme, setTheme] = useState(initialItem.theme);
+  const [targetYear, setTargetYear] = useState(initialItem.targetYear || new Date().getFullYear());
+  const [links, setLinks] = useState<EditableComparisonLink[]>(
+    (initialItem.items || []).map((product) => ({
+      affiliateUrl: String(product.affiliateUrl || "").trim(),
+      productUrl: String(product.sourceUrl || product.affiliateUrl || "").trim(),
+    }))
+  );
+
+  function syncEditorState(nextItem: ComparisonDetail) {
+    setTheme(nextItem.theme);
+    setTargetYear(nextItem.targetYear || new Date().getFullYear());
+    setLinks(
+      (nextItem.items || []).map((product) => ({
+        affiliateUrl: String(product.affiliateUrl || "").trim(),
+        productUrl: String(product.sourceUrl || product.affiliateUrl || "").trim(),
+      }))
+    );
+  }
 
   async function refresh() {
     setBusy(true);
@@ -30,6 +54,7 @@ export default function ComparisonAdminDetailView({ initialItem }: { initialItem
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Falha ao atualizar");
       setItem(data);
+      syncEditorState(data);
       setMessage(null);
     } catch (error: any) {
       setMessage(error?.message || "Falha ao atualizar");
@@ -48,6 +73,56 @@ export default function ComparisonAdminDetailView({ initialItem }: { initialItem
       await refresh();
     } catch (error: any) {
       setMessage(error?.message || "Falha ao reprocessar");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function updateLink(index: number, field: keyof EditableComparisonLink, value: string) {
+    setLinks((current) => current.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
+  }
+
+  function addLinkRow() {
+    setLinks((current) => [...current, { affiliateUrl: "", productUrl: "" }]);
+  }
+
+  async function saveChanges(shouldRerun = false) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const payload = {
+        theme,
+        targetYear,
+        status: shouldRerun ? "QUEUED" : item.status,
+        links,
+      };
+
+      const patchRes = await fetch(`/api/comparativos/${item.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const patchData = await patchRes.json();
+      if (!patchRes.ok) throw new Error(patchData?.error || "Falha ao salvar alteracoes");
+
+      let nextMessage = "Alteracoes salvas com sucesso.";
+
+      if (shouldRerun) {
+        const runRes = await fetch(`/api/comparativos/${item.id}/run`, { method: "POST" });
+        const runData = await runRes.json();
+        if (!runRes.ok) throw new Error(runData?.error || "Falha ao reenfileirar comparativo");
+        nextMessage = "Alteracoes salvas e comparativo reenfileirado com sucesso.";
+      }
+
+      const detailRes = await fetch(`/api/comparativos/${item.id}`, { cache: "no-store" });
+      const detailData = await detailRes.json();
+      if (!detailRes.ok) throw new Error(detailData?.error || "Falha ao recarregar comparativo");
+
+      setItem(detailData);
+      syncEditorState(detailData);
+      setMessage(nextMessage);
+    } catch (error: any) {
+      setMessage(error?.message || "Falha ao salvar alteracoes");
     } finally {
       setBusy(false);
     }
@@ -102,6 +177,93 @@ export default function ComparisonAdminDetailView({ initialItem }: { initialItem
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
         <div className="space-y-6">
+          <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h2 className="text-lg font-black text-slate-900">Editar e reprocessar</h2>
+                <p className="mt-1 text-sm font-medium text-slate-500">
+                  Ajuste tema, ano e links. O scraping usa o link final do produto e o artigo publico usa apenas o link de afiliado.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={addLinkRow}
+                disabled={busy}
+                className="rounded-2xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+              >
+                Adicionar link
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-[2fr,180px]">
+              <div>
+                <label className="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">Tema</label>
+                <input
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-50"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">Ano</label>
+                <input
+                  type="number"
+                  value={targetYear}
+                  onChange={(e) => setTargetYear(Number.parseInt(e.target.value, 10) || new Date().getFullYear())}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-50"
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {links.map((link, index) => (
+                <div key={index} className="grid gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-black uppercase tracking-wide text-slate-500">
+                      Link de afiliado {index + 1}
+                    </label>
+                    <input
+                      value={link.affiliateUrl}
+                      onChange={(e) => updateLink(index, "affiliateUrl", e.target.value)}
+                      placeholder="Link publico que vai gerar comissao"
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] font-black uppercase tracking-wide text-slate-500">
+                      Link final do produto {index + 1}
+                    </label>
+                    <input
+                      value={link.productUrl}
+                      onChange={(e) => updateLink(index, "productUrl", e.target.value)}
+                      placeholder="Link usado apenas para scraping"
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => saveChanges(false)}
+                disabled={busy}
+                className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+              >
+                Salvar alteracoes
+              </button>
+              <button
+                type="button"
+                onClick={() => saveChanges(true)}
+                disabled={busy}
+                className="rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-black text-white transition hover:bg-indigo-700 disabled:opacity-60"
+              >
+                Salvar e reprocessar
+              </button>
+            </div>
+          </div>
+
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-black text-slate-900">Produtos cadastrados</h2>
             <div className="mt-4 space-y-3">

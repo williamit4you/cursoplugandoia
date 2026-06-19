@@ -21,6 +21,76 @@ type ScrapedComparisonProduct = {
   normalizedPayload: Record<string, any>;
 };
 
+function isShopeeDomain(hostname: string) {
+  const host = hostname.toLowerCase();
+  return host.includes("shopee.");
+}
+
+async function scrapeShopeeViaRenderService(sourceUrl: string): Promise<ScrapedComparisonProduct> {
+  const renderServiceUrl = String(process.env.VIDEO_RENDER_SERVICE_URL || "http://127.0.0.1:3010")
+    .trim()
+    .replace(/\/+$/, "");
+
+  const res = await fetch(`${renderServiceUrl}/shopee/scrape`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url: sourceUrl }),
+    signal: AbortSignal.timeout(180000),
+    cache: "no-store",
+  });
+
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(data?.error || `Shopee render-service HTTP ${res.status}`);
+  }
+
+  const imageUrl = Array.isArray(data?.linksMedia)
+    ? String(data.linksMedia.find((item: any) => item?.tipo === "IMAGE")?.url || "").trim() || null
+    : null;
+
+  const description = trimText(String(data?.descricao || data?.detalhes || "").replace(/\s+/g, " ").trim(), 320) || null;
+  const normalizedPayload = {
+    productTitle: trimText(String(data?.titulo || "").replace(/\s+/g, " ").trim(), 160) || null,
+    brand: null,
+    storeName: "Shopee",
+    priceText: null,
+    priceValue: null,
+    currency: "BRL",
+    imageUrl,
+    ratingText: null,
+    reviewCountText: null,
+    shortDescription: description,
+    bulletPoints: [],
+    specs: data?.detalhes ? { detalhes: trimText(String(data.detalhes), 300) } : {},
+    pros: data?.descricao ? [trimText(String(data.descricao), 120)] : [],
+    cons: [],
+  };
+
+  if (!normalizedPayload.productTitle) {
+    throw new Error("Shopee nao retornou titulo suficiente para o comparativo.");
+  }
+
+  return {
+    canonicalUrl: sourceUrl,
+    storeName: "Shopee",
+    productTitle: normalizedPayload.productTitle,
+    brand: null,
+    priceText: null,
+    priceValue: null,
+    currency: "BRL",
+    imageUrl,
+    ratingText: null,
+    reviewCountText: null,
+    shortDescription: description,
+    bulletPoints: [],
+    specs: normalizedPayload.specs,
+    pros: normalizedPayload.pros,
+    cons: [],
+    rawPayload: data || {},
+    normalizedPayload,
+  };
+}
+
 function extractMeta(html: string, key: string, attr: "name" | "property" | "itemprop" = "property") {
   const regex = new RegExp(
     `<meta[^>]+${attr}=["']${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["'][^>]+content=["']([^"']+)["'][^>]*>`,
@@ -125,6 +195,15 @@ export async function scrapeComparisonProduct(sourceUrl: string, timeoutMs = 300
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    try {
+      const sourceHost = new URL(sourceUrl).hostname;
+      if (isShopeeDomain(sourceHost)) {
+        return await scrapeShopeeViaRenderService(sourceUrl);
+      }
+    } catch {
+      // fall through to generic scraping
+    }
+
     const res = await fetch(sourceUrl, {
       method: "GET",
       redirect: "follow",

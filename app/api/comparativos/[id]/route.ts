@@ -89,24 +89,30 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           title: buildComparisonTitle(theme, links?.length || current.sourceCount, targetYear),
           status: nextStatus as any,
           sourceCount: links?.length || current.sourceCount,
+          validSourceCount: links ? 0 : current.validSourceCount,
+          errorMessage: null,
+          lastError: null,
         },
       });
 
       if (links) {
         await tx.affiliateComparisonItem.deleteMany({
-          where: {
-            comparisonId: current.id,
-            status: { in: ["PENDING", "FAILED", "SKIPPED"] as any },
-          },
+          where: { comparisonId: current.id },
         });
 
-        const existingSourceUrls = new Set(current.items.map((item) => `${item.affiliateUrl}__${item.sourceUrl}`));
-        const newLinks = links.filter((link) => !existingSourceUrls.has(`${link.affiliateUrl}__${link.productUrl}`));
-        if (newLinks.length > 0) {
+        await tx.affiliateComparisonStep.deleteMany({
+          where: { comparisonId: current.id },
+        });
+
+        await tx.affiliateComparisonEvent.deleteMany({
+          where: { comparisonId: current.id },
+        });
+
+        if (links.length > 0) {
           await tx.affiliateComparisonItem.createMany({
-            data: newLinks.map((link, index) => ({
+            data: links.map((link, index) => ({
               comparisonId: current.id,
-              sortOrder: current.items.length + index + 1,
+              sortOrder: index + 1,
               sourceUrl: link.productUrl,
               affiliateUrl: link.affiliateUrl,
               sourceDomain: new URL(link.productUrl).hostname.replace(/^www\./, ""),
