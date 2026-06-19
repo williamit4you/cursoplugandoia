@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { enqueueComparisonRun, runComparisonPipeline } from "@/lib/comparisons/orchestrator";
-import { buildComparisonTitle, comparisonSlugify, currentComparisonYear, normalizeTheme, uniqueStrings } from "@/lib/comparisons/utils";
+import { buildComparisonTitle, comparisonSlugify, currentComparisonYear, normalizeComparisonProductUrl, normalizeTheme, uniqueStrings } from "@/lib/comparisons/utils";
 import { isSupportedComparisonUrl } from "@/lib/comparisons/constants";
 import { requireServerSession } from "@/lib/serverAuth";
 
@@ -28,12 +28,12 @@ function normalizeIncomingLinks(input: unknown): InputComparisonLink[] {
       }
       if (!entry || typeof entry !== "object") return null;
       const affiliateUrl = String((entry as any).affiliateUrl || "").trim();
-      const productUrl = String((entry as any).productUrl || "").trim();
+      const productUrl = normalizeComparisonProductUrl(String((entry as any).productUrl || "").trim());
       const fallback = affiliateUrl || productUrl;
       if (!fallback) return null;
       return {
         affiliateUrl: affiliateUrl || fallback,
-        productUrl: productUrl || fallback,
+        productUrl: normalizeComparisonProductUrl(productUrl || fallback),
       };
     })
     .filter(Boolean) as InputComparisonLink[];
@@ -156,8 +156,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    let processingError: string | null = null;
     await enqueueComparisonRun(created.id);
-    await runComparisonPipeline(created.id);
+    try {
+      await runComparisonPipeline(created.id);
+    } catch (error: any) {
+      processingError = error?.message || "Falha ao processar comparativo";
+    }
 
     const refreshed = await prisma.affiliateComparison.findUnique({
       where: { id: created.id },
@@ -167,7 +172,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(refreshed || created, { status: 201 });
+    return NextResponse.json(
+      {
+        ...(refreshed || created),
+        processingError,
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Failed to create comparison" }, { status: 500 });
   }

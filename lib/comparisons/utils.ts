@@ -76,3 +76,36 @@ export function absoluteUrlFromRequest(host: string | null, proto: string | null
   const protocol = proto || (safeHost.includes("localhost") ? "http" : "https");
   return `${protocol}://${safeHost}${path}`;
 }
+
+export function normalizeComparisonProductUrl(input: string) {
+  const raw = String(input || "").trim();
+  if (!raw) return raw;
+
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.replace(/^www\./, "").toLowerCase();
+
+    if (host.includes("shopee.")) {
+      const opaanlpMatch = url.pathname.match(/^\/opaanlp\/(\d+)\/(\d+)/i);
+      if (opaanlpMatch) {
+        return `${url.protocol}//${url.hostname}/product/${opaanlpMatch[1]}/${opaanlpMatch[2]}`;
+      }
+
+      const productMatch = url.pathname.match(/^\/product\/(\d+)\/(\d+)/i);
+      if (productMatch) {
+        return `${url.protocol}//${url.hostname}/product/${productMatch[1]}/${productMatch[2]}`;
+      }
+
+      const itemMatch = url.pathname.match(/-i\.(\d+)\.(\d+)/i);
+      if (itemMatch) {
+        return `${url.protocol}//${url.hostname}/product/${itemMatch[1]}/${itemMatch[2]}`;
+      }
+    }
+
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return raw;
+  }
+}

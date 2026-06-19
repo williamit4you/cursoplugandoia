@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { buildComparisonTitle, normalizeTheme } from "@/lib/comparisons/utils";
+import { buildComparisonTitle, normalizeComparisonProductUrl, normalizeTheme } from "@/lib/comparisons/utils";
 import { requireServerSession } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
@@ -21,12 +21,12 @@ function normalizeIncomingLinks(input: unknown): InputComparisonLink[] {
       }
       if (!entry || typeof entry !== "object") return null;
       const affiliateUrl = String((entry as any).affiliateUrl || "").trim();
-      const productUrl = String((entry as any).productUrl || "").trim();
+      const productUrl = normalizeComparisonProductUrl(String((entry as any).productUrl || "").trim());
       const fallback = affiliateUrl || productUrl;
       if (!fallback) return null;
       return {
         affiliateUrl: affiliateUrl || fallback,
-        productUrl: productUrl || fallback,
+        productUrl: normalizeComparisonProductUrl(productUrl || fallback),
       };
     })
     .filter(Boolean) as InputComparisonLink[];

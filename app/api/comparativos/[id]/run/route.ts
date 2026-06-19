@@ -16,8 +16,13 @@ export async function POST(_: NextRequest, { params }: { params: { id: string } 
     const comparison = await prisma.affiliateComparison.findUnique({ where: { id: params.id } });
     if (!comparison) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+    let processingError: string | null = null;
     await enqueueComparisonRun(comparison.id);
-    await runComparisonPipeline(comparison.id);
+    try {
+      await runComparisonPipeline(comparison.id);
+    } catch (error: any) {
+      processingError = error?.message || "Falha ao processar comparativo";
+    }
 
     const refreshed = await prisma.affiliateComparison.findUnique({
       where: { id: comparison.id },
@@ -28,7 +33,7 @@ export async function POST(_: NextRequest, { params }: { params: { id: string } 
       },
     });
 
-    return NextResponse.json({ ok: true, item: refreshed });
+    return NextResponse.json({ ok: !processingError, processingError, item: refreshed });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Failed to enqueue comparison" }, { status: 500 });
   }

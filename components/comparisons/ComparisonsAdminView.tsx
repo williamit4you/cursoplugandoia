@@ -86,7 +86,15 @@ export default function ComparisonsAdminView({ initialItems }: { initialItems: C
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Falha ao criar comparativo");
-      setSuccess("Comparativo criado e colocado em processamento.");
+      if (data?.id) {
+        window.location.href = `/admin/comparativos/${data.id}`;
+        return;
+      }
+      setSuccess(
+        data?.processingError
+          ? `Comparativo criado, mas houve falha no processamento: ${data.processingError}`
+          : "Comparativo criado e colocado em processamento."
+      );
       setTheme("");
       setTargetYear(new Date().getFullYear());
       setLinks([
