@@ -130,6 +130,15 @@ export default function ComparisonAdminDetailView({ initialItem }: { initialItem
 
   return (
     <div className="space-y-6">
+      <div>
+        <Link
+          href="/admin/comparativos"
+          className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50"
+        >
+          Voltar para comparativos
+        </Link>
+      </div>
+
       <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>

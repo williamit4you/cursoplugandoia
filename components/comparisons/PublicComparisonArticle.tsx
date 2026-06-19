@@ -58,7 +58,7 @@ export default function PublicComparisonArticle({ item }: { item: any }) {
           </header>
 
           <div
-            className="prose prose-lg prose-slate mt-10 max-w-none rounded-[2rem] border border-slate-200/70 bg-white px-7 py-8 shadow-sm prose-headings:scroll-mt-24 prose-headings:font-black prose-headings:tracking-tight prose-h2:mt-10 prose-h2:border-t prose-h2:border-slate-100 prose-h2:pt-8 prose-h2:text-3xl prose-h3:text-xl prose-p:text-[1.08rem] prose-p:leading-8 prose-li:leading-8 prose-strong:text-slate-900 prose-a:font-black prose-a:text-amber-700 prose-a:no-underline hover:prose-a:underline md:px-10 md:py-10"
+            className="prose prose-lg mt-10 max-w-none rounded-[2rem] border border-slate-200/70 bg-white px-7 py-8 text-slate-800 shadow-sm prose-headings:scroll-mt-24 prose-headings:font-black prose-headings:tracking-tight prose-headings:text-slate-950 prose-h2:mt-10 prose-h2:border-t prose-h2:border-slate-100 prose-h2:pt-8 prose-h2:text-3xl prose-h3:text-xl prose-p:text-[1.08rem] prose-p:leading-8 prose-p:text-slate-800 prose-li:leading-8 prose-li:text-slate-800 prose-strong:text-slate-950 prose-a:font-black prose-a:text-amber-700 prose-a:no-underline hover:prose-a:underline [&_blockquote]:border-amber-200 [&_blockquote]:text-slate-700 [&_h1]:text-slate-950 [&_h2]:text-slate-950 [&_h3]:text-slate-900 [&_ol]:text-slate-800 [&_p]:text-slate-800 [&_table]:text-slate-800 [&_td]:text-slate-800 [&_th]:text-slate-950 [&_ul]:text-slate-800 md:px-10 md:py-10"
             dangerouslySetInnerHTML={{ __html: articleHtml }}
           />
 
