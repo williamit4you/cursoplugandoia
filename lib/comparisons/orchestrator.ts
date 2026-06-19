@@ -37,10 +37,6 @@ export async function enqueueComparisonRun(comparisonId: string) {
       attemptCount: { increment: 1 },
     },
   });
-
-  Promise.resolve()
-    .then(() => runComparisonPipeline(comparisonId))
-    .catch((error) => console.error("[comparisons pipeline]", error));
 }
 
 export async function runComparisonPipeline(comparisonId: string) {

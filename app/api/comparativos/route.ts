@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { enqueueComparisonRun } from "@/lib/comparisons/orchestrator";
+import { enqueueComparisonRun, runComparisonPipeline } from "@/lib/comparisons/orchestrator";
 import { buildComparisonTitle, comparisonSlugify, currentComparisonYear, normalizeTheme, uniqueStrings } from "@/lib/comparisons/utils";
 import { isSupportedComparisonUrl } from "@/lib/comparisons/constants";
 import { requireServerSession } from "@/lib/serverAuth";
@@ -157,8 +157,17 @@ export async function POST(req: NextRequest) {
     });
 
     await enqueueComparisonRun(created.id);
+    await runComparisonPipeline(created.id);
 
-    return NextResponse.json(created, { status: 201 });
+    const refreshed = await prisma.affiliateComparison.findUnique({
+      where: { id: created.id },
+      include: {
+        items: { orderBy: { sortOrder: "asc" } },
+        steps: { orderBy: { updatedAt: "desc" }, take: 5 },
+      },
+    });
+
+    return NextResponse.json(refreshed || created, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Failed to create comparison" }, { status: 500 });
   }

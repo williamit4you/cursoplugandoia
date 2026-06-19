@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { enqueueComparisonRun } from "@/lib/comparisons/orchestrator";
+import { enqueueComparisonRun, runComparisonPipeline } from "@/lib/comparisons/orchestrator";
 import { requireServerSession } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,18 @@ export async function POST(_: NextRequest, { params }: { params: { id: string } 
     if (!comparison) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     await enqueueComparisonRun(comparison.id);
-    return NextResponse.json({ ok: true });
+    await runComparisonPipeline(comparison.id);
+
+    const refreshed = await prisma.affiliateComparison.findUnique({
+      where: { id: comparison.id },
+      include: {
+        items: { orderBy: { sortOrder: "asc" } },
+        steps: { orderBy: { updatedAt: "desc" } },
+        events: { orderBy: { createdAt: "desc" }, take: 200 },
+      },
+    });
+
+    return NextResponse.json({ ok: true, item: refreshed });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Failed to enqueue comparison" }, { status: 500 });
   }
