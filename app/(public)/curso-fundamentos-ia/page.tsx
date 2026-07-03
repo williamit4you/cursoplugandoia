@@ -5,7 +5,7 @@ import { FeatureGrid } from "@/components/landing/feature-grid";
 
 const foundationsCheckoutUrl =
   process.env.NEXT_PUBLIC_FOUNDATIONS_CHECKOUT_URL ??
-  "https://pay.hotmart.com/D106592020F?bid=1783109711646";
+  "https://pay.hotmart.com/D106592020F?checkoutMode=10";
 
 const modules = [
   "Introdução, apresentação e fundamentos de Information Retrieval",
