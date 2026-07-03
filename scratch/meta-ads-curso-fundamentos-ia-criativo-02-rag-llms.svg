@@ -1,0 +1,54 @@
+﻿<svg width="1080" height="1350" viewBox="0 0 1080 1350" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1080" y2="1350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#08101A"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="panel2" x1="194" y1="884" x2="848" y2="1118" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#083344"/>
+      <stop offset="1" stop-color="#14532D"/>
+    </linearGradient>
+    <style>
+      .title { font: 800 74px 'Inter', 'Segoe UI', sans-serif; fill: #F8FAFC; }
+      .subtitle { font: 500 34px 'Inter', 'Segoe UI', sans-serif; fill: #D4E1EC; }
+      .label { font: 700 27px 'Inter', 'Segoe UI', sans-serif; fill: #67E8F9; letter-spacing: 0.14em; text-transform: uppercase; }
+      .chip { font: 700 26px 'Inter', 'Segoe UI', sans-serif; fill: #E2E8F0; }
+      .small { font: 600 24px 'Inter', 'Segoe UI', sans-serif; fill: #D8E7F4; }
+    </style>
+  </defs>
+
+  <rect width="1080" height="1350" fill="url(#bg2)"/>
+  <rect x="70" y="70" width="940" height="1210" rx="40" fill="white" fill-opacity="0.035" stroke="white" stroke-opacity="0.08"/>
+
+  <text x="120" y="164" class="label">Base tÃ©cnica para crescer em IA</text>
+
+  <text x="120" y="308" class="title">
+    <tspan x="120" dy="0">LLMs, RAG e</tspan>
+    <tspan x="120" dy="92">embeddings</tspan>
+    <tspan x="120" dy="92">sem confusÃ£o</tspan>
+  </text>
+
+  <text x="120" y="638" class="subtitle">
+    <tspan x="120" dy="0">Entenda como a IA moderna funciona</tspan>
+    <tspan x="120" dy="52">na prÃ¡tica e construa uma visÃ£o de</tspan>
+    <tspan x="120" dy="52">arquitetura desde o inÃ­cio.</tspan>
+  </text>
+
+  <rect x="120" y="792" width="240" height="74" rx="20" fill="#0F172A" stroke="#334155"/>
+  <text x="240" y="840" class="chip" text-anchor="middle">LLMs</text>
+  <rect x="388" y="792" width="240" height="74" rx="20" fill="#0F172A" stroke="#334155"/>
+  <text x="508" y="840" class="chip" text-anchor="middle">RAG</text>
+  <rect x="656" y="792" width="304" height="74" rx="20" fill="#0F172A" stroke="#334155"/>
+  <text x="808" y="840" class="chip" text-anchor="middle">Embeddings</text>
+
+  <rect x="120" y="924" width="840" height="216" rx="36" fill="url(#panel2)" stroke="#22D3EE" stroke-opacity="0.18"/>
+  <text x="172" y="1002" class="small">
+    <tspan x="172" dy="0">Curso introdutÃ³rio para quem quer sair do</tspan>
+    <tspan x="172" dy="46">conteÃºdo picado e aprender com clareza.</tspan>
+  </text>
+  <text x="172" y="1100" class="title" fill="#FFFFFF" style="font-size:64px;">R$ 19,90</text>
+  <text x="460" y="1100" class="small">condiÃ§Ã£o especial de lanÃ§amento</text>
+
+  <text x="120" y="1236" class="small" fill="#B5C7D8">plugandoia.cloud/curso-fundamentos-ia</text>
+</svg>
+

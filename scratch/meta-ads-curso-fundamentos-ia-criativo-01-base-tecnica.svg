@@ -1,0 +1,60 @@
+﻿<svg width="1080" height="1350" viewBox="0 0 1080 1350" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg1" x1="0" y1="0" x2="1080" y2="1350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07111F"/>
+      <stop offset="1" stop-color="#0E2235"/>
+    </linearGradient>
+    <linearGradient id="accent1" x1="148" y1="182" x2="886" y2="948" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE"/>
+      <stop offset="0.55" stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#34D399"/>
+    </linearGradient>
+    <filter id="blur1">
+      <feGaussianBlur stdDeviation="60"/>
+    </filter>
+    <style>
+      .title { font: 800 76px 'Inter', 'Segoe UI', sans-serif; fill: #F8FAFC; }
+      .subtitle { font: 500 34px 'Inter', 'Segoe UI', sans-serif; fill: #C9D6E4; }
+      .label { font: 700 28px 'Inter', 'Segoe UI', sans-serif; fill: #9BDCF2; letter-spacing: 0.12em; text-transform: uppercase; }
+      .body { font: 500 31px 'Inter', 'Segoe UI', sans-serif; fill: #DDE7F3; }
+      .small { font: 600 25px 'Inter', 'Segoe UI', sans-serif; fill: #E5EEF8; }
+    </style>
+  </defs>
+
+  <rect width="1080" height="1350" fill="url(#bg1)"/>
+  <circle cx="890" cy="180" r="170" fill="#22D3EE" fill-opacity="0.28" filter="url(#blur1)"/>
+  <circle cx="210" cy="1030" r="180" fill="#34D399" fill-opacity="0.22" filter="url(#blur1)"/>
+
+  <rect x="72" y="66" width="936" height="1218" rx="42" fill="white" fill-opacity="0.04" stroke="white" stroke-opacity="0.1"/>
+
+  <rect x="120" y="118" width="430" height="58" rx="29" fill="#0D2D3E" stroke="#1BAED1" stroke-opacity="0.42"/>
+  <text x="155" y="156" class="label">Plugando IA</text>
+
+  <text x="120" y="300" class="title">
+    <tspan x="120" dy="0">Aprenda os</tspan>
+    <tspan x="120" dy="92">fundamentos</tspan>
+    <tspan x="120" dy="92">da IA moderna</tspan>
+  </text>
+
+  <text x="120" y="630" class="subtitle">
+    <tspan x="120" dy="0">LLMs, RAG, embeddings, APIs,</tspan>
+    <tspan x="120" dy="52">agentes e guardrails em uma</tspan>
+    <tspan x="120" dy="52">base clara e organizada.</tspan>
+  </text>
+
+  <rect x="120" y="808" width="840" height="160" rx="32" fill="#08131F" stroke="#1A344A"/>
+  <text x="162" y="875" class="body">
+    <tspan x="162" dy="0">Entre no universo da IA sem se perder</tspan>
+    <tspan x="162" dy="48">em conteÃºdos soltos e conceitos confusos.</tspan>
+  </text>
+
+  <rect x="120" y="1030" width="350" height="136" rx="34" fill="url(#accent1)"/>
+  <text x="174" y="1088" class="small" fill="#08202D">CondiÃ§Ã£o de lanÃ§amento</text>
+  <text x="174" y="1140" class="title" fill="#08202D" style="font-size:58px;">R$ 19,90</text>
+
+  <text x="730" y="1100" class="small" text-anchor="end">Curso introdutÃ³rio</text>
+  <text x="730" y="1144" class="small" text-anchor="end">com acesso imediato</text>
+
+  <text x="120" y="1236" class="small" fill="#AFC3D8">plugandoia.cloud/curso-fundamentos-ia</text>
+</svg>
+

@@ -1,0 +1,45 @@
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg4" x1="0" y1="0" x2="1080" y2="1920" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07121F"/>
+      <stop offset="1" stop-color="#0E2436"/>
+    </linearGradient>
+    <linearGradient id="accent4" x1="138" y1="1264" x2="936" y2="1692" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#34D399"/>
+    </linearGradient>
+    <style>
+      .label { font: 700 28px 'Inter', 'Segoe UI', sans-serif; fill: #B2F5FF; letter-spacing: 0.14em; text-transform: uppercase; }
+      .title { font: 800 82px 'Inter', 'Segoe UI', sans-serif; fill: #F8FAFC; }
+      .body { font: 500 35px 'Inter', 'Segoe UI', sans-serif; fill: #D6E3F1; }
+      .small { font: 600 28px 'Inter', 'Segoe UI', sans-serif; fill: #E2E8F0; }
+    </style>
+  </defs>
+
+  <rect width="1080" height="1920" fill="url(#bg4)"/>
+  <rect x="76" y="80" width="928" height="1760" rx="44" fill="white" fill-opacity="0.04" stroke="white" stroke-opacity="0.08"/>
+
+  <text x="136" y="180" class="label">Plugando IA</text>
+
+  <text x="136" y="386" class="title">
+    <tspan x="136" dy="0">Quer entrar</tspan>
+    <tspan x="136" dy="98">em IA sem se</tspan>
+    <tspan x="136" dy="98">perder?</tspan>
+  </text>
+
+  <text x="136" y="798" class="body">
+    <tspan x="136" dy="0">Aprenda os fundamentos de</tspan>
+    <tspan x="136" dy="56">LLMs, RAG, embeddings,</tspan>
+    <tspan x="136" dy="56">agentes, APIs e guardrails.</tspan>
+  </text>
+
+  <rect x="136" y="1230" width="808" height="430" rx="42" fill="url(#accent4)"/>
+  <text x="196" y="1328" class="small" fill="#08202D">Condição especial de lançamento</text>
+  <text x="196" y="1468" class="title" fill="#08202D" style="font-size:116px;">R$ 19,90</text>
+  <text x="196" y="1556" class="body" fill="#0A2634">
+    <tspan x="196" dy="0">Nova turma com acesso imediato</tspan>
+    <tspan x="196" dy="50">e base técnica organizada.</tspan>
+  </text>
+
+  <text x="136" y="1770" class="small">plugandoia.cloud/curso-fundamentos-ia</text>
+</svg>

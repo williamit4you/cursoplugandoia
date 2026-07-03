@@ -7,66 +7,92 @@ const foundationsCheckoutUrl =
   process.env.NEXT_PUBLIC_FOUNDATIONS_CHECKOUT_URL ?? "#quero-entrar";
 
 const modules = [
-  "Introducao, apresentacao e fundamentos de Information Retrieval",
-  "Tokenizacao, OpenAI Tokenizer e sistemas de recuperacao",
-  "Modelos classicos de recuperacao de informacao",
+  "Introdução, apresentação e fundamentos de Information Retrieval",
+  "Tokenização, OpenAI Tokenizer e sistemas de recuperação",
+  "Modelos clássicos de recuperação de informação",
   "RAG mitigando riscos da IA",
   "Transformers: a arquitetura que revolucionou a IA",
-  "Large Language Models: como a IA aprende a conversar",
+  "Large Language Models (LLMs): como a IA aprende a conversar",
   "RAG: Retrieval-Augmented Generation",
-  "Vector databases, embeddings e estrategias de indexacao",
+  "Vector databases, embeddings e estratégias de indexação",
   "Engenharia de agentes de IA",
   "FastAPI: construindo APIs profissionais para IA",
-  "Avaliacao e qualidade em sistemas com LLMs",
-  "Guardrails: seguranca e confiabilidade em sistemas de IA",
+  "Avaliação e qualidade em sistemas com LLMs",
+  "Guardrails: segurança e confiabilidade em sistemas de IA",
 ];
 
 const whoItsFor = [
   {
-    title: "Para quem esta comecando em IA aplicada",
-    desc: "Entenda os fundamentos certos antes de sair copiando projeto pronto sem contexto.",
+    title: "Para quem quer entender IA além do superficial",
+    desc: "Saia do conteúdo solto e construa uma visão clara sobre como LLMs, RAG, embeddings e agentes funcionam de verdade.",
   },
   {
-    title: "Para devs que querem clareza tecnica",
-    desc: "Voce vai ligar os pontos entre LLMs, RAG, embeddings, APIs, agentes e guardrails.",
+    title: "Para profissionais que buscam base técnica",
+    desc: "Você vai conectar os conceitos certos antes de avançar para projetos mais robustos, consultorias ou produtos com IA.",
   },
   {
-    title: "Para quem quer entrar com baixo risco",
-    desc: "E um produto de entrada, com preco acessivel, para voce validar seu interesse e aprender rapido.",
+    title: "Para quem quer começar com investimento acessível",
+    desc: "Uma formação introdutória, objetiva e com linguagem clara para entrar no universo da IA moderna sem complicação.",
   },
 ];
 
 const benefits = [
   {
-    title: "Base tecnica de verdade",
-    desc: "Voce entende como funciona recuperacao, contexto, embeddings, transformers, LLMs e agentes.",
+    title: "Base técnica sólida",
+    desc: "Entenda recuperação de informação, contexto, embeddings, transformers, LLMs, APIs e agentes com clareza.",
   },
   {
-    title: "RAG sem misterio",
-    desc: "Aprenda o que precisa existir para um sistema responder com mais contexto e menos alucinacao.",
+    title: "RAG sem confusão",
+    desc: "Aprenda como sistemas modernos consultam dados reais para responder com mais contexto e menos alucinação.",
   },
   {
-    title: "Visao de arquitetura",
-    desc: "Entenda como juntar modelo, banco vetorial, API, avaliacao e regras de seguranca.",
+    title: "Visão de arquitetura",
+    desc: "Entenda como combinar modelo, banco vetorial, API, avaliação e mecanismos de segurança em aplicações reais.",
   },
   {
-    title: "Preparacao para projetos maiores",
-    desc: "Esse curso prepara o terreno para depois avancar para sistemas completos e produtos vendaveis.",
+    title: "Preparação para o próximo nível",
+    desc: "Esse curso organiza sua base para depois avançar com mais segurança para projetos, produtos e automações com IA.",
   },
   {
-    title: "Aulas objetivas",
-    desc: "Conteudo enxuto, direto e focado em te dar repertorio para aplicar com mais confianca.",
+    title: "Conteúdo objetivo",
+    desc: "Aulas diretas, sem excesso de teoria solta, para você compreender os conceitos que realmente importam.",
   },
   {
-    title: "Preco de entrada",
-    desc: "Oferta pensada para ser facil de testar: apenas R$ 19,90 para entrar no ecossistema Plugando IA.",
+    title: "Condição de lançamento",
+    desc: "Aproveite o valor especial de R$ 19,90 nesta fase inicial de lançamento do curso.",
+  },
+];
+
+const pillars = [
+  "Fundamentos de Information Retrieval",
+  "LLMs, transformers e tokenização",
+  "RAG, bancos vetoriais e embeddings",
+  "FastAPI, avaliação e guardrails",
+];
+
+const faqs = [
+  {
+    q: "Este curso é introdutório ou avançado?",
+    a: "Ele é introdutório com base técnica consistente. A proposta é te dar clareza real sobre os principais conceitos da IA moderna sem exigir conhecimento profundo prévio.",
+  },
+  {
+    q: "Mesmo sem experiência com RAG ou LLMs, vou conseguir acompanhar?",
+    a: "Sim. O conteúdo foi estruturado para organizar seu entendimento passo a passo, conectando retrieval, embeddings, LLMs, APIs e arquitetura de forma clara.",
+  },
+  {
+    q: "O curso é muito teórico ou eu vou entender como isso se aplica na prática?",
+    a: "Você vai aprender os fundamentos com contexto aplicado. A ideia não é só apresentar definições, mas te mostrar como esses conceitos sustentam sistemas reais com IA.",
+  },
+  {
+    q: "Esse curso vale a pena para quem quer seguir na área de IA?",
+    a: "Sim. Ele foi pensado para reduzir a confusão inicial e te dar a base que falta para estudar, construir e tomar decisões melhores nos próximos passos da sua jornada.",
   },
 ];
 
 export const metadata = {
-  title: "Plugando IA | Fundamentos de IA, LLMs e RAG",
+  title: "Plugando IA | Arquitetando o Futuro com LLMs e RAG",
   description:
-    "Curso introdutorio de fundamentos de IA com LLMs, RAG, embeddings, agentes, FastAPI, avaliacao e guardrails.",
+    "Curso introdutório de fundamentos de IA com LLMs, RAG, embeddings, agentes, FastAPI, avaliação e guardrails.",
 };
 
 export default function CursoFundamentosIaPage() {
@@ -80,7 +106,7 @@ export default function CursoFundamentosIaPage() {
         <div className="grid gap-10 md:grid-cols-[1.2fr,0.8fr] md:items-center">
           <FadeIn>
             <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-medium text-cyan-100">
-              Novo curso de entrada por R$ 19,90
+              Nova turma com condição especial de lançamento
             </p>
 
             <h1 className="mt-4 text-balance text-4xl font-semibold tracking-tight md:text-5xl">
@@ -91,10 +117,15 @@ export default function CursoFundamentosIaPage() {
             </h1>
 
             <p className="mt-5 max-w-3xl text-base leading-relaxed text-white/75 md:text-lg">
-              Um curso direto para voce entender os fundamentos que sustentam aplicacoes modernas com IA:{" "}
-              <strong className="text-white">LLMs</strong>, <strong className="text-white">RAG</strong>,{" "}
-              <strong className="text-white">embeddings</strong>, <strong className="text-white">agentes</strong>,{" "}
-              <strong className="text-white">APIs com FastAPI</strong>, avaliacao e guardrails.
+              Um curso direto ao ponto para você entender os fundamentos que sustentam aplicações modernas com IA:
+              <strong className="text-white"> LLMs</strong>, <strong className="text-white">RAG</strong>,
+              <strong className="text-white"> embeddings</strong>, <strong className="text-white">agentes</strong>,
+              <strong className="text-white"> APIs com FastAPI</strong>, avaliação e guardrails.
+            </p>
+
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/60 md:text-base">
+              Se hoje você sente que o mercado fala de IA com muitas siglas e pouca clareza, este curso foi criado para
+              te entregar uma base organizada, prática e profissional.
             </p>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -103,22 +134,22 @@ export default function CursoFundamentosIaPage() {
                 href="#modulos"
                 className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-center text-sm font-medium text-white/90 transition hover:bg-white/10"
               >
-                Ver modulos do curso
+                Ver módulos do curso
               </a>
             </div>
 
             <div className="mt-7 grid gap-3 text-sm text-white/70 sm:grid-cols-3">
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-                <div className="text-white">Curso de entrada</div>
-                <div className="mt-1 text-xs text-white/60">baixo investimento para comecar</div>
+                <div className="text-white">Curso introdutório</div>
+                <div className="mt-1 text-xs text-white/60">baixo investimento para começar</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
                 <div className="text-white">Base conceitual forte</div>
                 <div className="mt-1 text-xs text-white/60">sem pular fundamentos importantes</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-                <div className="text-white">Foco em aplicacao real</div>
-                <div className="mt-1 text-xs text-white/60">do entendimento a arquitetura</div>
+                <div className="text-white">Aplicação no mundo real</div>
+                <div className="mt-1 text-xs text-white/60">do entendimento à arquitetura</div>
               </div>
             </div>
           </FadeIn>
@@ -126,31 +157,32 @@ export default function CursoFundamentosIaPage() {
           <FadeIn delayMs={120}>
             <div className="rounded-[28px] border border-white/10 bg-gradient-to-b from-slate-900 to-slate-950 p-5 shadow-glow">
               <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                <div className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Oferta de lancamento</div>
+                <div className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">
+                  Condição especial de lançamento
+                </div>
                 <div className="mt-3 text-sm text-white/60 line-through">De R$ 67,00</div>
                 <div className="mt-1 flex items-end gap-3">
                   <div className="text-5xl font-semibold tracking-tight text-white">R$ 19,90</div>
                   <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200">
-                    ticket de entrada
+                    valor promocional
                   </div>
                 </div>
                 <p className="mt-4 text-sm leading-relaxed text-white/70">
-                  Ideal para quem quer entrar no universo de IA com clareza tecnica antes de avancar para automacoes,
-                  agentes comerciais e produtos maiores.
+                  Valor especial para esta fase inicial do curso. Ideal para quem quer construir base técnica antes de
+                  avançar para projetos, automações e aplicações mais complexas com IA.
                 </p>
               </div>
 
               <div className="mt-4 grid gap-3">
-                {[
-                  "Introducao a Information Retrieval",
-                  "LLMs, transformers e tokenizacao",
-                  "RAG, bancos vetoriais e embeddings",
-                  "FastAPI, avaliacao e guardrails",
-                ].map((item) => (
+                {pillars.map((item) => (
                   <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/75">
                     {item}
                   </div>
                 ))}
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-amber-300/15 bg-amber-300/10 px-4 py-3 text-sm text-amber-100/90">
+                Turma inaugural com acesso imediato e conteúdo organizado para quem quer entrar em IA com mais clareza.
               </div>
             </div>
           </FadeIn>
@@ -161,11 +193,11 @@ export default function CursoFundamentosIaPage() {
         <FadeIn>
           <div className="mx-auto max-w-3xl text-center">
             <h2 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
-              O curso certo para quem quer parar de ouvir siglas e comecar a entender a estrutura da IA moderna.
+              O curso certo para quem quer parar de ouvir siglas e começar a entender a estrutura da IA moderna.
             </h2>
             <p className="mt-4 text-white/75">
-              Se voce ve o mercado falando de LLM, RAG, embeddings e agentes, mas sente que falta uma base clara, essa
-              oferta foi feita para voce.
+              Se você vê o mercado falando de LLM, RAG, embeddings e agentes, mas sente que falta uma base clara, essa
+              formação foi feita para você.
             </p>
           </div>
           <div className="mt-10">
@@ -177,10 +209,10 @@ export default function CursoFundamentosIaPage() {
       <Section className="section-border" id="beneficios">
         <FadeIn>
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">O que voce vai levar desse curso</h2>
+            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">O que você vai levar deste curso</h2>
             <p className="mt-4 text-white/75">
-              Mais do que definicoes soltas: voce vai ganhar repertorio para entender e desenhar sistemas com IA com
-              muito mais seguranca.
+              Mais do que definições soltas: você vai ganhar repertório para entender e desenhar sistemas com IA com
+              muito mais segurança.
             </p>
           </div>
           <div className="mt-10">
@@ -194,10 +226,10 @@ export default function CursoFundamentosIaPage() {
           <div className="mx-auto max-w-5xl">
             <div className="text-center">
               <h2 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
-                Conteudo do curso: do fundamento a arquitetura
+                Conteúdo do curso: do fundamento à arquitetura
               </h2>
               <p className="mt-4 text-white/75">
-                Um mapa objetivo para voce entender como os blocos de IA moderna se conectam.
+                Um mapa objetivo para você entender como os blocos da IA moderna se conectam.
               </p>
             </div>
 
@@ -209,7 +241,7 @@ export default function CursoFundamentosIaPage() {
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="text-base font-semibold text-white">
-                      Modulo {String(index + 1).padStart(2, "0")}
+                      Módulo {String(index + 1).padStart(2, "0")}
                     </div>
                     <div className="text-xs uppercase tracking-[0.18em] text-cyan-200/70">Plugando IA Foundations</div>
                   </div>
@@ -227,18 +259,18 @@ export default function CursoFundamentosIaPage() {
             <div className="grid gap-8 md:grid-cols-[1fr,0.9fr] md:items-start">
               <div>
                 <h2 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
-                  Uma entrada acessivel para comecar a estudar IA do jeito certo
+                  Uma forma acessível de começar a estudar IA do jeito certo
                 </h2>
                 <p className="mt-4 text-white/75">
-                  Esse produto foi pensado para gerar clareza rapida. Voce entra com um valor leve, entende a base e
-                  fica pronto para aprofundar depois em projetos mais avancados.
+                  Este curso foi pensado para gerar clareza rápida. Você começa com um investimento leve, entende a
+                  base e fica pronto para aprofundar depois em projetos mais avançados.
                 </p>
 
                 <div className="mt-6 grid gap-4">
                   {[
-                    "Curso introdutorio com foco em LLMs, RAG e arquitetura",
-                    "Preco promocional de R$ 19,90",
-                    "Perfeito para campanhas de Meta Ads com ticket de entrada",
+                    "12 módulos com os conceitos centrais da IA moderna",
+                    "Condição especial de lançamento por R$ 19,90",
+                    "Conteúdo pensado para reduzir confusão e acelerar entendimento",
                   ].map((item) => (
                     <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm text-white/75">
                       {item}
@@ -258,10 +290,11 @@ export default function CursoFundamentosIaPage() {
                   <div className="text-sm text-white/65">Investimento</div>
                   <div className="mt-3 flex items-baseline gap-2">
                     <div className="text-4xl font-semibold tracking-tight text-white">R$ 19,90</div>
-                    <div className="text-sm text-white/60">pagamento unico</div>
+                    <div className="text-sm text-white/60">pagamento único</div>
                   </div>
                   <p className="mt-3 text-sm leading-relaxed text-white/70">
-                    O checkout ainda sera conectado. A pagina ja esta pronta para receber o link quando voce me passar.
+                    Condição especial de lançamento para a turma inicial. Assim que o checkout estiver conectado, esta
+                    página já estará pronta para converter.
                   </p>
                 </div>
 
@@ -270,7 +303,7 @@ export default function CursoFundamentosIaPage() {
                     "Fundamentos de Information Retrieval",
                     "Arquitetura de LLMs e RAG",
                     "Embeddings, vetores, APIs e agentes",
-                    "Avaliacao e guardrails para sistemas de IA",
+                    "Avaliação e guardrails para sistemas de IA",
                   ].map((item) => (
                     <div key={item} className="flex gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                       <span className="mt-1.5 h-2 w-2 flex-none rounded-full bg-cyan-300" />
@@ -279,10 +312,14 @@ export default function CursoFundamentosIaPage() {
                   ))}
                 </div>
 
+                <div className="mt-5 rounded-2xl border border-amber-300/15 bg-amber-300/10 px-4 py-3 text-sm text-amber-100/90">
+                  Se você quer entrar em IA com direção, esse é o melhor momento para aproveitar o valor de lançamento.
+                </div>
+
                 <div className="mt-7">
                   <CTAButton href={foundationsCheckoutUrl} label="Quero entrar na turma" />
                   <div className="mt-3 text-center text-xs text-white/55">
-                    Link provisoriamente apontando para a propria pagina ate o checkout ser definido.
+                    Link provisoriamente apontando para a própria página até o checkout ser definido.
                   </div>
                 </div>
               </div>
@@ -295,25 +332,12 @@ export default function CursoFundamentosIaPage() {
         <FadeIn>
           <div className="mx-auto max-w-4xl">
             <div className="text-center">
-              <h2 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">Duvidas rapidas</h2>
-              <p className="mt-4 text-white/75">As respostas que mais ajudam antes de subir campanha.</p>
+              <h2 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">Dúvidas rápidas</h2>
+              <p className="mt-4 text-white/75">As respostas que mais ajudam antes de tomar a decisão de entrar.</p>
             </div>
 
             <div className="mt-10 grid gap-4">
-              {[
-                {
-                  q: "Esse curso e tecnico ou introdutorio?",
-                  a: "Ele e introdutorio com pegada tecnica. A ideia e te dar base real para entender os blocos da IA aplicada.",
-                },
-                {
-                  q: "Ele serve para quem ainda nao trabalhou com RAG?",
-                  a: "Sim. Ele justamente organiza o mapa mental de retrieval, embeddings, LLMs e arquitetura para voce nao aprender tudo picado.",
-                },
-                {
-                  q: "Posso anunciar esse curso como produto de entrada?",
-                  a: "Sim. O ticket de R$ 19,90 faz sentido como front-end offer para captar mais gente e depois trabalhar upsell para o curso maior.",
-                },
-              ].map((item) => (
+              {faqs.map((item) => (
                 <details key={item.q} className="group rounded-2xl border border-white/10 bg-white/5 p-6 open:bg-white/10">
                   <summary className="cursor-pointer list-none">
                     <div className="flex items-start justify-between gap-6">

@@ -1,0 +1,45 @@
+﻿<svg width="1080" height="1350" viewBox="0 0 1080 1350" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="1080" y2="1350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#06111E"/>
+      <stop offset="1" stop-color="#0B1020"/>
+    </linearGradient>
+    <linearGradient id="offer3" x1="126" y1="904" x2="938" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#34D399"/>
+    </linearGradient>
+    <style>
+      .label { font: 700 28px 'Inter', 'Segoe UI', sans-serif; fill: #A5F3FC; letter-spacing: 0.14em; text-transform: uppercase; }
+      .title { font: 800 76px 'Inter', 'Segoe UI', sans-serif; fill: #F8FAFC; }
+      .body { font: 500 33px 'Inter', 'Segoe UI', sans-serif; fill: #D7E4F1; }
+      .small { font: 600 26px 'Inter', 'Segoe UI', sans-serif; fill: #E2E8F0; }
+    </style>
+  </defs>
+
+  <rect width="1080" height="1350" fill="url(#bg3)"/>
+  <circle cx="904" cy="214" r="146" fill="#22D3EE" fill-opacity="0.12"/>
+  <circle cx="178" cy="1180" r="160" fill="#34D399" fill-opacity="0.12"/>
+
+  <text x="120" y="164" class="label">Nova turma do Plugando IA</text>
+
+  <text x="120" y="320" class="title">
+    <tspan x="120" dy="0">Arquitetando</tspan>
+    <tspan x="120" dy="92">o Futuro com</tspan>
+    <tspan x="120" dy="92">LLMs e RAG</tspan>
+  </text>
+
+  <text x="120" y="664" class="body">
+    <tspan x="120" dy="0">Um curso para quem quer entender a base</tspan>
+    <tspan x="120" dy="52">da IA moderna e comeÃ§ar com direÃ§Ã£o.</tspan>
+  </text>
+
+  <rect x="120" y="812" width="840" height="424" rx="42" fill="url(#offer3)"/>
+  <text x="172" y="904" class="small" fill="#08202D">CondiÃ§Ã£o especial de lanÃ§amento</text>
+  <text x="172" y="1030" class="title" fill="#08202D" style="font-size:118px;">R$ 19,90</text>
+  <text x="172" y="1100" class="body" fill="#0B2A39">
+    <tspan x="172" dy="0">PreÃ§o promocional para a fase inicial</tspan>
+    <tspan x="172" dy="48">do curso.</tspan>
+  </text>
+  <text x="172" y="1200" class="small" fill="#08202D">plugandoia.cloud/curso-fundamentos-ia</text>
+</svg>
+
