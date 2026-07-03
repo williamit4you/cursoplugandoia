@@ -149,7 +149,7 @@ export default function CursoFundamentosIaPage() {
                   currency: "BRL",
                 }}
                 href={foundationsCheckoutUrl}
-                label="Quero garantir por R$ 19,90"
+                label="Quero comprar agora"
               />
               <a
                 href="#modulos"
@@ -346,7 +346,7 @@ export default function CursoFundamentosIaPage() {
                       currency: "BRL",
                     }}
                     href={foundationsCheckoutUrl}
-                    label="Quero entrar na turma"
+                    label="Quero comprar agora"
                   />
                   <div className="mt-3 text-center text-xs text-white/55">
                     Link provisoriamente apontando para a própria página até o checkout ser definido.
