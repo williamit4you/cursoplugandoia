@@ -1,4 +1,6 @@
 import { Providers } from "@/components/Providers";
+import { MetaPixelPageTracker } from "@/components/MetaPixelPageTracker";
+import { MetaPixelScript } from "@/components/MetaPixelScript";
 import "./../globals.css"; // Usa os estios globais base
 
 export const metadata = {
@@ -11,10 +13,16 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+
   return (
     <html lang="pt-BR">
       <body className="theme-light bg-[#f5f7fb] text-slate-900 antialiased min-h-screen">
-        <Providers>{children}</Providers>
+        <MetaPixelScript pixelId={metaPixelId} />
+        <Providers>
+          <MetaPixelPageTracker />
+          {children}
+        </Providers>
       </body>
     </html>
   );

@@ -1,7 +1,9 @@
+import { CourseCheckoutButton } from "@/components/landing/CourseCheckoutButton";
 import { CTAButton } from "@/components/landing/cta-button";
 import { FadeIn } from "@/components/motion/fade-in";
 import { Section } from "@/components/landing/section";
 import { FeatureGrid } from "@/components/landing/feature-grid";
+import { MetaPixelViewContent } from "@/components/MetaPixelViewContent";
 
 const foundationsCheckoutUrl =
   process.env.NEXT_PUBLIC_FOUNDATIONS_CHECKOUT_URL ??
@@ -99,6 +101,15 @@ export const metadata = {
 export default function CursoFundamentosIaPage() {
   return (
     <main className="relative overflow-hidden">
+      <MetaPixelViewContent
+        data={{
+          content_name: "Plugando IA: Arquitetando o Futuro com LLMs e RAG",
+          content_category: "Curso",
+          content_type: "product",
+          value: 19.9,
+          currency: "BRL",
+        }}
+      />
       <div className="pointer-events-none absolute inset-0 bg-grid opacity-20" />
       <div className="pointer-events-none absolute right-[-180px] top-24 h-[360px] w-[360px] rounded-full bg-cyan-400/20 blur-3xl" />
       <div className="pointer-events-none absolute left-[-120px] top-[520px] h-[300px] w-[300px] rounded-full bg-emerald-400/20 blur-3xl" />
@@ -130,7 +141,16 @@ export default function CursoFundamentosIaPage() {
             </p>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <CTAButton href={foundationsCheckoutUrl} label="Quero garantir por R$ 19,90" />
+              <CourseCheckoutButton
+                eventData={{
+                  content_name: "Plugando IA: Arquitetando o Futuro com LLMs e RAG",
+                  content_category: "Curso",
+                  value: 19.9,
+                  currency: "BRL",
+                }}
+                href={foundationsCheckoutUrl}
+                label="Quero garantir por R$ 19,90"
+              />
               <a
                 href="#modulos"
                 className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-center text-sm font-medium text-white/90 transition hover:bg-white/10"
@@ -318,7 +338,16 @@ export default function CursoFundamentosIaPage() {
                 </div>
 
                 <div className="mt-7">
-                  <CTAButton href={foundationsCheckoutUrl} label="Quero entrar na turma" />
+                  <CourseCheckoutButton
+                    eventData={{
+                      content_name: "Plugando IA: Arquitetando o Futuro com LLMs e RAG",
+                      content_category: "Curso",
+                      value: 19.9,
+                      currency: "BRL",
+                    }}
+                    href={foundationsCheckoutUrl}
+                    label="Quero entrar na turma"
+                  />
                   <div className="mt-3 text-center text-xs text-white/55">
                     Link provisoriamente apontando para a própria página até o checkout ser definido.
                   </div>
