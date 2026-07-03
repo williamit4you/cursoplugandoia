@@ -1,0 +1,46 @@
+<svg width="1080" height="1350" viewBox="0 0 1080 1350" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1080" y2="1350">
+      <stop offset="0%" stop-color="#08101A"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="120" y1="924" x2="960" y2="1140">
+      <stop offset="0%" stop-color="#083344"/>
+      <stop offset="100%" stop-color="#14532D"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1080" height="1350" fill="url(#bg)"/>
+  <rect x="70" y="70" width="940" height="1210" rx="40" fill="#182435" stroke="#2A394D"/>
+
+  <text x="120" y="164" fill="#67E8F9" font-family="Segoe UI, Arial, sans-serif" font-size="27" font-weight="700">BASE TECNICA PARA CRESCER EM IA</text>
+
+  <text x="120" y="308" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="74" font-weight="800">
+    <tspan x="120" dy="0">LLMs, RAG e</tspan>
+    <tspan x="120" dy="86">embeddings</tspan>
+    <tspan x="120" dy="86">sem confusao</tspan>
+  </text>
+
+  <text x="120" y="638" fill="#D4E1EC" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="500">
+    <tspan x="120" dy="0">Entenda como a IA moderna funciona</tspan>
+    <tspan x="120" dy="48">na pratica e construa uma visao de</tspan>
+    <tspan x="120" dy="48">arquitetura desde o inicio.</tspan>
+  </text>
+
+  <rect x="120" y="792" width="240" height="74" rx="20" fill="#0F172A" stroke="#334155"/>
+  <text x="205" y="840" fill="#E2E8F0" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700">LLMs</text>
+  <rect x="388" y="792" width="240" height="74" rx="20" fill="#0F172A" stroke="#334155"/>
+  <text x="486" y="840" fill="#E2E8F0" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700">RAG</text>
+  <rect x="656" y="792" width="304" height="74" rx="20" fill="#0F172A" stroke="#334155"/>
+  <text x="724" y="840" fill="#E2E8F0" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700">Embeddings</text>
+
+  <rect x="120" y="924" width="840" height="216" rx="36" fill="url(#panel)" stroke="#22D3EE" stroke-opacity="0.18"/>
+  <text x="172" y="1002" fill="#D8E7F4" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="600">
+    <tspan x="172" dy="0">Curso introdutorio para quem quer sair do</tspan>
+    <tspan x="172" dy="44">conteudo picado e aprender com clareza.</tspan>
+  </text>
+  <text x="172" y="1100" fill="#FFFFFF" font-family="Georgia, Times New Roman, serif" font-size="66" font-weight="700">R$ 19,90</text>
+  <text x="470" y="1100" fill="#D8E7F4" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="600">condicao especial de lancamento</text>
+
+  <text x="120" y="1236" fill="#B5C7D8" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="600">plugandoia.cloud/curso-fundamentos-ia</text>
+</svg>

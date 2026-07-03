@@ -1,0 +1,37 @@
+﻿<svg width="1080" height="1350" viewBox="0 0 1080 1350" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1080" y2="1350">
+      <stop offset="0%" stop-color="#06111E"/>
+      <stop offset="100%" stop-color="#0B1020"/>
+    </linearGradient>
+    <linearGradient id="offer" x1="120" y1="812" x2="960" y2="1236">
+      <stop offset="0%" stop-color="#22D3EE"/>
+      <stop offset="100%" stop-color="#34D399"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1080" height="1350" fill="url(#bg)"/>
+
+  <text x="120" y="164" fill="#A5F3FC" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700">NOVA TURMA DO PLUGANDO IA</text>
+
+  <text x="120" y="320" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="76" font-weight="800">
+    <tspan x="120" dy="0">Arquitetando</tspan>
+    <tspan x="120" dy="86">o Futuro com</tspan>
+    <tspan x="120" dy="86">LLMs e RAG</tspan>
+  </text>
+
+  <text x="120" y="664" fill="#D7E4F1" font-family="Segoe UI, Arial, sans-serif" font-size="33" font-weight="500">
+    <tspan x="120" dy="0">Um curso para quem quer entender a base</tspan>
+    <tspan x="120" dy="48">da IA moderna e comecar com direcao.</tspan>
+  </text>
+
+  <rect x="120" y="812" width="840" height="424" rx="42" fill="url(#offer)"/>
+  <text x="172" y="904" fill="#08202D" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700">Condicao especial de lancamento</text>
+  <text x="172" y="1036" fill="#08202D" font-family="Georgia, Times New Roman, serif" font-size="120" font-weight="700">R$ 19,90</text>
+  <text x="172" y="1112" fill="#0B2A39" font-family="Segoe UI, Arial, sans-serif" font-size="33" font-weight="600">
+    <tspan x="172" dy="0">Preco promocional para a fase inicial</tspan>
+    <tspan x="172" dy="46">do curso.</tspan>
+  </text>
+  <text x="172" y="1200" fill="#08202D" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700">plugandoia.cloud/curso-fundamentos-ia</text>
+</svg>
+

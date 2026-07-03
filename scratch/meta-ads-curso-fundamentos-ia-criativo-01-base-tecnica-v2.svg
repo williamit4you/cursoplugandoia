@@ -1,0 +1,45 @@
+﻿<svg width="1080" height="1350" viewBox="0 0 1080 1350" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1080" y2="1350">
+      <stop offset="0%" stop-color="#07111F"/>
+      <stop offset="100%" stop-color="#0E2235"/>
+    </linearGradient>
+    <linearGradient id="cta" x1="120" y1="1030" x2="470" y2="1166">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#34D399"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1080" height="1350" fill="url(#bg)"/>
+  <rect x="72" y="66" width="936" height="1218" rx="42" fill="#182435" stroke="#2A394D"/>
+  <rect x="120" y="118" width="430" height="58" rx="29" fill="#0D2D3E" stroke="#1BAED1" stroke-opacity="0.42"/>
+  <text x="155" y="156" fill="#9BDCF2" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700">Plugando IA</text>
+
+  <text x="120" y="300" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="78" font-weight="800">
+    <tspan x="120" dy="0">Aprenda os</tspan>
+    <tspan x="120" dy="86">fundamentos</tspan>
+    <tspan x="120" dy="86">da IA moderna</tspan>
+  </text>
+
+  <text x="120" y="630" fill="#C9D6E4" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="500">
+    <tspan x="120" dy="0">LLMs, RAG, embeddings, APIs,</tspan>
+    <tspan x="120" dy="48">agentes e guardrails em uma</tspan>
+    <tspan x="120" dy="48">base clara e organizada.</tspan>
+  </text>
+
+  <rect x="120" y="808" width="840" height="160" rx="32" fill="#08131F" stroke="#1A344A"/>
+  <text x="162" y="874" fill="#DDE7F3" font-family="Segoe UI, Arial, sans-serif" font-size="31" font-weight="500">
+    <tspan x="162" dy="0">Entre no universo da IA sem se perder</tspan>
+    <tspan x="162" dy="44">em conteudos soltos e conceitos confusos.</tspan>
+  </text>
+
+  <rect x="120" y="1030" width="350" height="136" rx="34" fill="url(#cta)"/>
+  <text x="174" y="1086" fill="#08202D" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="700">Condicao de lancamento</text>
+  <text x="174" y="1144" fill="#08202D" font-family="Georgia, Times New Roman, serif" font-size="62" font-weight="700">R$ 19,90</text>
+
+  <text x="632" y="1096" fill="#E5EEF8" font-family="Segoe UI, Arial, sans-serif" font-size="25" font-weight="600">Curso introdutorio</text>
+  <text x="632" y="1140" fill="#E5EEF8" font-family="Segoe UI, Arial, sans-serif" font-size="25" font-weight="600">com acesso imediato</text>
+
+  <text x="120" y="1236" fill="#AFC3D8" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="600">plugandoia.cloud/curso-fundamentos-ia</text>
+</svg>
+
