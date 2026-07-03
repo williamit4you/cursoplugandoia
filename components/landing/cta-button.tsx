@@ -2,10 +2,12 @@ import Link from "next/link";
 
 export function CTAButton({
   href,
-  variant = "primary"
+  variant = "primary",
+  label = "Quero aprender IA agora"
 }: {
   href: string;
   variant?: "primary" | "secondary";
+  label?: string;
 }) {
   const base =
     "group relative inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-0";
@@ -16,8 +18,7 @@ export function CTAButton({
   return (
     <Link href={href} className={`${base} ${variant === "primary" ? primary : secondary}`}>
       <span className="absolute inset-0 -z-10 rounded-xl bg-[length:200%_200%] opacity-0 blur-xl transition duration-500 group-hover:opacity-60 group-hover:animate-shimmer bg-gradient-to-r from-cyan-400/30 via-fuchsia-400/30 to-emerald-400/30" />
-      Quero aprender IA agora
+      {label}
     </Link>
   );
 }
-
