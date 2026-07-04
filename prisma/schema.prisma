@@ -180,6 +180,22 @@ enum ComparisonStepStatus {
   SKIPPED
 }
 
+enum SalesPageEventType {
+  PAGE_VIEW
+  VIEW_CONTENT
+  INITIATE_CHECKOUT
+  LEAD
+  PURCHASE
+}
+
+enum SalesPageDeviceType {
+  DESKTOP
+  MOBILE
+  TABLET
+  BOT
+  UNKNOWN
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -338,6 +354,90 @@ model AffiliateComparisonConfig {
   defaultYearStrategy   String   @default("CURRENT_YEAR")
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
+}
+
+model SalesPageEvent {
+  id            String              @id @default(cuid())
+  pageKey       String
+  pagePath      String
+  pageTitle     String?
+  eventType     SalesPageEventType
+  sessionId     String
+  visitorId     String?
+  source        String              @default("site")
+  referrer      String?
+  userAgent     String?
+  ipHash        String?
+  deviceType    SalesPageDeviceType @default(UNKNOWN)
+  browser       String?
+  os            String?
+  country       String?
+  region        String?
+  city          String?
+  utmSource     String?
+  utmMedium     String?
+  utmCampaign   String?
+  utmTerm       String?
+  utmContent    String?
+  fbclid        String?
+  metaEventName String?
+  checkoutUrl   String?
+  currency      String?
+  value         Float?
+  orderId       String?
+  metadataJson  String              @default("{}")
+  occurredAt    DateTime            @default(now())
+  createdAt     DateTime            @default(now())
+
+  @@index([pageKey, occurredAt])
+  @@index([eventType, occurredAt])
+  @@index([sessionId])
+  @@index([utmCampaign])
+  @@index([pageKey, eventType, occurredAt])
+}
+
+model SalesPageSession {
+  id                    String              @id @default(cuid())
+  sessionId             String              @unique
+  pageKey               String
+  landingPath           String
+  firstReferrer         String?
+  firstUtmSource        String?
+  firstUtmMedium        String?
+  firstUtmCampaign      String?
+  firstUtmTerm          String?
+  firstUtmContent       String?
+  firstFbclid           String?
+  firstDeviceType       SalesPageDeviceType @default(UNKNOWN)
+  firstUserAgent        String?
+  visitorId             String?
+  firstSeenAt           DateTime            @default(now())
+  lastSeenAt            DateTime            @default(now())
+  pageViewCount         Int                 @default(0)
+  viewContentCount      Int                 @default(0)
+  initiateCheckoutCount Int                 @default(0)
+  leadCount             Int                 @default(0)
+  purchaseCount         Int                 @default(0)
+  revenueTotal          Float               @default(0)
+
+  @@index([pageKey, firstSeenAt])
+  @@index([pageKey, lastSeenAt])
+}
+
+model SalesPageConfig {
+  id               String   @id @default(cuid())
+  pageKey          String   @unique
+  pagePath         String
+  title            String
+  isActive         Boolean  @default(true)
+  trackPageView    Boolean  @default(true)
+  trackViewContent Boolean  @default(true)
+  trackCheckout    Boolean  @default(true)
+  trackLead        Boolean  @default(true)
+  trackPurchase    Boolean  @default(true)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model ScrapingSource {

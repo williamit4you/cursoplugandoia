@@ -4,6 +4,7 @@ import { FadeIn } from "@/components/motion/fade-in";
 import { Section } from "@/components/landing/section";
 import { FeatureGrid } from "@/components/landing/feature-grid";
 import { MetaPixelViewContent } from "@/components/MetaPixelViewContent";
+import { SalesPageTracker, SalesViewContentTracker } from "@/components/SalesPageTracker";
 
 const foundationsCheckoutUrl =
   process.env.NEXT_PUBLIC_FOUNDATIONS_CHECKOUT_URL ??
@@ -101,6 +102,26 @@ export const metadata = {
 export default function CursoFundamentosIaPage() {
   return (
     <main className="relative overflow-hidden">
+      <SalesPageTracker
+        pageKey="curso-fundamentos-ia"
+        pagePath="/curso-fundamentos-ia"
+        pageTitle="Plugando IA | Arquitetando o Futuro com LLMs e RAG"
+        metadata={{
+          offerPrice: 19.9,
+          currency: "BRL",
+        }}
+      />
+      <SalesViewContentTracker
+        pageKey="curso-fundamentos-ia"
+        pagePath="/curso-fundamentos-ia"
+        pageTitle="Plugando IA | Arquitetando o Futuro com LLMs e RAG"
+        currency="BRL"
+        value={19.9}
+        metadata={{
+          contentName: "Plugando IA: Arquitetando o Futuro com LLMs e RAG",
+          contentType: "course",
+        }}
+      />
       <MetaPixelViewContent
         data={{
           content_name: "Plugando IA: Arquitetando o Futuro com LLMs e RAG",
