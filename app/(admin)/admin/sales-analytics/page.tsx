@@ -56,6 +56,22 @@ type RecentEvent = {
   value: number | null;
 };
 
+type SalesPageConfigItem = {
+  id: string;
+  pageKey: string;
+  pagePath: string;
+  title: string;
+  metaPixelId: string | null;
+  isActive: boolean;
+  trackPageView: boolean;
+  trackViewContent: boolean;
+  trackCheckout: boolean;
+  trackLead: boolean;
+  trackPurchase: boolean;
+  notes: string | null;
+  updatedAt: string;
+};
+
 type QuickRange = "7d" | "30d" | "today";
 
 const quickRangeOptions: { label: string; value: QuickRange }[] = [
@@ -119,6 +135,15 @@ export default function SalesAnalyticsPage() {
   const [sources, setSources] = useState<SourceItem[]>([]);
   const [timeseries, setTimeseries] = useState<TimeseriesItem[]>([]);
   const [events, setEvents] = useState<RecentEvent[]>([]);
+  const [configs, setConfigs] = useState<SalesPageConfigItem[]>([]);
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configForm, setConfigForm] = useState({
+    pageKey: "curso-fundamentos-ia",
+    pagePath: "/curso-fundamentos-ia",
+    title: "Plugando IA | Arquitetando o Futuro com LLMs e RAG",
+    metaPixelId: "2221646568647297",
+    notes: "",
+  });
 
   useEffect(() => {
     setIsChartReady(true);
@@ -179,6 +204,56 @@ export default function SalesAnalyticsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  async function loadConfigs() {
+    setConfigLoading(true);
+    try {
+      const res = await fetch("/api/admin/sales-analytics/configs", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Falha ao carregar configs");
+      setConfigs(data.items || []);
+
+      const current = (data.items || []).find((item: SalesPageConfigItem) => item.pageKey === pageKey);
+      if (current) {
+        setConfigForm({
+          pageKey: current.pageKey,
+          pagePath: current.pagePath,
+          title: current.title,
+          metaPixelId: current.metaPixelId || "",
+          notes: current.notes || "",
+        });
+      }
+    } catch (error: any) {
+      setMessage(error?.message || "Falha ao carregar configs");
+    } finally {
+      setConfigLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadConfigs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function saveConfig() {
+    setConfigLoading(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/sales-analytics/configs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(configForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Falha ao salvar config");
+      await loadConfigs();
+      setPageKey(configForm.pageKey);
+    } catch (error: any) {
+      setMessage(error?.message || "Falha ao salvar config");
+    } finally {
+      setConfigLoading(false);
+    }
+  }
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       <Box>
@@ -193,6 +268,126 @@ export default function SalesAnalyticsPage() {
       {message ? <Alert severity="error">{message}</Alert> : null}
 
       <Paper sx={{ p: 2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 900, mb: 2 }}>
+          Configuração da landing e Pixel
+        </Typography>
+        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
+          <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
+            <TextField
+              fullWidth
+              label="Page Key"
+              value={configForm.pageKey}
+              onChange={(e) => setConfigForm((current) => ({ ...current, pageKey: e.target.value }))}
+            />
+          </Box>
+          <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
+            <TextField
+              fullWidth
+              label="Rota"
+              value={configForm.pagePath}
+              onChange={(e) => setConfigForm((current) => ({ ...current, pagePath: e.target.value }))}
+            />
+          </Box>
+          <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
+            <TextField
+              fullWidth
+              label="Título"
+              value={configForm.title}
+              onChange={(e) => setConfigForm((current) => ({ ...current, title: e.target.value }))}
+            />
+          </Box>
+          <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
+            <TextField
+              fullWidth
+              label="Meta Pixel ID"
+              value={configForm.metaPixelId}
+              onChange={(e) => setConfigForm((current) => ({ ...current, metaPixelId: e.target.value }))}
+            />
+          </Box>
+          <Box sx={{ gridColumn: "span 12" }}>
+            <TextField
+              fullWidth
+              label="Observações"
+              value={configForm.notes}
+              onChange={(e) => setConfigForm((current) => ({ ...current, notes: e.target.value }))}
+            />
+          </Box>
+        </Box>
+
+        <Box sx={{ display: "flex", gap: 1.5, mt: 2, alignItems: "center", flexWrap: "wrap" }}>
+          <button
+            onClick={saveConfig}
+            disabled={configLoading}
+            style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 800, background: "#0f766e", color: "white" }}
+          >
+            {configLoading ? "Salvando..." : "Salvar configuração"}
+          </button>
+          <button
+            onClick={loadConfigs}
+            disabled={configLoading}
+            style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 800, background: "#111827", color: "white" }}
+          >
+            Recarregar lista
+          </button>
+        </Box>
+      </Paper>
+
+      <Paper sx={{ p: 0, overflow: "hidden" }}>
+        <Box sx={{ p: 2, borderBottom: "1px solid rgba(15, 23, 42, 0.08)" }}>
+          <Typography variant="h6" sx={{ fontWeight: 900 }}>
+            Landings cadastradas
+          </Typography>
+        </Box>
+        <Box sx={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "rgba(15,23,42,0.03)" }}>
+                {["Page Key", "Rota", "Título", "Pixel", "Atualizado"].map((label) => (
+                  <th key={label} style={{ textAlign: "left", padding: 16, fontSize: 12 }}>
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {configs.map((item) => (
+                <tr
+                  key={item.id}
+                  style={{ borderTop: "1px solid rgba(15,23,42,0.08)", cursor: "pointer" }}
+                  onClick={() => {
+                    setPageKey(item.pageKey);
+                    setConfigForm({
+                      pageKey: item.pageKey,
+                      pagePath: item.pagePath,
+                      title: item.title,
+                      metaPixelId: item.metaPixelId || "",
+                      notes: item.notes || "",
+                    });
+                  }}
+                >
+                  <td style={{ padding: 16, fontFamily: "monospace" }}>{item.pageKey}</td>
+                  <td style={{ padding: 16 }}>{item.pagePath}</td>
+                  <td style={{ padding: 16 }}>{item.title}</td>
+                  <td style={{ padding: 16 }}>{item.metaPixelId || "-"}</td>
+                  <td style={{ padding: 16 }}>{formatDateTime(item.updatedAt)}</td>
+                </tr>
+              ))}
+              {!configLoading && configs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: 24, textAlign: "center", opacity: 0.7 }}>
+                    Nenhuma landing cadastrada.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </Box>
+      </Paper>
+
+      <Paper sx={{ p: 2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 900, mb: 2 }}>
+          Filtros do dashboard
+        </Typography>
         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
           <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
             <TextField fullWidth label="Landing" value={pageKey} onChange={(e) => setPageKey(e.target.value)} />

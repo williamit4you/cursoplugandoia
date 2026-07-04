@@ -1,7 +1,4 @@
 import { Providers } from "@/components/Providers";
-import { MetaPixelPageTracker } from "@/components/MetaPixelPageTracker";
-import { MetaPixelScript } from "@/components/MetaPixelScript";
-import { META_PIXEL_ID } from "@/lib/metaPixelConfig";
 import "./../globals.css";
 
 export const metadata = {
@@ -13,11 +10,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   return (
     <html lang="pt-BR" className="dark">
       <body className="theme-dark bg-[#0b0c10] text-gray-100 antialiased min-h-screen">
-        <MetaPixelScript pixelId={META_PIXEL_ID} />
-        <Providers>
-          <MetaPixelPageTracker />
-          {children}
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

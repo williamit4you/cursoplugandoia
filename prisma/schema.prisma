@@ -429,6 +429,7 @@ model SalesPageConfig {
   pageKey          String   @unique
   pagePath         String
   title            String
+  metaPixelId      String?
   isActive         Boolean  @default(true)
   trackPageView    Boolean  @default(true)
   trackViewContent Boolean  @default(true)

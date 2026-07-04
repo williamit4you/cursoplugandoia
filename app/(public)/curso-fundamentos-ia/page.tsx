@@ -1,10 +1,11 @@
 import { CourseCheckoutButton } from "@/components/landing/CourseCheckoutButton";
-import { CTAButton } from "@/components/landing/cta-button";
 import { FadeIn } from "@/components/motion/fade-in";
 import { Section } from "@/components/landing/section";
 import { FeatureGrid } from "@/components/landing/feature-grid";
+import { MetaPixelScript } from "@/components/MetaPixelScript";
 import { MetaPixelViewContent } from "@/components/MetaPixelViewContent";
 import { SalesPageTracker, SalesViewContentTracker } from "@/components/SalesPageTracker";
+import { resolveSalesPageMetaPixelId } from "@/lib/salesPagePixel";
 
 const foundationsCheckoutUrl =
   process.env.NEXT_PUBLIC_FOUNDATIONS_CHECKOUT_URL ??
@@ -99,9 +100,14 @@ export const metadata = {
     "Curso introdutório de fundamentos de IA com LLMs, RAG, embeddings, agentes, FastAPI, avaliação e guardrails.",
 };
 
-export default function CursoFundamentosIaPage() {
+export default async function CursoFundamentosIaPage() {
+  const metaPixelId = await resolveSalesPageMetaPixelId("curso-fundamentos-ia", {
+    preferEnvFallback: true,
+  });
+
   return (
     <main className="relative overflow-hidden">
+      <MetaPixelScript pixelId={metaPixelId} />
       <SalesPageTracker
         pageKey="curso-fundamentos-ia"
         pagePath="/curso-fundamentos-ia"
