@@ -19,14 +19,28 @@ function numberOrNull(value: unknown) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function parseDateParam(value: string | null, boundary: "start" | "end") {
+  if (!value) {
+    return null;
+  }
+
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (!isDateOnly) {
+    return new Date(value);
+  }
+
+  const suffix = boundary === "start" ? "T00:00:00.000" : "T23:59:59.999";
+  return new Date(`${value}${suffix}`);
+}
+
 export function getRangeFromRequest(req: NextRequest) {
   const fromParam = trimString(req.nextUrl.searchParams.get("from"), 64);
   const toParam = trimString(req.nextUrl.searchParams.get("to"), 64);
   const now = new Date();
 
   const fallbackFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const from = fromParam ? new Date(fromParam) : fallbackFrom;
-  const to = toParam ? new Date(toParam) : now;
+  const from = parseDateParam(fromParam, "start") ?? fallbackFrom;
+  const to = parseDateParam(toParam, "end") ?? now;
 
   return {
     from: Number.isNaN(from.getTime()) ? fallbackFrom : from,

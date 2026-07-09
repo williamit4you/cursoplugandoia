@@ -56,6 +56,28 @@ async function main() {
     console.log(`ℹ️  Admin user with email ${adminEmail} already exists.`)
   }
 
+  const videoCleanupEmail = (process.env.VIDEO_CLEANUP_EMAIL || 'willianbarata@gmail.com').trim().toLowerCase()
+  const videoCleanupPassword = process.env.VIDEO_CLEANUP_PASSWORD || 'Will#2028'
+  const existingCleanupUser = await prisma.user.findUnique({
+    where: { email: videoCleanupEmail }
+  })
+
+  if (!existingCleanupUser) {
+    const hashedPassword = await bcrypt.hash(videoCleanupPassword, 10)
+
+    await prisma.user.create({
+      data: {
+        email: videoCleanupEmail,
+        password: hashedPassword,
+        name: 'Willian Barata',
+        role: 'ADMIN'
+      }
+    })
+    console.log(`✅ LimpezaVideo user created with email: ${videoCleanupEmail}`)
+  } else {
+    console.log(`ℹ️  LimpezaVideo user with email ${videoCleanupEmail} already exists.`)
+  }
+
   // ── Seed YouTube Analytics Categories ────────────────────
   console.log('\n🎯 Seeding YouTube Analytics categories...')
   

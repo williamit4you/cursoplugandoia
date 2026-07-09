@@ -6,6 +6,7 @@ import math
 import time
 import requests
 import os
+import subprocess
 from typing import List, Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -424,7 +425,125 @@ def create_tiktok_product_video(
         preset="ultrafast",
         threads=4,
     )
-    print(f"[TikTok] Vídeo gerado com sucesso: {output_path}")
+print(f"[TikTok] Vídeo gerado com sucesso: {output_path}")
+
+
+def probe_video_metadata(video_path: str) -> dict:
+    cmd = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=width,height,r_frame_rate:format=duration",
+        "-of",
+        "json",
+        video_path,
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    parsed = json.loads(result.stdout or "{}")
+    stream = (parsed.get("streams") or [{}])[0]
+    fmt = parsed.get("format") or {}
+    fps_value = 30.0
+    fps_raw = str(stream.get("r_frame_rate") or "30/1")
+    if "/" in fps_raw:
+        left, right = fps_raw.split("/", 1)
+        try:
+            fps_value = float(left) / max(float(right), 1.0)
+        except Exception:
+            fps_value = 30.0
+    return {
+        "width": int(stream.get("width") or 1080),
+        "height": int(stream.get("height") or 1920),
+        "fps": fps_value,
+        "duration": float(fmt.get("duration") or 0.0),
+    }
+
+
+def build_cleanup_end_card(width: int, height: int, duration: float, logo_path: Optional[str], instagram_handle: str) -> VideoClip:
+    background = ColorClip(size=(width, height), color=(8, 15, 28), duration=duration)
+    layers = [background]
+
+    if logo_path and os.path.exists(logo_path):
+        logo = ImageClip(logo_path).set_duration(duration)
+        logo_width = min(int(width * 0.28), int(height * 0.28))
+        logo = logo.resize(width=logo_width)
+        layers.append(logo.set_position(("center", int(height * 0.2))))
+
+    title = TextClip(
+        "Siga no Instagram",
+        font="Arial",
+        fontsize=max(34, int(width * 0.035)),
+        color="white",
+        stroke_color="black",
+        stroke_width=1.5,
+    ).set_duration(duration)
+    title = title.set_position(("center", int(height * 0.58)))
+
+    handle = TextClip(
+        instagram_handle,
+        font="Arial",
+        fontsize=max(46, int(width * 0.05)),
+        color="#7dd3fc",
+        stroke_color="black",
+        stroke_width=1.5,
+        method="caption",
+        size=(int(width * 0.82), None),
+    ).set_duration(duration)
+    handle = handle.set_position(("center", int(height * 0.67)))
+
+    layers.append(title)
+    layers.append(handle)
+    return CompositeVideoClip(layers, size=(width, height)).fadein(0.25).fadeout(0.25)
+
+
+def create_cleanup_video(
+    input_path: str,
+    output_path: str,
+    logo_path: Optional[str],
+    instagram_handle: str,
+    audio_mode: str,
+    audio_volume_percent: int,
+    endcard_duration_sec: float,
+):
+    metadata = probe_video_metadata(input_path)
+    clip = VideoFileClip(input_path)
+
+    if str(audio_mode or "").upper() == "MUTE":
+        clip = clip.without_audio()
+    elif str(audio_mode or "").upper() == "REDUCE" and clip.audio is not None:
+        volume_factor = max(min(float(audio_volume_percent) / 100.0, 1.0), 0.0)
+        clip = clip.volumex(volume_factor)
+
+    end_card = build_cleanup_end_card(
+        metadata["width"],
+        metadata["height"],
+        max(float(endcard_duration_sec or 2.0), 1.0),
+        logo_path,
+        instagram_handle or "@compraesperta.promocoes",
+    )
+    final = concatenate_videoclips([clip, end_card], method="compose")
+    final.write_videofile(
+        output_path,
+        fps=max(int(round(metadata["fps"] or 30)), 24),
+        codec="libx264",
+        audio_codec="aac",
+        preset="ultrafast",
+        ffmpeg_params=["-movflags", "+faststart", "-map_metadata", "-1"],
+    )
+    try:
+        final.close()
+    except Exception:
+        pass
+    try:
+        clip.close()
+    except Exception:
+        pass
+    try:
+        end_card.close()
+    except Exception:
+        pass
 
 
 # --- ENDPOINTS ---
@@ -736,6 +855,80 @@ async def merge_videos_endpoint(
         minio_key = f"shopee/videos-merged/merged_{coleta_id}_{uid}.mp4"
         final_url = upload_to_minio(output_path, minio_key, "video/mp4")
         return JSONResponse({"ok": True, "coleta_id": coleta_id, "videoUrl": final_url})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": str(e)}, status_code=500)
+    finally:
+        try:
+            shutil.rmtree(work_dir, ignore_errors=True)
+            if os.path.exists(output_path):
+                os.remove(output_path)
+        except Exception:
+            pass
+
+
+@app.post("/limpeza-video-process")
+async def limpeza_video_process_endpoint(
+    job_id: str = Form(...),
+    input_url: str = Form(...),
+    logo_url: Optional[str] = Form(None),
+    instagram_handle: str = Form("@compraesperta.promocoes"),
+    audio_mode: str = Form("PRESERVE"),
+    audio_volume_percent: int = Form(100),
+    endcard_duration_sec: float = Form(2.0),
+    upload_mode: str = Form("worker"),
+):
+    uid = os.urandom(6).hex()
+    work_dir = os.path.join(UPLOAD_DIR, f"cleanup_{job_id}_{uid}")
+    os.makedirs(work_dir, exist_ok=True)
+
+    input_path = os.path.join(work_dir, "input.mp4")
+    logo_path = os.path.join(work_dir, "logo.png")
+    output_path = os.path.join(OUTPUT_DIR, f"cleanup_{job_id}_{uid}.mp4")
+
+    try:
+        if not str(input_url or "").strip():
+            return JSONResponse({"error": "input_url obrigatorio."}, status_code=400)
+
+        print("[LimpezaVideo] Baixando video original...", {"job_id": job_id, "input_url": input_url})
+        download_to_file(str(input_url).strip(), input_path, timeout=180)
+
+        resolved_logo_path = None
+        if str(logo_url or "").strip():
+            print("[LimpezaVideo] Baixando logo...", {"job_id": job_id, "logo_url": logo_url})
+            download_to_file(str(logo_url).strip(), logo_path, timeout=90)
+            resolved_logo_path = logo_path
+
+        print("[LimpezaVideo] Processando video...", {
+            "job_id": job_id,
+            "audio_mode": audio_mode,
+            "audio_volume_percent": audio_volume_percent,
+            "endcard_duration_sec": endcard_duration_sec,
+        })
+
+        create_cleanup_video(
+            input_path=input_path,
+            output_path=output_path,
+            logo_path=resolved_logo_path,
+            instagram_handle=str(instagram_handle or "@compraesperta.promocoes").strip(),
+            audio_mode=str(audio_mode or "PRESERVE").strip().upper(),
+            audio_volume_percent=int(audio_volume_percent or 100),
+            endcard_duration_sec=float(endcard_duration_sec or 2.0),
+        )
+
+        if str(upload_mode).strip().lower() == "external":
+            with open(output_path, "rb") as f:
+                video_bytes = f.read()
+            return Response(
+                content=video_bytes,
+                media_type="video/mp4",
+                headers={"X-Job-Id": job_id, "X-LimpezaVideo-Uid": uid},
+            )
+
+        minio_key = f"limpezavideo/output/{job_id}/final.mp4"
+        final_url = upload_to_minio(output_path, minio_key, "video/mp4")
+        return JSONResponse({"ok": True, "job_id": job_id, "videoUrl": final_url, "outputKey": minio_key})
     except Exception as e:
         import traceback
         traceback.print_exc()
