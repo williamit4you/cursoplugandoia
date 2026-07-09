@@ -108,6 +108,9 @@ export async function POST(req: NextRequest) {
       audioVolumePercent: clampNumber(Number.isFinite(requestedVolume) ? requestedVolume : 100, 0, 100),
       endCardDurationSec: clampNumber(Number.isFinite(endCardDurationSec) ? endCardDurationSec : LIMPEZA_VIDEO_DEFAULT_ENDCARD_SEC, 1, 5),
     }),
+    select: {
+      id: true,
+    },
   });
 
   const inputKey = `limpezavideo/input/${tempJob.id}/original.${extension}`;

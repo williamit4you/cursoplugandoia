@@ -34,7 +34,7 @@ async function upsertStep(jobId: string, stepName: string, data: Record<string, 
 
 async function setStepRunning(jobId: string, stepName: string, progressPercent: number) {
   await upsertStep(jobId, stepName, { status: "RUNNING", startedAt: now(), errorMessage: null });
-  await prisma.videoCleanupJob.update({
+  await prisma.videoCleanupJob.updateMany({
     where: { id: jobId },
     data: {
       status: "PROCESSING",
@@ -56,7 +56,7 @@ async function setStepSuccess(jobId: string, stepName: string, progressPercent: 
     durationMs: Math.max(Date.now() - startedAt, 0),
     responsePayload: responsePayload || undefined,
   });
-  await prisma.videoCleanupJob.update({
+  await prisma.videoCleanupJob.updateMany({
     where: { id: jobId },
     data: {
       currentStep: stepName,
@@ -76,7 +76,7 @@ async function setJobFailed(jobId: string, stepName: string, error: any) {
     durationMs: Math.max(Date.now() - startedAt, 0),
     errorMessage: message,
   });
-  await prisma.videoCleanupJob.update({
+  await prisma.videoCleanupJob.updateMany({
     where: { id: jobId },
     data: {
       status: "FAILED",
@@ -169,7 +169,7 @@ export async function processVideoCleanupJob(jobId: string) {
   await logEvent(jobId, "INFO", "Subindo arquivo final e concluindo job.", "UPLOAD_OUTPUT", { outputUrl });
   await setStepSuccess(jobId, "UPLOAD_OUTPUT", LIMPEZA_VIDEO_STEP_PROGRESS.UPLOAD_OUTPUT, { outputUrl, outputKey });
 
-  await prisma.videoCleanupJob.update({
+  await prisma.videoCleanupJob.updateMany({
     where: { id: jobId },
     data: {
       status: "READY",

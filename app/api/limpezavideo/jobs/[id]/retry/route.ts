@@ -20,7 +20,7 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
     return NextResponse.json({ error: "Job não encontrado." }, { status: 404 });
   }
 
-  await prisma.videoCleanupJob.update({
+  await prisma.videoCleanupJob.updateMany({
     where: { id: job.id },
     data: {
       status: "QUEUED",
