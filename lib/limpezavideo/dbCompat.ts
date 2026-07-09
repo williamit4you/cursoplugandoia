@@ -1,36 +1,12 @@
-import { prisma } from "@/lib/prisma";
-
 const OPTIONAL_JOB_COLUMNS = ["affiliateUrl", "isPublished", "publishedAt", "showTopMessage"] as const;
 
 type OptionalJobColumn = (typeof OPTIONAL_JOB_COLUMNS)[number];
 
-let cachedOptionalColumns: Set<string> | null = null;
-
-async function getVideoCleanupJobColumns() {
-  if (cachedOptionalColumns) return cachedOptionalColumns;
-  const rows = await prisma.$queryRaw<Array<{ column_name: string }>>`
-    SELECT column_name
-    FROM information_schema.columns
-    WHERE table_schema = 'public'
-      AND table_name = 'VideoCleanupJob'
-  `;
-  cachedOptionalColumns = new Set(rows.map((row) => row.column_name));
-  return cachedOptionalColumns;
-}
-
-export async function hasVideoCleanupJobColumn(column: OptionalJobColumn) {
-  const columns = await getVideoCleanupJobColumns();
-  return columns.has(column);
+export async function hasVideoCleanupJobColumn(_: OptionalJobColumn) {
+  return false;
 }
 
 export async function buildVideoCleanupJobSelect(includeRelations = false) {
-  const [hasAffiliateUrl, hasIsPublished, hasPublishedAt, hasShowTopMessage] = await Promise.all([
-    hasVideoCleanupJobColumn("affiliateUrl"),
-    hasVideoCleanupJobColumn("isPublished"),
-    hasVideoCleanupJobColumn("publishedAt"),
-    hasVideoCleanupJobColumn("showTopMessage"),
-  ]);
-
   const select: Record<string, any> = {
     id: true,
     ownerUserId: true,
@@ -63,10 +39,6 @@ export async function buildVideoCleanupJobSelect(includeRelations = false) {
     metadataJson: true,
     createdAt: true,
     updatedAt: true,
-    ...(hasAffiliateUrl ? { affiliateUrl: true } : {}),
-    ...(hasIsPublished ? { isPublished: true } : {}),
-    ...(hasPublishedAt ? { publishedAt: true } : {}),
-    ...(hasShowTopMessage ? { showTopMessage: true } : {}),
   };
 
   if (includeRelations) {
@@ -84,10 +56,9 @@ export async function buildVideoCleanupJobSelect(includeRelations = false) {
 
 export async function buildVideoCleanupJobCreateData(data: Record<string, any>) {
   const compatibleData = { ...data };
-  if (!(await hasVideoCleanupJobColumn("showTopMessage"))) delete compatibleData.showTopMessage;
-  if (!(await hasVideoCleanupJobColumn("affiliateUrl"))) delete compatibleData.affiliateUrl;
-  if (!(await hasVideoCleanupJobColumn("isPublished"))) delete compatibleData.isPublished;
-  if (!(await hasVideoCleanupJobColumn("publishedAt"))) delete compatibleData.publishedAt;
+  for (const column of OPTIONAL_JOB_COLUMNS) {
+    delete compatibleData[column];
+  }
   return compatibleData;
 }
 
