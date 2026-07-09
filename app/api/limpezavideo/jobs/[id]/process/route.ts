@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireLimpezaVideoSession } from "@/lib/limpezavideo/auth";
 import { enqueueVideoCleanupProcessing } from "@/lib/limpezavideo/orchestrator";
+import { buildVideoCleanupJobSelect } from "@/lib/limpezavideo/dbCompat";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
       id: params.id,
       ownerUserId: auth.userId,
     },
+    select: await buildVideoCleanupJobSelect(false),
   });
 
   if (!job) {

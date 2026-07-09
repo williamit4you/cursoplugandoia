@@ -5,6 +5,12 @@ import { clampNumber, estimateSecondsLeft } from "@/lib/limpezavideo/utils";
 import { uploadLimpezaVideoBuffer } from "@/lib/limpezavideo/storage";
 import { toPlainJson } from "@/lib/limpezavideo/serialize";
 import {
+  applyVideoCleanupJobDefaultsList,
+  buildVideoCleanupJobCreateData,
+  buildVideoCleanupJobSelect,
+  buildVideoCleanupJobUpdateData,
+} from "@/lib/limpezavideo/dbCompat";
+import {
   LIMPEZA_VIDEO_ALLOWED_AUDIO_MODES,
   LIMPEZA_VIDEO_DEFAULT_ENDCARD_SEC,
   LIMPEZA_VIDEO_DEFAULT_INSTAGRAM,
@@ -31,6 +37,7 @@ export async function GET(req: NextRequest) {
   };
 
   const total = await prisma.videoCleanupJob.count({ where });
+  const jobSelect = await buildVideoCleanupJobSelect(false);
   const jobs = await prisma.videoCleanupJob.findMany({
     where: {
       ...where,
@@ -38,7 +45,8 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
     skip: (page - 1) * pageSize,
     take: pageSize,
-    include: {
+    select: {
+      ...jobSelect,
       steps: {
         orderBy: { createdAt: "asc" },
       },
@@ -50,7 +58,7 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json({
-    items: toPlainJson(jobs),
+    items: toPlainJson(applyVideoCleanupJobDefaultsList(jobs)),
     pagination: {
       page,
       pageSize,
@@ -87,7 +95,7 @@ export async function POST(req: NextRequest) {
   const createdAt = Date.now();
   const extension = (file.name.split(".").pop() || "mp4").toLowerCase();
   const tempJob = await prisma.videoCleanupJob.create({
-    data: {
+    data: await buildVideoCleanupJobCreateData({
       ownerUserId: auth.userId,
       status: "UPLOADING",
       sourceType: "UPLOAD",
@@ -99,7 +107,7 @@ export async function POST(req: NextRequest) {
       showTopMessage,
       audioVolumePercent: clampNumber(Number.isFinite(requestedVolume) ? requestedVolume : 100, 0, 100),
       endCardDurationSec: clampNumber(Number.isFinite(endCardDurationSec) ? endCardDurationSec : LIMPEZA_VIDEO_DEFAULT_ENDCARD_SEC, 1, 5),
-    },
+    }),
   });
 
   const inputKey = `limpezavideo/input/${tempJob.id}/original.${extension}`;
@@ -124,7 +132,7 @@ export async function POST(req: NextRequest) {
 
   const job = await prisma.videoCleanupJob.update({
     where: { id: tempJob.id },
-    data: {
+    data: await buildVideoCleanupJobUpdateData({
       status: "QUEUED",
       progressPercent: 10,
       currentStep: "UPLOAD_ORIGINAL",
@@ -136,8 +144,9 @@ export async function POST(req: NextRequest) {
       metadataJson: JSON.stringify({
         uploadedAt: new Date(createdAt).toISOString(),
       }),
-    },
-    include: {
+    }),
+    select: {
+      ...(await buildVideoCleanupJobSelect(false)),
       steps: true,
       events: {
         orderBy: { createdAt: "desc" },
@@ -171,5 +180,5 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ ok: true, job: toPlainJson(job) }, { status: 201 });
+  return NextResponse.json({ ok: true, job: toPlainJson(applyVideoCleanupJobDefaultsList([job])[0]) }, { status: 201 });
 }

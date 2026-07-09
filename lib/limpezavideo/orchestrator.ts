@@ -3,6 +3,7 @@ import { uploadLimpezaVideoBuffer } from "@/lib/limpezavideo/storage";
 import { estimateSecondsLeft } from "@/lib/limpezavideo/utils";
 import { postMultipartWithoutUndici, resolveWorkerBaseUrl } from "@/lib/limpezavideo/workerClient";
 import { LIMPEZA_VIDEO_STEP_PROGRESS } from "@/lib/limpezavideo/constants";
+import { applyVideoCleanupJobDefaults, buildVideoCleanupJobSelect } from "@/lib/limpezavideo/dbCompat";
 
 function now() {
   return new Date();
@@ -66,7 +67,7 @@ async function setStepSuccess(jobId: string, stepName: string, progressPercent: 
 }
 
 async function setJobFailed(jobId: string, stepName: string, error: any) {
-  const message = error?.message || "Falha ao processar vídeo";
+  const message = error?.message || "Falha ao processar video";
   const step = await prisma.videoCleanupStep.findFirst({ where: { jobId, stepName } });
   const startedAt = step?.startedAt ? step.startedAt.getTime() : Date.now();
   await upsertStep(jobId, stepName, {
@@ -94,13 +95,18 @@ export async function enqueueVideoCleanupProcessing(jobId: string) {
 }
 
 export async function processVideoCleanupJob(jobId: string) {
-  const job = await prisma.videoCleanupJob.findUnique({ where: { id: jobId } });
-  if (!job) throw new Error("Job não encontrado.");
+  const rawJob = await prisma.videoCleanupJob.findUnique({
+    where: { id: jobId },
+    select: await buildVideoCleanupJobSelect(false),
+  });
+  if (!rawJob) throw new Error("Job nao encontrado.");
+
+  const job = applyVideoCleanupJobDefaults(rawJob);
   if (!job.inputUrl) throw new Error("Job sem inputUrl.");
   if (job.status === "PROCESSING") return;
 
   await setStepRunning(jobId, "PROBE_INPUT", LIMPEZA_VIDEO_STEP_PROGRESS.PROBE_INPUT);
-  await logEvent(jobId, "INFO", "Leitura técnica iniciada.", "PROBE_INPUT");
+  await logEvent(jobId, "INFO", "Leitura tecnica iniciada.", "PROBE_INPUT");
 
   const probeMeta = {
     width: job.width,
@@ -112,7 +118,7 @@ export async function processVideoCleanupJob(jobId: string) {
   await setStepSuccess(jobId, "PROBE_INPUT", LIMPEZA_VIDEO_STEP_PROGRESS.PROBE_INPUT, probeMeta);
 
   await setStepRunning(jobId, "PROCESS_VIDEO", LIMPEZA_VIDEO_STEP_PROGRESS.PROCESS_VIDEO);
-  await logEvent(jobId, "INFO", "Enviando vídeo para o worker de limpeza.", "PROCESS_VIDEO");
+  await logEvent(jobId, "INFO", "Enviando video para o worker de limpeza.", "PROCESS_VIDEO");
 
   const workerForm = new FormData();
   workerForm.append("job_id", job.id);
@@ -135,6 +141,7 @@ export async function processVideoCleanupJob(jobId: string) {
     audioVolumePercent: job.audioVolumePercent,
     endCardDurationSec: job.endCardDurationSec,
   });
+
   const workerRes = await postMultipartWithoutUndici(targetUrl, workerForm);
   if (!workerRes.ok) {
     throw new Error(`Worker retornou ${workerRes.status}: ${workerRes.body.toString("utf8")}`);
@@ -175,5 +182,5 @@ export async function processVideoCleanupJob(jobId: string) {
       errorMessage: null,
     },
   });
-  await logEvent(jobId, "INFO", "Vídeo final pronto.", "COMPLETE", { outputUrl });
+  await logEvent(jobId, "INFO", "Video final pronto.", "COMPLETE", { outputUrl });
 }
