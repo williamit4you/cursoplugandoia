@@ -498,11 +498,27 @@ def build_cleanup_end_card(width: int, height: int, duration: float, logo_path: 
     return CompositeVideoClip(layers, size=(width, height)).fadein(0.25).fadeout(0.25)
 
 
+def build_top_cta_overlay(width: int, height: int, duration: float) -> VideoClip:
+    text = TextClip(
+        "Siga a pagina, curta e comente Quero Cupom",
+        font="Arial",
+        fontsize=max(22, int(width * 0.022)),
+        color="white",
+        stroke_color="black",
+        stroke_width=2,
+        method="caption",
+        size=(int(width * 0.88), None),
+        align="center",
+    ).set_duration(duration)
+    return text.set_position(("center", int(height * 0.045)))
+
+
 def create_cleanup_video(
     input_path: str,
     output_path: str,
     logo_path: Optional[str],
     instagram_handle: str,
+    show_top_message: bool,
     audio_mode: str,
     audio_volume_percent: int,
     endcard_duration_sec: float,
@@ -523,7 +539,15 @@ def create_cleanup_video(
         logo_path,
         instagram_handle or "@compraesperta.promocoes",
     )
-    final = concatenate_videoclips([clip, end_card], method="compose")
+    base_video = concatenate_videoclips([clip, end_card], method="compose")
+    top_cta = None
+    if show_top_message:
+        top_cta = build_top_cta_overlay(metadata["width"], metadata["height"], base_video.duration)
+        final = CompositeVideoClip([base_video, top_cta], size=(metadata["width"], metadata["height"]))
+    else:
+        final = base_video
+    if base_video.audio is not None:
+        final = final.set_audio(base_video.audio)
     final.write_videofile(
         output_path,
         fps=max(int(round(metadata["fps"] or 30)), 24),
@@ -534,6 +558,15 @@ def create_cleanup_video(
     )
     try:
         final.close()
+    except Exception:
+        pass
+    try:
+        base_video.close()
+    except Exception:
+        pass
+    try:
+        if top_cta is not None:
+            top_cta.close()
     except Exception:
         pass
     try:
@@ -874,6 +907,7 @@ async def limpeza_video_process_endpoint(
     input_url: str = Form(...),
     logo_url: Optional[str] = Form(None),
     instagram_handle: str = Form("@compraesperta.promocoes"),
+    show_top_message: str = Form("true"),
     audio_mode: str = Form("PRESERVE"),
     audio_volume_percent: int = Form(100),
     endcard_duration_sec: float = Form(2.0),
@@ -902,6 +936,7 @@ async def limpeza_video_process_endpoint(
 
         print("[LimpezaVideo] Processando video...", {
             "job_id": job_id,
+            "show_top_message": show_top_message,
             "audio_mode": audio_mode,
             "audio_volume_percent": audio_volume_percent,
             "endcard_duration_sec": endcard_duration_sec,
@@ -912,6 +947,7 @@ async def limpeza_video_process_endpoint(
             output_path=output_path,
             logo_path=resolved_logo_path,
             instagram_handle=str(instagram_handle or "@compraesperta.promocoes").strip(),
+            show_top_message=str(show_top_message or "true").strip().lower() not in {"false", "0", "off", "no"},
             audio_mode=str(audio_mode or "PRESERVE").strip().upper(),
             audio_volume_percent=int(audio_volume_percent or 100),
             endcard_duration_sec=float(endcard_duration_sec or 2.0),

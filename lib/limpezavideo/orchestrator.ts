@@ -119,6 +119,7 @@ export async function processVideoCleanupJob(jobId: string) {
   workerForm.append("input_url", job.inputUrl);
   if (job.logoUrl) workerForm.append("logo_url", job.logoUrl);
   workerForm.append("instagram_handle", String(job.instagramHandle || "@compraesperta.promocoes"));
+  workerForm.append("show_top_message", job.showTopMessage ? "true" : "false");
   workerForm.append("audio_mode", String(job.audioMode || "PRESERVE"));
   workerForm.append("audio_volume_percent", String(job.audioVolumePercent || 100));
   workerForm.append("endcard_duration_sec", String(job.endCardDurationSec || 2));
@@ -129,6 +130,7 @@ export async function processVideoCleanupJob(jobId: string) {
     targetUrl,
     inputUrl: job.inputUrl,
     logoUrl: job.logoUrl,
+    showTopMessage: job.showTopMessage,
     audioMode: job.audioMode,
     audioVolumePercent: job.audioVolumePercent,
     endCardDurationSec: job.endCardDurationSec,

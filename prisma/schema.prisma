@@ -1551,6 +1551,7 @@ model VideoCleanupJob {
   logoBucketKey        String?
   logoUrl              String?
   instagramHandle      String?  @default("@compraesperta.promocoes")
+  showTopMessage       Boolean  @default(true)
   isPublished          Boolean  @default(false)
   publishedAt          DateTime?
   endCardDurationSec   Float    @default(2.0)

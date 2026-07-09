@@ -51,11 +51,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const body = await req.json().catch(() => ({}));
   const affiliateUrl = typeof body?.affiliateUrl === "string" ? body.affiliateUrl.trim() : undefined;
   const isPublished = typeof body?.isPublished === "boolean" ? body.isPublished : undefined;
+  const showTopMessage = typeof body?.showTopMessage === "boolean" ? body.showTopMessage : undefined;
 
   const updated = await prisma.videoCleanupJob.update({
     where: { id: current.id },
     data: {
       ...(affiliateUrl !== undefined ? { affiliateUrl: affiliateUrl || null } : {}),
+      ...(showTopMessage !== undefined ? { showTopMessage } : {}),
       ...(isPublished !== undefined
         ? {
             isPublished,

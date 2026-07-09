@@ -24,6 +24,7 @@ type Job = {
   affiliateUrl?: string | null;
   logoUrl: string | null;
   instagramHandle: string | null;
+  showTopMessage?: boolean;
   audioMode: string;
   audioVolumePercent: number;
   isPublished?: boolean;
@@ -87,6 +88,8 @@ export function LimpezaVideoApp() {
   });
   const [affiliateUrlDraft, setAffiliateUrlDraft] = useState("");
   const [publishedDraft, setPublishedDraft] = useState(false);
+  const [showTopMessage, setShowTopMessage] = useState(true);
+  const [showTopMessageDraft, setShowTopMessageDraft] = useState(true);
 
   async function loadJobs(targetPage = page) {
     const res = await fetch(`/api/limpezavideo/jobs?page=${targetPage}&pageSize=10`, { cache: "no-store" });
@@ -124,7 +127,8 @@ export function LimpezaVideoApp() {
   useEffect(() => {
     setAffiliateUrlDraft(selectedJob?.affiliateUrl || "");
     setPublishedDraft(Boolean(selectedJob?.isPublished));
-  }, [selectedJob?.id, selectedJob?.affiliateUrl, selectedJob?.isPublished]);
+    setShowTopMessageDraft(selectedJob?.showTopMessage ?? true);
+  }, [selectedJob?.id, selectedJob?.affiliateUrl, selectedJob?.isPublished, selectedJob?.showTopMessage]);
 
   useEffect(() => {
     if (!notice) return;
@@ -145,6 +149,7 @@ export function LimpezaVideoApp() {
       formData.append("file", file);
       if (logo) formData.append("logo", logo);
       formData.append("instagramHandle", instagramHandle);
+      formData.append("showTopMessage", showTopMessage ? "true" : "false");
       formData.append("audioMode", audioMode);
       formData.append("audioVolumePercent", String(audioVolumePercent));
 
@@ -191,6 +196,7 @@ export function LimpezaVideoApp() {
         body: JSON.stringify({
           affiliateUrl: affiliateUrlDraft,
           isPublished: publishedDraft,
+          showTopMessage: showTopMessageDraft,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -255,6 +261,19 @@ export function LimpezaVideoApp() {
                 Instagram no fechamento
                 <input className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3" value={instagramHandle} onChange={(e) => setInstagramHandle(e.target.value)} />
               </label>
+              <div className="grid gap-2 text-sm text-slate-200">
+                <span>Mensagem fixa no topo</span>
+                <button
+                  type="button"
+                  onClick={() => setShowTopMessage((value) => !value)}
+                  className={`flex min-h-[52px] items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
+                    showTopMessage ? "border-cyan-300/60 bg-cyan-300/15 text-cyan-50" : "border-white/10 bg-white/5 text-slate-200"
+                  }`}
+                >
+                  <span>{showTopMessage ? "Ativada" : "Desativada"}</span>
+                  <span className="text-xs text-slate-300">Siga a pagina, curta e comente Quero Cupom</span>
+                </button>
+              </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2 text-sm text-slate-200">
                   <span>Áudio</span>
@@ -400,6 +419,7 @@ export function LimpezaVideoApp() {
                   <div className="mt-3 text-sm text-slate-300">Etapa atual: {selectedJob.currentStep || "aguardando"}</div>
                   <div className="mt-1 text-sm text-slate-300">Áudio: {selectedJob.audioMode}{selectedJob.audioMode === "REDUCE" ? ` (${selectedJob.audioVolumePercent}%)` : ""}</div>
                   <div className="mt-1 text-sm text-slate-300">Instagram: {selectedJob.instagramHandle || "-"}</div>
+                  <div className="mt-1 text-sm text-slate-300">Mensagem fixa: {selectedJob.showTopMessage ?? true ? "ativada" : "desativada"}</div>
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -410,6 +430,16 @@ export function LimpezaVideoApp() {
                     </button>
                   </div>
                   <div className="mt-4 grid gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowTopMessageDraft((value) => !value)}
+                      className={`flex min-h-[52px] items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition ${
+                        showTopMessageDraft ? "border-cyan-300/50 bg-cyan-300/15 text-cyan-50" : "border-white/10 bg-slate-950/50 text-slate-200"
+                      }`}
+                    >
+                      <span>Mensagem no topo</span>
+                      <span className="font-semibold">{showTopMessageDraft ? "Ligada" : "Desligada"}</span>
+                    </button>
                     <label className="grid gap-2 text-sm text-slate-200">
                       Link de afiliado
                       <input className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white" value={affiliateUrlDraft} onChange={(e) => setAffiliateUrlDraft(e.target.value)} placeholder="https://..." />

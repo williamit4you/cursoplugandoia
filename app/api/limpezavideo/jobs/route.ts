@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
   const logo = formData.get("logo") as File | null;
   const instagramHandle = normalize(formData.get("instagramHandle")) || LIMPEZA_VIDEO_DEFAULT_INSTAGRAM;
   const audioMode = normalize(formData.get("audioMode")).toUpperCase() || "PRESERVE";
+  const showTopMessage = normalize(formData.get("showTopMessage")) !== "false";
   const requestedVolume = Number(normalize(formData.get("audioVolumePercent")) || "100");
   const endCardDurationSec = Number(normalize(formData.get("endCardDurationSec")) || String(LIMPEZA_VIDEO_DEFAULT_ENDCARD_SEC));
 
@@ -95,6 +96,7 @@ export async function POST(req: NextRequest) {
       fileSizeBytes: BigInt(file.size || fileBuffer.length),
       instagramHandle,
       audioMode,
+      showTopMessage,
       audioVolumePercent: clampNumber(Number.isFinite(requestedVolume) ? requestedVolume : 100, 0, 100),
       endCardDurationSec: clampNumber(Number.isFinite(endCardDurationSec) ? endCardDurationSec : LIMPEZA_VIDEO_DEFAULT_ENDCARD_SEC, 1, 5),
     },
