@@ -1547,13 +1547,13 @@ model VideoCleanupJob {
   inputUrl             String?
   outputBucketKey      String?
   outputUrl            String?
-  affiliateUrl         String?
+  affiliateUrl         String?   @ignore
   logoBucketKey        String?
   logoUrl              String?
   instagramHandle      String?  @default("@compraesperta.promocoes")
-  showTopMessage       Boolean  @default(true)
-  isPublished          Boolean  @default(false)
-  publishedAt          DateTime?
+  showTopMessage       Boolean   @default(true) @ignore
+  isPublished          Boolean   @default(false) @ignore
+  publishedAt          DateTime? @ignore
   endCardDurationSec   Float    @default(2.0)
   durationSec          Float?
   fileSizeBytes        BigInt?
