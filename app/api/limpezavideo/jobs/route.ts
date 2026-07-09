@@ -23,13 +23,21 @@ export async function GET(req: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const status = String(req.nextUrl.searchParams.get("status") || "").trim();
+  const page = Math.max(Number(req.nextUrl.searchParams.get("page") || "1"), 1);
+  const pageSize = Math.min(Math.max(Number(req.nextUrl.searchParams.get("pageSize") || "10"), 1), 50);
+  const where = {
+    ownerUserId: auth.userId,
+    ...(status ? { status } : {}),
+  };
+
+  const total = await prisma.videoCleanupJob.count({ where });
   const jobs = await prisma.videoCleanupJob.findMany({
     where: {
-      ownerUserId: auth.userId,
-      ...(status ? { status } : {}),
+      ...where,
     },
     orderBy: { createdAt: "desc" },
-    take: 50,
+    skip: (page - 1) * pageSize,
+    take: pageSize,
     include: {
       steps: {
         orderBy: { createdAt: "asc" },
@@ -41,7 +49,17 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ items: toPlainJson(jobs) });
+  return NextResponse.json({
+    items: toPlainJson(jobs),
+    pagination: {
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(Math.ceil(total / pageSize), 1),
+      hasNextPage: page * pageSize < total,
+      hasPrevPage: page > 1,
+    },
+  });
 }
 
 export async function POST(req: NextRequest) {

@@ -32,3 +32,47 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
   return NextResponse.json({ job: toPlainJson(job) });
 }
+
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const auth = await requireLimpezaVideoSession();
+  if (!auth.ok) return auth.response;
+
+  const current = await prisma.videoCleanupJob.findFirst({
+    where: {
+      id: params.id,
+      ownerUserId: auth.userId,
+    },
+  });
+
+  if (!current) {
+    return NextResponse.json({ error: "Job nÃ£o encontrado." }, { status: 404 });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const affiliateUrl = typeof body?.affiliateUrl === "string" ? body.affiliateUrl.trim() : undefined;
+  const isPublished = typeof body?.isPublished === "boolean" ? body.isPublished : undefined;
+
+  const updated = await prisma.videoCleanupJob.update({
+    where: { id: current.id },
+    data: {
+      ...(affiliateUrl !== undefined ? { affiliateUrl: affiliateUrl || null } : {}),
+      ...(isPublished !== undefined
+        ? {
+            isPublished,
+            publishedAt: isPublished ? current.publishedAt || new Date() : null,
+          }
+        : {}),
+    },
+    include: {
+      steps: {
+        orderBy: { createdAt: "asc" },
+      },
+      events: {
+        orderBy: { createdAt: "desc" },
+        take: 30,
+      },
+    },
+  });
+
+  return NextResponse.json({ ok: true, job: toPlainJson(updated) });
+}

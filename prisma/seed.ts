@@ -61,21 +61,28 @@ async function main() {
   const existingCleanupUser = await prisma.user.findUnique({
     where: { email: videoCleanupEmail }
   })
+  const videoCleanupPasswordHash = await bcrypt.hash(videoCleanupPassword, 10)
 
   if (!existingCleanupUser) {
-    const hashedPassword = await bcrypt.hash(videoCleanupPassword, 10)
-
     await prisma.user.create({
       data: {
         email: videoCleanupEmail,
-        password: hashedPassword,
+        password: videoCleanupPasswordHash,
         name: 'Willian Barata',
         role: 'ADMIN'
       }
     })
     console.log(`✅ LimpezaVideo user created with email: ${videoCleanupEmail}`)
   } else {
-    console.log(`ℹ️  LimpezaVideo user with email ${videoCleanupEmail} already exists.`)
+    await prisma.user.update({
+      where: { email: videoCleanupEmail },
+      data: {
+        password: videoCleanupPasswordHash,
+        name: existingCleanupUser.name || 'Willian Barata',
+        role: existingCleanupUser.role || 'ADMIN'
+      }
+    })
+    console.log(`🔁 LimpezaVideo user password updated for email: ${videoCleanupEmail}`)
   }
 
   // ── Seed YouTube Analytics Categories ────────────────────

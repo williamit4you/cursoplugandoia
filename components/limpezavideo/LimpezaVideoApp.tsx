@@ -21,12 +21,24 @@ type Job = {
   createdAt: string;
   inputUrl: string | null;
   outputUrl: string | null;
+  affiliateUrl?: string | null;
   logoUrl: string | null;
   instagramHandle: string | null;
   audioMode: string;
   audioVolumePercent: number;
+  isPublished?: boolean;
+  publishedAt?: string | null;
   errorMessage: string | null;
   events?: JobEvent[];
+};
+
+type Pagination = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
 };
 
 function formatEta(seconds: number | null) {
@@ -44,49 +56,81 @@ function statusBadge(status: string) {
   return "bg-white/10 text-slate-100 border-white/10";
 }
 
+const audioModeOptions = [
+  { value: "PRESERVE", label: "Preservar", hint: "Mantém o áudio original" },
+  { value: "REDUCE", label: "Reduzir", hint: "Diminui o volume" },
+  { value: "MUTE", label: "Mutar", hint: "Remove o áudio" },
+];
+
 export function LimpezaVideoApp() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [logo, setLogo] = useState<File | null>(null);
   const [instagramHandle, setInstagramHandle] = useState("@compraesperta.promocoes");
   const [audioMode, setAudioMode] = useState("PRESERVE");
   const [audioVolumePercent, setAudioVolumePercent] = useState(100);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<Pagination>({
+    page: 1,
+    pageSize: 10,
+    total: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
+  const [affiliateUrlDraft, setAffiliateUrlDraft] = useState("");
+  const [publishedDraft, setPublishedDraft] = useState(false);
 
-  async function loadJobs() {
-    const res = await fetch("/api/limpezavideo/jobs", { cache: "no-store" });
-    if (!res.ok) {
-      throw new Error("Falha ao carregar jobs.");
-    }
+  async function loadJobs(targetPage = page) {
+    const res = await fetch(`/api/limpezavideo/jobs?page=${targetPage}&pageSize=10`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Falha ao carregar jobs.");
     const data = await res.json();
     setJobs(data.items || []);
+    setPagination(data.pagination || pagination);
+    setPage(targetPage);
   }
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    loadJobs()
+    loadJobs(1)
       .catch((err: any) => {
         if (active) setError(err?.message || "Falha ao carregar.");
       })
       .finally(() => {
         if (active) setLoading(false);
       });
-
-    const timer = setInterval(() => {
-      loadJobs().catch(() => null);
-    }, 4000);
     return () => {
       active = false;
-      clearInterval(timer);
     };
   }, []);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      loadJobs(page).catch(() => null);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [page]);
+
   const selectedJob = useMemo(() => jobs.find((job) => job.id === selectedJobId) || jobs[0] || null, [jobs, selectedJobId]);
+
+  useEffect(() => {
+    setAffiliateUrlDraft(selectedJob?.affiliateUrl || "");
+    setPublishedDraft(Boolean(selectedJob?.isPublished));
+  }, [selectedJob?.id, selectedJob?.affiliateUrl, selectedJob?.isPublished]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(""), 2200);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   async function handleSubmit() {
     if (!file) {
@@ -109,12 +153,9 @@ export function LimpezaVideoApp() {
         body: formData,
       });
       const createData = await createRes.json().catch(() => ({}));
-      if (!createRes.ok) {
-        throw new Error(createData?.error || "Falha ao criar job.");
-      }
+      if (!createRes.ok) throw new Error(createData?.error || "Falha ao criar job.");
 
       const createdJob = createData.job as Job;
-      setJobs((prev) => [createdJob, ...prev]);
       setSelectedJobId(createdJob.id);
       setFormOpen(false);
       setFile(null);
@@ -124,7 +165,8 @@ export function LimpezaVideoApp() {
         method: "POST",
       });
 
-      await loadJobs();
+      await loadJobs(1);
+      setNotice("Upload enviado e processamento iniciado.");
     } catch (err: any) {
       setError(err?.message || "Falha no upload.");
     } finally {
@@ -134,25 +176,59 @@ export function LimpezaVideoApp() {
 
   async function handleRetry(jobId: string) {
     await fetch(`/api/limpezavideo/jobs/${jobId}/retry`, { method: "POST" });
-    await loadJobs();
+    await loadJobs(page);
+    setNotice("Job reenfileirado.");
   }
 
-  const audioModeOptions = [
-    { value: "PRESERVE", label: "Preservar", hint: "Mantém o áudio original" },
-    { value: "REDUCE", label: "Reduzir", hint: "Diminui o volume" },
-    { value: "MUTE", label: "Mutar", hint: "Remove o áudio" },
-  ];
+  async function handleSaveJobMeta() {
+    if (!selectedJob) return;
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/limpezavideo/jobs/${selectedJob.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          affiliateUrl: affiliateUrlDraft,
+          isPublished: publishedDraft,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Falha ao salvar.");
+      await loadJobs(page);
+      setNotice("Informações salvas.");
+    } catch (err: any) {
+      setError(err?.message || "Falha ao salvar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCopyAffiliate() {
+    if (!affiliateUrlDraft.trim()) {
+      setError("Preencha o link de afiliado antes de copiar.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(affiliateUrlDraft.trim());
+      setNotice("Link copiado");
+    } catch {
+      setError("Não foi possível copiar o link.");
+    }
+  }
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#164e63_0%,#0f172a_42%,#020617_100%)] text-white">
-      <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
-        <section className="rounded-[30px] border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl md:p-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 md:px-6 md:py-8">
+        <section className="rounded-[30px] border border-white/10 bg-white/5 p-4 shadow-2xl backdrop-blur-xl md:p-8">
+          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>
-              <div className="inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-100">Microsaas independente</div>
+              <div className="inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-100">
+                Microsaas independente
+              </div>
               <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">LimpezaVideo</h1>
               <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-200/80 md:text-base">
-                Faça upload do vídeo, opcionalmente envie o logo, e o sistema já dispara o pipeline no worker para limpar, recodificar e devolver a URL final tratada no MinIO.
+                Faça upload do vídeo, opcionalmente envie o logo, e o sistema dispara o pipeline no worker para limpar, recodificar e devolver a URL final tratada no MinIO.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -166,7 +242,7 @@ export function LimpezaVideoApp() {
           </div>
 
           {formOpen ? (
-            <div className="mt-8 grid gap-4 rounded-[28px] border border-white/10 bg-slate-950/40 p-5 md:grid-cols-2">
+            <div className="mt-6 grid gap-4 rounded-[28px] border border-white/10 bg-slate-950/40 p-4 md:p-5 md:grid-cols-2">
               <label className="grid gap-2 text-sm text-slate-200">
                 Vídeo
                 <input className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3" type="file" accept="video/mp4,video/quicktime,video/webm" onChange={(e) => setFile(e.target.files?.[0] || null)} />
@@ -191,9 +267,7 @@ export function LimpezaVideoApp() {
                           type="button"
                           onClick={() => setAudioMode(option.value)}
                           className={`rounded-2xl border px-4 py-3 text-left transition ${
-                            selected
-                              ? "border-cyan-300/60 bg-cyan-300 text-slate-950"
-                              : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+                            selected ? "border-cyan-300/60 bg-cyan-300 text-slate-950" : "border-white/10 bg-white/5 text-white hover:bg-white/10"
                           }`}
                         >
                           <div className="font-semibold">{option.label}</div>
@@ -208,7 +282,7 @@ export function LimpezaVideoApp() {
                   <input className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3" type="number" min={0} max={100} value={audioVolumePercent} onChange={(e) => setAudioVolumePercent(Number(e.target.value || 100))} />
                 </label>
               </div>
-              <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-300">
+              <div className="md:col-span-2 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-300 sm:flex-row sm:items-center sm:justify-between">
                 <span>Após o upload, o processamento já começa automaticamente.</span>
                 <button className="rounded-2xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-60" onClick={handleSubmit} disabled={submitting}>
                   {submitting ? "Enviando..." : "Enviar e processar"}
@@ -217,17 +291,18 @@ export function LimpezaVideoApp() {
             </div>
           ) : null}
 
-          {error ? <div className="mt-6 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-100">{error}</div> : null}
+          {error ? <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-100">{error}</div> : null}
+          {notice ? <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">{notice}</div> : null}
         </section>
 
-        <section className="mt-6 grid gap-6 lg:grid-cols-[1.25fr,0.75fr]">
+        <section className="mt-6 grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
           <div className="rounded-[30px] border border-white/10 bg-slate-950/45 p-4 shadow-2xl backdrop-blur-xl md:p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Fila de processamento</h2>
-              <div className="text-sm text-slate-400">{loading ? "Atualizando..." : `${jobs.length} jobs`}</div>
+              <div className="text-sm text-slate-400">{loading ? "Atualizando..." : `${pagination.total} jobs`}</div>
             </div>
 
-            <div className="overflow-hidden rounded-[24px] border border-white/10">
+            <div className="hidden overflow-hidden rounded-[24px] border border-white/10 md:block">
               <div className="grid grid-cols-[1.2fr,0.7fr,0.8fr,0.8fr,0.6fr] gap-3 bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">
                 <span>Arquivo</span>
                 <span>Status</span>
@@ -269,9 +344,53 @@ export function LimpezaVideoApp() {
                 ))}
               </div>
             </div>
+
+            <div className="grid gap-3 md:hidden">
+              {jobs.length === 0 ? <div className="rounded-3xl border border-white/10 bg-white/5 px-4 py-8 text-sm text-slate-400">Envie seu primeiro vídeo para gerar uma versão limpa, recodificada e pronta para uso.</div> : null}
+              {jobs.map((job) => (
+                <button key={job.id} className={`rounded-3xl border p-4 text-left transition ${selectedJob?.id === job.id ? "border-cyan-300/40 bg-cyan-300/10" : "border-white/10 bg-white/5 hover:bg-white/10"}`} onClick={() => setSelectedJobId(job.id)}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-semibold text-white">{job.originalFilename || "vídeo sem nome"}</div>
+                      <div className="mt-1 text-xs text-slate-400">{new Date(job.createdAt).toLocaleString("pt-BR")}</div>
+                    </div>
+                    <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusBadge(job.status)}`}>{job.status}</span>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-300">
+                    <div>Progresso: {Math.round(job.progressPercent || 0)}%</div>
+                    <div>ETA: {formatEta(job.estimatedSecondsLeft)}</div>
+                  </div>
+                  <div className="mt-3 h-2 rounded-full bg-white/10">
+                    <div className="h-2 rounded-full bg-cyan-300" style={{ width: `${Math.round(job.progressPercent || 0)}%` }} />
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    {job.outputUrl ? (
+                      <a href={job.outputUrl} target="_blank" rel="noreferrer" className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white" onClick={(e) => e.stopPropagation()}>
+                        Abrir
+                      </a>
+                    ) : null}
+                    {job.status === "FAILED" ? (
+                      <span className="rounded-2xl border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs font-semibold text-red-100" onClick={(e) => { e.stopPropagation(); handleRetry(job.id).catch(() => null); }}>
+                        Retry
+                      </span>
+                    ) : null}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-300">
+              <button className="rounded-xl border border-white/10 px-3 py-2 disabled:opacity-40" disabled={!pagination.hasPrevPage} onClick={() => loadJobs(page - 1).catch(() => null)}>
+                Anterior
+              </button>
+              <span>Página {pagination.page} de {pagination.totalPages}</span>
+              <button className="rounded-xl border border-white/10 px-3 py-2 disabled:opacity-40" disabled={!pagination.hasNextPage} onClick={() => loadJobs(page + 1).catch(() => null)}>
+                Próxima
+              </button>
+            </div>
           </div>
 
-          <aside className="rounded-[30px] border border-white/10 bg-slate-950/45 p-5 shadow-2xl backdrop-blur-xl">
+          <aside className="rounded-[30px] border border-white/10 bg-slate-950/45 p-4 shadow-2xl backdrop-blur-xl md:p-5">
             <h2 className="text-lg font-semibold">Detalhe do job</h2>
             {selectedJob ? (
               <div className="mt-5 grid gap-4">
@@ -282,6 +401,30 @@ export function LimpezaVideoApp() {
                   <div className="mt-1 text-sm text-slate-300">Áudio: {selectedJob.audioMode}{selectedJob.audioMode === "REDUCE" ? ` (${selectedJob.audioVolumePercent}%)` : ""}</div>
                   <div className="mt-1 text-sm text-slate-300">Instagram: {selectedJob.instagramHandle || "-"}</div>
                 </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Publicação</div>
+                    <button type="button" onClick={() => setPublishedDraft((value) => !value)} className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${publishedDraft ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-100" : "border-white/10 bg-white/5 text-slate-200"}`}>
+                      {publishedDraft ? "Publicado" : "Não publicado"}
+                    </button>
+                  </div>
+                  <div className="mt-4 grid gap-3">
+                    <label className="grid gap-2 text-sm text-slate-200">
+                      Link de afiliado
+                      <input className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white" value={affiliateUrlDraft} onChange={(e) => setAffiliateUrlDraft(e.target.value)} placeholder="https://..." />
+                    </label>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white" onClick={handleCopyAffiliate}>
+                        Copiar link
+                      </button>
+                      <button className="rounded-2xl bg-cyan-300 px-4 py-3 text-sm font-semibold text-slate-950 disabled:opacity-60" onClick={handleSaveJobMeta} disabled={saving}>
+                        {saving ? "Salvando..." : "Salvar"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div className="text-xs uppercase tracking-[0.18em] text-slate-400">URLs</div>
                   <div className="mt-3 grid gap-2 text-sm">
@@ -290,6 +433,7 @@ export function LimpezaVideoApp() {
                     {selectedJob.logoUrl ? <a className="truncate text-amber-100 hover:text-amber-50" href={selectedJob.logoUrl} target="_blank" rel="noreferrer">Logo</a> : <span className="text-slate-400">Sem logo anexado</span>}
                   </div>
                 </div>
+
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Logs recentes</div>
                   <div className="mt-3 grid gap-3">
@@ -297,12 +441,13 @@ export function LimpezaVideoApp() {
                     {(selectedJob.events || []).map((event) => (
                       <div key={event.id} className="rounded-2xl border border-white/10 bg-slate-950/50 px-3 py-3 text-sm text-slate-200">
                         <div className="text-xs uppercase tracking-[0.18em] text-slate-400">{event.stepName || event.level}</div>
-                        <div className="mt-1">{event.message}</div>
+                        <div className="mt-1 break-words">{event.message}</div>
                       </div>
                     ))}
                   </div>
                 </div>
-                {selectedJob.errorMessage ? <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-100">{selectedJob.errorMessage}</div> : null}
+
+                {selectedJob.errorMessage ? <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-100 break-words">{selectedJob.errorMessage}</div> : null}
               </div>
             ) : (
               <div className="mt-6 text-sm text-slate-400">Selecione um job para ver detalhes.</div>

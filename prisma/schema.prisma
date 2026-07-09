@@ -1547,9 +1547,12 @@ model VideoCleanupJob {
   inputUrl             String?
   outputBucketKey      String?
   outputUrl            String?
+  affiliateUrl         String?
   logoBucketKey        String?
   logoUrl              String?
   instagramHandle      String?  @default("@compraesperta.promocoes")
+  isPublished          Boolean  @default(false)
+  publishedAt          DateTime?
   endCardDurationSec   Float    @default(2.0)
   durationSec          Float?
   fileSizeBytes        BigInt?
@@ -1574,6 +1577,7 @@ model VideoCleanupJob {
 
   @@index([ownerUserId, createdAt])
   @@index([status])
+  @@index([isPublished, createdAt])
 }
 
 model VideoCleanupStep {
