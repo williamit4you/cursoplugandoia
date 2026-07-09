@@ -125,6 +125,14 @@ export async function processVideoCleanupJob(jobId: string) {
   workerForm.append("upload_mode", "external");
 
   const targetUrl = `${resolveWorkerBaseUrl()}/limpeza-video-process`;
+  await logEvent(jobId, "INFO", `Tentando chamar worker: ${targetUrl}`, "PROCESS_VIDEO", {
+    targetUrl,
+    inputUrl: job.inputUrl,
+    logoUrl: job.logoUrl,
+    audioMode: job.audioMode,
+    audioVolumePercent: job.audioVolumePercent,
+    endCardDurationSec: job.endCardDurationSec,
+  });
   const workerRes = await postMultipartWithoutUndici(targetUrl, workerForm);
   if (!workerRes.ok) {
     throw new Error(`Worker retornou ${workerRes.status}: ${workerRes.body.toString("utf8")}`);

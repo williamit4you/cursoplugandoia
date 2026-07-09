@@ -425,7 +425,7 @@ def create_tiktok_product_video(
         preset="ultrafast",
         threads=4,
     )
-print(f"[TikTok] Vídeo gerado com sucesso: {output_path}")
+    print(f"[TikTok] Vídeo gerado com sucesso: {output_path}")
 
 
 def probe_video_metadata(video_path: str) -> dict:

@@ -47,15 +47,27 @@ export async function postMultipartWithoutUndici(url: string, formData: FormData
     );
 
     req.setTimeout(0);
-    req.on("error", reject);
+    req.on("error", (error) => {
+      const enriched = new Error(`Falha ao conectar no worker (${url}): ${error instanceof Error ? error.message : String(error)}`);
+      (enriched as any).cause = error;
+      reject(enriched);
+    });
     req.write(body);
     req.end();
   });
 }
 
 export function resolveWorkerBaseUrl() {
-  return String(process.env.WORKER_FASTAPI_BASE_URL || process.env.FASTAPI_URL || "http://127.0.0.1:8000")
+  const raw = String(
+    process.env.LIMPEZA_VIDEO_WORKER_BASE_URL ||
+      process.env.WORKER_FASTAPI_BASE_URL ||
+      process.env.FASTAPI_URL ||
+      "http://127.0.0.1:8000"
+  )
     .trim()
     .replace(/\/+$/, "")
     .replace(/\/gerar-video$/, "");
+  if (!raw) return "http://127.0.0.1:8000";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `http://${raw}`;
 }

@@ -137,6 +137,12 @@ export function LimpezaVideoApp() {
     await loadJobs();
   }
 
+  const audioModeOptions = [
+    { value: "PRESERVE", label: "Preservar", hint: "Mantém o áudio original" },
+    { value: "REDUCE", label: "Reduzir", hint: "Diminui o volume" },
+    { value: "MUTE", label: "Mutar", hint: "Remove o áudio" },
+  ];
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#164e63_0%,#0f172a_42%,#020617_100%)] text-white">
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
@@ -174,14 +180,29 @@ export function LimpezaVideoApp() {
                 <input className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3" value={instagramHandle} onChange={(e) => setInstagramHandle(e.target.value)} />
               </label>
               <div className="grid gap-4 md:grid-cols-2">
-                <label className="grid gap-2 text-sm text-slate-200">
-                  Áudio
-                  <select className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3" value={audioMode} onChange={(e) => setAudioMode(e.target.value)}>
-                    <option value="PRESERVE">Preservar</option>
-                    <option value="REDUCE">Reduzir</option>
-                    <option value="MUTE">Mutar</option>
-                  </select>
-                </label>
+                <div className="grid gap-2 text-sm text-slate-200">
+                  <span>Áudio</span>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {audioModeOptions.map((option) => {
+                      const selected = audioMode === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setAudioMode(option.value)}
+                          className={`rounded-2xl border px-4 py-3 text-left transition ${
+                            selected
+                              ? "border-cyan-300/60 bg-cyan-300 text-slate-950"
+                              : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+                          }`}
+                        >
+                          <div className="font-semibold">{option.label}</div>
+                          <div className={`mt-1 text-xs ${selected ? "text-slate-800/80" : "text-slate-400"}`}>{option.hint}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 <label className="grid gap-2 text-sm text-slate-200">
                   Volume % quando reduzir
                   <input className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3" type="number" min={0} max={100} value={audioVolumePercent} onChange={(e) => setAudioVolumePercent(Number(e.target.value || 100))} />
