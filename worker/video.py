@@ -481,16 +481,18 @@ def build_cleanup_end_card(width: int, height: int, duration: float, logo_path: 
     ).set_duration(duration)
     title = title.set_position(("center", int(height * 0.58)))
 
+    max_handle_width = int(width * 0.88)
     handle = TextClip(
-        instagram_handle,
+        str(instagram_handle or "").strip(),
         font="Arial",
         fontsize=max(46, int(width * 0.05)),
         color="#7dd3fc",
         stroke_color="black",
         stroke_width=1.5,
-        method="caption",
-        size=(int(width * 0.82), None),
+        method="label",
     ).set_duration(duration)
+    if handle.w > max_handle_width:
+        handle = handle.resize(width=max_handle_width)
     handle = handle.set_position(("center", int(height * 0.67)))
 
     layers.append(title)
@@ -500,14 +502,14 @@ def build_cleanup_end_card(width: int, height: int, duration: float, logo_path: 
 
 def build_top_cta_overlay(width: int, height: int, duration: float) -> VideoClip:
     text = TextClip(
-        "Siga a pagina, curta e comente Quero Cupom",
+        'Siga a página\n@compraesperta.promocoes\ncurta o vídeo e comente\n"Quero Cupom"',
         font="Arial",
         fontsize=max(22, int(width * 0.022)),
         color="white",
         stroke_color="black",
         stroke_width=2,
         method="caption",
-        size=(int(width * 0.88), None),
+        size=(int(width * 0.84), None),
         align="center",
     ).set_duration(duration)
     return text.set_position(("center", int(height * 0.045)))
