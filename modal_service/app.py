@@ -188,14 +188,14 @@ def _audio_prompt(params: dict[str, Any]) -> dict[str, Any]:
                 "model_choice": "1.7B",
                 "device": "auto",
                 "precision": "bf16",
-                "language": "Portuguese",
+                "language": params.get("language", "Portuguese"),
                 "ref_text": "",
                 "seed": params["seed"],
-                "max_new_tokens": 2048,
-                "top_p": 0.8,
-                "top_k": 20,
-                "temperature": 1,
-                "repetition_penalty": 1.05,
+                "max_new_tokens": params.get("max_new_tokens", 2048),
+                "top_p": params.get("top_p", 0.8),
+                "top_k": params.get("top_k", 20),
+                "temperature": params.get("temperature", 1),
+                "repetition_penalty": params.get("repetition_penalty", 1.05),
                 "x_vector_only": True,
                 "attention": "auto",
                 "unload_model_after_generate": False,
@@ -207,7 +207,7 @@ def _audio_prompt(params: dict[str, Any]) -> dict[str, Any]:
         "44": {
             "inputs": {
                 "filename_prefix": params["output_prefix"],
-                "quality": "V0",
+                "quality": params.get("quality", "V0"),
                 "audio": ["40", 0],
             },
             "class_type": "SaveAudioMP3",
@@ -221,7 +221,11 @@ def _video_prompt(params: dict[str, Any]) -> dict[str, Any]:
     template["217"]["inputs"]["audio"] = params["audio_filename"]
     template["217"]["inputs"].pop("audioUI", None)
     template["131"]["inputs"]["filename_prefix"] = params["output_prefix"]
+    template["131"]["inputs"]["crf"] = params.get("crf", 19)
     template["213"]["inputs"]["seed"] = params["seed"]
+    template["213"]["inputs"]["steps"] = params.get("steps", 4)
+    template["213"]["inputs"]["cfg"] = params.get("cfg", 1)
+    template["213"]["inputs"]["shift"] = params.get("shift", 11)
     # The exported workflow exposes PreviewImage and MathExpression as terminal
     # nodes, which causes the API scheduler to stop before the video branch. For
     # the API execution path, keep only the video-producing branch and inject the
@@ -230,7 +234,45 @@ def _video_prompt(params: dict[str, Any]) -> dict[str, Any]:
     template.pop("246", None)
     template.pop("247", None)
     template["194"]["inputs"]["num_frames"] = params["num_frames"]
+    template["194"]["inputs"]["fps"] = params.get("fps", 25)
+    template["210"]["inputs"]["value"] = params.get("width", 432)
+    template["211"]["inputs"]["value"] = params.get("height", 768)
+    template["251"]["inputs"]["value"] = float(params.get("fps", 25))
     return template
+
+
+def _clamp(value: float, min_value: float, max_value: float) -> float:
+    return max(min_value, min(max_value, value))
+
+
+def _normalize_speech_rate(raw: Any) -> float:
+    try:
+        rate = float(raw)
+    except (TypeError, ValueError):
+        rate = 1.0
+    return _clamp(rate, 0.5, 2.0)
+
+
+def _apply_audio_speed(source_path: Path, speech_rate: float) -> Path:
+    if abs(speech_rate - 1.0) < 0.001:
+        return source_path
+
+    adjusted_path = source_path.with_name(f"{source_path.stem}_speed{str(speech_rate).replace('.', '_')}.mp3")
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(source_path),
+            "-filter:a",
+            f"atempo={speech_rate}",
+            str(adjusted_path),
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return adjusted_path
 
 
 def _upload_bytes_to_minio(*, data: bytes, key: str, content_type: str) -> str:
@@ -365,6 +407,7 @@ def test_generate_audio_from_url(payload: dict[str, Any]) -> dict[str, Any]:
     voice_ref_url = str(payload["voice_ref_url"])
     target_text = str(payload["target_text"])
     seed = int(payload.get("seed", 123456789))
+    speech_rate = _normalize_speech_rate(payload.get("speech_rate", 1))
     output_prefix = str(payload.get("output_prefix", f"audio/test_{uuid.uuid4().hex[:8]}"))
 
     shutil.rmtree(COMFY_INPUT, ignore_errors=True)
@@ -385,6 +428,13 @@ def test_generate_audio_from_url(payload: dict[str, Any]) -> dict[str, Any]:
                 "target_text": target_text,
                 "seed": seed,
                 "output_prefix": output_prefix,
+                "language": str(payload.get("language", "Portuguese")),
+                "max_new_tokens": int(payload.get("max_new_tokens", 2048)),
+                "top_p": float(payload.get("top_p", 0.8)),
+                "top_k": int(payload.get("top_k", 20)),
+                "temperature": float(payload.get("temperature", 1)),
+                "repetition_penalty": float(payload.get("repetition_penalty", 1.05)),
+                "quality": str(payload.get("quality", "V0")),
             }
         )
         submit = requests.post(
@@ -408,18 +458,20 @@ def test_generate_audio_from_url(payload: dict[str, Any]) -> dict[str, Any]:
 
         mp3_files = sorted(str(path) for path in Path(COMFY_OUTPUT).rglob("*.mp3"))
         first_mp3 = Path(mp3_files[0]) if mp3_files else None
+        final_mp3 = _apply_audio_speed(first_mp3, speech_rate) if first_mp3 else None
         public_url = None
-        if first_mp3:
+        if final_mp3:
             public_url = _upload_bytes_to_minio(
-                data=first_mp3.read_bytes(),
+                data=final_mp3.read_bytes(),
                 key=f"shopee/audio-modal/test_{uuid.uuid4().hex[:12]}.mp3",
                 content_type="audio/mpeg",
             )
         return {
             "prompt_id": prompt_id,
             "output_files": mp3_files,
-            "first_output_base64": base64.b64encode(first_mp3.read_bytes()).decode("ascii") if first_mp3 else None,
+            "first_output_base64": base64.b64encode(final_mp3.read_bytes()).decode("ascii") if final_mp3 else None,
             "public_url": public_url,
+            "speech_rate": speech_rate,
             "history_keys": list(history_payload.keys()),
         }
 
@@ -434,6 +486,7 @@ def test_generate_video_from_urls(payload: dict[str, Any]) -> dict[str, Any]:
     image_url = str(payload["image_url"])
     audio_url = str(payload["audio_url"])
     seed = int(payload.get("seed", 123456789))
+    fps = int(payload.get("fps", 25))
     output_prefix = str(payload.get("output_prefix", f"video/test_{uuid.uuid4().hex[:8]}"))
 
     shutil.rmtree(COMFY_INPUT, ignore_errors=True)
@@ -454,7 +507,7 @@ def test_generate_video_from_urls(payload: dict[str, Any]) -> dict[str, Any]:
     import librosa
 
     audio_duration_sec = float(librosa.get_duration(path=str(audio_path)))
-    num_frames = max(1, round(audio_duration_sec * 25))
+    num_frames = max(1, round(audio_duration_sec * fps))
 
     with _comfy_server() as proc:
         prompt = _video_prompt(
@@ -464,6 +517,13 @@ def test_generate_video_from_urls(payload: dict[str, Any]) -> dict[str, Any]:
                 "output_prefix": output_prefix,
                 "seed": seed,
                 "num_frames": num_frames,
+                "width": int(payload.get("width", 432)),
+                "height": int(payload.get("height", 768)),
+                "fps": fps,
+                "steps": int(payload.get("steps", 4)),
+                "cfg": float(payload.get("cfg", 1)),
+                "shift": float(payload.get("shift", 11)),
+                "crf": int(payload.get("crf", 19)),
             }
         )
         submit = requests.post(

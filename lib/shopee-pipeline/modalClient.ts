@@ -51,6 +51,14 @@ export async function generateModalAudio(params: {
   voiceRefUrl: string;
   targetText: string;
   seed: number;
+  language?: string;
+  speechRate?: number;
+  maxNewTokens?: number;
+  topP?: number;
+  topK?: number;
+  temperature?: number;
+  repetitionPenalty?: number;
+  quality?: string;
 }) {
   const data = await postJson<ModalAudioResponse>(
     endpoint("audio"),
@@ -58,6 +66,14 @@ export async function generateModalAudio(params: {
       voice_ref_url: params.voiceRefUrl,
       target_text: params.targetText,
       seed: params.seed,
+      language: params.language,
+      speech_rate: params.speechRate,
+      max_new_tokens: params.maxNewTokens,
+      top_p: params.topP,
+      top_k: params.topK,
+      temperature: params.temperature,
+      repetition_penalty: params.repetitionPenalty,
+      quality: params.quality,
     },
     30 * 60 * 1000
   );
@@ -69,6 +85,13 @@ export async function generateModalVideo(params: {
   imageUrl: string;
   audioUrl: string;
   seed: number;
+  width?: number;
+  height?: number;
+  fps?: number;
+  steps?: number;
+  cfg?: number;
+  shift?: number;
+  crf?: number;
 }) {
   const data = await postJson<ModalVideoResponse>(
     endpoint("video"),
@@ -76,6 +99,13 @@ export async function generateModalVideo(params: {
       image_url: params.imageUrl,
       audio_url: params.audioUrl,
       seed: params.seed,
+      width: params.width,
+      height: params.height,
+      fps: params.fps,
+      steps: params.steps,
+      cfg: params.cfg,
+      shift: params.shift,
+      crf: params.crf,
     },
     75 * 60 * 1000
   );
