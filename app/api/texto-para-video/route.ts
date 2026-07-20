@@ -43,8 +43,16 @@ function resolveDimensions(formatPreset: string, width: number, height: number) 
   return { width, height };
 }
 
+function normalizeMixedAssetKind(value: unknown, url: string) {
+  const raw = normalize(value).toUpperCase();
+  if (raw === "VIDEO" || /\.(mp4|webm|mov)(\?|$)/i.test(url)) return "VIDEO";
+  return "IMAGE";
+}
+
 export async function GET(req: NextRequest) {
   const view = String(req.nextUrl.searchParams.get("view") || "").trim().toLowerCase();
+  const mode = String(req.nextUrl.searchParams.get("mode") || "simple").trim().toLowerCase();
+
   if (view === "config") {
     const defaults = await resolveCreatorVideoDefaults();
     return NextResponse.json({
@@ -59,6 +67,15 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  if (mode === "mixed") {
+    const items = await prisma.mixedCreatorVideo.findMany({
+      include: { assets: { orderBy: { sortOrder: "asc" } } },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+    });
+    return NextResponse.json({ items });
+  }
+
   const items = await prisma.simpleCreatorVideo.findMany({
     orderBy: { createdAt: "desc" },
     take: 40,
@@ -67,9 +84,67 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => ({}));
+  const mode = String(body?.mode || "simple").trim().toLowerCase();
+
+  if (mode === "mixed") {
+    const narrationText = normalize(body?.narrationText);
+    const requestedImageUrl = normalize(body?.creatorImageUrl);
+    const requestedVoiceRefUrl = normalize(body?.voiceRefUrl);
+    const assets = Array.isArray(body?.assets) ? body.assets : [];
+    const aspectRatio = normalize(body?.aspectRatio || "PORTRAIT_9_16") === "LANDSCAPE_16_9" ? "LANDSCAPE_16_9" : "PORTRAIT_9_16";
+    const audioLanguage = normalizeLanguage(body?.audioLanguage);
+    const speechRate = Math.min(2, Math.max(0.5, toFloat(body?.speechRate, 1)));
+
+    if (!narrationText) return NextResponse.json({ error: "narrationText is required" }, { status: 400 });
+    if (assets.length === 0) return NextResponse.json({ error: "Envie ao menos uma imagem ou video de apoio." }, { status: 400 });
+
+    const defaults = await resolveCreatorVideoDefaults(requestedImageUrl || null);
+    if (!defaults.creatorImageUrl) {
+      return NextResponse.json(
+        { error: "Configure uma imagem padrao em userBaseImageUrl ou adicione uma imagem ativa em creator-assets." },
+        { status: 400 }
+      );
+    }
+
+    const creatorImageUrl = String(defaults.creatorImageUrl || "");
+    const voiceRefUrl = requestedVoiceRefUrl || String(defaults.voiceRefUrl || "");
+    if (!voiceRefUrl) {
+      return NextResponse.json({ error: "Config faltando: userVoiceRefUrl" }, { status: 400 });
+    }
+
+    const created = await prisma.mixedCreatorVideo.create({
+      data: {
+        narrationText,
+        creatorImageUrl,
+        voiceRefUrl,
+        aspectRatio,
+        audioLanguage,
+        speechRate,
+        status: "DRAFT",
+        startedAt: now(),
+        assets: {
+          create: assets.map((asset: any, index: number) => {
+            const url = normalize(asset?.url);
+            return {
+              url,
+              kind: normalizeMixedAssetKind(asset?.kind, url),
+              source: "UPLOAD",
+              originalName: normalize(asset?.originalName) || null,
+              userLabel: normalize(asset?.userLabel) || null,
+              sortOrder: index,
+            };
+          }),
+        },
+      },
+      include: { assets: { orderBy: { sortOrder: "asc" } } },
+    });
+
+    return NextResponse.json({ ok: true, item: created });
+  }
+
   let createdId = "";
   try {
-    const body = await req.json().catch(() => ({}));
     const narrationText = normalize(body?.narrationText);
     const requestedImageUrl = normalize(body?.creatorImageUrl);
     const requestedVoiceRefUrl = normalize(body?.voiceRefUrl);

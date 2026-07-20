@@ -13,6 +13,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { MixedCreatorVideoTab } from "@/components/MixedCreatorVideoTab";
 
 type SimpleCreatorVideo = {
   id: string;
@@ -437,6 +438,7 @@ export default function TextoParaVideoPage() {
       <Paper sx={{ p: 1 }}>
         <Tabs value={activeTab} onChange={(_, value) => setActiveTab(value)}>
           <Tab label="Gerador manual" />
+          <Tab label="Com imagens" />
           <Tab label="Historico" />
         </Tabs>
       </Paper>
@@ -658,6 +660,8 @@ export default function TextoParaVideoPage() {
             </Paper>
           </Box>
         </>
+      ) : activeTab === 1 ? (
+        <MixedCreatorVideoTab />
       ) : (
         <Paper sx={{ p: 2 }}>
           <Typography sx={{ fontWeight: 900, mb: 1 }}>Execucoes recentes</Typography>

@@ -22,6 +22,7 @@ type RenderRequest = {
     fps?: number | null;
     narrationText?: string | null;
     audioUrl?: string | null;
+    talkingHeadVideoUrl?: string | null;
     ttsVoice?: string | null;
     ttsSpeed?: string | null;
   };
@@ -104,6 +105,12 @@ async function bundleWithRetry(bundleFn: (args: any) => Promise<string>, entryPo
 }
 
 function totalDurationInFramesFromSpec(videoSpec: any, fps: number) {
+  if (String(videoSpec?.mode || "") === "MIXED_TALKING_HEAD") {
+    const segments = Array.isArray(videoSpec?.segments) ? videoSpec.segments : [];
+    const totalSec = segments.reduce((max, segment) => Math.max(max, Number(segment?.endSec || 0)), 0);
+    return Math.max(1, Math.round(Math.max(totalSec, Number(videoSpec?.content?.totalDurationSec || 1)) * fps));
+  }
+
   const scenes = Array.isArray(videoSpec?.scenes) ? videoSpec.scenes : [];
   let frames = 0;
   for (const s of scenes) {
@@ -486,7 +493,14 @@ async function renderProject(payload: RenderRequest) {
         browserExecutable: browserPath,
       });
 
-      const compositionId = project.aspectRatio === "LANDSCAPE_16_9" ? "VideoLandscape" : "VideoPortrait";
+      const isMixedTalkingHead = String(videoSpec?.mode || "") === "MIXED_TALKING_HEAD";
+      const compositionId = isMixedTalkingHead
+        ? project.aspectRatio === "LANDSCAPE_16_9"
+          ? "MixedLandscape"
+          : "MixedPortrait"
+        : project.aspectRatio === "LANDSCAPE_16_9"
+          ? "VideoLandscape"
+          : "VideoPortrait";
       const comp = compositions.find((item: any) => item.id === compositionId);
       if (!comp) throw new Error(`Composition not found: ${compositionId}`);
 

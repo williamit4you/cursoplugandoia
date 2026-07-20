@@ -1549,6 +1549,50 @@ model SimpleCreatorVideo {
   @@index([createdAt])
 }
 
+model MixedCreatorVideo {
+  id                  String   @id @default(cuid())
+  narrationText       String
+  creatorImageUrl     String
+  voiceRefUrl         String?
+  audioUrl            String?
+  talkingHeadVideoUrl String?
+  finalVideoUrl       String?
+  captionsUrl         String?
+  status              String   @default("DRAFT") // DRAFT | PLANNING_VISUALS | GENERATING_AUDIO | GENERATING_TALKING_HEAD | COMPOSING_VIDEO | READY | FAILED
+  aspectRatio         String   @default("PORTRAIT_9_16")
+  audioLanguage       String   @default("Portuguese")
+  speechRate          Float    @default(1)
+  assetPlanJson       String   @default("{}")
+  renderSpecJson      String   @default("{}")
+  errorMessage        String?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  assets              MixedCreatorVideoAsset[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model MixedCreatorVideoAsset {
+  id                 String           @id @default(cuid())
+  mixedCreatorVideoId String
+  mixedCreatorVideo  MixedCreatorVideo @relation(fields: [mixedCreatorVideoId], references: [id], onDelete: Cascade)
+  url                String
+  kind               String
+  source             String           @default("UPLOAD")
+  originalName       String?
+  userLabel          String?
+  autoLabel          String?
+  sortOrder          Int              @default(0)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@index([mixedCreatorVideoId, sortOrder])
+}
+
 model VideoCleanupJob {
   id                   String   @id @default(cuid())
   ownerUserId          String
