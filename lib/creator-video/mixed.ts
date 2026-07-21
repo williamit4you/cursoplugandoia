@@ -16,7 +16,7 @@ export type MixedPlanSegment = {
   startSec: number;
   endSec: number;
   spokenText: string;
-  layout: "TALKING_HEAD_FULL" | "BROLL_FULL" | "PIP_BOTTOM_RIGHT";
+  layout: "TITLE_CARD" | "BROLL_FULL" | "PIP_BOTTOM_RIGHT";
   assetId?: string | null;
   title?: string | null;
 };
@@ -171,9 +171,9 @@ function fallbackPlanFromSegments(segments: Array<{ id: string; startSec: number
     if (index === 0 || index === segments.length - 1 || assets.length === 0) {
       return {
         ...segment,
-        layout: "TALKING_HEAD_FULL" as const,
+        layout: "TITLE_CARD" as const,
         assetId: null,
-        title: null,
+        title: segment.spokenText,
       };
     }
     const asset = assets[(index - 1) % assets.length];
@@ -221,10 +221,10 @@ export async function planMixedVideo(params: {
         label: inferAssetFallbackLabel(asset, 0),
       }))
     )}`,
-    "Escolha para cada segmento um layout entre TALKING_HEAD_FULL, BROLL_FULL e PIP_BOTTOM_RIGHT.",
-    "Prefira TALKING_HEAD_FULL na abertura e no CTA final.",
+    "Escolha para cada segmento um layout entre TITLE_CARD, BROLL_FULL e PIP_BOTTOM_RIGHT.",
+    "Prefira TITLE_CARD na abertura e no CTA final.",
     "Use BROLL_FULL quando o asset ajuda a demonstrar visualmente a frase.",
-    "Use PIP_BOTTOM_RIGHT quando a pessoa deve continuar visivel enquanto o apoio aparece.",
+    "Use PIP_BOTTOM_RIGHT quando a imagem ou video principal deve continuar visivel enquanto um segundo apoio aparece.",
     "Responda somente com JSON valido no formato { segments: [{ id, layout, assetId, title }] }.",
   ].join("\n");
 
@@ -241,7 +241,7 @@ export async function planMixedVideo(params: {
         messages: [
           {
             role: "system",
-            content: "Voce planeja videos curtos com rosto falando e b-roll. Seja objetivo e coerente com os assets disponiveis.",
+            content: "Voce planeja VSLs narradas com imagens e videos de apoio. Seja objetivo e coerente com os assets disponiveis.",
           },
           { role: "user", content: user },
         ],
@@ -262,14 +262,14 @@ export async function planMixedVideo(params: {
       const ai = planned.find((item: any) => String(item?.id || "") === segment.id);
       const layout = String(ai?.layout || segment.layout);
       const validLayout =
-        layout === "BROLL_FULL" || layout === "PIP_BOTTOM_RIGHT" || layout === "TALKING_HEAD_FULL"
+        layout === "BROLL_FULL" || layout === "PIP_BOTTOM_RIGHT" || layout === "TITLE_CARD"
           ? (layout as MixedPlanSegment["layout"])
           : segment.layout;
       const assetId = sanitizeText(ai?.assetId || segment.assetId || "");
       const hasAsset = enrichedAssets.some((asset) => asset.id === assetId);
       return {
         ...segment,
-        layout: hasAsset ? validLayout : "TALKING_HEAD_FULL",
+        layout: hasAsset ? validLayout : "TITLE_CARD",
         assetId: hasAsset ? assetId : null,
         title: sanitizeText(ai?.title || segment.title || "") || null,
       };
@@ -289,7 +289,6 @@ export function buildMixedRenderSpec(params: {
   aspectRatio: string;
   fps: number;
   audioUrl: string;
-  talkingHeadVideoUrl: string;
   segments: MixedPlanSegment[];
   assets: MixedAssetInput[];
 }) {
@@ -307,7 +306,6 @@ export function buildMixedRenderSpec(params: {
       totalDurationSec,
     },
     audioUrl: params.audioUrl,
-    talkingHeadVideoUrl: params.talkingHeadVideoUrl,
     segments: params.segments.map((segment) => {
       const asset = params.assets.find((item) => item.id === segment.assetId);
       return {

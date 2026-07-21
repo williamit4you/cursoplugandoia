@@ -22,10 +22,8 @@ type MixedCreatorVideoAsset = {
 type MixedCreatorVideo = {
   id: string;
   narrationText: string;
-  creatorImageUrl: string;
   voiceRefUrl: string | null;
   audioUrl: string | null;
-  talkingHeadVideoUrl: string | null;
   finalVideoUrl: string | null;
   captionsUrl: string | null;
   status: string;
@@ -44,7 +42,6 @@ type MixedCreatorVideo = {
 
 type CreatorConfig = {
   defaults: {
-    creatorImageUrl: string | null;
     voiceRefUrl: string | null;
   };
 };
@@ -63,7 +60,6 @@ function statusLabel(status: string) {
   if (status === "DRAFT") return "Pendente";
   if (status === "PLANNING_VISUALS") return "Planejando visuais";
   if (status === "GENERATING_AUDIO") return "Gerando audio";
-  if (status === "GENERATING_TALKING_HEAD") return "Gerando rosto falante";
   if (status === "COMPOSING_VIDEO") return "Compondo video final";
   if (status === "READY") return "Video pronto";
   if (status === "FAILED") return "Falhou";
@@ -81,7 +77,6 @@ function buildSteps(current: MixedCreatorVideo | null) {
   const failed = current?.status === "FAILED";
   const hasPlan = Boolean(current?.assetPlanJson && current.assetPlanJson !== "{}");
   const hasAudio = Boolean(current?.audioUrl);
-  const hasTalkingHead = Boolean(current?.talkingHeadVideoUrl);
   const isReady = current?.status === "READY";
 
   const steps = [
@@ -94,26 +89,20 @@ function buildSteps(current: MixedCreatorVideo | null) {
     {
       id: "plan",
       title: "Planejar visuais com IA",
-      status: failed && !hasPlan ? "FAILED" : current?.status === "PLANNING_VISUALS" ? "PROCESSING" : hasPlan || hasAudio || hasTalkingHead || isReady ? "COMPLETED" : "PENDING",
+      status: failed && !hasPlan ? "FAILED" : current?.status === "PLANNING_VISUALS" ? "PROCESSING" : hasPlan || hasAudio || isReady ? "COMPLETED" : "PENDING",
       eta: "30s a 2m",
     },
     {
       id: "audio",
       title: "Gerar audio",
-      status: failed && !hasAudio ? "FAILED" : current?.status === "GENERATING_AUDIO" ? "PROCESSING" : hasAudio || hasTalkingHead || isReady ? "COMPLETED" : "PENDING",
+      status: failed && !hasAudio ? "FAILED" : current?.status === "GENERATING_AUDIO" ? "PROCESSING" : hasAudio || isReady ? "COMPLETED" : "PENDING",
       eta: "2m a 10m",
-    },
-    {
-      id: "talking",
-      title: "Gerar rosto falando",
-      status: failed && hasAudio && !hasTalkingHead ? "FAILED" : current?.status === "GENERATING_TALKING_HEAD" ? "PROCESSING" : hasTalkingHead || isReady ? "COMPLETED" : "PENDING",
-      eta: "5m a 15m",
     },
     {
       id: "compose",
       title: "Compor video final",
-      status: failed && hasTalkingHead && !isReady ? "FAILED" : current?.status === "COMPOSING_VIDEO" ? "PROCESSING" : isReady ? "COMPLETED" : "PENDING",
-      eta: "2m a 8m",
+      status: failed && hasAudio && !isReady ? "FAILED" : current?.status === "COMPOSING_VIDEO" ? "PROCESSING" : isReady ? "COMPLETED" : "PENDING",
+      eta: "2m a 12m",
     },
   ] as Array<{ id: string; title: string; status: StepStatus; eta: string }>;
 
@@ -129,9 +118,9 @@ export function MixedCreatorVideoTab() {
   const [recent, setRecent] = useState<MixedCreatorVideo[]>([]);
   const [progressNotes, setProgressNotes] = useState<string[]>([]);
   const [narrationText, setNarrationText] = useState("");
+  const [aspectRatio, setAspectRatio] = useState<"PORTRAIT_9_16" | "LANDSCAPE_16_9">("PORTRAIT_9_16");
   const [audioLanguage, setAudioLanguage] = useState<"Portuguese" | "English">("Portuguese");
   const [speechRate, setSpeechRate] = useState(1);
-  const [avatarImageFile, setAvatarImageFile] = useState<File | null>(null);
   const [voiceFile, setVoiceFile] = useState<File | null>(null);
   const [assetDrafts, setAssetDrafts] = useState<MixedAssetDraft[]>([]);
 
@@ -211,7 +200,6 @@ export function MixedCreatorVideoTab() {
     setProgressNotes([]);
 
     try {
-      const creatorImageUrl = avatarImageFile ? await uploadFileToMinio(avatarImageFile, "avatar") : null;
       const voiceRefUrl = voiceFile ? await uploadFileToMinio(voiceFile, "audio de referencia") : null;
       const uploadedAssets = [];
       for (const draft of assetDrafts) {
@@ -231,11 +219,10 @@ export function MixedCreatorVideoTab() {
         body: JSON.stringify({
           mode: "mixed",
           narrationText,
-          creatorImageUrl,
           voiceRefUrl,
           audioLanguage,
           speechRate,
-          aspectRatio: "PORTRAIT_9_16",
+          aspectRatio,
           assets: uploadedAssets,
         }),
       });
@@ -248,7 +235,6 @@ export function MixedCreatorVideoTab() {
 
       item = (await runAction(item.id, "plan", "A IA esta planejando quando cada imagem/video entra.")) || item;
       item = (await runAction(item.id, "generate_audio", "Gerando o audio da narracao.")) || item;
-      item = (await runAction(item.id, "generate_talking_head", "Gerando o rosto falante com a foto e a voz.")) || item;
       item = (await runAction(item.id, "compose", "Compondo o video final com apoio visual.")) || item;
 
       await refreshCurrent(item.id);
@@ -257,7 +243,6 @@ export function MixedCreatorVideoTab() {
       setMessage("Video com imagens pronto. Os links finais ja estao disponiveis.");
       setNarrationText("");
       setAssetDrafts([]);
-      setAvatarImageFile(null);
       setVoiceFile(null);
     } catch (error: any) {
       setMessageSeverity("error");
@@ -285,7 +270,7 @@ export function MixedCreatorVideoTab() {
       <Paper sx={{ p: 2 }}>
         <Typography sx={{ fontWeight: 900, mb: 1 }}>Texto para Video com Imagens</Typography>
         <Typography sx={{ fontSize: 13, opacity: 0.74, mb: 2 }}>
-          MVP focado somente em uploads do usuario. A IA decide em que momento as imagens e videos entram na timeline.
+          MVP focado em VSL narrada com imagens e videos do usuario. Aqui nao usamos avatar: a narracao conduz a VSL e os assets entram na timeline.
         </Typography>
 
         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
@@ -303,20 +288,24 @@ export function MixedCreatorVideoTab() {
 
           <Box sx={{ gridColumn: { xs: "span 12", lg: "span 5" }, display: "grid", gap: 2 }}>
             <Box sx={{ p: 1.5, borderRadius: 2, border: "1px solid rgba(15,23,42,0.08)" }}>
-              <Typography sx={{ fontWeight: 900 }}>Avatar opcional</Typography>
-              <Typography sx={{ fontSize: 13, opacity: 0.7, mt: 0.5 }}>
-                {avatarImageFile ? "Upload manual de imagem" : config?.defaults.creatorImageUrl ? "Se vazio, usa a imagem da Shopee" : "Nenhuma imagem default encontrada"}
-              </Typography>
-              <input style={{ marginTop: 12 }} type="file" accept="image/*" onChange={(event) => setAvatarImageFile(event.target.files?.[0] || null)} />
-            </Box>
-
-            <Box sx={{ p: 1.5, borderRadius: 2, border: "1px solid rgba(15,23,42,0.08)" }}>
               <Typography sx={{ fontWeight: 900 }}>Audio de referencia opcional</Typography>
               <Typography sx={{ fontSize: 13, opacity: 0.7, mt: 0.5 }}>
                 {voiceFile ? "Upload manual de audio" : config?.defaults.voiceRefUrl ? "Se vazio, usa o audio da Shopee" : "Nenhum audio default encontrado"}
               </Typography>
               <input style={{ marginTop: 12 }} type="file" accept="audio/*" onChange={(event) => setVoiceFile(event.target.files?.[0] || null)} />
             </Box>
+
+            <TextField
+              select
+              label="Formato"
+              value={aspectRatio}
+              onChange={(event) => setAspectRatio(event.target.value as "PORTRAIT_9_16" | "LANDSCAPE_16_9")}
+              fullWidth
+              helperText="Horizontal e o formato recomendado para VSL em landing page."
+            >
+              <MenuItem value="PORTRAIT_9_16">Vertical 9:16</MenuItem>
+              <MenuItem value="LANDSCAPE_16_9">Horizontal 16:9</MenuItem>
+            </TextField>
 
             <TextField select label="Idioma" value={audioLanguage} onChange={(event) => setAudioLanguage(event.target.value as "Portuguese" | "English")} fullWidth>
               <MenuItem value="Portuguese">Portugues</MenuItem>
@@ -335,7 +324,7 @@ export function MixedCreatorVideoTab() {
       <Paper sx={{ p: 2 }}>
         <Typography sx={{ fontWeight: 900, mb: 1 }}>Uploads de apoio</Typography>
         <Typography sx={{ fontSize: 13, opacity: 0.72, mb: 2 }}>
-          Envie imagens e videos que devem aparecer ao longo da fala. O nome do arquivo ajuda, mas a IA tambem tenta entender o conteudo.
+          Envie imagens e videos que devem aparecer ao longo da fala. O nome do arquivo ajuda, mas a IA tambem tenta entender o conteudo. Para VSL longa, prefira assets organizados por blocos de oferta, prova e CTA.
         </Typography>
         <input type="file" accept="image/*,video/*" multiple onChange={handleSupportFilesChange} />
         <Box sx={{ display: "grid", gap: 1.5, mt: 2 }}>
@@ -417,7 +406,7 @@ export function MixedCreatorVideoTab() {
         <Paper sx={{ p: 2 }}>
           <Typography sx={{ fontWeight: 900, mb: 1 }}>Resultado</Typography>
           {!current ? (
-            <Typography sx={{ opacity: 0.72 }}>O video final, o talking head e as legendas aparecerao aqui assim que a primeira execucao terminar.</Typography>
+            <Typography sx={{ opacity: 0.72 }}>O video final, o audio e as legendas aparecerao aqui assim que a primeira execucao terminar.</Typography>
           ) : (
             <Box sx={{ display: "grid", gap: 1.5 }}>
               <Box sx={{ p: 1.5, borderRadius: 2, border: "1px solid rgba(15,23,42,0.08)" }}>
@@ -425,11 +414,11 @@ export function MixedCreatorVideoTab() {
                 <Typography sx={{ mt: 0.8, fontSize: 13, opacity: 0.78 }}>ID: {current.id}</Typography>
                 <Typography sx={{ mt: 0.4, fontSize: 13, opacity: 0.78 }}>Status: {statusLabel(current.status)}</Typography>
                 <Typography sx={{ mt: 0.4, fontSize: 13, opacity: 0.78 }}>Assets: {current.assets?.length || 0}</Typography>
+                <Typography sx={{ mt: 0.4, fontSize: 13, opacity: 0.78 }}>Formato: {current.aspectRatio === "LANDSCAPE_16_9" ? "Horizontal 16:9" : "Vertical 9:16"}</Typography>
                 {current.errorMessage ? <Typography sx={{ mt: 1, color: "#b91c1c" }}>{current.errorMessage}</Typography> : null}
               </Box>
 
               {current.audioUrl ? <a href={current.audioUrl} target="_blank" rel="noreferrer" style={{ padding: "12px", borderRadius: 10, background: "#fff" }}>Abrir audio</a> : null}
-              {current.talkingHeadVideoUrl ? <a href={current.talkingHeadVideoUrl} target="_blank" rel="noreferrer" style={{ padding: "12px", borderRadius: 10, background: "#fff" }}>Abrir talking head</a> : null}
               {current.finalVideoUrl ? <a href={current.finalVideoUrl} target="_blank" rel="noreferrer" style={{ padding: "12px", borderRadius: 10, background: "#fff" }}>Abrir video final</a> : null}
               {current.captionsUrl ? <a href={current.captionsUrl} target="_blank" rel="noreferrer" style={{ padding: "12px", borderRadius: 10, background: "#fff" }}>Abrir legendas</a> : null}
             </Box>

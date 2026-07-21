@@ -54,30 +54,50 @@ function AssetLayer({ url, title, durationInFrames }: { url?: string | null; tit
 export function MixedTalkingHeadVideo(props: { videoSpec: any }) {
   const { fps } = useVideoConfig();
   const segments = Array.isArray(props.videoSpec?.segments) ? props.videoSpec.segments : [];
-  const talkingHeadVideoUrl = props.videoSpec?.talkingHeadVideoUrl || null;
   const audioUrl = props.videoSpec?.audioUrl || null;
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#050816" }}>
       {audioUrl ? <Audio src={audioUrl} /> : null}
 
-      {talkingHeadVideoUrl ? (
-        <Video
-          src={talkingHeadVideoUrl}
-          muted
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-        />
-      ) : null}
-
       {segments.map((segment: any) => {
         const start = Math.max(0, Math.round(Number(segment.startSec || 0) * fps));
         const end = Math.max(start + 1, Math.round(Number(segment.endSec || 0) * fps));
         const durationInFrames = end - start;
-        const layout = String(segment.layout || "TALKING_HEAD_FULL");
+        const layout = String(segment.layout || "TITLE_CARD");
         const assetUrl = segment.assetUrl || null;
         const title = segment.title || null;
 
-        if (!assetUrl || layout === "TALKING_HEAD_FULL") return null;
+        if (!assetUrl && layout !== "TITLE_CARD") return null;
+
+        if (layout === "TITLE_CARD") {
+          return (
+            <Sequence key={segment.id} from={start} durationInFrames={durationInFrames}>
+              <AbsoluteFill
+                style={{
+                  background:
+                    "radial-gradient(circle at 18% 16%, rgba(34,211,238,0.22) 0, transparent 26%), linear-gradient(145deg, #08111f 0%, #0f172a 55%, #020617 100%)",
+                  justifyContent: "center",
+                  padding: "0 8%",
+                }}
+              >
+                <div
+                  style={{
+                    color: "#fff",
+                    fontSize: 74,
+                    fontWeight: 850,
+                    lineHeight: 1.04,
+                    textAlign: "center",
+                    textShadow: "0 10px 40px rgba(0,0,0,0.55)",
+                    fontFamily: "Arial Black, Arial, sans-serif",
+                  }}
+                >
+                  {title || segment.spokenText}
+                </div>
+              </AbsoluteFill>
+            </Sequence>
+          );
+        }
 
         if (layout === "BROLL_FULL") {
           return (
@@ -104,6 +124,44 @@ export function MixedTalkingHeadVideo(props: { videoSpec: any }) {
               }}
             >
               <AssetLayer url={assetUrl} title={null} durationInFrames={durationInFrames} />
+            </div>
+            <div
+              style={{
+                position: "absolute",
+                right: "5%",
+                bottom: "8%",
+                width: "28%",
+                padding: "22px 20px",
+                borderRadius: 24,
+                background: "rgba(2,6,23,0.82)",
+                color: "#fff",
+                boxShadow: "0 18px 48px rgba(0,0,0,0.45)",
+                border: "1px solid rgba(255,255,255,0.16)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 18,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  opacity: 0.72,
+                  fontWeight: 700,
+                  marginBottom: 10,
+                  fontFamily: "Arial, sans-serif",
+                }}
+              >
+                Narracao
+              </div>
+              <div
+                style={{
+                  fontSize: 34,
+                  fontWeight: 800,
+                  lineHeight: 1.08,
+                  fontFamily: "Arial Black, Arial, sans-serif",
+                }}
+              >
+                {segment.spokenText}
+              </div>
             </div>
             {title ? (
               <div

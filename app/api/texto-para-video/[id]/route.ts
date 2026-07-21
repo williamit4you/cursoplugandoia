@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { generateModalAudio, generateModalVideo } from "@/lib/shopee-pipeline/modalClient";
+import { generateModalAudio } from "@/lib/shopee-pipeline/modalClient";
 import { resolveCreatorVideoDefaults } from "@/lib/creator-video/defaults";
 import { buildMixedRenderSpec, planMixedVideo } from "@/lib/creator-video/mixed";
 import { generateApproxVtt } from "@/lib/captions/vtt";
@@ -26,7 +26,6 @@ function externalRenderServiceUrl() {
 async function renderMixedVideo(payload: {
   aspectRatio: string;
   audioUrl: string;
-  talkingHeadVideoUrl: string;
   renderSpec: any;
 }) {
   const baseUrl = externalRenderServiceUrl();
@@ -41,7 +40,6 @@ async function renderMixedVideo(payload: {
         aspectRatio: payload.aspectRatio,
         fps: Number(payload.renderSpec?.meta?.fps || 30),
         audioUrl: payload.audioUrl,
-        talkingHeadVideoUrl: payload.talkingHeadVideoUrl,
       },
       videoSpec: payload.renderSpec,
     }),
@@ -132,7 +130,7 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
     }
 
     if (action === "generate_audio") {
-      const defaults = await resolveCreatorVideoDefaults(item.creatorImageUrl);
+      const defaults = await resolveCreatorVideoDefaults();
       const voiceRefUrl = normalize(item.voiceRefUrl || defaults.voiceRefUrl || "");
       if (!voiceRefUrl) return NextResponse.json({ error: "Config faltando: userVoiceRefUrl" }, { status: 400 });
 
@@ -161,34 +159,8 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
       return NextResponse.json({ ok: true, item: updated });
     }
 
-    if (action === "generate_talking_head") {
-      if (!item.audioUrl) return NextResponse.json({ error: "Gere o audio primeiro." }, { status: 400 });
-
-      await prisma.mixedCreatorVideo.update({
-        where: { id },
-        data: { status: "GENERATING_TALKING_HEAD", errorMessage: null, updatedAt: now() },
-      });
-
-      const generated = await generateModalVideo({
-        imageUrl: item.creatorImageUrl,
-        audioUrl: item.audioUrl,
-        seed: Math.floor(Math.random() * 1_000_000_000),
-        width: item.aspectRatio === "LANDSCAPE_16_9" ? 768 : 432,
-        height: item.aspectRatio === "LANDSCAPE_16_9" ? 432 : 768,
-        fps: 25,
-      });
-
-      const updated = await prisma.mixedCreatorVideo.update({
-        where: { id },
-        data: { talkingHeadVideoUrl: generated.video_url, errorMessage: null, updatedAt: now() },
-      });
-
-      return NextResponse.json({ ok: true, item: updated });
-    }
-
     if (action === "compose") {
       if (!item.audioUrl) return NextResponse.json({ error: "Audio ainda nao gerado." }, { status: 400 });
-      if (!item.talkingHeadVideoUrl) return NextResponse.json({ error: "Talking head ainda nao gerado." }, { status: 400 });
 
       const plannedJson = JSON.parse(item.assetPlanJson || "{}");
       const renderSpec = buildMixedRenderSpec({
@@ -196,7 +168,6 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
         aspectRatio: item.aspectRatio,
         fps: 30,
         audioUrl: item.audioUrl,
-        talkingHeadVideoUrl: item.talkingHeadVideoUrl,
         segments: Array.isArray(plannedJson?.segments) ? plannedJson.segments : [],
         assets: item.assets.map((asset) => ({
           id: asset.id,
@@ -221,7 +192,6 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
       const result = await renderMixedVideo({
         aspectRatio: item.aspectRatio,
         audioUrl: item.audioUrl,
-        talkingHeadVideoUrl: item.talkingHeadVideoUrl,
         renderSpec,
       });
 

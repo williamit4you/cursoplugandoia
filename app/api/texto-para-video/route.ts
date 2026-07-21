@@ -5,7 +5,6 @@ import {
   creatorVideoObservedComfyParams,
   creatorVideoFormatPresetOptions,
   defaultCreatorVideoAudioSettings,
-  defaultCreatorVideoRenderSettings,
 } from "@/lib/creator-video/manualConfig";
 import { generateModalAudio, generateModalVideo } from "@/lib/shopee-pipeline/modalClient";
 import { generateApproxVtt } from "@/lib/captions/vtt";
@@ -89,7 +88,6 @@ export async function POST(req: NextRequest) {
 
   if (mode === "mixed") {
     const narrationText = normalize(body?.narrationText);
-    const requestedImageUrl = normalize(body?.creatorImageUrl);
     const requestedVoiceRefUrl = normalize(body?.voiceRefUrl);
     const assets = Array.isArray(body?.assets) ? body.assets : [];
     const aspectRatio = normalize(body?.aspectRatio || "PORTRAIT_9_16") === "LANDSCAPE_16_9" ? "LANDSCAPE_16_9" : "PORTRAIT_9_16";
@@ -99,15 +97,7 @@ export async function POST(req: NextRequest) {
     if (!narrationText) return NextResponse.json({ error: "narrationText is required" }, { status: 400 });
     if (assets.length === 0) return NextResponse.json({ error: "Envie ao menos uma imagem ou video de apoio." }, { status: 400 });
 
-    const defaults = await resolveCreatorVideoDefaults(requestedImageUrl || null);
-    if (!defaults.creatorImageUrl) {
-      return NextResponse.json(
-        { error: "Configure uma imagem padrao em userBaseImageUrl ou adicione uma imagem ativa em creator-assets." },
-        { status: 400 }
-      );
-    }
-
-    const creatorImageUrl = String(defaults.creatorImageUrl || "");
+    const defaults = await resolveCreatorVideoDefaults();
     const voiceRefUrl = requestedVoiceRefUrl || String(defaults.voiceRefUrl || "");
     if (!voiceRefUrl) {
       return NextResponse.json({ error: "Config faltando: userVoiceRefUrl" }, { status: 400 });
@@ -116,7 +106,7 @@ export async function POST(req: NextRequest) {
     const created = await prisma.mixedCreatorVideo.create({
       data: {
         narrationText,
-        creatorImageUrl,
+        creatorImageUrl: "",
         voiceRefUrl,
         aspectRatio,
         audioLanguage,
