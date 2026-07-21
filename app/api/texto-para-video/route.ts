@@ -5,10 +5,12 @@ import {
   creatorVideoObservedComfyParams,
   creatorVideoFormatPresetOptions,
   defaultCreatorVideoAudioSettings,
+  defaultCreatorVideoRenderSettings,
 } from "@/lib/creator-video/manualConfig";
 import { generateModalAudio, generateModalVideo } from "@/lib/shopee-pipeline/modalClient";
 import { generateApproxVtt } from "@/lib/captions/vtt";
 import { uploadBufferToMinio } from "@/lib/shopee-pipeline/minioUpload";
+import { searchFreeMedia } from "@/lib/free-media";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,6 +48,11 @@ function normalizeMixedAssetKind(value: unknown, url: string) {
   const raw = normalize(value).toUpperCase();
   if (raw === "VIDEO" || /\.(mp4|webm|mov)(\?|$)/i.test(url)) return "VIDEO";
   return "IMAGE";
+}
+
+function buildFreeMediaSearchQuery(narrationText: string) {
+  const firstSentence = narrationText.split(/[.!?\n]/).map((item) => item.trim()).find(Boolean) || narrationText;
+  return firstSentence.slice(0, 120).trim();
 }
 
 export async function GET(req: NextRequest) {
@@ -90,17 +97,74 @@ export async function POST(req: NextRequest) {
     const narrationText = normalize(body?.narrationText);
     const requestedVoiceRefUrl = normalize(body?.voiceRefUrl);
     const assets = Array.isArray(body?.assets) ? body.assets : [];
+    const useExternalMedia = body?.useExternalMedia === false ? false : true;
     const aspectRatio = normalize(body?.aspectRatio || "PORTRAIT_9_16") === "LANDSCAPE_16_9" ? "LANDSCAPE_16_9" : "PORTRAIT_9_16";
     const audioLanguage = normalizeLanguage(body?.audioLanguage);
     const speechRate = Math.min(2, Math.max(0.5, toFloat(body?.speechRate, 1)));
 
     if (!narrationText) return NextResponse.json({ error: "narrationText is required" }, { status: 400 });
-    if (assets.length === 0) return NextResponse.json({ error: "Envie ao menos uma imagem ou video de apoio." }, { status: 400 });
 
     const defaults = await resolveCreatorVideoDefaults();
     const voiceRefUrl = requestedVoiceRefUrl || String(defaults.voiceRefUrl || "");
     if (!voiceRefUrl) {
       return NextResponse.json({ error: "Config faltando: userVoiceRefUrl" }, { status: 400 });
+    }
+
+    let normalizedAssets = assets
+      .map((asset: any, index: number) => {
+        const url = normalize(asset?.url);
+        if (!url) return null;
+        return {
+          url,
+          kind: normalizeMixedAssetKind(asset?.kind, url),
+          source: "UPLOAD" as const,
+          originalName: normalize(asset?.originalName) || null,
+          userLabel: normalize(asset?.userLabel) || null,
+          sortOrder: index,
+        };
+      })
+      .filter(Boolean) as Array<{
+        url: string;
+        kind: "IMAGE" | "VIDEO";
+        source: string;
+        originalName: string | null;
+        userLabel: string | null;
+        sortOrder: number;
+      }>;
+
+    if (normalizedAssets.length === 0 && useExternalMedia) {
+      const query = buildFreeMediaSearchQuery(narrationText);
+      const freeMediaAssets = await searchFreeMedia(
+        query || "business marketing",
+        {
+          limit: 8,
+          orientation: aspectRatio === "LANDSCAPE_16_9" ? "landscape" : "portrait",
+          includeImages: true,
+          includeVideos: true,
+        }
+      );
+
+      normalizedAssets = freeMediaAssets.map((asset, index) => {
+        const providerLabel = asset.provider.toLowerCase();
+        const extension = asset.kind === "VIDEO" ? "mp4" : "jpg";
+        const automaticLabel = `${asset.kind === "VIDEO" ? "Video" : "Imagem"} automatica ${index + 1} (${providerLabel})`;
+
+        return {
+          url: asset.url,
+          kind: asset.kind,
+          source: asset.provider,
+          originalName: `${providerLabel}-${asset.kind.toLowerCase()}-${asset.id}.${extension}`,
+          userLabel: automaticLabel,
+          sortOrder: index,
+        };
+      });
+    }
+
+    if (normalizedAssets.length === 0) {
+      return NextResponse.json(
+        { error: useExternalMedia ? "Nenhum upload enviado e nao foi possivel buscar midias gratuitas no momento." : "Envie ao menos uma imagem ou video de apoio." },
+        { status: 400 }
+      );
     }
 
     const created = await prisma.mixedCreatorVideo.create({
@@ -114,15 +178,14 @@ export async function POST(req: NextRequest) {
         status: "DRAFT",
         startedAt: now(),
         assets: {
-          create: assets.map((asset: any, index: number) => {
-            const url = normalize(asset?.url);
+          create: normalizedAssets.map((asset) => {
             return {
-              url,
-              kind: normalizeMixedAssetKind(asset?.kind, url),
-              source: "UPLOAD",
-              originalName: normalize(asset?.originalName) || null,
-              userLabel: normalize(asset?.userLabel) || null,
-              sortOrder: index,
+              url: asset.url,
+              kind: asset.kind,
+              source: asset.source,
+              originalName: asset.originalName,
+              userLabel: asset.userLabel,
+              sortOrder: asset.sortOrder,
             };
           }),
         },

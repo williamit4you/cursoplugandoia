@@ -82,7 +82,7 @@ function buildSteps(current: MixedCreatorVideo | null) {
   const steps = [
     {
       id: "draft",
-      title: "Preparar uploads",
+      title: "Preparar midias",
       status: current ? "COMPLETED" : "PENDING",
       eta: "alguns segundos",
     },
@@ -123,8 +123,9 @@ export function MixedCreatorVideoTab() {
   const [speechRate, setSpeechRate] = useState(1);
   const [voiceFile, setVoiceFile] = useState<File | null>(null);
   const [assetDrafts, setAssetDrafts] = useState<MixedAssetDraft[]>([]);
+  const [useExternalMediaFallback, setUseExternalMediaFallback] = useState(true);
 
-  const canCreate = narrationText.trim().length > 0 && assetDrafts.length > 0 && !loading;
+  const canCreate = narrationText.trim().length > 0 && !loading;
 
   const addProgressNote = (note: string) => {
     const stamp = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -224,6 +225,7 @@ export function MixedCreatorVideoTab() {
           speechRate,
           aspectRatio,
           assets: uploadedAssets,
+          useExternalMedia: useExternalMediaFallback,
         }),
       });
       const createData = await createRes.json().catch(() => ({}));
@@ -270,7 +272,7 @@ export function MixedCreatorVideoTab() {
       <Paper sx={{ p: 2 }}>
         <Typography sx={{ fontWeight: 900, mb: 1 }}>Texto para Video com Imagens</Typography>
         <Typography sx={{ fontSize: 13, opacity: 0.74, mb: 2 }}>
-          MVP focado em VSL narrada com imagens e videos do usuario. Aqui nao usamos avatar: a narracao conduz a VSL e os assets entram na timeline.
+          MVP focado em VSL narrada com imagens e videos. Aqui nao usamos avatar: a narracao conduz a VSL e os assets entram na timeline.
         </Typography>
 
         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
@@ -324,8 +326,16 @@ export function MixedCreatorVideoTab() {
       <Paper sx={{ p: 2 }}>
         <Typography sx={{ fontWeight: 900, mb: 1 }}>Uploads de apoio</Typography>
         <Typography sx={{ fontSize: 13, opacity: 0.72, mb: 2 }}>
-          Envie imagens e videos que devem aparecer ao longo da fala. O nome do arquivo ajuda, mas a IA tambem tenta entender o conteudo. Para VSL longa, prefira assets organizados por blocos de oferta, prova e CTA.
+          Envie imagens e videos que devem aparecer ao longo da fala. Se voce nao enviar nada, buscamos automaticamente imagens e videos gratuitos para montar a timeline. Para VSL longa, prefira assets organizados por blocos de oferta, prova e CTA.
         </Typography>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, fontSize: 13 }}>
+          <input
+            type="checkbox"
+            checked={useExternalMediaFallback}
+            onChange={(event) => setUseExternalMediaFallback(event.target.checked)}
+          />
+          Usar API de imagens e videos gratuitos quando nao houver upload
+        </label>
         <input type="file" accept="image/*,video/*" multiple onChange={handleSupportFilesChange} />
         <Box sx={{ display: "grid", gap: 1.5, mt: 2 }}>
           {assetDrafts.map((draft, index) => (
@@ -348,7 +358,11 @@ export function MixedCreatorVideoTab() {
               />
             </Box>
           ))}
-          {assetDrafts.length === 0 ? <Typography sx={{ opacity: 0.7 }}>Nenhum asset selecionado ainda.</Typography> : null}
+          {assetDrafts.length === 0 ? (
+            <Typography sx={{ opacity: 0.7 }}>
+              Nenhum asset selecionado ainda. {useExternalMediaFallback ? "A busca automatica sera usada." : "Envie arquivos para montar o video."}
+            </Typography>
+          ) : null}
         </Box>
 
         <Box sx={{ mt: 2 }}>
