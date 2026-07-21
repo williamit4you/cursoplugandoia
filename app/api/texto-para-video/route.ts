@@ -10,7 +10,7 @@ import {
 import { generateModalAudio, generateModalVideo } from "@/lib/shopee-pipeline/modalClient";
 import { generateApproxVtt } from "@/lib/captions/vtt";
 import { uploadBufferToMinio } from "@/lib/shopee-pipeline/minioUpload";
-import { searchFreeMedia } from "@/lib/free-media";
+import { searchPexelsMedia } from "@/lib/pexels";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,7 +50,7 @@ function normalizeMixedAssetKind(value: unknown, url: string) {
   return "IMAGE";
 }
 
-function buildFreeMediaSearchQuery(narrationText: string) {
+function buildPexelsSearchQuery(narrationText: string) {
   const firstSentence = narrationText.split(/[.!?\n]/).map((item) => item.trim()).find(Boolean) || narrationText;
   return firstSentence.slice(0, 120).trim();
 }
@@ -126,37 +126,53 @@ export async function POST(req: NextRequest) {
       .filter(Boolean) as Array<{
         url: string;
         kind: "IMAGE" | "VIDEO";
-        source: string;
+        source: "UPLOAD" | "PEXELS";
         originalName: string | null;
         userLabel: string | null;
         sortOrder: number;
       }>;
 
     if (normalizedAssets.length === 0 && useExternalMedia) {
-      const query = buildFreeMediaSearchQuery(narrationText);
-      const freeMediaAssets = await searchFreeMedia(
+      const query = buildPexelsSearchQuery(narrationText);
+      const pexelsAssets = await searchPexelsMedia(
         query || "business marketing",
-        {
-          limit: 8,
-          orientation: aspectRatio === "LANDSCAPE_16_9" ? "landscape" : "portrait",
-          includeImages: true,
-          includeVideos: true,
-        }
+        6,
+        aspectRatio === "LANDSCAPE_16_9" ? "landscape" : "portrait"
       );
 
-      normalizedAssets = freeMediaAssets.map((asset, index) => {
-        const providerLabel = asset.provider.toLowerCase();
-        const extension = asset.kind === "VIDEO" ? "mp4" : "jpg";
-        const automaticLabel = `${asset.kind === "VIDEO" ? "Video" : "Imagem"} automatica ${index + 1} (${providerLabel})`;
+      normalizedAssets = pexelsAssets.flatMap((asset, index) => {
+        const items: Array<{
+          url: string;
+          kind: "IMAGE" | "VIDEO";
+          source: "UPLOAD" | "PEXELS";
+          originalName: string | null;
+          userLabel: string | null;
+          sortOrder: number;
+        }> = [];
 
-        return {
-          url: asset.url,
-          kind: asset.kind,
-          source: asset.provider,
-          originalName: `${providerLabel}-${asset.kind.toLowerCase()}-${asset.id}.${extension}`,
-          userLabel: automaticLabel,
-          sortOrder: index,
-        };
+        if (asset.url) {
+          items.push({
+            url: asset.url,
+            kind: "VIDEO",
+            source: "PEXELS",
+            originalName: `pexels-video-${asset.id}.mp4`,
+            userLabel: `Video automatico ${index + 1}`,
+            sortOrder: index * 2,
+          });
+        }
+
+        if (asset.thumbnail) {
+          items.push({
+            url: asset.thumbnail,
+            kind: "IMAGE",
+            source: "PEXELS",
+            originalName: `pexels-thumb-${asset.id}.jpg`,
+            userLabel: `Imagem automatica ${index + 1}`,
+            sortOrder: index * 2 + 1,
+          });
+        }
+
+        return items;
       });
     }
 

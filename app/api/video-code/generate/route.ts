@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { searchFreeMedia } from "@/lib/free-media";
+import { searchPexelsMedia, type PexelsAsset } from "@/lib/pexels";
 import { logCodeVideoPipelineEvent, upsertCodeVideoPipelineStep } from "@/lib/video-code/logger";
 import { isNewsVideoProject, parseProjectMetadata } from "@/lib/newsVideoProject";
 
@@ -514,21 +514,15 @@ export async function POST(req: NextRequest) {
       const query = isProductAd
         ? metadata.productName || project.title || project.ideaPrompt
         : project.ideaPrompt;
-      const assets = await searchFreeMedia(query, {
-        limit: 8,
-        orientation: project.aspectRatio === "LANDSCAPE_16_9" ? "landscape" : "portrait",
-        includeImages: true,
-        includeVideos: true,
-      });
+      const assets = await searchPexelsMedia(
+        query,
+        6,
+        project.aspectRatio === "LANDSCAPE_16_9" ? "landscape" : "portrait"
+      );
       if (assets.length > 0) {
         pexelsAssets =
           "\nRECURSOS EXTERNOS DISPONÍVEIS (usar em props.url quando útil):\n" +
-          assets
-            .map(
-              (asset) =>
-                `- ${asset.provider} | ${asset.kind} | ${asset.url}${asset.thumbnail ? ` (Preview: ${asset.thumbnail})` : ""}`
-            )
-            .join("\n");
+          assets.map((a: PexelsAsset) => `- ${a.url} (Thumbnail: ${a.thumbnail})`).join("\n");
       }
     }
 
