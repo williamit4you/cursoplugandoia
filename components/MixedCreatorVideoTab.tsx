@@ -151,6 +151,23 @@ export function MixedCreatorVideoTab() {
     loadInitial();
   }, []);
 
+  useEffect(() => {
+    if (!current?.id) return;
+    if (
+      current.status !== "PLANNING_VISUALS" &&
+      current.status !== "GENERATING_AUDIO" &&
+      current.status !== "COMPOSING_VIDEO"
+    ) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      refreshCurrent(current.id).catch(() => null);
+    }, 3000);
+
+    return () => window.clearInterval(timer);
+  }, [current?.id, current?.status]);
+
   const refreshCurrent = async (id: string) => {
     const res = await fetch(`/api/texto-para-video/${id}?mode=mixed`, { cache: "no-store" });
     const data = await res.json().catch(() => ({}));
@@ -250,6 +267,33 @@ export function MixedCreatorVideoTab() {
       setMessageSeverity("error");
       setMessage(error?.message || "Falha ao gerar o video com imagens.");
       addProgressNote(`Execucao interrompida: ${error?.message || "erro desconhecido"}`);
+      if (current?.id) await refreshCurrent(current.id).catch(() => null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reprocessCurrent = async () => {
+    if (!current || loading) return;
+
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      let item = current;
+      addProgressNote("Reprocessando o item atual do zero.");
+      item = (await runAction(item.id, "plan", "Replanejando os visuais com IA.")) || item;
+      item = (await runAction(item.id, "generate_audio", "Regenerando o audio da narracao.")) || item;
+      item = (await runAction(item.id, "compose", "Renderizando novamente o video final.")) || item;
+
+      await refreshCurrent(item.id);
+      await loadInitial();
+      setMessageSeverity("success");
+      setMessage("Item reprocessado com sucesso.");
+    } catch (error: any) {
+      setMessageSeverity("error");
+      setMessage(error?.message || "Falha ao reprocessar o video com imagens.");
+      addProgressNote(`Reprocessamento interrompido: ${error?.message || "erro desconhecido"}`);
       if (current?.id) await refreshCurrent(current.id).catch(() => null);
     } finally {
       setLoading(false);
@@ -435,6 +479,13 @@ export function MixedCreatorVideoTab() {
               {current.audioUrl ? <a href={current.audioUrl} target="_blank" rel="noreferrer" style={{ padding: "12px", borderRadius: 10, background: "#fff" }}>Abrir audio</a> : null}
               {current.finalVideoUrl ? <a href={current.finalVideoUrl} target="_blank" rel="noreferrer" style={{ padding: "12px", borderRadius: 10, background: "#fff" }}>Abrir video final</a> : null}
               {current.captionsUrl ? <a href={current.captionsUrl} target="_blank" rel="noreferrer" style={{ padding: "12px", borderRadius: 10, background: "#fff" }}>Abrir legendas</a> : null}
+              <button
+                onClick={reprocessCurrent}
+                disabled={loading}
+                style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 900 }}
+              >
+                {loading ? "Processando..." : "Reprocessar"}
+              </button>
             </Box>
           )}
         </Paper>
