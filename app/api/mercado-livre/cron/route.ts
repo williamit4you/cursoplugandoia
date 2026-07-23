@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { finishOperationRun, startOperationRun } from "@/lib/operationObservability";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,6 +19,7 @@ function publicBaseUrl(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const operationRun = await startOperationRun("MERCADO_LIVRE", { trigger: "cron" });
   try {
     const secret = req.nextUrl.searchParams.get("secret");
     const cronSecret = process.env.CRON_SECRET;
@@ -54,8 +56,16 @@ export async function GET(req: NextRequest) {
     });
     const result = await response.json().catch(() => ({}));
 
+    await finishOperationRun(operationRun?.runId, {
+      status: response.ok ? "SUCCESS" : "FAILED",
+      itemsProcessed: response.ok ? 1 : 0,
+      itemsFailed: response.ok ? 0 : 1,
+      metadata: result,
+      errorMessage: response.ok ? null : String(result?.error || `HTTP ${response.status}`),
+    });
     return NextResponse.json({ trigger: "cron", ok: response.ok, ...result }, { status: response.status });
   } catch (error: any) {
+    await finishOperationRun(operationRun?.runId, { status: "FAILED", itemsFailed: 1, errorMessage: error?.message || "Falha no cron Mercado Livre" });
     console.error("[api/mercado-livre/cron GET]", error);
     return NextResponse.json(
       { error: error?.message || "Falha no cron Mercado Livre" },

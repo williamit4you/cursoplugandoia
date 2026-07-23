@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { recordContentMetric } from "@/lib/operationsControl";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -14,6 +15,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       where: { id: params.id },
       data: { views: { increment: 1 } },
     });
+    recordContentMetric({ eventType: "article_view", postId: post.id, referrer: req.headers.get("referer") }).catch(() => {});
     return NextResponse.json({ success: true, views: post.views });
   } catch (error) {
     console.error(error);

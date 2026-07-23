@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
+import { auditManualAction } from "@/lib/operationsControl";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -63,6 +64,7 @@ async function requeueExpired(req: NextRequest) {
     });
   });
   await prisma.$transaction(updates);
+  await auditManualAction({ action: "REQUEUE_EXPIRED_SOCIAL", entityType: "SocialPost", summary: `${updates.length} publicacoes antigas reagendadas`, metadata: { platform, spacingHours: REQUEUE_SPACING_HOURS, ids: candidates.map((item) => item.id) } });
   return { count: updates.length, spacingHours: REQUEUE_SPACING_HOURS };
 }
 
@@ -129,6 +131,7 @@ export async function PATCH(
       where: { id },
       data: updateData,
     });
+    await auditManualAction({ action: "UPDATE_SOCIAL_POST", entityType: "SocialPost", entityId: id, summary: "Publicacao social alterada manualmente", metadata: body });
 
     return NextResponse.json(updated);
   } catch (error: any) {
@@ -146,6 +149,7 @@ export async function DELETE(
     await requireAdminOrCronSecret(req);
     const { id } = params;
     await prisma.socialPost.delete({ where: { id } });
+    await auditManualAction({ action: "DELETE_SOCIAL_POST", entityType: "SocialPost", entityId: id, summary: "Publicacao social removida manualmente" });
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("[api/social/posts/[id] DELETE]", error);

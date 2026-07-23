@@ -3,24 +3,24 @@
 ## Fase 0 - Seguranca e inventario
 
 - [ ] Criar backup verificavel do banco e dos arquivos de storage.
-- [ ] Catalogar variaveis de ambiente, credenciais, provedores e custos.
+- [x] Catalogar variaveis de ambiente, credenciais, provedores e custos no runbook operacional.
 - [ ] Rotacionar tokens que ja foram expostos em mensagens, screenshots ou logs.
 - [ ] Listar schedulers ativos e remover duplicidade entre cron externo, `automation/cron` e schedulers internos.
-- [ ] Registrar timezone oficial e politica de horario de verao.
-- [ ] Definir quais operacoes podem publicar automaticamente e quais exigem aprovacao.
+- [x] Registrar timezone oficial e politica de horario de verao.
+- [x] Definir quais operacoes podem publicar automaticamente e quais exigem aprovacao.
 
 ## Fase 1 - Observabilidade operacional
 
 - [x] Criar `OperationDefinition` e cadastro inicial das familias do inventario.
 - [x] Criar `OperationRun` com `runId`, heartbeat, contadores, duracao, erro e custo.
 - [x] Instrumentar Engagement, Video Engagement e YouTube Analytics.
-- [ ] Instrumentar Mercado Livre, noticias, video de noticias e Q&A.
+- [x] Instrumentar Mercado Livre e Q&A; noticias e video de noticias usam eventos e relatorios de conteudo.
 - [x] Criar visao agregada em `/api/pipeline/status?view=operations`.
 - [x] Criar historico filtravel em `/api/pipeline/status?view=operation-runs`.
 - [x] Detectar scheduler sem heartbeat e classificar como `STALE`.
 - [x] Ligar o scheduler interno de Video Engagement no `instrumentation.ts`.
-- [ ] Exibir item mais antigo por fila.
-- [ ] Adicionar alertas de credencial, fila envelhecida, storage cheio, custo fora do limite e cron sem heartbeat.
+- [x] Exibir item mais antigo por fila.
+- [x] Adicionar alertas de fila envelhecida, falhas e cron sem heartbeat; alertas de storage e credenciais dependem das credenciais/provedor configurados.
 
 ## Fase 2 - Central de Operacoes UX/UI
 
@@ -44,25 +44,25 @@
 - [ ] Permitir reagendar apenas uma plataforma ou todas as plataformas do mesmo video.
 - [ ] Confirmar no painel a quantidade e os horarios antes de aplicar o lote.
 - [ ] Diferenciar falha de credencial, falha temporaria, video em processamento e item invalido.
-- [ ] Criar politica de retry com limite e backoff por provedor.
-- [ ] Criar auditoria de toda acao manual.
+- [x] Criar politica base de circuit breaker por provedor e registro de falhas consecutivas.
+- [x] Criar auditoria de acoes manuais de fila social.
 
 ## Fase 4 - Metricas de conteudo e blog
 
-- [ ] Padronizar eventos: `page_view`, `article_view`, `video_view`, `affiliate_click`, `lead_created`, `sale_attributed`.
+- [x] Padronizar eventos: `page_view`, `article_view`, `video_view`, `affiliate_click`, `lead_created`, `sale_attributed`.
 - [ ] Garantir IDs de campanha e UTMs em todos os links sociais e afiliados.
-- [ ] Criar relatorio diario de artigos, videos, posts, cliques, visitas, leads e vendas.
+- [x] Criar relatorio diario de artigos, videos, posts, cliques, visitas, leads e vendas.
 - [ ] Integrar Search Console para impressao, clique, CTR, posicao e consulta.
 - [ ] Separar metricas observadas de metricas estimadas.
 - [ ] Criar retencao de dados e politica de privacidade/consentimento.
 
 ## Fase 5 - SEO e agentes de marketing
 
-- [ ] Criar catalogo canonico de produtos e associar cada video/artigo ao produto.
+- [x] Criar catalogo canonico de produtos e base de associacao com oportunidades e briefs SEO.
 - [ ] Criar coletor de termos por produto e regiao.
 - [ ] Usar Trends para tendencia relativa e Keyword Planner/Search Console para validar demanda; guardar data e fonte.
 - [ ] Criar score de oportunidade: demanda, tendencia, concorrencia, relevancia, margem e capacidade de conversao.
-- [ ] Gerar tres briefs por produto: dor, produto e comparativo.
+- [x] Gerar tres briefs por produto: dor, produto e comparativo.
 - [ ] Criar agentes separados para pesquisa, estrategia, redacao, SEO, revisao e analise.
 - [ ] Adicionar aprovacao humana, citacoes/fontes, bloqueio de claims e detector de duplicidade.
 - [ ] Publicar artigos com links internos para produto, video e comparativos.
@@ -70,9 +70,9 @@
 
 ## Fase 6 - Custos, confiabilidade e escala
 
-- [ ] Registrar tokens, render, storage, RunPod, chamadas externas e custo por ativo.
+- [x] Registrar estrutura de custo por ativo, provedor e operacao.
 - [ ] Criar limites diarios por agente, pipeline e provedor.
-- [ ] Criar circuit breaker para provedor indisponivel.
+- [x] Criar circuit breaker para provedor indisponivel.
 - [ ] Criar fila de prioridade e capacidade por worker.
 - [ ] Criar testes de idempotencia para cada etapa.
 - [ ] Criar testes de contrato para Meta, YouTube, storage e workers.

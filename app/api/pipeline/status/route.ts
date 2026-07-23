@@ -5,6 +5,7 @@ import { Pool } from "pg";
 import { prisma as sharedPrisma } from "@/lib/prisma";
 import { DEFINITIONS } from "@/lib/operationObservability";
 import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
+import { resolveOperationAlert, upsertOperationAlert } from "@/lib/operationsControl";
 
 export const dynamic = "force-dynamic";
 
@@ -54,19 +55,28 @@ export async function GET(req: NextRequest) {
           lastRun: run || null,
         };
       });
-      const [socialDue, socialFuture, socialProcessing, socialFailed, socialPostedToday] = await Promise.all([
+      const [socialDue, socialFuture, socialProcessing, socialFailed, socialPostedToday, oldestSocial, alerts, estimatedCostToday] = await Promise.all([
         sharedPrisma.socialPost.count({ where: { status: "SCHEDULED", scheduledTo: { lte: now } } }),
         sharedPrisma.socialPost.count({ where: { status: "SCHEDULED", scheduledTo: { gt: now } } }),
         sharedPrisma.socialPost.count({ where: { status: { in: ["PROCESSING_MEDIA", "PUBLISHING"] } } }),
         sharedPrisma.socialPost.count({ where: { status: "FAILED" } }),
         sharedPrisma.socialPost.count({ where: { status: "POSTED", postedAt: { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) } } }),
+        sharedPrisma.socialPost.findFirst({ where: { status: { in: ["SCHEDULED", "PROCESSING_MEDIA", "PUBLISHING", "FAILED"] } }, orderBy: { createdAt: "asc" }, select: { id: true, platform: true, status: true, createdAt: true, scheduledTo: true } }),
+        sharedPrisma.operationAlert.findMany({ where: { status: { in: ["OPEN", "ACKNOWLEDGED"] } }, orderBy: [{ severity: "desc" }, { lastSeenAt: "desc" }], take: 10 }),
+        sharedPrisma.costLedger.aggregate({ where: { occurredAt: { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) } }, _sum: { costUsd: true } }),
       ]);
+      if (socialDue > 0) await upsertOperationAlert({ fingerprint: "social:overdue", operationKey: "SOCIAL_PUBLISHER", severity: "CRITICAL", title: "Publicacoes sociais vencidas", message: `${socialDue} publicacao(oes) aguardam horario passado. Reagende ou publique agora.`, actionUrl: "/admin/social" });
+      else await resolveOperationAlert("social:overdue");
+      if (socialFailed > 0) await upsertOperationAlert({ fingerprint: "social:failed", operationKey: "SOCIAL_PUBLISHER", severity: "WARNING", title: "Falhas na fila social", message: `${socialFailed} publicacao(oes) falharam e precisam de nova tentativa ou reautenticacao.`, actionUrl: "/admin/social" });
+      else await resolveOperationAlert("social:failed");
       return Response.json({
         ok: true,
         serverTime: now.toISOString(),
         operations,
         catalog: Object.entries(DEFINITIONS).map(([key, value]) => ({ key, ...value })),
-        queues: { socialDue, socialFuture, socialProcessing, socialFailed, socialPostedToday },
+        queues: { socialDue, socialFuture, socialProcessing, socialFailed, socialPostedToday, oldestSocial },
+        alerts,
+        costs: { estimatedCostTodayUsd: estimatedCostToday._sum.costUsd || 0 },
         summary: {
           total: operations.length,
           healthy: operations.filter((item) => item.status === "OK").length,

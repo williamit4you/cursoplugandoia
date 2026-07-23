@@ -9,7 +9,8 @@ export type OperationKey =
   | "VIDEO_QUESTIONS"
   | "VIDEO_ENGAGEMENT"
   | "YOUTUBE_ANALYTICS"
-  | "NEWS_CONTENT";
+  | "NEWS_CONTENT"
+  | "MERCADO_LIVRE";
 
 const DEFINITIONS: Record<OperationKey, { name: string; family: string; description: string; expectedEverySec: number }> = {
   SHOPEE_PIPELINE: { name: "Shopee e afiliados", family: "PRODUCAO", description: "Coleta produtos, gera ativos e prepara publicacao.", expectedEverySec: 60 },
@@ -19,6 +20,7 @@ const DEFINITIONS: Record<OperationKey, { name: string; family: string; descript
   VIDEO_ENGAGEMENT: { name: "Video Engagement", family: "PRODUCAO", description: "Executa a fila de projetos de video de engajamento.", expectedEverySec: 60 },
   YOUTUBE_ANALYTICS: { name: "Analytics YouTube", family: "RESULTADO", description: "Atualiza dados e snapshots do YouTube.", expectedEverySec: 3600 },
   NEWS_CONTENT: { name: "Noticias e artigos", family: "CONTEUDO", description: "Coleta noticias e prepara artigos e videos.", expectedEverySec: 3600 },
+  MERCADO_LIVRE: { name: "Mercado Livre", family: "PRODUCAO", description: "Coleta produtos do Mercado Livre e prepara ativos afiliados.", expectedEverySec: 300 },
 };
 
 function safeJson(value: unknown) {

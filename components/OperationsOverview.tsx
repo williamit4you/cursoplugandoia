@@ -20,8 +20,10 @@ type Operation = {
 
 type Overview = {
   operations: Operation[];
-  queues: { socialDue: number; socialFuture: number; socialProcessing: number; socialFailed: number; socialPostedToday: number };
+  queues: { socialDue: number; socialFuture: number; socialProcessing: number; socialFailed: number; socialPostedToday: number; oldestSocial?: { createdAt: string; platform: string; status: string } | null };
   summary: { total: number; healthy: number; attention: number; failed: number };
+  alerts?: { id: string; severity: string; title: string; message: string; actionUrl?: string | null }[];
+  costs?: { estimatedCostTodayUsd: number };
 };
 
 const statusStyles: Record<string, string> = {
@@ -116,7 +118,11 @@ export default function OperationsOverview() {
         <span className="rounded-full bg-indigo-50 px-3 py-1.5 text-indigo-800">{data?.queues.socialFuture ?? "-"} agendadas</span>
         <span className="rounded-full bg-slate-100 px-3 py-1.5 text-slate-700">{data?.queues.socialProcessing ?? "-"} processando</span>
         <span className="rounded-full bg-rose-50 px-3 py-1.5 text-rose-800">{data?.queues.socialFailed ?? "-"} falharam</span>
+        <span className="rounded-full bg-cyan-50 px-3 py-1.5 text-cyan-800">US$ {Number(data?.costs?.estimatedCostTodayUsd || 0).toFixed(2)} estimados hoje</span>
       </div>
+
+      {data?.queues.oldestSocial ? <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">Item mais antigo na fila: <strong>{data.queues.oldestSocial.platform}</strong> em {formatTime(data.queues.oldestSocial.createdAt)} ({data.queues.oldestSocial.status}).</div> : null}
+      {data?.alerts?.length ? <div className="space-y-2">{data.alerts.map((alert) => <div key={alert.id} className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"><strong>{alert.title}</strong>: {alert.message}</div>)}</div> : null}
     </section>
   );
 }

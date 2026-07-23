@@ -873,6 +873,173 @@ model OperationRun {
   @@index([heartbeatAt])
 }
 
+model OperationAlert {
+  id            String    @id @default(cuid())
+  fingerprint   String    @unique
+  operationKey  String?
+  severity      String    @default("WARNING") // INFO | WARNING | CRITICAL
+  status        String    @default("OPEN") // OPEN | ACKNOWLEDGED | RESOLVED
+  title         String
+  message       String
+  actionUrl     String?
+  metadataJson  String?
+  firstSeenAt   DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  resolvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status, severity, lastSeenAt])
+  @@index([operationKey, status])
+}
+
+model ManualActionAudit {
+  id            String    @id @default(cuid())
+  action        String
+  entityType    String
+  entityId      String?
+  actor         String?
+  summary       String
+  metadataJson  String?
+  createdAt     DateTime  @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([createdAt])
+}
+
+model ContentMetricEvent {
+  id            String    @id @default(cuid())
+  eventType     String    // page_view | article_view | video_view | affiliate_click | lead_created | sale_attributed
+  postId        String?
+  socialPostId  String?
+  productId     String?
+  sessionId     String?
+  source        String?
+  medium        String?
+  campaign      String?
+  referrer      String?
+  metadataJson  String?
+  occurredAt    DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+
+  @@index([eventType, occurredAt])
+  @@index([postId, occurredAt])
+  @@index([productId, occurredAt])
+}
+
+model DailyContentReport {
+  id            String    @id @default(cuid())
+  reportDate    DateTime  @unique
+  timezone      String    @default("America/Sao_Paulo")
+  metricsJson   String
+  alertsJson    String?
+  generatedAt   DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model ProductCatalog {
+  id            String    @id @default(cuid())
+  externalRef   String?   @unique
+  name          String
+  slug          String    @unique
+  description   String?
+  productUrl    String?
+  affiliateUrl  String?
+  imageUrl      String?
+  price         Float?
+  currency      String    @default("BRL")
+  category      String?
+  status        String    @default("ACTIVE") // ACTIVE | PAUSED | ARCHIVED
+  metadataJson  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  opportunities SeoOpportunity[]
+  briefs        SeoBrief[]
+
+  @@index([status, updatedAt])
+}
+
+model SeoOpportunity {
+  id            String    @id @default(cuid())
+  productId     String
+  keyword       String
+  region        String    @default("BR")
+  source        String    // SEARCH_CONSOLE | TRENDS | KEYWORD_PLANNER | SUGGEST
+  intent        String?
+  cluster       String?
+  demandScore   Float     @default(0)
+  trendScore    Float     @default(0)
+  competitionScore Float  @default(0)
+  relevanceScore Float    @default(0)
+  conversionScore Float   @default(0)
+  opportunityScore Float  @default(0)
+  collectedAt   DateTime  @default(now())
+  rawDataJson   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  product       ProductCatalog @relation(fields: [productId], references: [id], onDelete: Cascade)
+  briefs        SeoBrief[]
+
+  @@index([productId, opportunityScore])
+  @@index([keyword, region, collectedAt])
+}
+
+model SeoBrief {
+  id            String    @id @default(cuid())
+  productId     String
+  opportunityId String?
+  angle         String    // PAIN | PRODUCT | COMPARISON
+  status        String    @default("DRAFT") // DRAFT | REVIEW | APPROVED | PUBLISHED | REJECTED
+  title         String
+  slug          String    @unique
+  primaryKeyword String
+  intent        String?
+  outlineJson   String?
+  internalLinksJson String?
+  sourcesJson   String?
+  reviewNotes   String?
+  postId        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  product       ProductCatalog @relation(fields: [productId], references: [id], onDelete: Cascade)
+  opportunity   SeoOpportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+
+  @@unique([productId, angle])
+  @@index([status, updatedAt])
+}
+
+model CostLedger {
+  id            String    @id @default(cuid())
+  operationKey  String?
+  provider      String
+  assetType     String
+  assetId       String?
+  quantity      Float     @default(1)
+  unit          String    @default("unit")
+  costUsd       Float     @default(0)
+  metadataJson  String?
+  occurredAt    DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+
+  @@index([operationKey, occurredAt])
+  @@index([provider, occurredAt])
+}
+
+model ProviderCircuitBreaker {
+  id            String    @id @default(cuid())
+  provider      String    @unique
+  state         String    @default("CLOSED") // CLOSED | OPEN | HALF_OPEN
+  failureCount  Int       @default(0)
+  openedAt      DateTime?
+  retryAfter    DateTime?
+  lastError     String?
+  updatedAt     DateTime  @updatedAt
+}
+
 model ScraperConfig {
   id                String   @id @default(cuid())
   // Agendamento
