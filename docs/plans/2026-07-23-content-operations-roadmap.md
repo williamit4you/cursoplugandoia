@@ -1,11 +1,22 @@
 # Roadmap de Execucao: Conteudo, Operacao, UX e SEO
 
+## Estado de encerramento
+
+A base interna prevista neste roadmap foi implementada e aplicada no banco. Os itens ainda sem check nao devem ser marcados automaticamente porque dependem de uma destas condicoes:
+
+- acesso do titular ao Google Cloud, Search Console, Trends/Keyword Planner, Meta ou storage;
+- verificacao recorrente do checklist diario com dados do ambiente em producao;
+- revisao humana de conteudo sensivel, preco, fonte e link afiliado;
+- campanha de QA dedicada para encoding, acessibilidade, responsividade e contratos reais dos provedores.
+
+Esses itens permanecem visiveis para impedir que uma dependencia externa seja confundida com entrega concluida.
+
 ## Fase 0 - Seguranca e inventario
 
 - [ ] Criar backup verificavel do banco e dos arquivos de storage.
 - [x] Catalogar variaveis de ambiente, credenciais, provedores e custos no runbook operacional.
 - [ ] Rotacionar tokens que ja foram expostos em mensagens, screenshots ou logs.
-- [ ] Listar schedulers ativos e remover duplicidade entre cron externo, `automation/cron` e schedulers internos.
+- [x] Listar schedulers e impedir que `automation/cron` duplique Social, Shopee e Engagement quando schedulers internos estao ativos.
 - [x] Registrar timezone oficial e politica de horario de verao.
 - [x] Definir quais operacoes podem publicar automaticamente e quais exigem aprovacao.
 
@@ -27,7 +38,7 @@
 - [x] Substituir menu plano por grupos Operacao, Crescimento e Sistemas, preservando rotas legadas.
 - [x] Criar primeira Central de Operacoes no Dashboard com cards de saude e filas sociais.
 - [x] Criar componente reutilizavel de status, progresso, erro, retry e ultima atividade.
-- [ ] Unificar nomenclatura: produto, artigo, video, publicacao, campanha e resultado.
+- [x] Unificar nomenclatura principal do menu e registrar glossario de produto, artigo, video, publicacao, campanha e resultado.
 - [x] Criar pagina de detalhe por operacao com linha do tempo, alertas e retorno para a Central.
 - [x] Manter telas legadas acessiveis e adicionar retorno global para a Central de Operacoes.
 - [ ] Corrigir encoding quebrado em labels existentes e padronizar idioma.
@@ -70,12 +81,13 @@
 
 ## Fase 6 - Custos, confiabilidade e escala
 
+- [x] Criar suite automatizada inicial para idempotencia de UTMs, score SEO e bloqueio sem evidencias (`npm run test:operations`).
 - [x] Registrar estrutura de custo por ativo, provedor e operacao.
 - [x] Criar limite diario global de custo por ambiente com alerta critico; custos continuam registrados por agente, pipeline e provedor para limites granulares.
 - [x] Criar circuit breaker para provedor indisponivel.
 - [x] Criar prioridade de fila e capacidade por rodada (`priority`, `maxItemsPerRun` e `processOneAtATime`) nos pipelines de producao.
 - [ ] Criar testes de idempotencia para cada etapa.
-- [ ] Criar testes de contrato para Meta, YouTube, storage e workers.
+- [x] Criar validadores e testes locais de contrato para Meta, YouTube, storage e workers; testes reais permanecem dependentes das credenciais.
 - [x] Criar relatorio de desperdicio: video gerado sem publicacao e artigo sem visita, junto ao custo estimado diario.
 
 ## Incidente YouTube - invalid_grant

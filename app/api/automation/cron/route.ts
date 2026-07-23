@@ -18,6 +18,11 @@ async function callJson(url: string) {
   return { ok: res.ok, status: res.status, data };
 }
 
+function internalSchedulersEnabled() {
+  const value = String(process.env.INTERNAL_CRON_ENABLED || "true").trim().toLowerCase();
+  return !["0", "false", "no", "off"].includes(value);
+}
+
 export async function GET(req: NextRequest) {
   try {
     const secret = req.nextUrl.searchParams.get("secret");
@@ -25,6 +30,7 @@ export async function GET(req: NextRequest) {
 
     const origin = baseUrl(req);
     const encodedSecret = secret ? `?secret=${encodeURIComponent(secret)}` : "";
+    const internalOwnsPipelines = internalSchedulersEnabled();
 
     // Chamadas internas via fetch não enviam cookies/sessão. Sem `secret`, os demais crons vão falhar.
     // Para debug manual no admin, rode apenas o Social Cron.
@@ -40,16 +46,16 @@ export async function GET(req: NextRequest) {
     const mercadoLivre = await callJson(`${origin}/api/mercado-livre/cron${encodedSecret}`);
 
     // Publica posts sociais agendados cujo horário já passou
-    const social = await callJson(`${origin}/api/social/cron${encodedSecret}`);
+    const social = internalOwnsPipelines ? { ok: true, status: 200, data: { skipped: true, owner: "internal_scheduler" } } : await callJson(`${origin}/api/social/cron${encodedSecret}`);
 
     // Orquestrador do pipeline de URLs da Coleta Shopee
-    const shopeePipeline = await callJson(`${origin}/api/shopee-pipeline/cron${encodedSecret}`);
+    const shopeePipeline = internalOwnsPipelines ? { ok: true, status: 200, data: { skipped: true, owner: "internal_scheduler" } } : await callJson(`${origin}/api/shopee-pipeline/cron${encodedSecret}`);
 
     // Publica stories agendados do shopee-video-pipeline
     const shopeePublisher = await callJson(`${origin}/api/shopee-pipeline/publisher-runner${encodedSecret}`);
 
     // Orquestrador do pipeline de engajamento
-    const engajamentoPipeline = await callJson(`${origin}/api/engajamento-pipeline/cron${encodedSecret}`);
+    const engajamentoPipeline = internalOwnsPipelines ? { ok: true, status: 200, data: { skipped: true, owner: "internal_scheduler" } } : await callJson(`${origin}/api/engajamento-pipeline/cron${encodedSecret}`);
 
     // Publica stories do pipeline de engajamento
     const engajamentoPublisher = await callJson(`${origin}/api/engajamento-pipeline/publisher-runner${encodedSecret}`);

@@ -59,14 +59,14 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Dashboard", icon: <DashboardIcon className="text-indigo-400" />, path: "/admin/dashboard" },
     
     // NEW PIPELINE ROUTES
-    { text: "Pipeline: Scrapings", icon: <StorefrontIcon className="text-emerald-500" />, path: "/admin/scrapers" },
-    { text: "Pipeline: Code Video", icon: <CodeIcon className="text-blue-500" />, path: "/admin/video-code" },
-    { text: "Pipeline: Propagandas", icon: <CampaignIcon className="text-orange-500" />, path: "/admin/propagandas" },
-    { text: "Pipeline: Q&A", icon: <QuizIcon className="text-purple-500" />, path: "/admin/video-questions" },
+    { text: "Coleta de Noticias", icon: <StorefrontIcon className="text-emerald-500" />, path: "/admin/scrapers" },
+    { text: "Videos de Noticias", icon: <CodeIcon className="text-blue-500" />, path: "/admin/video-code" },
+    { text: "Campanhas", icon: <CampaignIcon className="text-orange-500" />, path: "/admin/propagandas" },
+    { text: "Perguntas e Respostas", icon: <QuizIcon className="text-purple-500" />, path: "/admin/video-questions" },
     // END NEW PIPELINE ROUTES
 
-    { text: "Posts & Engajamento", icon: <ArticleIcon />, path: "/admin/posts" },
-    { text: "Video Engajamento", icon: <VideoCameraBackIcon />, path: "/admin/video-engajamento" },
+    { text: "Artigos", icon: <ArticleIcon />, path: "/admin/posts" },
+    { text: "Videos de Produto", icon: <VideoCameraBackIcon />, path: "/admin/video-engajamento" },
     { text: "Integrações N8N", icon: <WebhookIcon />, path: "/admin/integrations" },
     { text: "Fila Social", icon: <VideoCameraBackIcon />, path: "/admin/social" },
     { text: "Social: YouTube", icon: <YouTubeIcon />, path: "/admin/social/youtube" },
@@ -84,7 +84,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Texto → Vídeo", icon: <VideoCameraBackIcon />, path: "/admin/texto-para-video" },
     { text: "Engajamento Shopee", icon: <VideoCameraBackIcon />, path: "/admin/engajamento-shopee" },
     { text: "Engajamento Pipeline", icon: <VideoCameraBackIcon />, path: "/admin/engajamento-pipeline" },
-    { text: "Tasks", icon: <ChecklistIcon />, path: "/admin/tasks" },
+    { text: "Automacoes", icon: <ChecklistIcon />, path: "/admin/tasks" },
     { text: "Execuções", icon: <PlayArrowIcon />, path: "/admin/task-runs" },
     { text: "Agendamentos", icon: <EventIcon />, path: "/admin/schedules" },
     { text: "Comparativos", icon: <CompareArrowsIcon />, path: "/admin/comparativos" },

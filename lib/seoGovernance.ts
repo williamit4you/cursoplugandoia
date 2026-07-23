@@ -1,5 +1,3 @@
-import "server-only";
-
 export type SeoOpportunityInput = {
   demandScore?: number;
   trendScore?: number;
