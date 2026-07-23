@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test:operations": "tsx --test tests/operations-runtime.test.ts",
+    "backup:content-ops": "powershell -ExecutionPolicy Bypass -File ./scripts/backup-content-ops.ps1",
     "prisma:generate": "prisma generate",
     "db:seed": "npx tsx prisma/seed.ts"
   },

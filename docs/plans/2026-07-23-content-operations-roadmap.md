@@ -14,6 +14,7 @@ Esses itens permanecem visiveis para impedir que uma dependencia externa seja co
 ## Fase 0 - Seguranca e inventario
 
 - [ ] Criar backup verificavel do banco e dos arquivos de storage.
+  Script base criado em `scripts/backup-content-ops.ps1`; o check continua pendente ate executar dump real, manifesto e restauracao de amostra.
 - [x] Catalogar variaveis de ambiente, credenciais, provedores e custos no runbook operacional.
 - [ ] Rotacionar tokens que ja foram expostos em mensagens, screenshots ou logs.
 - [x] Listar schedulers e impedir que `automation/cron` duplique Social, Shopee e Engagement quando schedulers internos estao ativos.
@@ -117,6 +118,7 @@ Esses itens permanecem visiveis para impedir que uma dependencia externa seja co
 - [ ] Produto e preco conferidos.
 - [ ] Links afiliados validos e rastreaveis.
 - [ ] Fonte e data de cada afirmacao registradas.
+  A governanca agora exige `source` e `collectedAt` nas evidencias SEO, mas o check final continua dependente da rotina editorial humana.
 - [ ] Palavra-chave nao escolhida apenas por volume.
 - [ ] Intencao de busca compativel com o artigo.
 - [ ] Tres angulos nao sao conteudo duplicado.

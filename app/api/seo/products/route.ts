@@ -5,6 +5,10 @@ import { calculateSeoOpportunityScore } from "@/lib/seoGovernance";
 
 export const dynamic = "force-dynamic";
 function slugify(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""); }
+function normalizeCollectedAt(value: unknown) {
+  const parsed = value ? new Date(String(value)) : new Date();
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
 
 export async function GET(req: NextRequest) {
   await requireAdminOrCronSecret(req);
@@ -34,7 +38,26 @@ export async function PUT(req: NextRequest) {
     if (!productId || !terms.length) return NextResponse.json({ error: "productId e terms sao obrigatorios" }, { status: 400 });
     const opportunities = await Promise.all(terms.map((term: any) => {
       const values = { demandScore: Number(term.demandScore || 0), trendScore: Number(term.trendScore || 0), competitionScore: Number(term.competitionScore || 0), relevanceScore: Number(term.relevanceScore || 0), conversionScore: Number(term.conversionScore || 0) };
-      return prisma.seoOpportunity.create({ data: { productId, keyword: String(term.keyword || "").trim(), region: String(term.region || body.region || "BR"), source: String(term.source || body.source || "MANUAL"), intent: term.intent || null, cluster: term.cluster || null, ...values, opportunityScore: calculateSeoOpportunityScore(values), rawDataJson: JSON.stringify({ collectedAt: new Date().toISOString(), providerPayload: term.rawData || null }) } });
+      const collectedAt = normalizeCollectedAt(term.collectedAt || body.collectedAt);
+      return prisma.seoOpportunity.create({
+        data: {
+          productId,
+          keyword: String(term.keyword || "").trim(),
+          region: String(term.region || body.region || "BR"),
+          source: String(term.source || body.source || "MANUAL"),
+          intent: term.intent || null,
+          cluster: term.cluster || null,
+          ...values,
+          opportunityScore: calculateSeoOpportunityScore(values),
+          collectedAt,
+          rawDataJson: JSON.stringify({
+            collectedAt: collectedAt.toISOString(),
+            source: String(term.source || body.source || "MANUAL"),
+            sourceUrl: term.sourceUrl || null,
+            providerPayload: term.rawData || null,
+          }),
+        },
+      });
     }));
     return NextResponse.json({ ok: true, opportunities });
   } catch (error: any) {

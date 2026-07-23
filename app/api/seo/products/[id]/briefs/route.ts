@@ -10,6 +10,18 @@ const ANGLES = [
   { angle: "COMPARISON", suffix: "comparativo e alternativas", intent: "comparacao" },
 ];
 function slugify(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""); }
+function buildOpportunityEvidence(opportunity: any, product: any) {
+  if (!opportunity) return JSON.stringify([]);
+  let rawData: any = {};
+  try { rawData = opportunity.rawDataJson ? JSON.parse(opportunity.rawDataJson) : {}; } catch {}
+  return JSON.stringify([{
+    source: opportunity.source,
+    collectedAt: opportunity.collectedAt ? new Date(opportunity.collectedAt).toISOString() : new Date().toISOString(),
+    keyword: opportunity.keyword,
+    region: opportunity.region,
+    url: rawData?.sourceUrl || product?.productUrl || product?.affiliateUrl || null,
+  }]);
+}
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -21,10 +33,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       await prisma.seoOpportunity.update({ where: { id: opportunity.id }, data: { opportunityScore: calculateSeoOpportunityScore(opportunity) } });
     }
     const keyword = opportunity?.keyword || product.name;
+    const sourcesJson = buildOpportunityEvidence(opportunity, product);
     const briefs = await Promise.all(ANGLES.map((item) => prisma.seoBrief.upsert({
       where: { productId_angle: { productId: product.id, angle: item.angle } },
-      update: { primaryKeyword: keyword, intent: item.intent, title: `${product.name}: ${item.suffix}` },
-      create: { productId: product.id, opportunityId: opportunity?.id, angle: item.angle, title: `${product.name}: ${item.suffix}`, slug: `${slugify(product.name)}-${slugify(item.angle)}`, primaryKeyword: keyword, intent: item.intent, outlineJson: JSON.stringify(["Intencao e contexto", "Evidencias e limites", "Como escolher", "Video e produto relacionado"]), internalLinksJson: JSON.stringify([product.productUrl, product.affiliateUrl].filter(Boolean)) },
+      update: { primaryKeyword: keyword, intent: item.intent, title: `${product.name}: ${item.suffix}`, sourcesJson, opportunityId: opportunity?.id || null },
+      create: { productId: product.id, opportunityId: opportunity?.id, angle: item.angle, title: `${product.name}: ${item.suffix}`, slug: `${slugify(product.name)}-${slugify(item.angle)}`, primaryKeyword: keyword, intent: item.intent, outlineJson: JSON.stringify(["Intencao e contexto", "Evidencias e limites", "Como escolher", "Video e produto relacionado"]), internalLinksJson: JSON.stringify([product.productUrl, product.affiliateUrl].filter(Boolean)), sourcesJson },
     })));
     return NextResponse.json({ ok: true, briefs });
   } catch (error: any) {

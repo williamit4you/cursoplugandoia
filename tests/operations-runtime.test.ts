@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { withCampaignTracking } from "../lib/trackingLinks";
-import { calculateSeoOpportunityScore, validateSeoRelease } from "../lib/seoGovernance";
+import { calculateSeoOpportunityScore, validateSeoRelease, validateSeoSources } from "../lib/seoGovernance";
 import { validateProviderResponse } from "../lib/providerContracts";
 import { buildSocialRequeuePlan } from "../lib/socialRequeuePlan";
 
@@ -22,6 +22,16 @@ test("SEO release blocks missing evidence", () => {
   const result = validateSeoRelease({ productUrl: "https://example.com/product", affiliateUrl: "https://example.com/offer", price: 99, primaryKeyword: "produto teste", intent: "commercial", sourcesJson: "[]" });
   assert.equal(result.ok, false);
   assert.ok(result.issues.some((issue) => issue.includes("Fontes")));
+});
+
+test("SEO sources require source and collectedAt", () => {
+  const invalid = validateSeoSources(JSON.stringify([{ source: "TRENDS" }]));
+  assert.equal(invalid.ok, false);
+  assert.ok(invalid.issues.some((issue) => issue.includes("origem/data")));
+
+  const valid = validateSeoSources(JSON.stringify([{ source: "TRENDS", collectedAt: "2026-07-23T10:00:00.000Z", keyword: "produto teste" }]));
+  assert.equal(valid.ok, true);
+  assert.equal(valid.validSources.length, 1);
 });
 
 test("provider response contracts accept expected identifiers", () => {

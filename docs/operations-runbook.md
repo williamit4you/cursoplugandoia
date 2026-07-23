@@ -22,9 +22,10 @@
 
 ## Backup verificavel
 
-1. Execute um dump PostgreSQL e arquive em storage privado.
-2. Exporte lista e checksum dos objetos MinIO usados por videos e capas.
-3. Restaure uma amostra em ambiente isolado antes de considerar o backup valido.
+1. Rode `npm run backup:content-ops` com `DATABASE_URL` configurada.
+2. Se quiser incluir os arquivos locais/exportados do storage, informe `-StoragePath C:\\caminho\\dos\\arquivos`.
+3. O script gera `database.sql`, `manifest.json` e, quando houver storage local, `storage-manifest.csv` com checksums SHA-256.
+4. Considere o backup valido somente depois de restaurar uma amostra em ambiente isolado e comparar os checksums do manifesto.
 
 ## Operacao diaria
 
