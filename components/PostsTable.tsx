@@ -8,6 +8,26 @@ import "react-toastify/dist/ReactToastify.css";
 export default function PostsTable({ initialData }: { initialData: any[] }) {
   const [posts, setPosts] = useState<any[]>(initialData);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [publishingAll, setPublishingAll] = useState(false);
+
+  const handlePublishAll = async () => {
+    if (publishingAll) return;
+    if (!window.confirm("Publicar todas as notícias em rascunho no site?")) return;
+
+    setPublishingAll(true);
+    try {
+      const res = await fetch("/api/posts/publish-all", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Erro ao publicar notícias");
+
+      setPosts((prev) => prev.map((post) => ({ ...post, status: "PUBLISHED" })));
+      toast.success(`${data.publishedCount || 0} notícia(s) publicada(s) no site.`);
+    } catch (error: any) {
+      toast.error(error?.message || "Erro de conexão ao publicar notícias");
+    } finally {
+      setPublishingAll(false);
+    }
+  };
 
   // ── Publicar no site (mudar status para PUBLISHED) ─────────────────────────
   const handlePublish = async (id: string) => {
@@ -110,6 +130,15 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
           <div className="w-1.5 h-5 bg-indigo-600 rounded-full" />
           Lista de Notícias
         </h2>
+        <div className="flex flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          onClick={handlePublishAll}
+          disabled={publishingAll || !posts.some((post) => post.status !== "PUBLISHED")}
+          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-lg shadow-emerald-600/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {publishingAll ? "PUBLICANDO..." : "PUBLICAR TODOS"}
+        </button>
         <Link 
           href="/admin/posts/new"
           className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl transition-all shadow-lg shadow-indigo-600/10 active:scale-95"
@@ -119,6 +148,7 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
           </svg>
           NOVA NOTÍCIA
         </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl overflow-hidden border border-slate-200/60 shadow-sm">

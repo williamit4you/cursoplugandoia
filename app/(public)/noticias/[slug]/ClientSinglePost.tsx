@@ -6,9 +6,50 @@ import LeadCapture from "@/components/LeadCapture";
 import ClientPostTracker from "./ClientPostTracker";
 
 export default function ClientSinglePost({ post }: { post: any }) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://plugandoia.cloud";
+  const canonicalUrl = `${siteUrl}/noticias/${post.slug}`;
+  const socialPosts = Array.isArray(post.socialPosts) ? post.socialPosts : [];
+  const publishedPosts = socialPosts.filter((item: any) => item.status === "POSTED");
+  const videoPost = socialPosts.find((item: any) => item.videoUrl);
+  const videoUrl = videoPost?.videoUrl;
+  const publishedLinks = publishedPosts.flatMap((item: any) => [
+    item.youtubePostUrl ? { label: "YouTube", url: item.youtubePostUrl } : null,
+    item.metaReelPostUrl ? { label: "Instagram", url: item.metaReelPostUrl } : null,
+    item.metaStoryPostUrl ? { label: "Instagram Stories", url: item.metaStoryPostUrl } : null,
+    item.tiktokPostUrl ? { label: "TikTok", url: item.tiktokPostUrl } : null,
+    item.linkedinPostUrl ? { label: "LinkedIn", url: item.linkedinPostUrl } : null,
+    !item.youtubePostUrl && !item.metaReelPostUrl && !item.metaStoryPostUrl && item.postUrl
+      ? { label: item.platform === "YOUTUBE" ? "YouTube" : item.platform, url: item.postUrl }
+      : null,
+  ]).filter(Boolean);
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    headline: post.title,
+    description: post.summary,
+    datePublished: post.createdAt,
+    dateModified: post.updatedAt,
+    mainEntityOfPage: canonicalUrl,
+    ...(post.coverImage ? { image: [post.coverImage] } : {}),
+    author: { "@type": "Organization", name: "Portal IA", url: siteUrl },
+    publisher: { "@type": "Organization", name: "Portal IA", url: siteUrl },
+  };
+  const videoSchema = videoUrl ? {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: post.title,
+    description: post.summary,
+    contentUrl: videoUrl,
+    ...(publishedLinks[0] ? { embedUrl: publishedLinks[0].url } : {}),
+    uploadDate: post.createdAt,
+    ...(post.coverImage ? { thumbnailUrl: post.coverImage } : {}),
+  } : null;
+
   return (
     <Container maxWidth="lg" sx={{ py: 6 }}>
       <ClientPostTracker postId={post.id} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
+      {videoSchema && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(videoSchema) }} />}
 
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 6 }}>
 
@@ -26,6 +67,24 @@ export default function ClientSinglePost({ post }: { post: any }) {
           <Typography variant="subtitle1" sx={{ color: '#555', mb: 4, fontStyle: "italic", borderLeft: "4px solid #c00000", pl: 2, fontSize: '1.2rem' }}>
             {post.summary}
           </Typography>
+
+          {videoUrl && (
+            <Box sx={{ mb: 5, borderRadius: 2, overflow: "hidden", bgcolor: "#111" }}>
+              <video controls preload="metadata" poster={post.coverImage || undefined} src={videoUrl} style={{ display: "block", width: "100%", maxHeight: 620 }}>
+                Seu navegador não suporta reprodução de vídeo.
+              </video>
+              {publishedLinks.length > 0 && (
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, p: 2 }}>
+                  <Typography sx={{ width: "100%", color: "#fff", fontWeight: 700 }}>Assista também nas redes</Typography>
+                  {publishedLinks.map((item: any) => (
+                    <MuiLink key={`${item.label}-${item.url}`} href={item.url} target="_blank" rel="noreferrer" sx={{ color: "#93c5fd" }}>
+                      Assistir no {item.label}
+                    </MuiLink>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          )}
 
           <Box
             sx={{

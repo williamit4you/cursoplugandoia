@@ -107,4 +107,7 @@
 - [ ] Intencao de busca compativel com o artigo.
 - [ ] Tres angulos nao sao conteudo duplicado.
 - [ ] Revisao humana concluida quando houver risco factual, medico, financeiro ou legal.
-- [ ] Canonical, sitemap, robots, schema e links internos validados.
+- [x] Artigo consulta os `SocialPost` vinculados e mostra o vídeo gerado e URLs publicadas.
+- [x] Canonical, sitemap, robots e schema `NewsArticle`/`VideoObject` adicionados.
+- [x] Notícias automatizadas nascem publicadas e a tela de Posts possui `Publicar todos` para recuperar rascunhos antigos.
+- [ ] SEO editorial com pesquisa de intenção, palavras-chave e revisão factual.

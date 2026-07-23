@@ -19,14 +19,14 @@ function baseUrl(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { title, summary, content, status, slug } = body;
+    const { title, summary, content, slug } = body;
 
     const post = await prisma.post.create({
       data: {
         title,
         summary,
         content,
-        status,
+        status: "PUBLISHED",
         slug,
       },
     });

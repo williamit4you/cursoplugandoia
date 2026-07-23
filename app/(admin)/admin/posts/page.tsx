@@ -23,7 +23,7 @@ export default async function PostsPage() {
       <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm">
         <h1 className="text-2xl font-black text-slate-800 tracking-tight">Posts & Noticias</h1>
         <p className="text-slate-500 text-sm font-medium mt-1">
-          Gerencie artigos e publicacoes do site. O video-engajamento automatico nasce junto com o post, mesmo em rascunho.
+          Gerencie artigos e publicacoes do site. As noticias automatizadas ja ficam visiveis assim que sao criadas.
         </p>
         <div className="mt-4">
           <div className="flex flex-wrap items-start gap-3">

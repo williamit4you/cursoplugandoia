@@ -19,19 +19,45 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     return { title: "Notícia Não Encontrada" };
   }
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://plugandoia.cloud";
+  const canonicalUrl = `${siteUrl}/noticias/${post.slug}`;
+
   return {
     title: `${post.title} | Portal IA`,
     description: post.summary,
+    keywords: ["notícias", "tecnologia", "inteligência artificial", "Portal IA"],
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title: post.title,
       description: post.summary,
       type: "article",
+      url: canonicalUrl,
+      publishedTime: post.createdAt.toISOString(),
+      ...(post.coverImage ? { images: [{ url: post.coverImage }] } : {}),
     }
   };
 }
 
 export default async function SinglePostView({ params }: { params: { slug: string } }) {
-  const post = await prisma.post.findUnique({ where: { slug: params.slug } });
+  const post = await prisma.post.findUnique({
+    where: { slug: params.slug },
+    include: {
+      socialPosts: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          platform: true,
+          status: true,
+          videoUrl: true,
+          postUrl: true,
+          youtubePostUrl: true,
+          metaReelPostUrl: true,
+          metaStoryPostUrl: true,
+          tiktokPostUrl: true,
+          linkedinPostUrl: true,
+        },
+      },
+    },
+  });
 
   if (!post || post.status !== "PUBLISHED") {
     notFound();
