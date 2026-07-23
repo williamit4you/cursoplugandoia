@@ -26,7 +26,7 @@
 
 - [ ] Substituir menu plano por grupos Operacao, Crescimento e Sistemas.
 - [x] Criar primeira Central de Operacoes no Dashboard com cards de saude e filas sociais.
-- [ ] Criar componente reutilizavel de status, progresso, erro, retry e ultima atividade.
+- [x] Criar componente reutilizavel de status, progresso, erro, retry e ultima atividade.
 - [ ] Unificar nomenclatura: produto, artigo, video, publicacao, campanha e resultado.
 - [ ] Criar pagina de detalhe com linha do tempo completa e acoes contextuais.
 - [ ] Manter telas legadas como detalhes, com links de retorno para a Central.
@@ -44,7 +44,7 @@
 - [x] Permitir reagendar por plataforma ou todas as plataformas pelo parametro `platform`.
 - [ ] Confirmar no painel a quantidade e os horarios antes de aplicar o lote.
 - [ ] Diferenciar falha de credencial, falha temporaria, video em processamento e item invalido.
-- [x] Criar politica base de circuit breaker por provedor e registro de falhas consecutivas.
+- [x] Criar retry com backoff para falhas temporarias, circuit breaker por provedor e registro de falhas consecutivas.
 - [x] Criar auditoria de acoes manuais de fila social.
 
 ## Fase 4 - Metricas de conteudo e blog
