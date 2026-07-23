@@ -13,10 +13,12 @@
 
 - [x] Criar `OperationDefinition` e cadastro inicial das familias do inventario.
 - [x] Criar `OperationRun` com `runId`, heartbeat, contadores, duracao, erro e custo.
-- [ ] Instrumentar Mercado Livre, noticias, video de noticias, engagement, Q&A e analytics.
+- [x] Instrumentar Engagement, Video Engagement e YouTube Analytics.
+- [ ] Instrumentar Mercado Livre, noticias, video de noticias e Q&A.
 - [x] Criar visao agregada em `/api/pipeline/status?view=operations`.
-- [ ] Criar endpoint `/api/operations/runs` com filtros e paginação.
+- [x] Criar historico filtravel em `/api/pipeline/status?view=operation-runs`.
 - [x] Detectar scheduler sem heartbeat e classificar como `STALE`.
+- [x] Ligar o scheduler interno de Video Engagement no `instrumentation.ts`.
 - [ ] Exibir item mais antigo por fila.
 - [ ] Adicionar alertas de credencial, fila envelhecida, storage cheio, custo fora do limite e cron sem heartbeat.
 
@@ -33,9 +35,14 @@
 
 ## Fase 3 - Fila, calendario e recuperacao
 
-- [ ] Consolidar todos os posts sociais em uma consulta com timezone local.
+- [x] Corrigir o cron social para reservar cada post antes de chamar a rede e evitar concorrencia.
+- [x] Fazer o scheduler interno priorizar a URL local do servidor, reduzindo falhas de DNS da propria aplicacao.
+- [x] Permitir `Publicar agora` com `bypassTimeCheck` para posts atrasados.
+- [x] Consolidar todos os posts sociais em uma consulta com timezone local.
 - [ ] Criar simulacao de reagendamento antes de aplicar lote.
+- [x] Criar botao `Reagendar antigos (nao postados)` com slots futuros de 2 em 2 horas.
 - [ ] Permitir reagendar apenas uma plataforma ou todas as plataformas do mesmo video.
+- [ ] Confirmar no painel a quantidade e os horarios antes de aplicar o lote.
 - [ ] Diferenciar falha de credencial, falha temporaria, video em processamento e item invalido.
 - [ ] Criar politica de retry com limite e backoff por provedor.
 - [ ] Criar auditoria de toda acao manual.
@@ -70,6 +77,14 @@
 - [ ] Criar testes de idempotencia para cada etapa.
 - [ ] Criar testes de contrato para Meta, YouTube, storage e workers.
 - [ ] Criar relatorio de desperdicio: video gerado sem publicacao, artigo sem visita e custo sem conversao.
+
+## Incidente YouTube - invalid_grant
+
+- [x] Exibir mensagem operacional clara quando o refresh token do YouTube for expirado ou revogado.
+- [x] Reautenticar a conta YouTube no Hub de Integracoes.
+- [ ] Testar `/api/integrations/youtube/status?check=1` antes de recuperar a fila.
+- [ ] Confirmar Client ID, Client Secret e Redirect URI no Google Cloud Console.
+- [ ] Confirmar que a tela OAuth nao esta em modo de teste quando a conta for usada continuamente.
 
 ## Checklist diario do operador
 

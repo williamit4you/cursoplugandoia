@@ -111,6 +111,7 @@ export default function SocialPostsDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [cronLoading, setCronLoading] = useState(false);
+  const [requeueLoading, setRequeueLoading] = useState(false);
   const [cronStatus, setCronStatus] = useState<any | null>(null);
   const [cronStatusError, setCronStatusError] = useState<string | null>(null);
   const [groupByVideo, setGroupByVideo] = useState(true);
@@ -223,6 +224,23 @@ export default function SocialPostsDashboard() {
     }
   }, [fetchPosts, fetchCronStatus]);
 
+  const requeueOldPosts = useCallback(async () => {
+    if (!confirm("Reagendar todos os posts antigos que ainda não foram publicados? Eles serão distribuídos no futuro em intervalos de 2 horas.")) return;
+    setRequeueLoading(true);
+    try {
+      const res = await fetch("/api/social/posts/requeue", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Falha ao reagendar posts antigos");
+      toast.success(data.count ? `${data.count} posts reagendados em intervalos de 2 horas.` : "Nenhum post antigo encontrado.");
+      await fetchPosts(true);
+      await fetchCronStatus(true);
+    } catch (err: any) {
+      toast.error(err?.message || "Falha ao reagendar posts antigos");
+    } finally {
+      setRequeueLoading(false);
+    }
+  }, [fetchPosts, fetchCronStatus]);
+
   // Auto-refresh for processing posts
   useEffect(() => {
     const hasActive = posts.some(p => p.status === "PUBLISHING" || p.status === "PROCESSING_MEDIA");
@@ -293,7 +311,7 @@ export default function SocialPostsDashboard() {
       const res = await fetch(pathname, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ socialPostId: post.id }),
+        body: JSON.stringify({ socialPostId: post.id, bypassTimeCheck: true }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Falha ao processar publicação");
@@ -348,6 +366,16 @@ export default function SocialPostsDashboard() {
             title="Rodar cron agora"
           >
             <Play className={`w-4 h-4 text-slate-500 ${cronLoading ? 'animate-pulse' : ''}`} />
+          </button>
+
+          <button
+            onClick={requeueOldPosts}
+            disabled={requeueLoading}
+            className="inline-flex items-center gap-2 px-3 py-2.5 bg-indigo-600 border border-indigo-600 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 text-xs font-black text-white"
+            title="Reagendar posts antigos não publicados em intervalos de 2 horas"
+          >
+            <Calendar className={`w-4 h-4 ${requeueLoading ? "animate-spin" : ""}`} />
+            <span className="hidden xl:inline">Reagendar antigos</span>
           </button>
 
           <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200/60">

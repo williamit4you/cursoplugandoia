@@ -132,14 +132,14 @@ export default function SocialCalendarPage() {
   }, {} as Record<string, number>), [currentMonthPosts]);
 
   const requeueExpired = async () => {
-    if (!confirm("Reagendar todas as publicações vencidas e com falha? Os vídeos serão mantidos e voltarão para a fila em intervalos de 3 horas.")) return;
+    if (!confirm("Reagendar todas as publicações antigas que não foram postadas? Os vídeos serão mantidos e distribuídos no futuro em intervalos de 2 horas, pulando horários já ocupados.")) return;
     setRequeueLoading(true);
     setNotice(null);
     try {
       const res = await fetch("/api/social/posts/requeue", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Não foi possível reagendar");
-      setNotice(data.count ? `${data.count} publicação(ões) reagendada(s) em intervalos de 3 horas.` : "Não há publicações vencidas para reagendar.");
+      setNotice(data.count ? `${data.count} publicação(ões) antiga(s) reagendada(s) em intervalos de 2 horas.` : "Não há publicações antigas para reagendar.");
       await fetchPosts();
     } catch (error: any) {
       setNotice(error.message || "Falha ao reagendar publicações");
@@ -234,7 +234,7 @@ export default function SocialCalendarPage() {
             className="inline-flex items-center gap-2 px-4 py-2 text-xs font-black text-white bg-indigo-600 border border-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-60 shadow-sm"
           >
             <RefreshCcw className={`w-3.5 h-3.5 ${requeueLoading ? "animate-spin" : ""}`} />
-            {requeueLoading ? "Reagendando..." : "Reaproveitar vencidos"}
+            {requeueLoading ? "Reagendando..." : "Reagendar antigos (não postados)"}
           </button>
           <button
             onClick={() => setCursor((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}

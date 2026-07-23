@@ -15,6 +15,24 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 // O parâmetro ?since= filtra logs criados APÓS aquele timestamp,
 // evitando que logs antigos de execuções anteriores apareçam no monitor.
 export async function GET(req: NextRequest) {
+  if (req.nextUrl.searchParams.get("view") === "operation-runs") {
+    try {
+      await requireAdminOrCronSecret(req);
+      const operationKey = req.nextUrl.searchParams.get("operationKey") || undefined;
+      const status = req.nextUrl.searchParams.get("status") || undefined;
+      const take = Math.min(200, Math.max(10, Number(req.nextUrl.searchParams.get("take") || 50)));
+      const runs = await sharedPrisma.operationRun.findMany({
+        where: { ...(operationKey ? { operationKey } : {}), ...(status ? { status } : {}) },
+        orderBy: { startedAt: "desc" },
+        take,
+      });
+      return Response.json({ ok: true, runs });
+    } catch (error: any) {
+      const status = error?.message === "Unauthorized" ? 401 : 500;
+      return Response.json({ ok: false, error: error?.message || "Falha ao carregar execucoes" }, { status });
+    }
+  }
+
   if (req.nextUrl.searchParams.get("view") === "operations") {
     try {
       await requireAdminOrCronSecret(req);

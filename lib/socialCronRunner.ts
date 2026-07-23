@@ -14,14 +14,18 @@ async function appendPostLog(id: string, message: string) {
 }
 
 async function callPublisher(baseUrl: string, pathname: string, socialPostId: string) {
-  const res = await fetch(`${baseUrl}${pathname}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ socialPostId }),
-    cache: "no-store",
-  });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
+  try {
+    const res = await fetch(`${baseUrl}${pathname}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ socialPostId }),
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
+  } catch (error: any) {
+    return { ok: false, status: 503, data: { error: error?.message || "Falha ao conectar ao publicador" } };
+  }
 }
 
 export async function runSocialCron(params: { baseUrl: string; limit?: number }) {
@@ -47,13 +51,24 @@ export async function runSocialCron(params: { baseUrl: string; limit?: number })
       await prisma.socialPost.update({
         where: { id: post.id },
         data: {
-          status: "DRAFT",
+          status: "FAILED",
           log: post.log
             ? `${post.log}\n${appendTimestamp("TikTok ignorado: integracao inativa.")}`
             : appendTimestamp("TikTok ignorado: integracao inativa."),
         },
       });
       results.push({ id: post.id, platform: post.platform, skipped: true, reason: "TikTok inativo" });
+      continue;
+    }
+
+    // Reserve the item before calling an external provider. This prevents two
+    // schedulers from publishing the same post at the same time.
+    const claimed = await prisma.socialPost.updateMany({
+      where: { id: post.id, status: post.status },
+      data: { status: "PUBLISHING", log: post.log ? `${post.log}\n${appendTimestamp("Reservado pelo cron social.")}` : appendTimestamp("Reservado pelo cron social.") },
+    });
+    if (claimed.count !== 1) {
+      results.push({ id: post.id, platform: post.platform, skipped: true, reason: "already_claimed" });
       continue;
     }
 
@@ -81,6 +96,8 @@ export async function runSocialCron(params: { baseUrl: string; limit?: number })
       });
     } else if (result.data?.stillProcessing) {
       await appendPostLog(post.id, "Meta ainda processando; o cron tentara novamente.");
+    } else if (!result.ok) {
+      await prisma.socialPost.update({ where: { id: post.id }, data: { status: "SCHEDULED" } });
     }
   }
 

@@ -1,4 +1,5 @@
 import { runEngagementPipelineCron } from "@/lib/engagement-pipeline/cronRunner";
+import { finishOperationRun, startOperationRun } from "@/lib/operationObservability";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -28,6 +29,7 @@ function tickMs() {
 async function runInternalCronTick() {
   if (globalThis.__plugandoEngagementInternalCronRunning) return;
   globalThis.__plugandoEngagementInternalCronRunning = true;
+  const operation = await startOperationRun("ENGAGEMENT_PIPELINE", { trigger: "internal_scheduler" });
 
   try {
     globalThis.__plugandoEngagementInternalCronLastTickAt = new Date().toISOString();
@@ -40,9 +42,11 @@ async function runInternalCronTick() {
         runs: (result as any)?.runs?.length || 0,
       });
     }
+    await finishOperationRun(operation?.runId, { status: "SUCCESS", itemsProcessed: Number((result as any)?.runs?.length || 0), metadata: { trigger: "internal_scheduler" } });
   } catch (error: any) {
     globalThis.__plugandoEngagementInternalCronLastError = error?.message || String(error);
     console.error("[internal-cron] Falha no Engagement pipeline", error?.message || error);
+    await finishOperationRun(operation?.runId, { status: "FAILED", errorMessage: error?.message || String(error) });
   } finally {
     globalThis.__plugandoEngagementInternalCronRunning = false;
   }

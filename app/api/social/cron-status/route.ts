@@ -4,6 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
 import { getSocialCronState } from "@/lib/socialCronState";
+import { getInternalSocialCronSchedulerStatus } from "@/lib/internalSocialCronScheduler";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -76,6 +77,7 @@ export async function GET(req: NextRequest) {
       ok: true,
       serverTime: now.toISOString(),
       state,
+      internalScheduler: getInternalSocialCronSchedulerStatus(),
       integrations: { youtube, tiktok, meta },
       stats: { dueScheduled, scheduledFuture, processing, failed },
       preview,

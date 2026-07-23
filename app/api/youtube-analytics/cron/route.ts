@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { finishOperationRun, startOperationRun } from "@/lib/operationObservability";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -9,6 +10,7 @@ export const maxDuration = 300;
  * Trigger: GET /api/youtube-analytics/cron?secret=XXX
  */
 export async function GET(req: NextRequest) {
+  const operation = await startOperationRun("YOUTUBE_ANALYTICS", { trigger: "cron" });
   try {
     const { searchParams } = new URL(req.url);
     const secret = searchParams.get("secret");
@@ -30,9 +32,11 @@ export async function GET(req: NextRequest) {
     });
 
     const result = await response.json();
+    await finishOperationRun(operation?.runId, { status: response.ok ? "SUCCESS" : "FAILED", metadata: result });
     return NextResponse.json({ trigger: "cron", ...result });
   } catch (error: any) {
     console.error("Cron error:", error);
+    await finishOperationRun(operation?.runId, { status: "FAILED", errorMessage: error?.message || String(error) });
     return NextResponse.json(
       { error: "Falha no cron de coleta", details: error.message },
       { status: 500 }

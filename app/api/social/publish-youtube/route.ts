@@ -100,7 +100,10 @@ export async function POST(req: NextRequest) {
     console.error("YouTube publishing error:", error);
     
     // Tenta extrair mensagem de erro do Google
-    const errorMessage = error.response?.data?.error?.message || error.message || "Erro desconhecido ao publicar no YouTube";
+    const rawErrorMessage = error.response?.data?.error_description || error.response?.data?.error?.message || error.message || "Erro desconhecido ao publicar no YouTube";
+    const errorMessage = String(rawErrorMessage).toLowerCase().includes("invalid_grant")
+      ? "Autenticacao do YouTube expirou ou foi revogada (invalid_grant). Abra Integracoes > YouTube e clique em Reautenticar; depois teste a autenticacao antes de publicar novamente."
+      : rawErrorMessage;
     const logEntry = `[${new Date().toLocaleTimeString("pt-BR")}] ❌ Falha ao publicar no YouTube: ${errorMessage}`;
 
     if (targetSocialPostId) {
@@ -118,9 +121,10 @@ export async function POST(req: NextRequest) {
       }
     }
     
+    const authError = String(rawErrorMessage).toLowerCase().includes("invalid_grant");
     return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
+      { error: errorMessage, code: authError ? "YOUTUBE_INVALID_GRANT" : "YOUTUBE_PUBLISH_FAILED", reauthenticate: authError },
+      { status: authError ? 401 : 500 }
     );
   }
 }

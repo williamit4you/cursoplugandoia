@@ -1,4 +1,5 @@
 import { runVideoEngagementCron } from "@/lib/video-engagement/cronRunner";
+import { finishOperationRun, startOperationRun } from "@/lib/operationObservability";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -28,6 +29,7 @@ function tickMs() {
 async function runInternalCronTick() {
   if (globalThis.__plugandoVideoEngagementInternalCronRunning) return;
   globalThis.__plugandoVideoEngagementInternalCronRunning = true;
+  const operation = await startOperationRun("VIDEO_ENGAGEMENT", { trigger: "internal_scheduler" });
 
   try {
     globalThis.__plugandoVideoEngagementInternalCronLastTickAt = new Date().toISOString();
@@ -39,9 +41,11 @@ async function runInternalCronTick() {
         runs: (result as any)?.runs?.length || 0,
       });
     }
+    await finishOperationRun(operation?.runId, { status: "SUCCESS", itemsProcessed: Number((result as any)?.runs?.length || 0), metadata: { trigger: "internal_scheduler" } });
   } catch (error: any) {
     globalThis.__plugandoVideoEngagementInternalCronLastError = error?.message || String(error);
     console.error("[internal-cron] Falha no Video engagement", error?.message || error);
+    await finishOperationRun(operation?.runId, { status: "FAILED", errorMessage: error?.message || String(error) });
   } finally {
     globalThis.__plugandoVideoEngagementInternalCronRunning = false;
   }

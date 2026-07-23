@@ -9,7 +9,7 @@ const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-const REQUEUE_SPACING_HOURS = 3;
+const REQUEUE_SPACING_HOURS = 2;
 
 async function requeueExpired(req: NextRequest) {
   await requireAdminOrCronSecret(req);
@@ -28,24 +28,28 @@ async function requeueExpired(req: NextRequest) {
   const candidates = await prisma.socialPost.findMany({
     where,
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    select: { id: true, platform: true },
+    select: { id: true, platform: true, log: true },
   });
   if (!candidates.length) return { count: 0, spacingHours: REQUEUE_SPACING_HOURS };
 
-  const latestByPlatform = new Map<string, Date>();
+  const occupiedSlots = new Set<string>();
   const future = await prisma.socialPost.findMany({
     where: { status: "SCHEDULED", scheduledTo: { gt: now }, ...(platform !== "ALL" ? { platform } : {}) },
     orderBy: { scheduledTo: "desc" },
     select: { platform: true, scheduledTo: true },
   });
   for (const item of future) {
-    if (item.scheduledTo && !latestByPlatform.has(item.platform)) latestByPlatform.set(item.platform, item.scheduledTo);
+    if (item.scheduledTo) occupiedSlots.add(`${item.platform}:${item.scheduledTo.getTime()}`);
   }
 
+  let cursor = new Date(now.getTime() + REQUEUE_SPACING_HOURS * 60 * 60 * 1000);
   const updates = candidates.map((item) => {
-    const previous = latestByPlatform.get(item.platform);
-    const scheduledTo = new Date((previous || now).getTime() + REQUEUE_SPACING_HOURS * 60 * 60 * 1000);
-    latestByPlatform.set(item.platform, scheduledTo);
+    while (occupiedSlots.has(`${item.platform}:${cursor.getTime()}`)) {
+      cursor = new Date(cursor.getTime() + REQUEUE_SPACING_HOURS * 60 * 60 * 1000);
+    }
+    const scheduledTo = new Date(cursor);
+    occupiedSlots.add(`${item.platform}:${scheduledTo.getTime()}`);
+    cursor = new Date(cursor.getTime() + REQUEUE_SPACING_HOURS * 60 * 60 * 1000);
     return prisma.socialPost.update({
       where: { id: item.id },
       data: {
@@ -53,7 +57,8 @@ async function requeueExpired(req: NextRequest) {
         youtubePostedAt: null, youtubePostUrl: null, metaStoryPostedAt: null,
         metaStoryPostUrl: null, metaReelPostedAt: null, metaReelPostUrl: null,
         tiktokPostedAt: null, tiktokPostUrl: null, linkedinPostedAt: null,
-        linkedinPostUrl: null, metaContainerId: null, log: null,
+        linkedinPostUrl: null, metaContainerId: null,
+        log: `${item.log || ""}${item.log ? "\n" : ""}[${new Date().toLocaleTimeString("pt-BR")}] Reagendado automaticamente para recuperar publicação antiga.`,
       },
     });
   });

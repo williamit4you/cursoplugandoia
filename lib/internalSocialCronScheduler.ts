@@ -29,9 +29,7 @@ function tickMs() {
 function resolveInternalBaseUrl() {
   const explicit =
     process.env.INTERNAL_BASE_URL ||
-    process.env.APP_BASE_URL ||
-    process.env.NEXTAUTH_URL ||
-    process.env.SITE_URL;
+    process.env.APP_BASE_URL;
 
   if (explicit) return String(explicit).trim().replace(/\/+$/, "");
 
