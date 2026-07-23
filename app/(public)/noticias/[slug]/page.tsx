@@ -63,5 +63,10 @@ export default async function SinglePostView({ params }: { params: { slug: strin
     notFound();
   }
 
-  return <ClientSinglePost post={post} />;
+  const seoBrief = await prisma.seoBrief.findFirst({
+    where: { postId: post.id },
+    include: { product: { select: { name: true, productUrl: true, affiliateUrl: true } } },
+  }).catch(() => null);
+
+  return <ClientSinglePost post={{ ...post, seoBrief }} />;
 }

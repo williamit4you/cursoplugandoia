@@ -228,6 +228,15 @@ export default function SocialPostsDashboard() {
     if (!confirm("Reagendar todos os posts antigos que ainda não foram publicados? Eles serão distribuídos no futuro em intervalos de 2 horas.")) return;
     setRequeueLoading(true);
     try {
+      const previewRes = await fetch("/api/social/posts/requeue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dryRun: true }) });
+      const preview = await previewRes.json().catch(() => ({}));
+      if (!previewRes.ok) throw new Error(preview.error || "Falha ao simular reagendamento");
+      if (!preview.count) {
+        toast.success("Nenhum post antigo encontrado para reagendar.");
+        return;
+      }
+      const slots = (preview.preview || []).slice(0, 5).map((item: any) => `${item.platform}: ${new Date(item.scheduledTo).toLocaleString("pt-BR")}`).join("\n");
+      if (!confirm(`Confirmar ${preview.count} publicacoes?\n\nPrimeiros horarios:\n${slots}`)) return;
       const res = await fetch("/api/social/posts/requeue", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Falha ao reagendar posts antigos");

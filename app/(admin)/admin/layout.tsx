@@ -91,6 +91,14 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Sales Analytics", icon: <InsightsIcon className="text-cyan-500" />, path: "/admin/sales-analytics" },
   ];
 
+  const growthPaths = new Set(["/admin/youtube-analytics", "/admin/bio-analytics", "/admin/sales-analytics", "/admin/comparativos", "/admin/propagandas"]);
+  const systemPaths = new Set(["/admin/integrations", "/admin/scraper-config", "/admin/video-questions-config", "/admin/tasks", "/admin/task-runs", "/admin/schedules"]);
+  const menuGroups = [
+    { label: "Operacao", items: menuItems.filter((item) => !growthPaths.has(item.path) && !systemPaths.has(item.path)) },
+    { label: "Crescimento", items: menuItems.filter((item) => growthPaths.has(item.path)) },
+    { label: "Sistemas", items: menuItems.filter((item) => systemPaths.has(item.path)) },
+  ];
+
   return (
     <div className="min-h-screen bg-[#f5f7fb] text-slate-900 flex overflow-hidden">
       {/* Subtle background decoration */}
@@ -127,8 +135,10 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
             )}
           </div>
 
-          <nav className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-1">
-            {menuItems.map((item) => {
+          <nav className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
+            {menuGroups.map((group) => <div key={group.label} className="space-y-1">
+              {isSidebarOpen && <div className="px-3 pb-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{group.label}</div>}
+              {group.items.map((item) => {
               const isActive = pathname === item.path;
               return (
                 <Link
@@ -146,7 +156,8 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
                   {isSidebarOpen && <span className="text-sm font-semibold whitespace-nowrap overflow-hidden">{item.text}</span>}
                 </Link>
               );
-            })}
+              })}
+            </div>)}
           </nav>
 
           <div className="p-4 border-t border-slate-200/70">
@@ -177,6 +188,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
           </div>
 
           <div className="flex items-center gap-3">
+            {pathname !== "/admin/dashboard" && <Link href="/admin/dashboard" className="hidden sm:inline-flex rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-600 hover:bg-slate-50">Central de Operacoes</Link>}
             <div className="px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full">
               <span className="text-xs font-black text-indigo-700">PLUGANDO IA</span>
             </div>

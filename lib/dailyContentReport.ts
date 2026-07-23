@@ -31,8 +31,27 @@ export async function generateDailyContentReport(targetDate = new Date()) {
     days,
     products: await prisma.contentMetricEvent.groupBy({ by: ["productId", "eventType"], where: { productId: { not: null }, occurredAt: { gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) } }, _count: { _all: true } }),
   })));
+  const [overdueSocial, integrations, operationDefinitions] = await Promise.all([
+    prisma.socialPost.count({ where: { status: "SCHEDULED", scheduledTo: { lte: new Date() } } }),
+    prisma.integrationSettings.findMany({ select: { platform: true, isActive: true } }),
+    prisma.operationDefinition.findMany({ where: { enabled: true }, include: { runs: { orderBy: { startedAt: "desc" }, take: 1 } } }),
+  ]);
+  const staleOperations = operationDefinitions.filter((definition) => {
+    const run = definition.runs[0];
+    const threshold = Math.max(300, Number(definition.expectedEverySec || 300) * 3) * 1000;
+    return !run || Date.now() - run.heartbeatAt.getTime() > threshold;
+  }).map((item) => item.key);
+  const dailyChecklist = {
+    noCriticalAlerts: !alerts.some((item) => item.severity === "CRITICAL"),
+    noOverdueQueue: overdueSocial === 0,
+    freshHeartbeats: staleOperations.length === 0,
+    integrationsActive: integrations.length > 0 && integrations.every((item) => item.isActive),
+    videosAccountedFor: videosWithoutPublication === 0,
+    articlesReceivingVisits: articlesWithoutVisits === 0,
+    failuresReviewed: socialFailed === 0,
+  };
   const observed = { articles, videos, socialPublished, socialFailed, waste: { videosWithoutPublication, articlesWithoutVisits }, ...metrics };
   const estimated = { successRate: socialPublished + socialFailed ? socialPublished / (socialPublished + socialFailed) : null, costUsd: costs._sum.costUsd || 0 };
-  const payload = { period: { start: start.toISOString(), end: end.toISOString() }, observed, estimated, seoClusters: clusterWindows, privacy: { retentionDays, respectsDoNotTrack: true } };
+  const payload = { period: { start: start.toISOString(), end: end.toISOString() }, observed, estimated, seoClusters: clusterWindows, dailyChecklist, checklistDetails: { overdueSocial, staleOperations, inactiveIntegrations: integrations.filter((item) => !item.isActive).map((item) => item.platform) }, privacy: { retentionDays, respectsDoNotTrack: true } };
   return prisma.dailyContentReport.upsert({ where: { reportDate: start }, update: { metricsJson: JSON.stringify(payload), alertsJson: JSON.stringify(alerts) }, create: { reportDate: start, metricsJson: JSON.stringify(payload), alertsJson: JSON.stringify(alerts) } });
 }

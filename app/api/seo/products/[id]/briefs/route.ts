@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
 import { calculateSeoOpportunityScore } from "@/lib/seoGovernance";
+import { runSeoAgentPipeline } from "@/lib/seoAgentPipeline";
 
 const ANGLES = [
   { angle: "PAIN", suffix: "qual problema resolve", intent: "informacional" },
@@ -28,5 +29,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ ok: true, briefs });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Falha ao gerar briefs" }, { status: error?.message === "Unauthorized" ? 401 : 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    await requireAdminOrCronSecret(req);
+    const body = await req.json();
+    const result = await runSeoAgentPipeline(String(body.briefId || ""));
+    return NextResponse.json({ ok: true, result });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || "Falha no pipeline de agentes SEO" }, { status: error?.message === "Unauthorized" ? 401 : 500 });
   }
 }

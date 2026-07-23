@@ -98,6 +98,17 @@ export default function ClientSinglePost({ post }: { post: any }) {
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
 
+          {post.seoBrief?.product && (
+            <Box sx={{ mt: 5, p: 3, border: "1px solid #e2e8f0", borderRadius: 2, bgcolor: "#f8fafc" }}>
+              <Typography variant="h6" sx={{ color: "#111", fontWeight: 800 }}>Produto relacionado: {post.seoBrief.product.name}</Typography>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mt: 2 }}>
+                {post.seoBrief.product.productUrl && <MuiLink href={post.seoBrief.product.productUrl} target="_blank" rel="noreferrer">Ver produto</MuiLink>}
+                {post.seoBrief.product.affiliateUrl && <MuiLink href={post.seoBrief.product.affiliateUrl} target="_blank" rel="sponsored noreferrer">Ver oferta</MuiLink>}
+                <MuiLink component={Link} href="/comparativo">Ver comparativos</MuiLink>
+              </Box>
+            </Box>
+          )}
+
           <Box sx={{ mt: 8 }}>
             <LeadCapture source={`post_slug_${post.slug}`} />
           </Box>

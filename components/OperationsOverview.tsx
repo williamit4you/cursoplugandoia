@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type Operation = {
   key: string;
@@ -95,7 +96,7 @@ export default function OperationsOverview() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {data?.operations.map((operation) => (
-          <article key={operation.key} className="rounded-2xl border border-slate-200 bg-white p-4 hover:border-indigo-200 hover:shadow-sm transition">
+          <Link href={`/admin/operations/${encodeURIComponent(operation.key)}`} key={operation.key} className="block rounded-2xl border border-slate-200 bg-white p-4 hover:border-indigo-200 hover:shadow-sm transition">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">{operation.family}</div>
@@ -109,7 +110,7 @@ export default function OperationsOverview() {
               <div className="mt-1">Processados: <strong className="text-slate-700">{operation.lastRun?.itemsProcessed ?? 0}</strong> · Falhas: <strong className="text-slate-700">{operation.lastRun?.itemsFailed ?? 0}</strong></div>
               {operation.lastRun?.errorMessage ? <div className="mt-2 line-clamp-2 text-rose-700">{operation.lastRun.errorMessage}</div> : null}
             </div>
-          </article>
+          </Link>
         ))}
       </div>
 

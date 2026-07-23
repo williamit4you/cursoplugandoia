@@ -24,12 +24,12 @@
 
 ## Fase 2 - Central de Operacoes UX/UI
 
-- [ ] Substituir menu plano por grupos Operacao, Crescimento e Sistemas.
+- [x] Substituir menu plano por grupos Operacao, Crescimento e Sistemas, preservando rotas legadas.
 - [x] Criar primeira Central de Operacoes no Dashboard com cards de saude e filas sociais.
 - [x] Criar componente reutilizavel de status, progresso, erro, retry e ultima atividade.
 - [ ] Unificar nomenclatura: produto, artigo, video, publicacao, campanha e resultado.
-- [ ] Criar pagina de detalhe com linha do tempo completa e acoes contextuais.
-- [ ] Manter telas legadas como detalhes, com links de retorno para a Central.
+- [x] Criar pagina de detalhe por operacao com linha do tempo, alertas e retorno para a Central.
+- [x] Manter telas legadas acessiveis e adicionar retorno global para a Central de Operacoes.
 - [ ] Corrigir encoding quebrado em labels existentes e padronizar idioma.
 - [ ] Testar responsividade, acessibilidade, estados vazios, loading, erro e dados antigos.
 
@@ -42,7 +42,7 @@
 - [x] Criar simulacao de reagendamento antes de aplicar lote via `dryRun` no endpoint de recuperacao.
 - [x] Criar botao `Reagendar antigos (nao postados)` com slots futuros de 2 em 2 horas.
 - [x] Permitir reagendar por plataforma ou todas as plataformas pelo parametro `platform`.
-- [ ] Confirmar no painel a quantidade e os horarios antes de aplicar o lote.
+- [x] Confirmar no painel a quantidade e os primeiros horarios simulados antes de aplicar o lote.
 - [x] Diferenciar credencial expirada, falha temporaria com backoff, video em processamento e falha definitiva no cron social.
 - [x] Criar retry com backoff para falhas temporarias, circuit breaker por provedor e registro de falhas consecutivas.
 - [x] Criar auditoria de acoes manuais de fila social.
@@ -63,9 +63,9 @@
 - [ ] Usar Trends para tendencia relativa e Keyword Planner/Search Console para validar demanda; guardar data e fonte.
 - [x] Criar score de oportunidade: demanda, tendencia, concorrencia, relevancia e capacidade de conversao.
 - [x] Gerar tres briefs por produto: dor, produto e comparativo.
-- [ ] Criar agentes separados para pesquisa, estrategia, redacao, SEO, revisao e analise.
-- [x] Adicionar validacao de liberacao SEO para produto, preco, links, palavra-chave, intencao e fontes; claims e duplicidade permanecem como revisao editorial.
-- [ ] Publicar artigos com links internos para produto, video e comparativos.
+- [x] Criar agentes separados para pesquisa, estrategia, redacao, SEO, revisao e analise, com custo e saida auditaveis.
+- [x] Adicionar validacao de liberacao SEO, citacoes/fontes, bloqueio deterministico de claims sensiveis e detector de duplicidade.
+- [x] Publicar artigos vinculados com links para produto, oferta afiliada, video social e comparativos.
 - [x] Medir eventos de cada cluster/produto em janelas de 7, 14 e 28 dias no relatorio diario.
 
 ## Fase 6 - Custos, confiabilidade e escala
@@ -87,6 +87,8 @@
 - [ ] Confirmar que a tela OAuth nao esta em modo de teste quando a conta for usada continuamente.
 
 ## Checklist diario do operador
+
+- [x] Automatizar a verificacao do checklist no relatorio diario, com detalhes de filas, heartbeats e integracoes.
 
 - [ ] Central de Operacoes sem alerta critico.
 - [ ] Nenhuma fila com item antigo acima do SLA.
