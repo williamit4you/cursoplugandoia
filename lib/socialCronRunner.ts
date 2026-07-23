@@ -7,6 +7,11 @@ function appendTimestamp(message: string) {
   return `[${new Date().toLocaleTimeString("pt-BR")}] ${message}`;
 }
 
+function retryDelayMinutes(log: string | null | undefined) {
+  const attempts = (log || "").match(/Retry automatico/g)?.length || 0;
+  return Math.min(360, 5 * Math.pow(2, attempts));
+}
+
 async function appendPostLog(id: string, message: string) {
   const post = await prisma.socialPost.findUnique({ where: { id }, select: { log: true } });
   const log = post?.log ? `${post.log}\n${appendTimestamp(message)}` : appendTimestamp(message);
@@ -84,7 +89,17 @@ export async function runSocialCron(params: { baseUrl: string; limit?: number })
     const result = await callPublisher(params.baseUrl, pathname, post.id);
     results.push({ id: post.id, platform: post.platform, ok: result.ok, status: result.status, data: result.data });
 
-    if (!result.ok && !result.data?.timeLimit) {
+    const errorText = String(result.data?.error || "").toLowerCase();
+    const credentialFailure = result.status === 401 || result.status === 403 || errorText.includes("invalid_grant") || errorText.includes("credencial") || errorText.includes("token");
+    const temporaryFailure = !result.ok && !credentialFailure && result.status >= 500;
+    if (temporaryFailure) {
+      const delayMinutes = retryDelayMinutes(post.log);
+      const retryAt = new Date(Date.now() + delayMinutes * 60_000);
+      await prisma.socialPost.update({
+        where: { id: post.id },
+        data: { status: "SCHEDULED", scheduledTo: retryAt, log: post.log ? `${post.log}\n${appendTimestamp(`Retry automatico em ${delayMinutes} minutos: ${result.data?.error || `HTTP ${result.status}`}`)}` : appendTimestamp(`Retry automatico em ${delayMinutes} minutos`) },
+      });
+    } else if (!result.ok && !result.data?.timeLimit) {
       await prisma.socialPost.update({
         where: { id: post.id },
         data: {

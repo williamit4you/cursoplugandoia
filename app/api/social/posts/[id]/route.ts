@@ -16,6 +16,7 @@ async function requeueExpired(req: NextRequest) {
   await requireAdminOrCronSecret(req);
   const body = await req.json().catch(() => ({}));
   const platform = String(body.platform || "ALL").trim().toUpperCase();
+  const dryRun = Boolean(body.dryRun);
   const now = new Date();
   const where: any = {
     videoUrl: { not: "" },
@@ -44,14 +45,19 @@ async function requeueExpired(req: NextRequest) {
   }
 
   let cursor = new Date(now.getTime() + REQUEUE_SPACING_HOURS * 60 * 60 * 1000);
-  const updates = candidates.map((item) => {
+  const plan = candidates.map((item) => {
     while (occupiedSlots.has(`${item.platform}:${cursor.getTime()}`)) {
       cursor = new Date(cursor.getTime() + REQUEUE_SPACING_HOURS * 60 * 60 * 1000);
     }
     const scheduledTo = new Date(cursor);
     occupiedSlots.add(`${item.platform}:${scheduledTo.getTime()}`);
     cursor = new Date(cursor.getTime() + REQUEUE_SPACING_HOURS * 60 * 60 * 1000);
-    return prisma.socialPost.update({
+    return { item, scheduledTo };
+  });
+  if (dryRun) {
+    return { count: plan.length, spacingHours: REQUEUE_SPACING_HOURS, preview: plan.map(({ item, scheduledTo }) => ({ id: item.id, platform: item.platform, scheduledTo })) };
+  }
+  const updates = plan.map(({ item, scheduledTo }) => prisma.socialPost.update({
       where: { id: item.id },
       data: {
         status: "SCHEDULED", scheduledTo, postedAt: null, postUrl: null,
@@ -61,8 +67,7 @@ async function requeueExpired(req: NextRequest) {
         linkedinPostUrl: null, metaContainerId: null,
         log: `${item.log || ""}${item.log ? "\n" : ""}[${new Date().toLocaleTimeString("pt-BR")}] Reagendado automaticamente para recuperar publicação antiga.`,
       },
-    });
-  });
+  }));
   await prisma.$transaction(updates);
   await auditManualAction({ action: "REQUEUE_EXPIRED_SOCIAL", entityType: "SocialPost", summary: `${updates.length} publicacoes antigas reagendadas`, metadata: { platform, spacingHours: REQUEUE_SPACING_HOURS, ids: candidates.map((item) => item.id) } });
   return { count: updates.length, spacingHours: REQUEUE_SPACING_HOURS };

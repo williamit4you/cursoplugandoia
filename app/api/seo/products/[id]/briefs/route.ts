@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
+import { calculateSeoOpportunityScore } from "@/lib/seoGovernance";
 
 const ANGLES = [
   { angle: "PAIN", suffix: "qual problema resolve", intent: "informacional" },
@@ -15,6 +16,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const product = await prisma.productCatalog.findUnique({ where: { id: params.id }, include: { opportunities: { orderBy: { opportunityScore: "desc" }, take: 1 } } });
     if (!product) return NextResponse.json({ error: "Produto nao encontrado" }, { status: 404 });
     const opportunity = product.opportunities[0];
+    if (opportunity) {
+      await prisma.seoOpportunity.update({ where: { id: opportunity.id }, data: { opportunityScore: calculateSeoOpportunityScore(opportunity) } });
+    }
     const keyword = opportunity?.keyword || product.name;
     const briefs = await Promise.all(ANGLES.map((item) => prisma.seoBrief.upsert({
       where: { productId_angle: { productId: product.id, angle: item.angle } },

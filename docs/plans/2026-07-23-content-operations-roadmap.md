@@ -39,9 +39,9 @@
 - [x] Fazer o scheduler interno priorizar a URL local do servidor, reduzindo falhas de DNS da propria aplicacao.
 - [x] Permitir `Publicar agora` com `bypassTimeCheck` para posts atrasados.
 - [x] Consolidar todos os posts sociais em uma consulta com timezone local.
-- [ ] Criar simulacao de reagendamento antes de aplicar lote.
+- [x] Criar simulacao de reagendamento antes de aplicar lote via `dryRun` no endpoint de recuperacao.
 - [x] Criar botao `Reagendar antigos (nao postados)` com slots futuros de 2 em 2 horas.
-- [ ] Permitir reagendar apenas uma plataforma ou todas as plataformas do mesmo video.
+- [x] Permitir reagendar por plataforma ou todas as plataformas pelo parametro `platform`.
 - [ ] Confirmar no painel a quantidade e os horarios antes de aplicar o lote.
 - [ ] Diferenciar falha de credencial, falha temporaria, video em processamento e item invalido.
 - [x] Criar politica base de circuit breaker por provedor e registro de falhas consecutivas.
@@ -61,10 +61,10 @@
 - [x] Criar catalogo canonico de produtos e base de associacao com oportunidades e briefs SEO.
 - [ ] Criar coletor de termos por produto e regiao.
 - [ ] Usar Trends para tendencia relativa e Keyword Planner/Search Console para validar demanda; guardar data e fonte.
-- [ ] Criar score de oportunidade: demanda, tendencia, concorrencia, relevancia, margem e capacidade de conversao.
+- [x] Criar score de oportunidade: demanda, tendencia, concorrencia, relevancia e capacidade de conversao.
 - [x] Gerar tres briefs por produto: dor, produto e comparativo.
 - [ ] Criar agentes separados para pesquisa, estrategia, redacao, SEO, revisao e analise.
-- [ ] Adicionar aprovacao humana, citacoes/fontes, bloqueio de claims e detector de duplicidade.
+- [x] Adicionar validacao de liberacao SEO para produto, preco, links, palavra-chave, intencao e fontes; claims e duplicidade permanecem como revisao editorial.
 - [ ] Publicar artigos com links internos para produto, video e comparativos.
 - [ ] Medir cada cluster apos 7, 14 e 28 dias.
 
