@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
 import DashboardMetrics from "@/components/DashboardMetrics"
+import OperationsOverview from "@/components/OperationsOverview"
 
 const connectionString = process.env.DATABASE_URL!
 const pool = new Pool({ connectionString })
@@ -52,9 +53,12 @@ export default async function DashboardPage() {
       </header>
 
       <section>
+        <OperationsOverview />
+      </section>
+
+      <section>
         <DashboardMetrics stats={stats} />
       </section>
     </div>
   )
 }
-

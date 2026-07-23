@@ -1,4 +1,5 @@
 import { runShopeePipelineCron } from "@/lib/shopee-pipeline/cronRunner";
+import { finishOperationRun, startOperationRun } from "@/lib/operationObservability";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -29,6 +30,7 @@ async function runInternalCronTick() {
   if (globalThis.__plugandoShopeeInternalCronRunning) return;
   globalThis.__plugandoShopeeInternalCronRunning = true;
 
+  const operation = await startOperationRun("SHOPEE_PIPELINE", { trigger: "internal_scheduler" });
   try {
     globalThis.__plugandoShopeeInternalCronLastTickAt = new Date().toISOString();
     const result = await runShopeePipelineCron();
@@ -40,9 +42,15 @@ async function runInternalCronTick() {
         runs: (result as any)?.runs?.length || 0,
       });
     }
+    await finishOperationRun(operation?.runId, {
+      status: result?.skipped ? "SUCCESS" : "SUCCESS",
+      itemsProcessed: Number((result as any)?.runs?.length || 0),
+      metadata: { trigger: "internal_scheduler", skipped: Boolean(result?.skipped) },
+    });
   } catch (error: any) {
     globalThis.__plugandoShopeeInternalCronLastError = error?.message || String(error);
     console.error("[internal-cron] Falha no Shopee pipeline", error?.message || error);
+    await finishOperationRun(operation?.runId, { status: "FAILED", errorMessage: error?.message || String(error) });
   } finally {
     globalThis.__plugandoShopeeInternalCronRunning = false;
   }

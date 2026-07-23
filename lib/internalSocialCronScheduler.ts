@@ -1,4 +1,5 @@
 import { registerSocialCronError, runSocialCron } from "@/lib/socialCronRunner";
+import { finishOperationRun, startOperationRun } from "@/lib/operationObservability";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -42,6 +43,7 @@ async function runInternalCronTick() {
   if (globalThis.__plugandoSocialInternalCronRunning) return;
   globalThis.__plugandoSocialInternalCronRunning = true;
 
+  const operation = await startOperationRun("SOCIAL_PUBLISHER", { trigger: "internal_scheduler" });
   try {
     globalThis.__plugandoSocialInternalCronLastTickAt = new Date().toISOString();
     const result = await runSocialCron({ baseUrl: resolveInternalBaseUrl() });
@@ -53,9 +55,19 @@ async function runInternalCronTick() {
         results: result.results?.length || 0,
       });
     }
+    const failed = Array.isArray(result.results) ? result.results.filter((item: any) => item?.ok === false).length : 0;
+    await finishOperationRun(operation?.runId, {
+      status: failed > 0 ? "PARTIAL" : "SUCCESS",
+      itemsFound: result.checked,
+      itemsProcessed: result.checked,
+      itemsSucceeded: Math.max(0, result.checked - failed),
+      itemsFailed: failed,
+      metadata: { trigger: "internal_scheduler" },
+    });
   } catch (error: any) {
     globalThis.__plugandoSocialInternalCronLastError = registerSocialCronError(error);
     console.error("[internal-cron] Falha no social cron", error?.message || error);
+    await finishOperationRun(operation?.runId, { status: "FAILED", errorMessage: error?.message || String(error) });
   } finally {
     globalThis.__plugandoSocialInternalCronRunning = false;
   }

@@ -2,6 +2,9 @@ import { NextRequest } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { prisma as sharedPrisma } from "@/lib/prisma";
+import { DEFINITIONS } from "@/lib/operationObservability";
+import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +15,53 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 // O parâmetro ?since= filtra logs criados APÓS aquele timestamp,
 // evitando que logs antigos de execuções anteriores apareçam no monitor.
 export async function GET(req: NextRequest) {
+  if (req.nextUrl.searchParams.get("view") === "operations") {
+    try {
+      await requireAdminOrCronSecret(req);
+      const now = new Date();
+      const definitions = await sharedPrisma.operationDefinition.findMany({ orderBy: [{ family: "asc" }, { name: "asc" }] });
+      const runs = await sharedPrisma.operationRun.findMany({ orderBy: { startedAt: "desc" }, take: 250 });
+      const latest = new Map<string, typeof runs[number]>();
+      for (const run of runs) if (!latest.has(run.operationKey)) latest.set(run.operationKey, run);
+      const operations = definitions.map((definition) => {
+        const run = latest.get(definition.key);
+        const staleSeconds = Math.max(300, Number(definition.expectedEverySec || 300) * 3);
+        const stale = !run || (run.status === "RUNNING" && now.getTime() - run.heartbeatAt.getTime() > staleSeconds * 1000);
+        return {
+          key: definition.key,
+          name: definition.name,
+          family: definition.family,
+          description: definition.description,
+          status: !definition.enabled ? "DISABLED" : stale ? "STALE" : run?.status === "FAILED" ? "FAILED" : run?.status === "PARTIAL" ? "ATTENTION" : "OK",
+          lastRun: run || null,
+        };
+      });
+      const [socialDue, socialFuture, socialProcessing, socialFailed, socialPostedToday] = await Promise.all([
+        sharedPrisma.socialPost.count({ where: { status: "SCHEDULED", scheduledTo: { lte: now } } }),
+        sharedPrisma.socialPost.count({ where: { status: "SCHEDULED", scheduledTo: { gt: now } } }),
+        sharedPrisma.socialPost.count({ where: { status: { in: ["PROCESSING_MEDIA", "PUBLISHING"] } } }),
+        sharedPrisma.socialPost.count({ where: { status: "FAILED" } }),
+        sharedPrisma.socialPost.count({ where: { status: "POSTED", postedAt: { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) } } }),
+      ]);
+      return Response.json({
+        ok: true,
+        serverTime: now.toISOString(),
+        operations,
+        catalog: Object.entries(DEFINITIONS).map(([key, value]) => ({ key, ...value })),
+        queues: { socialDue, socialFuture, socialProcessing, socialFailed, socialPostedToday },
+        summary: {
+          total: operations.length,
+          healthy: operations.filter((item) => item.status === "OK").length,
+          attention: operations.filter((item) => ["ATTENTION", "STALE"].includes(item.status)).length,
+          failed: operations.filter((item) => item.status === "FAILED").length,
+        },
+      });
+    } catch (error: any) {
+      const status = error?.message === "Unauthorized" ? 401 : 500;
+      return Response.json({ ok: false, error: error?.message || "Falha ao carregar operacoes" }, { status });
+    }
+  }
+
   const sinceParam = req.nextUrl.searchParams.get("since");
   const sinceDate = sinceParam ? new Date(sinceParam) : null;
 

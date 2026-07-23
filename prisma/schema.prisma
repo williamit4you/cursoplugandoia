@@ -835,6 +835,44 @@ model PipelineLog {
   createdAt DateTime @default(now())
 }
 
+model OperationDefinition {
+  id             String          @id @default(cuid())
+  key            String          @unique
+  name           String
+  family         String
+  description    String?
+  enabled        Boolean         @default(true)
+  expectedEverySec Int?
+  owner          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  runs           OperationRun[]
+}
+
+model OperationRun {
+  id              String              @id @default(cuid())
+  runId           String              @unique @default(cuid())
+  operationKey    String
+  status          String              @default("RUNNING") // RUNNING | SUCCESS | PARTIAL | FAILED | STALE
+  startedAt       DateTime            @default(now())
+  heartbeatAt     DateTime            @default(now())
+  finishedAt      DateTime?
+  nextRunAt       DateTime?
+  itemsFound      Int                 @default(0)
+  itemsProcessed  Int                 @default(0)
+  itemsSucceeded  Int                 @default(0)
+  itemsFailed     Int                 @default(0)
+  estimatedCostUsd Float               @default(0)
+  errorMessage    String?
+  metadataJson    String?
+  createdAt       DateTime            @default(now())
+  operation       OperationDefinition @relation(fields: [operationKey], references: [key], onDelete: Cascade)
+
+  @@index([operationKey, startedAt])
+  @@index([status, heartbeatAt])
+  @@index([heartbeatAt])
+}
+
 model ScraperConfig {
   id                String   @id @default(cuid())
   // Agendamento
