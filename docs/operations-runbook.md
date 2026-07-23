@@ -32,3 +32,9 @@
 2. Gere o relatorio em `/api/operations/daily-report`.
 3. Verifique publicacoes vencidas, falhas, custo estimado e item mais antigo da fila.
 4. Reagende somente itens recuperaveis e confira as credenciais antes de repetir falhas de autenticacao.
+
+## Privacidade e retencao
+
+- O endpoint de metricas respeita `Do Not Track` e recusas explicitas de consentimento.
+- Eventos sao retidos por `METRICS_RETENTION_DAYS` (padrao: 730 dias) e removidos pelo relatorio diario.
+- Dados de origem devem ser agregados; segredos e tokens nunca entram em eventos.

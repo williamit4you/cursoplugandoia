@@ -7,6 +7,9 @@ const ALLOWED_EVENTS = new Set(["page_view", "article_view", "video_view", "affi
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
+    if (body.consent === false || req.headers.get("dnt") === "1") {
+      return NextResponse.json({ ok: true, skipped: true, reason: "tracking_opt_out" });
+    }
     const eventType = String(body.eventType || "");
     if (!ALLOWED_EVENTS.has(eventType)) return NextResponse.json({ error: "Evento invalido" }, { status: 400 });
     const metric = await recordContentMetric({ eventType, postId: body.postId || null, socialPostId: body.socialPostId || null, productId: body.productId || null, sessionId: body.sessionId || null, source: body.source || null, medium: body.medium || null, campaign: body.campaign || null, referrer: req.headers.get("referer"), metadata: body.metadata });

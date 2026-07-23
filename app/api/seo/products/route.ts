@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
+import { calculateSeoOpportunityScore } from "@/lib/seoGovernance";
 
 export const dynamic = "force-dynamic";
 function slugify(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""); }
@@ -21,5 +22,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, product });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Falha ao criar produto" }, { status: error?.message === "Unauthorized" ? 401 : 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    await requireAdminOrCronSecret(req);
+    const body = await req.json();
+    const productId = String(body.productId || "");
+    const terms = Array.isArray(body.terms) ? body.terms : [];
+    if (!productId || !terms.length) return NextResponse.json({ error: "productId e terms sao obrigatorios" }, { status: 400 });
+    const opportunities = await Promise.all(terms.map((term: any) => {
+      const values = { demandScore: Number(term.demandScore || 0), trendScore: Number(term.trendScore || 0), competitionScore: Number(term.competitionScore || 0), relevanceScore: Number(term.relevanceScore || 0), conversionScore: Number(term.conversionScore || 0) };
+      return prisma.seoOpportunity.create({ data: { productId, keyword: String(term.keyword || "").trim(), region: String(term.region || body.region || "BR"), source: String(term.source || body.source || "MANUAL"), intent: term.intent || null, cluster: term.cluster || null, ...values, opportunityScore: calculateSeoOpportunityScore(values), rawDataJson: JSON.stringify({ collectedAt: new Date().toISOString(), providerPayload: term.rawData || null }) } });
+    }));
+    return NextResponse.json({ ok: true, opportunities });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || "Falha ao coletar termos" }, { status: error?.message === "Unauthorized" ? 401 : 500 });
   }
 }

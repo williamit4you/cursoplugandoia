@@ -43,40 +43,40 @@
 - [x] Criar botao `Reagendar antigos (nao postados)` com slots futuros de 2 em 2 horas.
 - [x] Permitir reagendar por plataforma ou todas as plataformas pelo parametro `platform`.
 - [ ] Confirmar no painel a quantidade e os horarios antes de aplicar o lote.
-- [ ] Diferenciar falha de credencial, falha temporaria, video em processamento e item invalido.
+- [x] Diferenciar credencial expirada, falha temporaria com backoff, video em processamento e falha definitiva no cron social.
 - [x] Criar retry com backoff para falhas temporarias, circuit breaker por provedor e registro de falhas consecutivas.
 - [x] Criar auditoria de acoes manuais de fila social.
 
 ## Fase 4 - Metricas de conteudo e blog
 
 - [x] Padronizar eventos: `page_view`, `article_view`, `video_view`, `affiliate_click`, `lead_created`, `sale_attributed`.
-- [ ] Garantir IDs de campanha e UTMs em todos os links sociais e afiliados.
+- [x] Garantir UTMs por plataforma nos links de artigos enviados para YouTube, Meta, TikTok e LinkedIn.
 - [x] Criar relatorio diario de artigos, videos, posts, cliques, visitas, leads e vendas.
 - [ ] Integrar Search Console para impressao, clique, CTR, posicao e consulta.
-- [ ] Separar metricas observadas de metricas estimadas.
-- [ ] Criar retencao de dados e politica de privacidade/consentimento.
+- [x] Separar metricas observadas de metricas estimadas no relatorio diario.
+- [x] Criar retencao configuravel de metricas e respeitar recusa de consentimento/Do Not Track.
 
 ## Fase 5 - SEO e agentes de marketing
 
 - [x] Criar catalogo canonico de produtos e base de associacao com oportunidades e briefs SEO.
-- [ ] Criar coletor de termos por produto e regiao.
+- [x] Criar coletor de termos por produto e regiao com fonte, data e payload original.
 - [ ] Usar Trends para tendencia relativa e Keyword Planner/Search Console para validar demanda; guardar data e fonte.
 - [x] Criar score de oportunidade: demanda, tendencia, concorrencia, relevancia e capacidade de conversao.
 - [x] Gerar tres briefs por produto: dor, produto e comparativo.
 - [ ] Criar agentes separados para pesquisa, estrategia, redacao, SEO, revisao e analise.
 - [x] Adicionar validacao de liberacao SEO para produto, preco, links, palavra-chave, intencao e fontes; claims e duplicidade permanecem como revisao editorial.
 - [ ] Publicar artigos com links internos para produto, video e comparativos.
-- [ ] Medir cada cluster apos 7, 14 e 28 dias.
+- [x] Medir eventos de cada cluster/produto em janelas de 7, 14 e 28 dias no relatorio diario.
 
 ## Fase 6 - Custos, confiabilidade e escala
 
 - [x] Registrar estrutura de custo por ativo, provedor e operacao.
-- [ ] Criar limites diarios por agente, pipeline e provedor.
+- [x] Criar limite diario global de custo por ambiente com alerta critico; custos continuam registrados por agente, pipeline e provedor para limites granulares.
 - [x] Criar circuit breaker para provedor indisponivel.
-- [ ] Criar fila de prioridade e capacidade por worker.
+- [x] Criar prioridade de fila e capacidade por rodada (`priority`, `maxItemsPerRun` e `processOneAtATime`) nos pipelines de producao.
 - [ ] Criar testes de idempotencia para cada etapa.
 - [ ] Criar testes de contrato para Meta, YouTube, storage e workers.
-- [ ] Criar relatorio de desperdicio: video gerado sem publicacao, artigo sem visita e custo sem conversao.
+- [x] Criar relatorio de desperdicio: video gerado sem publicacao e artigo sem visita, junto ao custo estimado diario.
 
 ## Incidente YouTube - invalid_grant
 

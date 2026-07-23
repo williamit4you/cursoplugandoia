@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { computeNextSocialQueueTime } from "@/lib/socialQueueSchedule";
 import { parseProjectMetadata } from "@/lib/newsVideoProject";
 import { logCodeVideoPipelineEvent, upsertCodeVideoPipelineStep } from "@/lib/video-code/logger";
+import { withCampaignTracking } from "@/lib/trackingLinks";
 
 function normalizeSocialPlatforms(value: unknown) {
   const allowed = new Set(["YOUTUBE", "INSTAGRAM", "TIKTOK", "LINKEDIN"]);
@@ -24,12 +25,13 @@ function buildNewsSocialSummary(project: {
   title?: string | null;
   description?: string | null;
   metadataJson?: string | null;
-}) {
+}, source = "social") {
   const metadata = parseProjectMetadata(project.metadataJson || "{}") || {};
   const title = String(project.title || "Resumo da noticia").trim();
   const description = String(project.description || "").trim();
   const articleUrl = String(metadata?.articleUrl || "").trim();
-  return [title, description, articleUrl ? `Leia a materia completa: ${articleUrl}` : ""]
+  const trackedUrl = articleUrl ? withCampaignTracking(articleUrl, { source: source.toLowerCase(), medium: "organic", campaign: "news_video" }) : "";
+  return [title, description, trackedUrl ? `Leia a materia completa: ${trackedUrl}` : ""]
     .filter(Boolean)
     .join("\n\n")
     .slice(0, 4500);
@@ -53,7 +55,6 @@ export async function ensureNewsSocialPostsForProject(project: {
     return { createdCount: 0, createdPlatforms: [] as string[], skipped: true, reason: "video_missing" };
   }
 
-  const summary = buildNewsSocialSummary(project);
   const postId = metadata?.postId ? String(metadata.postId) : null;
   const platforms = desiredNewsPlatforms(newsAutomation.platforms);
   const existing = await prisma.socialPost.findMany({
@@ -74,6 +75,7 @@ export async function ensureNewsSocialPostsForProject(project: {
 
   for (const platform of platforms) {
     const socialPlatform = platform === "INSTAGRAM" ? "META" : platform;
+    const summary = buildNewsSocialSummary(project, socialPlatform);
     const postType = "REEL";
     const key = `${socialPlatform}:${postType}`;
     if (existingKeys.has(key)) continue;

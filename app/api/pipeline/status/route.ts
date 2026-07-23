@@ -69,6 +69,10 @@ export async function GET(req: NextRequest) {
       else await resolveOperationAlert("social:overdue");
       if (socialFailed > 0) await upsertOperationAlert({ fingerprint: "social:failed", operationKey: "SOCIAL_PUBLISHER", severity: "WARNING", title: "Falhas na fila social", message: `${socialFailed} publicacao(oes) falharam e precisam de nova tentativa ou reautenticacao.`, actionUrl: "/admin/social" });
       else await resolveOperationAlert("social:failed");
+      const dailyCostLimitUsd = Math.max(0, Number(process.env.DAILY_COST_LIMIT_USD || 0));
+      const currentCostUsd = estimatedCostToday._sum.costUsd || 0;
+      if (dailyCostLimitUsd > 0 && currentCostUsd >= dailyCostLimitUsd) await upsertOperationAlert({ fingerprint: "cost:daily-limit", severity: "CRITICAL", title: "Limite diario de custo atingido", message: `Custo estimado de US$ ${currentCostUsd.toFixed(2)} atingiu o limite de US$ ${dailyCostLimitUsd.toFixed(2)}.`, actionUrl: "/admin/dashboard" });
+      else await resolveOperationAlert("cost:daily-limit");
       return Response.json({
         ok: true,
         serverTime: now.toISOString(),
@@ -76,7 +80,7 @@ export async function GET(req: NextRequest) {
         catalog: Object.entries(DEFINITIONS).map(([key, value]) => ({ key, ...value })),
         queues: { socialDue, socialFuture, socialProcessing, socialFailed, socialPostedToday, oldestSocial },
         alerts,
-        costs: { estimatedCostTodayUsd: estimatedCostToday._sum.costUsd || 0 },
+        costs: { estimatedCostTodayUsd: currentCostUsd, dailyLimitUsd: dailyCostLimitUsd || null, withinLimit: dailyCostLimitUsd <= 0 || currentCostUsd < dailyCostLimitUsd },
         summary: {
           total: operations.length,
           healthy: operations.filter((item) => item.status === "OK").length,

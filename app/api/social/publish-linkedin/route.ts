@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { publishLinkedInPost } from "@/lib/linkedinApi";
+import { withCampaignTracking } from "@/lib/trackingLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -60,8 +61,9 @@ export async function POST(req: NextRequest) {
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
-    const articleUrl =
-      socialPost.post?.slug ? `${siteUrl}/noticias/${socialPost.post.slug}` : undefined;
+    const articleUrl = socialPost.post?.slug
+      ? withCampaignTracking(`${siteUrl}/noticias/${socialPost.post.slug}`, { source: "linkedin", medium: "organic", campaign: "news_video", content: targetSocialPostId })
+      : undefined;
 
     const linkedinId = await publishLinkedInPost({
       text: socialPost.summary,
