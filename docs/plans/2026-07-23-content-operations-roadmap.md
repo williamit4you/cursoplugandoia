@@ -65,6 +65,7 @@ Esses itens permanecem visiveis para impedir que uma dependencia externa seja co
 - [x] Garantir UTMs por plataforma nos links de artigos enviados para YouTube, Meta, TikTok e LinkedIn.
 - [x] Criar relatorio diario de artigos, videos, posts, cliques, visitas, leads e vendas.
 - [ ] Integrar Search Console para impressao, clique, CTR, posicao e consulta.
+  Base pronta em `lib/searchConsole.ts` e em `/api/operations/daily-report?includeSearchConsole=1`; falta validar com propriedade e credenciais reais.
 - [x] Separar metricas observadas de metricas estimadas no relatorio diario.
 - [x] Criar retencao configuravel de metricas e respeitar recusa de consentimento/Do Not Track.
 
@@ -122,6 +123,7 @@ Esses itens permanecem visiveis para impedir que uma dependencia externa seja co
 - [ ] Palavra-chave nao escolhida apenas por volume.
 - [ ] Intencao de busca compativel com o artigo.
 - [ ] Tres angulos nao sao conteudo duplicado.
+  A validacao deterministica entre `PAIN`, `PRODUCT` e `COMPARISON` ja roda no pipeline SEO; o check final continua editorial.
 - [ ] Revisao humana concluida quando houver risco factual, medico, financeiro ou legal.
 - [x] Artigo consulta os `SocialPost` vinculados e mostra o vídeo gerado e URLs publicadas.
 - [x] Canonical, sitemap, robots e schema `NewsArticle`/`VideoObject` adicionados.

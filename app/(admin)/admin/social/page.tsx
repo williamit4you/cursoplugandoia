@@ -501,24 +501,24 @@ export default function SocialPostsDashboard() {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Prontos p/ postar</div>
+            <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">Prontos p/ postar</div>
             <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.dueScheduled ?? "-"}</div>
-            <div className="mt-1 text-[10px] text-slate-500">SCHEDULED com horÃ¡rio {"\u2264"} agora</div>
+            <div className="mt-1 text-[10px] text-slate-500">SCHEDULED com horario {"<="} agora</div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Futuros</div>
+            <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">Futuros</div>
             <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.scheduledFuture ?? "-"}</div>
-            <div className="mt-1 text-[10px] text-slate-500">SCHEDULED com horÃ¡rio {">"} agora</div>
+            <div className="mt-1 text-[10px] text-slate-500">SCHEDULED com horario {">"} agora</div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Processando</div>
+            <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">Processando</div>
             <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.processing ?? "-"}</div>
             <div className="mt-1 text-[10px] text-slate-500">PROCESSING_MEDIA / PUBLISHING</div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Falhas</div>
+            <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">Falhas</div>
             <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.failed ?? "-"}</div>
             <div className="mt-1 text-[10px] text-slate-500">Status FAILED</div>
           </div>
@@ -527,11 +527,11 @@ export default function SocialPostsDashboard() {
         {/* Integrations quick check */}
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-xs font-black text-slate-800 uppercase tracking-wider">IntegraÃ§Ãµes (check rÃ¡pido)</div>
+            <div className="text-xs font-black text-slate-800 uppercase tracking-wider">Integracoes (check rapido)</div>
             <a
               href="/admin/integrations"
               className="text-[11px] font-black text-indigo-700 hover:underline"
-              title="Abrir Hub de IntegraÃ§Ãµes"
+              title="Abrir Hub de Integracoes"
             >
               abrir /admin/integrations
             </a>
@@ -584,7 +584,7 @@ export default function SocialPostsDashboard() {
                   className="text-[11px] font-black text-slate-700 hover:underline"
                   title="Testa se o refresh token consegue gerar access token (abre em nova aba)"
                 >
-                  Testar autenticaÃ§Ã£o
+                  Testar autenticacao
                 </a>
               </div>
             </div>
@@ -688,7 +688,7 @@ export default function SocialPostsDashboard() {
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-xs font-black text-slate-800 uppercase tracking-wider">Ãšltima execuÃ§Ã£o</div>
+              <div className="text-xs font-black text-slate-800 uppercase tracking-wider">Ultima execucao</div>
               <div className="text-[10px] text-slate-500">
                 finalizou: {cronStatus?.state?.lastFinishedAt ? `${formatAgo(cronStatus.state.lastFinishedAt)} (${new Date(cronStatus.state.lastFinishedAt).toLocaleTimeString("pt-BR")})` : "—"}
               </div>
@@ -717,7 +717,7 @@ export default function SocialPostsDashboard() {
                 </div>
               ))}
               {Array.isArray(cronStatus?.state?.lastResults) && cronStatus.state.lastResults.length === 0 ? (
-                <div className="text-xs text-slate-400 font-bold">Ainda sem execuÃ§Ãµes.</div>
+                <div className="text-xs text-slate-400 font-bold">Ainda sem execucoes.</div>
               ) : null}
             </div>
           </div>

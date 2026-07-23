@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { withCampaignTracking } from "../lib/trackingLinks";
-import { calculateSeoOpportunityScore, validateSeoRelease, validateSeoSources } from "../lib/seoGovernance";
+import { calculateSeoOpportunityScore, normalizeSeoSource, validateSeoAngleDistinctness, validateSeoRelease, validateSeoSources } from "../lib/seoGovernance";
 import { validateProviderResponse } from "../lib/providerContracts";
 import { buildSocialRequeuePlan } from "../lib/socialRequeuePlan";
 
@@ -32,6 +32,23 @@ test("SEO sources require source and collectedAt", () => {
   const valid = validateSeoSources(JSON.stringify([{ source: "TRENDS", collectedAt: "2026-07-23T10:00:00.000Z", keyword: "produto teste" }]));
   assert.equal(valid.ok, true);
   assert.equal(valid.validSources.length, 1);
+});
+
+test("SEO source normalization keeps only supported providers", () => {
+  assert.equal(normalizeSeoSource("trends"), "TRENDS");
+  assert.equal(normalizeSeoSource("search_console"), "SEARCH_CONSOLE");
+  assert.equal(normalizeSeoSource("unknown-provider"), "MANUAL");
+});
+
+test("SEO angle distinctness blocks nearly identical briefs", () => {
+  const result = validateSeoAngleDistinctness([
+    { angle: "PAIN", title: "Air fryer vale a pena", keyword: "air fryer vale a pena" },
+    { angle: "PRODUCT", title: "Air fryer vale a pena", keyword: "air fryer vale a pena" },
+    { angle: "COMPARISON", title: "Air fryer ou forno eletrico", keyword: "air fryer vs forno eletrico" },
+  ]);
+
+  assert.equal(result.ok, false);
+  assert.ok(result.issues.some((issue) => issue.includes("PAIN") && issue.includes("PRODUCT")));
 });
 
 test("provider response contracts accept expected identifiers", () => {

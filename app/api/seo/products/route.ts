@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
-import { calculateSeoOpportunityScore } from "@/lib/seoGovernance";
+import { calculateSeoOpportunityScore, normalizeSeoSource } from "@/lib/seoGovernance";
 
 export const dynamic = "force-dynamic";
 function slugify(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""); }
@@ -44,7 +44,7 @@ export async function PUT(req: NextRequest) {
           productId,
           keyword: String(term.keyword || "").trim(),
           region: String(term.region || body.region || "BR"),
-          source: String(term.source || body.source || "MANUAL"),
+          source: normalizeSeoSource(term.source || body.source),
           intent: term.intent || null,
           cluster: term.cluster || null,
           ...values,
@@ -52,7 +52,7 @@ export async function PUT(req: NextRequest) {
           collectedAt,
           rawDataJson: JSON.stringify({
             collectedAt: collectedAt.toISOString(),
-            source: String(term.source || body.source || "MANUAL"),
+            source: normalizeSeoSource(term.source || body.source),
             sourceUrl: term.sourceUrl || null,
             providerPayload: term.rawData || null,
           }),

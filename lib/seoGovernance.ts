@@ -6,6 +6,9 @@ export type SeoOpportunityInput = {
   conversionScore?: number;
 };
 
+export const SEO_SOURCES = ["SEARCH_CONSOLE", "TRENDS", "KEYWORD_PLANNER", "SUGGEST", "MANUAL"] as const;
+export type SeoSource = (typeof SEO_SOURCES)[number];
+
 export type SeoEvidenceSource = {
   source?: string | null;
   collectedAt?: string | null;
@@ -13,6 +16,47 @@ export type SeoEvidenceSource = {
   region?: string | null;
   url?: string | null;
 };
+
+export function normalizeSeoSource(value: unknown): SeoSource {
+  const normalized = String(value || "").trim().toUpperCase();
+  return (SEO_SOURCES as readonly string[]).includes(normalized) ? (normalized as SeoSource) : "MANUAL";
+}
+
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .split(/\s+/)
+    .filter((item) => item.length > 2);
+}
+
+export function calculateTextSimilarity(left: string, right: string) {
+  const a = new Set(normalizeText(left));
+  const b = new Set(normalizeText(right));
+  const intersection = [...a].filter((item) => b.has(item)).length;
+  const union = new Set([...a, ...b]).size;
+  return union ? intersection / union : 0;
+}
+
+export function validateSeoAngleDistinctness(items: Array<{ angle?: string | null; title?: string | null; keyword?: string | null }>) {
+  const issues: string[] = [];
+  const comparisons: Array<{ left: string; right: string; score: number }> = [];
+  for (let i = 0; i < items.length; i += 1) {
+    for (let j = i + 1; j < items.length; j += 1) {
+      const left = items[i];
+      const right = items[j];
+      const score = calculateTextSimilarity(
+        `${left.title || ""} ${left.keyword || ""}`,
+        `${right.title || ""} ${right.keyword || ""}`,
+      );
+      comparisons.push({ left: String(left.angle || i), right: String(right.angle || j), score });
+      if (score >= 0.85) issues.push(`Angulos ${left.angle || i} e ${right.angle || j} estao muito parecidos`);
+    }
+  }
+  return { ok: issues.length === 0, issues, comparisons };
+}
 
 export function calculateSeoOpportunityScore(input: SeoOpportunityInput) {
   const demand = Math.max(0, Math.min(100, input.demandScore || 0));

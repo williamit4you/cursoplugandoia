@@ -19,6 +19,7 @@
 2. Guarde segredos somente em variaveis de ambiente ou no cofre do provedor.
 3. Confirme YouTube OAuth em producao, com Client ID, Client Secret e Redirect URI iguais aos da aplicacao.
 4. Cadastre Search Console e Google Trends/Keyword Planner antes de interpretar demanda como volume absoluto.
+5. Para anexar Search Console ao relatorio diario, configure `GOOGLE_SEARCH_CONSOLE_SITE_URL` e `GOOGLE_SEARCH_CONSOLE_SERVICE_ACCOUNT_JSON` e chame `/api/operations/daily-report?includeSearchConsole=1`.
 
 ## Backup verificavel
 
