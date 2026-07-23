@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { finishOperationRun, heartbeatOperationRun, startOperationRun } from "@/lib/operationObservability";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
@@ -18,6 +19,7 @@ function baseUrl(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const operation = await startOperationRun("VIDEO_QUESTIONS", { trigger: "cron" });
   try {
     const secret = req.nextUrl.searchParams.get("secret");
     const cronSecret = process.env.CRON_SECRET || SECRET;
@@ -29,10 +31,12 @@ export async function GET(req: NextRequest) {
 
     const cfg = await prisma.videoQuestionConfig.findFirst();
     if (!cfg) {
+      await finishOperationRun(operation?.runId, { status: "PARTIAL", itemsFound: 0, itemsProcessed: 0, metadata: { reason: "config_missing" }, errorMessage: "Configuracao de perguntas nao encontrada." });
       return NextResponse.json({ message: "Configuração de perguntas não encontrada." });
     }
 
     if (!cfg.isEnabled) {
+      await finishOperationRun(operation?.runId, { status: "PARTIAL", itemsFound: 0, itemsProcessed: 0, metadata: { reason: "disabled" } });
       return NextResponse.json({ message: "Automação de perguntas desativada nas configurações." });
     }
 
@@ -40,8 +44,10 @@ export async function GET(req: NextRequest) {
     const pendingCount = await prisma.videoQuestion.count({
       where: { status: "PENDING" },
     });
+    await heartbeatOperationRun(operation?.runId, { itemsFound: pendingCount, itemsProcessed: 0 });
 
     if (pendingCount === 0) {
+      await finishOperationRun(operation?.runId, { status: "SUCCESS", itemsFound: 0, itemsProcessed: 0, metadata: { reason: "empty_queue" } });
       return NextResponse.json({ message: "Nenhuma pergunta pendente na fila." });
     }
 
@@ -58,6 +64,7 @@ export async function GET(req: NextRequest) {
       }
 
       if (scheduledTimes.length === 0) {
+        await finishOperationRun(operation?.runId, { status: "PARTIAL", itemsFound: pendingCount, itemsProcessed: 0, metadata: { reason: "scheduled_times_empty" }, errorMessage: "Horarios fixos ativados mas nenhum cadastrado." });
         return NextResponse.json({ message: "Horários fixos ativados mas nenhum cadastrado." });
       }
 
@@ -115,6 +122,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!shouldRun) {
+      await finishOperationRun(operation?.runId, { status: "SUCCESS", itemsFound: pendingCount, itemsProcessed: 0, metadata: { shouldRun: false, reason } });
       return NextResponse.json({ shouldRun: false, reason });
     }
 
@@ -128,6 +136,15 @@ export async function GET(req: NextRequest) {
     });
 
     const triggerData = await triggerRes.json().catch(() => ({}));
+    await finishOperationRun(operation?.runId, {
+      status: triggerRes.ok ? "SUCCESS" : "FAILED",
+      itemsFound: pendingCount,
+      itemsProcessed: triggerRes.ok ? 1 : 0,
+      itemsSucceeded: triggerRes.ok ? 1 : 0,
+      itemsFailed: triggerRes.ok ? 0 : 1,
+      metadata: { shouldRun: true, reason, triggerResponse: triggerData },
+      errorMessage: triggerRes.ok ? null : (triggerData?.error || "Falha ao disparar worker de perguntas"),
+    });
 
     return NextResponse.json({
       shouldRun: true,
@@ -136,6 +153,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("[api/video-questions/cron GET]", error);
+    await finishOperationRun(operation?.runId, { status: "FAILED", itemsFailed: 1, errorMessage: error?.message || "Erro no cron de perguntas" });
     return NextResponse.json({ error: error?.message || "Erro no cron de perguntas" }, { status: 500 });
   }
 }

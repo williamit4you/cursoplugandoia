@@ -4,13 +4,12 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
 import { auditManualAction } from "@/lib/operationsControl";
+import { buildSocialRequeuePlan, REQUEUE_SPACING_HOURS } from "@/lib/socialRequeuePlan";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
-
-const REQUEUE_SPACING_HOURS = 2;
 
 async function requeueExpired(req: NextRequest) {
   await requireAdminOrCronSecret(req);
@@ -44,15 +43,11 @@ async function requeueExpired(req: NextRequest) {
     if (item.scheduledTo) occupiedSlots.add(`${item.platform}:${item.scheduledTo.getTime()}`);
   }
 
-  let cursor = new Date(now.getTime() + REQUEUE_SPACING_HOURS * 60 * 60 * 1000);
-  const plan = candidates.map((item) => {
-    while (occupiedSlots.has(`${item.platform}:${cursor.getTime()}`)) {
-      cursor = new Date(cursor.getTime() + REQUEUE_SPACING_HOURS * 60 * 60 * 1000);
-    }
-    const scheduledTo = new Date(cursor);
-    occupiedSlots.add(`${item.platform}:${scheduledTo.getTime()}`);
-    cursor = new Date(cursor.getTime() + REQUEUE_SPACING_HOURS * 60 * 60 * 1000);
-    return { item, scheduledTo };
+  const plan = buildSocialRequeuePlan({
+    now,
+    candidates,
+    futureSlots: future,
+    spacingHours: REQUEUE_SPACING_HOURS,
   });
   if (dryRun) {
     return { count: plan.length, spacingHours: REQUEUE_SPACING_HOURS, preview: plan.map(({ item, scheduledTo }) => ({ id: item.id, platform: item.platform, scheduledTo })) };

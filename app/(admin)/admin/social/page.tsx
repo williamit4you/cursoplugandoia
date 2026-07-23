@@ -58,7 +58,7 @@ const SOCIAL_VIEWS = {
   },
 } as const;
 
-// Configuração de Status
+// Configuracao de status
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; pulse?: boolean }> = {
   DRAFT: { label: "Rascunho", color: "text-slate-500 bg-slate-100 border-slate-200/60", icon: Clock },
   SCHEDULED: { label: "Agendado", color: "text-indigo-600 bg-indigo-50 border-indigo-200/60", icon: Calendar },
@@ -116,7 +116,7 @@ export default function SocialPostsDashboard() {
   const [cronStatusError, setCronStatusError] = useState<string | null>(null);
   const [groupByVideo, setGroupByVideo] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  // Edição/agendamento agora fica numa página dedicada:
+  // Edicao/agendamento agora fica numa pagina dedicada:
   // `/admin/social/posts/[id]`
 
   const [page, setPage] = useState(1);
@@ -174,15 +174,15 @@ export default function SocialPostsDashboard() {
   }, [page, pageSize, statusFilter, platformFilter, q]);
 
   const formatAgo = (iso?: string | null) => {
-    if (!iso) return "—";
+    if (!iso) return "-";
     const t = new Date(iso).getTime();
-    if (!Number.isFinite(t)) return "—";
+    if (!Number.isFinite(t)) return "-";
     const diffSec = Math.max(0, Math.floor((Date.now() - t) / 1000));
-    if (diffSec < 60) return `há ${diffSec}s`;
+    if (diffSec < 60) return `ha ${diffSec}s`;
     const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `há ${diffMin}m`;
+    if (diffMin < 60) return `ha ${diffMin}m`;
     const diffH = Math.floor(diffMin / 60);
-    return `há ${diffH}h`;
+    return `ha ${diffH}h`;
   };
 
   const fetchCronStatus = useCallback(async (silent = false) => {
@@ -437,10 +437,10 @@ export default function SocialPostsDashboard() {
         <div className="space-y-1">
           <h4 className="text-sm font-bold text-indigo-900">Como funciona a Fila de Stories / Social?</h4>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Esta fila armazena as postagens geradas que estão aguardando publicação. O robô em background varre esta tabela periodicamente, executa os envios agendados via API (Meta Graph API, YouTube API, etc.) e atualiza o status.
+            Esta fila armazena as postagens geradas que estao aguardando publicacao. O robo em background varre esta tabela periodicamente, executa os envios agendados via API (Meta Graph API, YouTube API, etc.) e atualiza o status.
           </p>
           <p className="text-xs text-slate-500 leading-relaxed mt-1">
-            <strong className="text-indigo-800">Nota sobre "Meta processando" / "Processando":</strong> No Instagram/Facebook, o vídeo é enviado em duas fases. A primeira cria o container e o vídeo entra em fila de processamento na Meta (status "Processando"). A postagem final ocorre no próximo ciclo do cron <code className="bg-indigo-50 px-1 py-0.5 rounded font-mono text-[10px]">/api/social/cron</code>. Se este cron não estiver rodando no seu servidor, o post parecerá travado. Você pode clicar no botão <strong>"Sincronizar/Publicar"</strong> (<RefreshCcw className="w-2.5 h-2.5 inline" />) ao lado do post para verificar o status e publicá-lo imediatamente.
+            <strong className="text-indigo-800">Nota sobre "Meta processando" / "Processando":</strong> No Instagram/Facebook, o video e enviado em duas fases. A primeira cria o container e o video entra em fila de processamento na Meta (status "Processando"). A postagem final ocorre no proximo ciclo do cron <code className="bg-indigo-50 px-1 py-0.5 rounded font-mono text-[10px]">/api/social/cron</code>. Se este cron nao estiver rodando no seu servidor, o post parecera travado. Voce pode clicar no botao <strong>"Sincronizar/Publicar"</strong> (<RefreshCcw className="w-2.5 h-2.5 inline" />) ao lado do post para verificar o status e publica-lo imediatamente.
           </p>
           {lockedPlatform ? (
             <p className="text-xs text-slate-500 leading-relaxed mt-1">
@@ -459,7 +459,7 @@ export default function SocialPostsDashboard() {
               Cron Social (monitor)
             </h3>
             <p className="text-xs text-slate-500 font-medium">
-              Mostra o que o cron vai pegar agora e o Ãºltimo resultado executado.
+              Mostra o que o cron vai pegar agora e o ultimo resultado executado.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -504,22 +504,22 @@ export default function SocialPostsDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Prontos p/ postar</div>
-            <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.dueScheduled ?? "—"}</div>
+            <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.dueScheduled ?? "-"}</div>
             <div className="mt-1 text-[10px] text-slate-500">SCHEDULED com horÃ¡rio {"\u2264"} agora</div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Futuros</div>
-            <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.scheduledFuture ?? "—"}</div>
+            <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.scheduledFuture ?? "-"}</div>
             <div className="mt-1 text-[10px] text-slate-500">SCHEDULED com horÃ¡rio {">"} agora</div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Processando</div>
-            <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.processing ?? "—"}</div>
+            <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.processing ?? "-"}</div>
             <div className="mt-1 text-[10px] text-slate-500">PROCESSING_MEDIA / PUBLISHING</div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Falhas</div>
-            <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.failed ?? "—"}</div>
+            <div className="mt-1 text-xl font-black text-slate-900">{cronStatus?.stats?.failed ?? "-"}</div>
             <div className="mt-1 text-[10px] text-slate-500">Status FAILED</div>
           </div>
         </div>
