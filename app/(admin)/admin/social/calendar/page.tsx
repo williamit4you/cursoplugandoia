@@ -13,7 +13,8 @@ import {
   Play, 
   Pause, 
   Check, 
-  AlertCircle
+  AlertCircle,
+  RefreshCcw
 } from "lucide-react";
 
 type SocialPost = {
@@ -58,6 +59,10 @@ function startOfGrid(base: Date) {
   return first;
 }
 
+function localDateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export default function SocialCalendarPage() {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [cursor, setCursor] = useState(() => new Date());
@@ -71,11 +76,13 @@ export default function SocialCalendarPage() {
   const [editStatus, setEditStatus] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [requeueLoading, setRequeueLoading] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const fetchPosts = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/social/posts?page=1&pageSize=200&sortBy=scheduledTo&sortDir=asc", {
+      const res = await fetch("/api/social/posts?page=1&pageSize=500&sortBy=scheduledTo&sortDir=asc", {
         cache: "no-store",
       });
       if (!res.ok) return;
@@ -105,13 +112,41 @@ export default function SocialCalendarPage() {
     const map = new Map<string, SocialPost[]>();
     for (const post of posts) {
       if (!post.scheduledTo) continue;
-      const key = new Date(post.scheduledTo).toISOString().slice(0, 10);
+       const key = localDateKey(new Date(post.scheduledTo));
       const list = map.get(key) || [];
       list.push(post);
       map.set(key, list);
     }
     return map;
   }, [posts]);
+
+  const currentMonthPosts = useMemo(() => posts.filter((post) => {
+    if (!post.scheduledTo) return false;
+    const date = new Date(post.scheduledTo);
+    return date.getFullYear() === cursor.getFullYear() && date.getMonth() === cursor.getMonth();
+  }), [posts, cursor]);
+
+  const statusCounts = useMemo(() => currentMonthPosts.reduce((acc, post) => {
+    acc[post.status] = (acc[post.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>), [currentMonthPosts]);
+
+  const requeueExpired = async () => {
+    if (!confirm("Reagendar todas as publicações vencidas e com falha? Os vídeos serão mantidos e voltarão para a fila em intervalos de 3 horas.")) return;
+    setRequeueLoading(true);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/social/posts/requeue", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Não foi possível reagendar");
+      setNotice(data.count ? `${data.count} publicação(ões) reagendada(s) em intervalos de 3 horas.` : "Não há publicações vencidas para reagendar.");
+      await fetchPosts();
+    } catch (error: any) {
+      setNotice(error.message || "Falha ao reagendar publicações");
+    } finally {
+      setRequeueLoading(false);
+    }
+  };
 
   const handleItemClick = (post: SocialPost) => {
     setSelectedPost(post);
@@ -180,9 +215,9 @@ export default function SocialCalendarPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 animate-in fade-in duration-300">
+    <div className="max-w-[1500px] mx-auto px-4 py-8 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
             <CalendarIcon className="w-6 h-6 text-indigo-600" />
@@ -192,7 +227,15 @@ export default function SocialCalendarPage() {
             Visualize e reagende seus vídeos programados para publicação nas redes.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={requeueExpired}
+            disabled={requeueLoading}
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-black text-white bg-indigo-600 border border-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-60 shadow-sm"
+          >
+            <RefreshCcw className={`w-3.5 h-3.5 ${requeueLoading ? "animate-spin" : ""}`} />
+            {requeueLoading ? "Reagendando..." : "Reaproveitar vencidos"}
+          </button>
           <button
             onClick={() => setCursor((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
             className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-sm"
@@ -207,6 +250,19 @@ export default function SocialCalendarPage() {
           </button>
         </div>
       </div>
+
+      <div className="flex flex-wrap items-center gap-2 mb-6 text-[11px] font-bold text-slate-500">
+        <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700">{currentMonthPosts.length} neste mês</span>
+        <span className="px-2.5 py-1 rounded-full bg-rose-50 text-rose-700">{statusCounts.FAILED || 0} falharam</span>
+        <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">{posts.filter(p => p.status === "SCHEDULED" && p.scheduledTo && new Date(p.scheduledTo) <= new Date()).length} vencidas</span>
+      </div>
+
+      {notice ? (
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-800">
+          <span>{notice}</span>
+          <button onClick={() => setNotice(null)} className="text-indigo-500 hover:text-indigo-800" aria-label="Fechar aviso"><X className="w-4 h-4" /></button>
+        </div>
+      ) : null}
 
       {/* Legend & Summary Info */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 bg-slate-50 border border-slate-200/80 p-5 rounded-2xl">
@@ -244,7 +300,7 @@ export default function SocialCalendarPage() {
 
         {/* Days cells */}
         {days.map((day) => {
-          const key = day.toISOString().slice(0, 10);
+           const key = localDateKey(day);
           const items = eventsByDay.get(key) || [];
           const isCurrentMonth = day.getMonth() === cursor.getMonth();
           const isToday = new Date().toDateString() === day.toDateString();

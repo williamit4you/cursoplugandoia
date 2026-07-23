@@ -19,7 +19,7 @@ function normalize(value: unknown) {
 }
 
 function externalRenderServiceUrl() {
-  const value = String(process.env.VIDEO_RENDER_SERVICE_URL || "").trim();
+  const value = String(process.env.VIDEO_RENDER_SERVICE_URL || "http://127.0.0.1:3010").trim();
   return value ? value.replace(/\/+$/, "") : "";
 }
 
@@ -47,6 +47,9 @@ async function renderMixedVideo(payload: {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || `Render service failed (HTTP ${res.status})`);
+  if (!String(data?.videoUrl || "").trim()) {
+    throw new Error("Render service returned without a videoUrl.");
+  }
   return data;
 }
 
@@ -194,6 +197,10 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
         audioUrl: item.audioUrl,
         renderSpec,
       });
+      const finalVideoUrl = String(result?.videoUrl || "").trim();
+      if (!finalVideoUrl) {
+        throw new Error("O render-service concluiu sem retornar o link final do video.");
+      }
 
       const captionsUrl = await uploadBufferToMinio({
         buffer: Buffer.from(generateApproxVtt({ text: item.narrationText }), "utf8"),
@@ -204,7 +211,7 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
       const updated = await prisma.mixedCreatorVideo.update({
         where: { id },
         data: {
-          finalVideoUrl: String(result?.videoUrl || "").trim() || null,
+          finalVideoUrl,
           captionsUrl: captionsUrl || null,
           status: "READY",
           completedAt: now(),

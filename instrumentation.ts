@@ -5,5 +5,8 @@ export async function register() {
 
     const { startInternalCronSchedulerEngagement } = await import("./lib/internalCronSchedulerEngagement");
     startInternalCronSchedulerEngagement();
+
+    const { startInternalSocialCronScheduler } = await import("./lib/internalSocialCronScheduler");
+    startInternalSocialCronScheduler();
   }
 }

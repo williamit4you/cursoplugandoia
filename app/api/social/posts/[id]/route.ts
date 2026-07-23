@@ -9,6 +9,70 @@ const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+const REQUEUE_SPACING_HOURS = 3;
+
+async function requeueExpired(req: NextRequest) {
+  await requireAdminOrCronSecret(req);
+  const body = await req.json().catch(() => ({}));
+  const platform = String(body.platform || "ALL").trim().toUpperCase();
+  const now = new Date();
+  const where: any = {
+    videoUrl: { not: "" },
+    OR: [
+      { status: "FAILED" },
+      { status: "SCHEDULED", scheduledTo: { lte: now } },
+    ],
+  };
+  if (platform !== "ALL") where.platform = platform;
+
+  const candidates = await prisma.socialPost.findMany({
+    where,
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { id: true, platform: true },
+  });
+  if (!candidates.length) return { count: 0, spacingHours: REQUEUE_SPACING_HOURS };
+
+  const latestByPlatform = new Map<string, Date>();
+  const future = await prisma.socialPost.findMany({
+    where: { status: "SCHEDULED", scheduledTo: { gt: now }, ...(platform !== "ALL" ? { platform } : {}) },
+    orderBy: { scheduledTo: "desc" },
+    select: { platform: true, scheduledTo: true },
+  });
+  for (const item of future) {
+    if (item.scheduledTo && !latestByPlatform.has(item.platform)) latestByPlatform.set(item.platform, item.scheduledTo);
+  }
+
+  const updates = candidates.map((item) => {
+    const previous = latestByPlatform.get(item.platform);
+    const scheduledTo = new Date((previous || now).getTime() + REQUEUE_SPACING_HOURS * 60 * 60 * 1000);
+    latestByPlatform.set(item.platform, scheduledTo);
+    return prisma.socialPost.update({
+      where: { id: item.id },
+      data: {
+        status: "SCHEDULED", scheduledTo, postedAt: null, postUrl: null,
+        youtubePostedAt: null, youtubePostUrl: null, metaStoryPostedAt: null,
+        metaStoryPostUrl: null, metaReelPostedAt: null, metaReelPostUrl: null,
+        tiktokPostedAt: null, tiktokPostUrl: null, linkedinPostedAt: null,
+        linkedinPostUrl: null, metaContainerId: null, log: null,
+      },
+    });
+  });
+  await prisma.$transaction(updates);
+  return { count: updates.length, spacingHours: REQUEUE_SPACING_HOURS };
+}
+
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    if (params.id !== "requeue") return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const result = await requeueExpired(req);
+    return NextResponse.json({ ok: true, ...result });
+  } catch (error: any) {
+    console.error("[api/social/posts/requeue POST]", error);
+    const status = error?.message === "Unauthorized" ? 401 : 500;
+    return NextResponse.json({ ok: false, error: error?.message || "Falha ao reagendar publicações" }, { status });
+  }
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
