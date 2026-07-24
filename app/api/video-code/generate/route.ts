@@ -367,7 +367,7 @@ export async function POST(req: NextRequest) {
         "",
         "Gere um resumo falado curto para video vertical com linguagem jornalistica simples.",
         "A description deve ser curta e descrever o conteudo do video.",
-        "O title deve ser uma versao curta do titulo da noticia.",
+        "O title DEVE SER um titulo clickbait, chamativo e com tom sensacionalista/curioso para atrair cliques (estilo YouTube/TikTok), usando gatilhos mentais de curiosidade.",
       ].join("\n");
 
       const res = await fetch("https://api.openai.com/v1/chat/completions", {

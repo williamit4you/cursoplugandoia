@@ -978,3 +978,73 @@ async def limpeza_video_process_endpoint(
                 os.remove(output_path)
         except Exception:
             pass
+
+@app.post("/add-text-overlay")
+async def add_text_overlay_endpoint(
+    video_url: str = Form(...),
+    text: str = Form(...),
+    duration: float = Form(3.0),
+    upload_mode: str = Form("worker"),
+):
+    uid = os.urandom(6).hex()
+    work_dir = os.path.join(UPLOAD_DIR, f"overlay_{uid}")
+    os.makedirs(work_dir, exist_ok=True)
+
+    input_path = os.path.join(work_dir, "input.mp4")
+    output_path = os.path.join(OUTPUT_DIR, f"overlay_{uid}.mp4")
+
+    try:
+        if not str(video_url or "").strip():
+            return JSONResponse({"error": "video_url obrigatorio."}, status_code=400)
+
+        print("[TextOverlay] Baixando video original...", {"uid": uid, "url": video_url})
+        from scraper import download_to_file
+        download_to_file(str(video_url).strip(), input_path, timeout=180)
+
+        print("[TextOverlay] Processando overlay de texto...", {"uid": uid, "text": text})
+        
+        clip = VideoFileClip(input_path)
+        
+        # Cria o clipe de texto (estilo chamativo/TikTok)
+        txt_clip = TextClip(
+            text, 
+            fontsize=70, 
+            color='white', 
+            font='Arial', 
+            bg_color='red', 
+            method='caption', 
+            size=(clip.w * 0.9, None), 
+            align='center'
+        )
+        
+        txt_clip = txt_clip.set_position('center').set_duration(duration)
+        
+        video = CompositeVideoClip([clip, txt_clip])
+        video.write_videofile(output_path, codec="libx264", audio_codec="aac", fps=clip.fps)
+        
+        clip.close()
+        video.close()
+
+        if str(upload_mode).strip().lower() == "external":
+            with open(output_path, "rb") as f:
+                video_bytes = f.read()
+            return Response(
+                content=video_bytes,
+                media_type="video/mp4",
+                headers={"X-Overlay-Uid": uid},
+            )
+
+        minio_key = f"news-engagement/overlay_{uid}.mp4"
+        final_url = upload_to_minio(output_path, minio_key, "video/mp4")
+        return JSONResponse({"ok": True, "videoUrl": final_url})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": str(e)}, status_code=500)
+    finally:
+        try:
+            shutil.rmtree(work_dir, ignore_errors=True)
+            if os.path.exists(output_path):
+                os.remove(output_path)
+        except Exception:
+            pass

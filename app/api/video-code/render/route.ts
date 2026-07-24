@@ -244,9 +244,48 @@ async function renderNewsAsTalkingHead(project: any) {
     contentType: "text/vtt; charset=utf-8",
   }).catch(() => null);
 
+  let finalVideoUrl = String(videoResult.video_url || "").trim();
+
+  if (finalVideoUrl && project.title) {
+    try {
+      await logCodeVideoPipelineEvent({
+        projectId: project.id,
+        stepName: "RENDER_VIDEO",
+        message: "Aplicando titulo overlay no video (Worker Python)...",
+      }).catch(() => null);
+
+      const workerBaseUrl = (process.env.WORKER_FASTAPI_BASE_URL || process.env.FASTAPI_URL || "http://127.0.0.1:8000").trim().replace(/\/+$/, "");
+      const form = new URLSearchParams();
+      form.set("video_url", finalVideoUrl);
+      form.set("text", String(project.title).trim());
+      form.set("duration", "3.0");
+      form.set("upload_mode", "worker");
+
+      const res = await fetch(`${workerBaseUrl}/add-text-overlay`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: form.toString(),
+      });
+      const data = await res.json();
+      if (res.ok && data.videoUrl) {
+        finalVideoUrl = data.videoUrl;
+        await logCodeVideoPipelineEvent({
+          projectId: project.id,
+          stepName: "RENDER_VIDEO",
+          message: "Overlay aplicado com sucesso!",
+          metadata: { videoUrl: finalVideoUrl },
+        }).catch(() => null);
+      } else {
+        console.error("Erro no overlay:", data);
+      }
+    } catch (e) {
+      console.error("Erro na chamada de overlay:", e);
+    }
+  }
+
   return {
     audioUrl: stableAudioUrl,
-    videoUrl: String(videoResult.video_url || "").trim(),
+    videoUrl: finalVideoUrl,
     captionsUrl,
   };
 }
