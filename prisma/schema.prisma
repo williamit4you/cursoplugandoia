@@ -107,6 +107,11 @@ enum ColetaPipelineKind {
   ENGAGEMENT
 }
 
+enum ShopeePipelineInputMode {
+  SCRAPE_SOURCE
+  MANUAL_VIDEO
+}
+
 enum ShopeePipelineStepStatus {
   PENDING
   RUNNING
@@ -1507,6 +1512,8 @@ model YtAiReport {
 model ColetaDadosShoppe {
   id               String   @id @default(cuid())
   url              String
+  sourceUrl        String?
+  inputMode        ShopeePipelineInputMode @default(SCRAPE_SOURCE)
   pipelineKind     ColetaPipelineKind @default(SALES)
   titulo           String?
   detalhes         String?

@@ -6,6 +6,7 @@ import { scrapeShopeeAndPersist } from "@/lib/shopee-pipeline/scrape";
 import { generateModalAudio, generateModalVideo } from "@/lib/shopee-pipeline/modalClient";
 import { uploadBufferToMinio } from "@/lib/shopee-pipeline/minioUpload";
 import { mergeProductAndCopyVideos } from "@/lib/shopee-pipeline/merge";
+import { generateManualSalesCopy } from "@/lib/shopee-pipeline/salesCopy";
 import { generateShopeeAffiliateShortLink } from "@/lib/shopee/openApi";
 import { computeNextSocialQueueTime } from "@/lib/socialQueueSchedule";
 import { v4 as uuidv4 } from "uuid";
@@ -469,8 +470,90 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
       return { ok: false, itemId: item.id, error: "URL ausente" };
     }
 
+    // Manual videos already have media and an affiliate URL. Their first step is
+    // copy generation; they must never fall back to the legacy Shopee scraper.
+    if (item.inputMode === "MANUAL_VIDEO" && item.pipelineStatus === "GENERATING_COPY") {
+      const stepName = "GENERATE_SALES_COPY";
+      const startedAt = now();
+      const attempt = await nextAttemptForStep(item.id, stepName);
+
+      try {
+        await upsertPipelineStep({
+          coletaId: item.id,
+          stepName,
+          status: "RUNNING",
+          attempt,
+          startedAt,
+          requestPayload: {
+            inputMode: item.inputMode,
+            title: item.titulo,
+            descriptionLength: String(item.descricao || "").trim().length,
+            hasAffiliateUrl: Boolean(String(item.affiliateUrl || "").trim()),
+          },
+        });
+        await logPipelineEvent({ coletaId: item.id, stepName, message: "Gerando copy de vendas do video manual." });
+
+        const generated = await generateManualSalesCopy({
+          title: item.titulo,
+          description: item.descricao,
+          affiliateUrl: item.affiliateUrl,
+        });
+        const finishedAt = now();
+        await upsertPipelineStep({
+          coletaId: item.id,
+          stepName,
+          status: "SUCCESS",
+          attempt,
+          startedAt,
+          finishedAt,
+          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          responsePayload: { model: generated.model, copyLength: generated.copy.length },
+        });
+        await prisma.coletaDadosShoppe.update({
+          where: { id: item.id },
+          data: { aiPromptVendas: generated.copy, pipelineStatus: "COPY_READY" as any, nextRunAt: null, lastError: null },
+        });
+        await logPipelineEvent({ coletaId: item.id, stepName, message: "Copy de vendas gerada. Audio pronto para a proxima etapa." });
+        return { ok: true, itemId: item.id, ran: stepName };
+      } catch (error: any) {
+        const message = error?.message || "Falha ao gerar copy de vendas";
+        const retryDecision = decideRetry({ attempt, maxAttempts: 3, baseDelayMinutes: 3 });
+        const finishedAt = now();
+        await upsertPipelineStep({
+          coletaId: item.id,
+          stepName,
+          status: retryDecision.retry ? "RETRY_SCHEDULED" : "FAILED",
+          attempt,
+          startedAt,
+          finishedAt,
+          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          nextRetryAt: retryDecision.nextRetryAt,
+          errorMessage: message,
+        });
+        await prisma.coletaDadosShoppe.update({
+          where: { id: item.id },
+          data: {
+            pipelineStatus: retryDecision.retry ? ("GENERATING_COPY" as any) : ("FAILED" as any),
+            lastError: message,
+            nextRunAt: retryDecision.nextRetryAt,
+          },
+        });
+        await logPipelineEvent({
+          coletaId: item.id,
+          level: retryDecision.retry ? "WARN" : "ERROR",
+          stepName,
+          message: retryDecision.retry ? "Copy de vendas falhou. Reagendada." : "Copy de vendas falhou. Marcada como FAILED.",
+          metadata: { error: message, nextRetryAt: retryDecision.nextRetryAt },
+        });
+        return { ok: false, itemId: item.id, error: message, retry: retryDecision.retry, nextRetryAt: retryDecision.nextRetryAt };
+      }
+    }
+
     // Decide proxima etapa (1 por execucao)
     if (item.pipelineStatus === "PENDING" || item.pipelineStatus === "FAILED") {
+      if (item.inputMode === "MANUAL_VIDEO") {
+        throw new Error("Video manual em estado invalido. Reenfileire-o em GENERATING_COPY; scraping nao e permitido.");
+      }
       const stepName = "SCRAPE_MEDIA";
       const startedAt = now();
       const attempt = await nextAttemptForStep(item.id, stepName);

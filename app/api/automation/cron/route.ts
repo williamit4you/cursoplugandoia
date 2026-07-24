@@ -19,8 +19,8 @@ async function callJson(url: string) {
 }
 
 function internalSchedulersEnabled() {
-  const value = String(process.env.INTERNAL_CRON_ENABLED || "true").trim().toLowerCase();
-  return !["0", "false", "no", "off"].includes(value);
+  const value = String(process.env.INTERNAL_CRON_ENABLED || "").trim().toLowerCase();
+  return ["1", "true", "yes", "on"].includes(value);
 }
 
 export async function GET(req: NextRequest) {

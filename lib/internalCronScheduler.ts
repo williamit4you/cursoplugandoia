@@ -18,7 +18,9 @@ function shouldStartInternalCron() {
   const value = String(process.env.INTERNAL_CRON_ENABLED || "").trim().toLowerCase();
   if (["0", "false", "no", "off"].includes(value)) return false;
   if (["1", "true", "yes", "on"].includes(value)) return true;
-  return true;
+  // A timer in a Next process is not durable in serverless environments. Use an
+  // external cron by default and opt into this only on a persistent Node host.
+  return false;
 }
 
 function tickMs() {

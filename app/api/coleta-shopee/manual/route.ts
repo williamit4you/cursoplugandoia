@@ -9,15 +9,15 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     
-    const url = formData.get("url") as string;
-    const titulo = (formData.get("titulo") as string) || "";
-    const descricao = (formData.get("descricao") as string) || "";
+    const url = String(formData.get("url") || "").trim();
+    const titulo = String(formData.get("titulo") || "").trim();
+    const descricao = String(formData.get("descricao") || "").trim();
     const creatorPersonaId = (formData.get("creatorPersonaId") as string) || null;
     const videoFile = formData.get("video") as File | null;
 
-    if (!url || !videoFile) {
+    if (!url || !titulo || !descricao || !videoFile) {
       return NextResponse.json(
-        { error: "URL e video sao obrigatorios" },
+        { error: "Link de afiliado, titulo, descricao e video sao obrigatorios" },
         { status: 400 }
       );
     }
@@ -46,13 +46,17 @@ export async function POST(req: Request) {
     // Salvar no Banco
     const coleta = await prisma.coletaDadosShoppe.create({
       data: {
-        url, // Link de afiliado ou link do produto
+        // `url` remains populated for the legacy unique key. New pipeline decisions
+        // use inputMode/sourceUrl and never interpret this affiliate URL as a product URL.
+        url,
+        sourceUrl: null,
+        inputMode: "MANUAL_VIDEO",
         affiliateUrl: url,
-        titulo: titulo || null,
-        descricao: descricao || null,
+        titulo,
+        descricao,
         aiPromptVendas: null,
-        status: "PENDING",
-        pipelineStatus: "PENDING",
+        status: "COMPLETED",
+        pipelineStatus: "GENERATING_COPY",
         pipelineKind: "SALES",
         creatorPersonaId: creatorPersonaId,
         mediaVideoUrls: [videoUrlMinio],

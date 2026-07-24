@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
     }
 
-    const dataObj: any = { url, pipelineKind: "SALES" as any };
+    const dataObj: any = { url, sourceUrl: url, inputMode: "SCRAPE_SOURCE", pipelineKind: "SALES" as any };
     if (creatorPersonaId) {
       dataObj.creatorPersonaId = creatorPersonaId;
     }
