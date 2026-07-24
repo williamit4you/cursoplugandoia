@@ -50,6 +50,7 @@ import AutorenewIcon from "@mui/icons-material/Autorenew";
 type ColetaItem = {
   id: string;
   url: string;
+  inputMode?: "SCRAPE_SOURCE" | "MANUAL_VIDEO" | string;
   titulo?: string | null;
   descricao?: string | null;
   detalhes?: string | null;
@@ -66,6 +67,7 @@ type ColetaItem = {
   copyVideoUrl?: string | null;
   videoFinalUrl?: string | null;
   affiliateUrl?: string | null;
+  platformMetadata?: any;
   createdAt: string;
   updatedAt: string;
   pipelineSteps?: Array<{
@@ -145,6 +147,8 @@ function shortId(id: string) {
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pendente",
+  GENERATING_COPY: "Gerando roteiro",
+  COPY_READY: "Roteiro pronto",
   PAUSED: "Pausado",
   WAITING_POD: "Legado: aguardando worker",
   GENERATING_AUDIO: "Gerando audio",
@@ -153,6 +157,8 @@ const STATUS_LABELS: Record<string, string> = {
   COPY_VIDEO_READY: "Video da copy pronto",
   MERGING_VIDEOS: "Juntando videos",
   FINAL_VIDEO_READY: "Video final pronto",
+  GENERATING_PLATFORM_METADATA: "Gerando textos das redes",
+  READY_FOR_SCHEDULING: "Pronto para agendar",
   FAILED: "Falhou",
   PUBLISHED: "Publicado",
   SUCCESS: "Sucesso",
@@ -162,12 +168,14 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STEP_LABELS: Record<string, string> = {
   SCRAPE_MEDIA: "Coletar midias",
+  GENERATE_SALES_COPY: "Gerar roteiro",
   GENERATE_AUDIO: "Gerar audio",
   GENERATE_COPY_VIDEO: "Gerar video da copy",
   MERGE_VIDEOS: "Juntar videos",
+  GENERATE_PLATFORM_METADATA: "Gerar textos das redes",
   GENERATE_AFFILIATE_LINK: "Gerar link afiliado",
   CREATE_BIO_PRODUCT: "Criar produto na bio",
-  CREATE_STORY_AD: "Criar story",
+  CREATE_STORY_AD: "Agendar publicacoes",
 };
 
 const STEP_DETAILS: Record<
@@ -241,10 +249,10 @@ const STEP_DETAILS: Record<
     minio: ["Usa URLs ja existentes de imagem/video, mas nao gera arquivo novo"],
   },
   CREATE_STORY_AD: {
-    title: "Preparar publicacoes",
-    summary: "Cria o StoryAd e agenda publicacoes nas redes configuradas.",
-    actions: ["Cria registro do story", "Agenda TikTok, YouTube e Instagram", "Define o horario de publicacao"],
-    application: ["Cria o story e os agendamentos"],
+    title: "Agendar publicacoes",
+    summary: "Cria a campanha e agenda publicacoes individuais nas redes configuradas.",
+    actions: ["Cria a campanha", "Agenda TikTok, YouTube e Instagram", "Calcula o horario individual de cada plataforma"],
+    application: ["Cria a campanha e os agendamentos"],
     modal: ["Nao participa desta etapa"],
     minio: ["Usa o video final ja salvo"],
   },
@@ -264,7 +272,7 @@ function secondsUntil(value?: string | null, nowMs = Date.now()) {
   return Number.isFinite(diff) ? Math.max(0, diff) : null;
 }
 
-const PIPELINE_STEPS: Array<{ stepName: string; label: string }> = [
+const LEGACY_PIPELINE_STEPS: Array<{ stepName: string; label: string }> = [
   { stepName: "SCRAPE_MEDIA", label: "Scraping" },
   { stepName: "GENERATE_AUDIO", label: "Audio" },
   { stepName: "GENERATE_COPY_VIDEO", label: "Video Copy" },
@@ -272,6 +280,15 @@ const PIPELINE_STEPS: Array<{ stepName: string; label: string }> = [
   { stepName: "GENERATE_AFFILIATE_LINK", label: "Afiliado" },
   { stepName: "CREATE_BIO_PRODUCT", label: "Bio" },
   { stepName: "CREATE_STORY_AD", label: "Story" },
+];
+
+const MANUAL_PIPELINE_STEPS: Array<{ stepName: string; label: string }> = [
+  { stepName: "GENERATE_SALES_COPY", label: "Roteiro" },
+  { stepName: "GENERATE_AUDIO", label: "Audio" },
+  { stepName: "GENERATE_COPY_VIDEO", label: "Avatar falado" },
+  { stepName: "MERGE_VIDEOS", label: "PiP final" },
+  { stepName: "GENERATE_PLATFORM_METADATA", label: "Textos das redes" },
+  { stepName: "CREATE_STORY_AD", label: "Agendamento" },
 ];
 
 function stepIcon(status?: string | null) {
@@ -1401,8 +1418,8 @@ export default function ShopeePipelinePage() {
                   </div>
 
                   <div className="mt-3">
-                    <Stepper alternativeLabel nonLinear activeStep={Math.max(0, PIPELINE_STEPS.findIndex((s) => s.stepName === focusedStepName))}>
-                      {PIPELINE_STEPS.map((s) => {
+                    <Stepper alternativeLabel nonLinear activeStep={Math.max(0, (selected.inputMode === "MANUAL_VIDEO" ? MANUAL_PIPELINE_STEPS : LEGACY_PIPELINE_STEPS).findIndex((s) => s.stepName === focusedStepName))}>
+                      {(selected.inputMode === "MANUAL_VIDEO" ? MANUAL_PIPELINE_STEPS : LEGACY_PIPELINE_STEPS).map((s) => {
                         const step = (selected.pipelineSteps || []).find((p) => p.stepName === s.stepName);
                         const status = step?.status || null;
                         const ts = (step as any)?.finishedAt || (step as any)?.updatedAt || null;

@@ -1,0 +1,2 @@
+ALTER TABLE "SocialPost"
+  ADD COLUMN IF NOT EXISTS "title" TEXT;

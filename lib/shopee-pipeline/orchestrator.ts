@@ -7,6 +7,7 @@ import { generateModalAudio, generateModalVideo } from "@/lib/shopee-pipeline/mo
 import { uploadBufferToMinio } from "@/lib/shopee-pipeline/minioUpload";
 import { mergeProductAndCopyVideos } from "@/lib/shopee-pipeline/merge";
 import { generateManualSalesCopy } from "@/lib/shopee-pipeline/salesCopy";
+import { generateManualPlatformMetadata } from "@/lib/shopee-pipeline/platformMetadata";
 import { generateShopeeAffiliateShortLink } from "@/lib/shopee/openApi";
 import { computeNextSocialQueueTime } from "@/lib/socialQueueSchedule";
 import { v4 as uuidv4 } from "uuid";
@@ -77,6 +78,7 @@ async function ensureStorySocialPosts(params: {
   description: string;
   videoUrl: string;
   affiliateUrl: string;
+  platformMetadata?: any;
 }) {
   const summary = buildStorySocialSummary({
     title: params.title,
@@ -95,6 +97,13 @@ async function ensureStorySocialPosts(params: {
     if (!publication) continue;
 
     const payload = publication.responsePayload as any;
+    const metadata = params.platformMetadata?.[platform] || null;
+    const platformSummary = metadata
+      ? platform === "YOUTUBE"
+        ? [metadata.description, (metadata.hashtags || []).join(" ")].filter(Boolean).join("\n\n").slice(0, 1800)
+        : String(metadata.description || metadata.caption || summary).slice(0, 1800)
+      : summary;
+    const platformTitle = metadata?.title ? String(metadata.title).slice(0, 100) : params.title.slice(0, 100);
     const existingSocialPostId = payload?.socialPostId ? String(payload.socialPostId) : null;
     const socialPlatform = storyPublicationToSocialPlatform(platform);
     const scheduledTo = await computeNextSocialQueueTime({
@@ -113,7 +122,8 @@ async function ensureStorySocialPosts(params: {
       socialPost = await prisma.socialPost.update({
         where: { id: socialPost.id },
         data: {
-          summary,
+          title: platformTitle,
+          summary: platformSummary,
           videoUrl: params.videoUrl,
           status: socialPost.status === "POSTED" ? socialPost.status : "SCHEDULED",
           scheduledTo,
@@ -124,7 +134,8 @@ async function ensureStorySocialPosts(params: {
     } else {
       socialPost = await prisma.socialPost.create({
         data: {
-          summary,
+          title: platformTitle,
+          summary: platformSummary,
           videoUrl: params.videoUrl,
           status: "SCHEDULED",
           scheduledTo,
@@ -1021,6 +1032,57 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
       }
     }
 
+    if (item.inputMode === "MANUAL_VIDEO" && (item.pipelineStatus === "FINAL_VIDEO_READY" || item.pipelineStatus === "GENERATING_PLATFORM_METADATA")) {
+      const stepName = "GENERATE_PLATFORM_METADATA";
+      const startedAt = now();
+      const attempt = await nextAttemptForStep(item.id, stepName);
+      try {
+        await prisma.coletaDadosShoppe.update({
+          where: { id: item.id },
+          data: { pipelineStatus: "GENERATING_PLATFORM_METADATA" as any, lastError: null },
+        });
+        await upsertPipelineStep({
+          coletaId: item.id,
+          stepName,
+          status: "RUNNING",
+          attempt,
+          startedAt,
+          requestPayload: { inputMode: item.inputMode, title: item.titulo, hasAffiliateUrl: Boolean(item.affiliateUrl) },
+        });
+        const generated = await generateManualPlatformMetadata({
+          title: item.titulo,
+          productDescription: item.descricao || item.detalhes,
+          narrationScript: item.aiPromptVendas,
+          affiliateUrl: item.affiliateUrl,
+        });
+        const finishedAt = now();
+        await upsertPipelineStep({
+          coletaId: item.id,
+          stepName,
+          status: "SUCCESS",
+          attempt,
+          startedAt,
+          finishedAt,
+          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          responsePayload: { model: generated.model, platforms: Object.keys(generated.metadata) },
+        });
+        await prisma.coletaDadosShoppe.update({
+          where: { id: item.id },
+          data: { platformMetadata: generated.metadata as any, pipelineStatus: "READY_FOR_SCHEDULING" as any, nextRunAt: null, lastError: null },
+        });
+        await logPipelineEvent({ coletaId: item.id, stepName, message: "Textos de TikTok, Instagram e YouTube gerados." });
+        return { ok: true, itemId: item.id, ran: stepName };
+      } catch (error: any) {
+        const message = error?.message || "Falha ao gerar textos das redes";
+        const retryDecision = decideRetry({ attempt, maxAttempts: 3, baseDelayMinutes: 3 });
+        const finishedAt = now();
+        await upsertPipelineStep({ coletaId: item.id, stepName, status: retryDecision.retry ? "RETRY_SCHEDULED" : "FAILED", attempt, startedAt, finishedAt, durationMs: finishedAt.getTime() - startedAt.getTime(), nextRetryAt: retryDecision.nextRetryAt, errorMessage: message });
+        await prisma.coletaDadosShoppe.update({ where: { id: item.id }, data: { pipelineStatus: retryDecision.retry ? ("GENERATING_PLATFORM_METADATA" as any) : ("FAILED" as any), lastError: message, nextRunAt: retryDecision.nextRetryAt } });
+        await logPipelineEvent({ coletaId: item.id, level: retryDecision.retry ? "WARN" : "ERROR", stepName, message: retryDecision.retry ? "Textos das redes falharam. Reagendados." : "Textos das redes falharam.", metadata: { error: message, nextRetryAt: retryDecision.nextRetryAt } });
+        return { ok: false, itemId: item.id, error: message, retry: retryDecision.retry, nextRetryAt: retryDecision.nextRetryAt };
+      }
+    }
+
     if ((item.pipelineStatus === "FINAL_VIDEO_READY" || item.pipelineStatus === "GENERATING_AFFILIATE_LINK") && !item.affiliateUrl) {
       const stepName = "GENERATE_AFFILIATE_LINK";
       const startedAt = now();
@@ -1209,7 +1271,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
       }
     }
 
-    if (item.pipelineStatus === "READY_FOR_STORY") {
+    if (item.pipelineStatus === "READY_FOR_STORY" || (item.inputMode === "MANUAL_VIDEO" && item.pipelineStatus === "READY_FOR_SCHEDULING")) {
       const stepName = "CREATE_STORY_AD";
       const startedAt = now();
       const attempt = await nextAttemptForStep(item.id, stepName);
@@ -1224,6 +1286,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
             description: existing.description,
             videoUrl: existing.videoUrl,
             affiliateUrl: existing.affiliateUrl,
+            platformMetadata: item.platformMetadata,
           });
           await prisma.coletaDadosShoppe.update({
             where: { id: item.id },
@@ -1237,8 +1300,12 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
         const description = String(item.descricao || item.aiPromptVendas || "").trim().slice(0, 1000);
         const videoUrl = String(item.videoFinalUrl || "").trim();
         const affiliateUrl = String(item.affiliateUrl || "").trim();
+        const platformMetadata = item.platformMetadata as any;
         if (!videoUrl) throw new Error("videoFinalUrl ausente para criar StoryAd.");
         if (!affiliateUrl) throw new Error("affiliateUrl ausente para criar StoryAd.");
+        if (item.inputMode === "MANUAL_VIDEO" && (!platformMetadata?.TIKTOK || !platformMetadata?.INSTAGRAM || !platformMetadata?.YOUTUBE)) {
+          throw new Error("Metadados de TikTok, Instagram e YouTube ausentes para agendamento automatico.");
+        }
 
         const scheduledAt = addMinutes(now(), 1);
 
@@ -1273,6 +1340,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           description,
           videoUrl,
           affiliateUrl,
+          platformMetadata,
         });
 
         const refreshedStoryAd = await prisma.storyAd.findUnique({

@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
     });
     await appendPostLog(targetSocialPostId!, "Iniciando publicacao no TikTok...");
 
-    const title = socialPost.post?.title || socialPost.summary?.slice(0, 150) || "Nova noticia";
+    const title = socialPost.title || socialPost.post?.title || socialPost.summary?.slice(0, 150) || "Nova noticia";
     const { publishId, method } = await publishTikTokVideo(socialPost.videoUrl, title, {
       accessToken: settings!.accessToken,
       sessionId: settings!.refreshToken,

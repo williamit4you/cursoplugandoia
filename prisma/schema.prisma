@@ -92,6 +92,8 @@ enum ShopeePipelineStatus {
   COPY_VIDEO_READY
   MERGING_VIDEOS
   FINAL_VIDEO_READY
+  GENERATING_PLATFORM_METADATA
+  READY_FOR_SCHEDULING
   GENERATING_AFFILIATE_LINK
   AFFILIATE_LINK_READY
   READY_FOR_STORY
@@ -475,6 +477,7 @@ model IntegrationSettings {
 model SocialPost {
   id          String   @id @default(cuid())
   postId      String?  
+  title       String?
   summary     String
   videoUrl    String
   status      String   @default("DRAFT") // DRAFT, SCHEDULED, POSTED, FAILED
@@ -1537,6 +1540,7 @@ model ColetaDadosShoppe {
   audioUrl         String?
   copyVideoUrl     String?
   affiliateUrl     String?
+  platformMetadata Json?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

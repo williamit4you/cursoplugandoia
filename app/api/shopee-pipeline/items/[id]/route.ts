@@ -5,6 +5,17 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function inferResumeStatus(item: any) {
+  if (item.inputMode === "MANUAL_VIDEO") {
+    if (item.pipelineStatus === "PUBLISHED") return "PUBLISHED";
+    if (!String(item.aiPromptVendas || "").trim()) return "GENERATING_COPY";
+    if (!item.audioUrl) return "GENERATING_AUDIO";
+    if (!item.copyVideoUrl) return "GENERATING_COPY_VIDEO";
+    if (!item.videoFinalUrl) return "MERGING_VIDEOS";
+    const metadata = item.platformMetadata as any;
+    if (!metadata?.TIKTOK || !metadata?.INSTAGRAM || !metadata?.YOUTUBE) return "GENERATING_PLATFORM_METADATA";
+    return "READY_FOR_SCHEDULING";
+  }
+
   const keepCurrentStatuses = new Set([
     "WAITING_POD",
     "GENERATING_AUDIO",

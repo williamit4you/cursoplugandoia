@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       .map((l) => l.trim())
       .find(Boolean);
 
-    const title = (firstLineTitle || "Novo vídeo").slice(0, 100);
+    const title = (socialPost.title || firstLineTitle || "Novo vídeo").slice(0, 100);
 
     const shouldAppendShortsTag = socialPost.postType === "REEL";
     const descriptionBase = socialPost.summary || "";

@@ -18,10 +18,10 @@ export function buildManualSalesCopyPrompt(params: {
   }
 
   return [
-    "Crie uma copy curta em portugues do Brasil para narracao de um video vertical de vendas.",
-    "Use tom direto, natural e confiavel. Nao invente preco, desconto, estoque, caracteristicas ou promessas.",
-    "Inclua uma chamada para conferir o link de afiliado. Retorne apenas a copy, sem titulo, hashtags, markdown ou explicacoes.",
-    "Limite: 90 palavras.",
+    "Crie um roteiro curto, persuasivo e natural em português do Brasil para a narração de um vídeo vertical de vendas com duração de 20 a 30 segundos.",
+    "Use ortografia correta, com acentos e cedilha. Não invente preço, desconto, estoque, características ou promessas.",
+    "Estruture em dor, benefício factual e chamada para ação. Não leia URL: diga apenas para conferir o link na descrição.",
+    "Retorne apenas o roteiro, sem título, hashtags, Markdown ou explicações.",
     `Titulo: ${title}`,
     `Descricao: ${description}`,
     `Link de afiliado: ${affiliateUrl}`,
