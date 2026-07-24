@@ -9,6 +9,10 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
   const [posts, setPosts] = useState<any[]>(initialData);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [publishingAll, setPublishingAll] = useState(false);
+  const publicPostUrl = (post: any) => {
+    const slug = String(post?.slug || "").trim();
+    return slug ? `/noticias/${slug}` : null;
+  };
 
   const handlePublishAll = async () => {
     if (publishingAll) return;
@@ -182,6 +186,15 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
                     <div className="text-[10px] text-slate-400 mt-0.5 truncate opacity-0 group-hover:opacity-100 transition-opacity">
                       ID: {item.id}
                     </div>
+                    {publicPostUrl(item) && (
+                      <Link
+                        href={publicPostUrl(item)!}
+                        target="_blank"
+                        className="mt-1 inline-flex text-[11px] font-bold text-indigo-600 hover:text-indigo-700"
+                      >
+                        Abrir no site
+                      </Link>
+                    )}
                   </td>
 
                   {/* Capa */}
@@ -247,6 +260,21 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
                       </Link>
+
+                      {publicPostUrl(item) && item.status === "PUBLISHED" && (
+                        <Link
+                          href={publicPostUrl(item)!}
+                          target="_blank"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black rounded-lg transition-all active:scale-95 border border-indigo-200/50"
+                          title="Abrir artigo publicado"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 3h7m0 0v7m0-7L10 14" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5h6m-6 0a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-6" />
+                          </svg>
+                          SITE
+                        </Link>
+                      )}
 
                       {item.status !== "PUBLISHED" && (
                         <button

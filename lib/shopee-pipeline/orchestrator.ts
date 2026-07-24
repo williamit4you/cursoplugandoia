@@ -13,10 +13,13 @@ import { v4 as uuidv4 } from "uuid";
 const LOCK_TTL_MS = 30 * 60 * 1000;
 const ASYNC_LOCK_TTL_MS = LOCK_TTL_MS;
 const ASYNC_RESUMABLE_STATUSES = [] as const;
-// Statuses that the pipeline orchestrator should not pick as "work".
-// NOTE: "SCHEDULED" is handled by the publisher flow, not by the pipeline steps here.
-const EXCLUDED_STATUSES = ["PAUSED", "PUBLISHED", "SCHEDULED"] as const;
-const STICKY_EXCLUDED_STATUSES = ["PENDING", "FAILED", ...EXCLUDED_STATUSES] as const;
+// Statuses that the pipeline orchestrator should not pick as "new work".
+// NOTE:
+// - "SCHEDULED" is handled by the publisher flow, not by the pipeline steps here.
+// - "FAILED" must stay out of the base selector so one broken item does not
+//   starve every pending item behind it.
+const EXCLUDED_STATUSES = ["PAUSED", "PUBLISHED", "SCHEDULED", "FAILED"] as const;
+const STICKY_EXCLUDED_STATUSES = ["PENDING", ...EXCLUDED_STATUSES] as const;
 
 function now() {
   return new Date();
