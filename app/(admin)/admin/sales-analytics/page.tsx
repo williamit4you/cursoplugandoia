@@ -402,10 +402,10 @@ export default function SalesAnalyticsPage() {
             </TextField>
           </Box>
           <Box sx={{ gridColumn: { xs: "span 12", md: "span 2.5" } }}>
-            <TextField fullWidth label="De" type="date" value={from} onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
+            <TextField fullWidth label="De" type="date" value={from} onChange={(e) => setFrom(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
           </Box>
           <Box sx={{ gridColumn: { xs: "span 12", md: "span 2.5" } }}>
-            <TextField fullWidth label="Até" type="date" value={to} onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
+            <TextField fullWidth label="Até" type="date" value={to} onChange={(e) => setTo(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
           </Box>
         </Box>
 

@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     }
 
     const event = await prisma.salesPageEvent.create({
-      data: payload,
+      data: payload as any,
     });
 
     await upsertSalesSessionFromEvent({

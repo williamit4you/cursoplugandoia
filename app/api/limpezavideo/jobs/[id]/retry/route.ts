@@ -14,8 +14,8 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
 
   const job = await prisma.videoCleanupJob.findFirst({
     where: { id: params.id, ownerUserId: auth.userId },
-    select: await buildVideoCleanupJobSelect(false),
-  });
+    select: (await buildVideoCleanupJobSelect(false)) as any,
+  }) as any;
   if (!job) {
     return NextResponse.json({ error: "Job não encontrado." }, { status: 404 });
   }

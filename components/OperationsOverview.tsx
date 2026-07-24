@@ -73,7 +73,7 @@ export default function OperationsOverview() {
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const runningOperations = (data?.operations || []).filter((operation) => String(operation.lastRun?.status || "") === "RUNNING");
+  const runningOperations = (data?.operations || []).filter((operation) => String((operation.lastRun as any)?.status || "") === "RUNNING");
 
   const checklistItems = data?.checklist ? [
     {

@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
   const createdAt = Date.now();
   const extension = (file.name.split(".").pop() || "mp4").toLowerCase();
   const tempJob = await prisma.videoCleanupJob.create({
-    data: await buildVideoCleanupJobCreateData({
+    data: (await buildVideoCleanupJobCreateData({
       ownerUserId: auth.userId,
       status: "UPLOADING",
       sourceType: "UPLOAD",
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
       showTopMessage,
       audioVolumePercent: clampNumber(Number.isFinite(requestedVolume) ? requestedVolume : 100, 0, 100),
       endCardDurationSec: clampNumber(Number.isFinite(endCardDurationSec) ? endCardDurationSec : LIMPEZA_VIDEO_DEFAULT_ENDCARD_SEC, 1, 5),
-    }),
+    })) as any,
     select: {
       id: true,
     },
@@ -149,14 +149,14 @@ export async function POST(req: NextRequest) {
       }),
     }),
     select: {
-      ...(await buildVideoCleanupJobSelect(false)),
+      ...((await buildVideoCleanupJobSelect(false)) as any),
       steps: true,
       events: {
         orderBy: { createdAt: "desc" },
         take: 8,
       },
     },
-  });
+  }) as any;
 
   await prisma.videoCleanupStep.create({
     data: {

@@ -24,7 +24,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
-import toast from "react-hot-toast";
+import { toast } from "react-toastify";
 
 type Persona = {
   id: string;
@@ -113,7 +113,7 @@ export default function VendedoresPage() {
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: "1200px", margin: "0 auto" }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 4 }}>
-        <Typography variant="h4" fontWeight="bold">
+        <Typography variant="h4" sx={{ fontWeight: "bold" }}>
           Vendedores (Personas)
         </Typography>
         <Button

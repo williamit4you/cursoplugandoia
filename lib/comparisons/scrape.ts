@@ -112,7 +112,7 @@ async function scrapeShopeeViaRenderService(sourceUrl: string): Promise<ScrapedC
     reviewCountText: null,
     shortDescription: description,
     bulletPoints: [],
-    specs: normalizedPayload.specs,
+    specs: (normalizedPayload.specs || {}) as Record<string, string>,
     pros: normalizedPayload.pros,
     cons: [],
     rawPayload: data || {},

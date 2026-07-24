@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireLimpezaVideoSession } from "@/lib/limpezavideo/auth";
 import { toPlainJson } from "@/lib/limpezavideo/serialize";
@@ -21,8 +21,8 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       id: params.id,
       ownerUserId: auth.userId,
     },
-    select: await buildVideoCleanupJobSelect(true),
-  });
+    select: (await buildVideoCleanupJobSelect(true)) as any,
+  }) as any;
 
   if (!job) {
     return NextResponse.json({ error: "Job nao encontrado." }, { status: 404 });
@@ -40,8 +40,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       id: params.id,
       ownerUserId: auth.userId,
     },
-    select: await buildVideoCleanupJobSelect(false),
-  });
+    select: (await buildVideoCleanupJobSelect(false)) as any,
+  }) as any;
 
   if (!current) {
     return NextResponse.json({ error: "Job nao encontrado." }, { status: 404 });

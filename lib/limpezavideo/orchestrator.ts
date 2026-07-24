@@ -97,11 +97,11 @@ export async function enqueueVideoCleanupProcessing(jobId: string) {
 export async function processVideoCleanupJob(jobId: string) {
   const rawJob = await prisma.videoCleanupJob.findUnique({
     where: { id: jobId },
-    select: await buildVideoCleanupJobSelect(false),
+    select: (await buildVideoCleanupJobSelect(false)) as any,
   });
   if (!rawJob) throw new Error("Job nao encontrado.");
 
-  const job = applyVideoCleanupJobDefaults(rawJob);
+  const job = applyVideoCleanupJobDefaults(rawJob) as any;
   if (!job.inputUrl) throw new Error("Job sem inputUrl.");
   if (job.status === "PROCESSING") return;
 
@@ -121,9 +121,9 @@ export async function processVideoCleanupJob(jobId: string) {
   await logEvent(jobId, "INFO", "Enviando video para o worker de limpeza.", "PROCESS_VIDEO");
 
   const workerForm = new FormData();
-  workerForm.append("job_id", job.id);
-  workerForm.append("input_url", job.inputUrl);
-  if (job.logoUrl) workerForm.append("logo_url", job.logoUrl);
+  workerForm.append("job_id", String(job.id));
+  workerForm.append("input_url", String(job.inputUrl));
+  if (job.logoUrl) workerForm.append("logo_url", String(job.logoUrl));
   workerForm.append("instagram_handle", String(job.instagramHandle || "@compraesperta.promocoes"));
   workerForm.append("show_top_message", job.showTopMessage ? "true" : "false");
   workerForm.append("audio_mode", String(job.audioMode || "PRESERVE"));

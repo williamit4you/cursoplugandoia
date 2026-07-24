@@ -107,7 +107,7 @@ export default async function CursoFundamentosIaPage() {
 
   return (
     <main className="relative overflow-hidden">
-      <MetaPixelScript pixelId={metaPixelId} />
+      <MetaPixelScript pixelId={metaPixelId || undefined} />
       <SalesPageTracker
         pageKey="curso-fundamentos-ia"
         pagePath="/curso-fundamentos-ia"

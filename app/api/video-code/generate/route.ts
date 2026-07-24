@@ -483,7 +483,7 @@ export async function POST(req: NextRequest) {
       `A narração deve preencher aproximadamente ${project.videoDurationSec} segundos, com cerca de ${Math.round(project.videoDurationSec * 2.5)} palavras.`,
       "Use ganchos visuais e textuais fortes nos primeiros 3 segundos.",
       "NarrationText em português (pt-BR), tom energético e natural.",
-      "O narrationText DEVE conter APENAS o texto puro que será lido em voz alta. É PROIBIDO incluir direções de vídeo, descrições de cena, emojis ou colchetes (ex: [Mostra produto], [Close], 🤔, 💧).",
+      "REGRA ABSOLUTA E INQUEBRÁVEL PARA O NARRATIONTEXT: O narrationText DEVE conter APENAS as palavras exatas que serão ditas em voz alta. NUNCA inclua direções de palco, ações de câmera, reações, emojis ou qualquer texto entre colchetes ou parênteses. (NÃO FAÇA ISSO: [Mostra produto], [Muda cena], 🤔, [Sorri]). Se você colocar texto entre colchetes, a voz robótica vai ler os colchetes e arruinar o vídeo.",
       "O texto deve ser uma copy de vendas direta, focada na DOR do cliente e na SOLUÇÃO que o produto traz (Fórmula PAS - Problem, Agitate, Solve). Nada de descrições teatrais.",
       "Nunca invente URLs falsas. Se não houver URL válida, deixe props.url vazio.",
       "Mantenha contraste forte entre fundo e texto.",
@@ -572,7 +572,9 @@ export async function POST(req: NextRequest) {
           "",
           "Gere um roteiro dinâmico com 4 a 8 cenas curtas.",
           "Use ferramentas visuais como BigNumberScene, ChartScene e CircleHighlightScene quando fizer sentido.",
-          "Mantenha o vídeo ultra profissional e dinâmico.",
+          "Crie um título altamente CLICKBAIT e SENSACIONALISTA para atrair curiosidade extrema.",
+          "Nos primeiros 3 segundos do vídeo (primeira cena), coloque o título sensacionalista na tela (nos 'titles' ou 'subtitles' das props) para forçar o clique do usuário, mesmo sem áudio.",
+          "Mantenha o vídeo ultra profissional e dinâmico, sempre com ganchos que prendam o usuário.",
         ].join("\n");
 
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
