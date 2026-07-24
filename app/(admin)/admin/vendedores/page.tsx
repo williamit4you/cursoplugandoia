@@ -38,7 +38,9 @@ export default function VendedoresPage() {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", imageUrl: "", voiceRefUrl: "" });
+  const [form, setForm] = useState({ name: "" });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [voiceFile, setVoiceFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   const fetchPersonas = async () => {
@@ -59,21 +61,29 @@ export default function VendedoresPage() {
   }, []);
 
   const handleSave = async () => {
-    if (!form.name || !form.imageUrl) {
+    if (!form.name || !imageFile) {
       toast.error("Nome e Imagem são obrigatórios!");
       return;
     }
     setSaving(true);
     try {
+      const formData = new FormData();
+      formData.append("name", form.name);
+      formData.append("image", imageFile, imageFile.name);
+      if (voiceFile) {
+        formData.append("voice", voiceFile, voiceFile.name);
+      }
+
       const res = await fetch("/api/creator-personas", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: formData,
       });
       if (res.ok) {
         toast.success("Vendedor cadastrado com sucesso!");
         setIsModalOpen(false);
-        setForm({ name: "", imageUrl: "", voiceRefUrl: "" });
+        setForm({ name: "" });
+        setImageFile(null);
+        setVoiceFile(null);
         fetchPersonas();
       } else {
         const data = await res.json();
@@ -186,20 +196,28 @@ export default function VendedoresPage() {
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
-            <TextField
-              label="URL da Foto (Avatar Base)"
-              fullWidth
-              value={form.imageUrl}
-              onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-              helperText="Link público para a imagem da pessoa"
-            />
-            <TextField
-              label="URL do Áudio de Referência (Opcional)"
-              fullWidth
-              value={form.voiceRefUrl}
-              onChange={(e) => setForm({ ...form, voiceRefUrl: e.target.value })}
-              helperText="Link público do áudio de 15s para clonagem de voz"
-            />
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1, color: "text.secondary" }}>
+                Foto Base do Vendedor (Obrigatório)
+              </Typography>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                style={{ width: "100%" }}
+              />
+            </Box>
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1, color: "text.secondary" }}>
+                Áudio de Referência (Opcional - Para clonagem de voz)
+              </Typography>
+              <input
+                type="file"
+                accept="audio/*"
+                onChange={(e) => setVoiceFile(e.target.files?.[0] || null)}
+                style={{ width: "100%" }}
+              />
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
