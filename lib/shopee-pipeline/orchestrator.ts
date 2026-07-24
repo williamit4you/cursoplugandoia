@@ -481,6 +481,33 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
       return { ok: false, itemId: item.id, error: "URL ausente" };
     }
 
+    // Defensive migration for a legacy item resumed by an older UI/client.
+    // An affiliate URL supplied at registration is an input, never a stage.
+    if (
+      item.inputMode === "MANUAL_VIDEO" &&
+      (item.pipelineStatus === "AFFILIATE_LINK_READY" || item.pipelineStatus === "GENERATING_AFFILIATE_LINK")
+    ) {
+      const resumeStatus = !String(item.aiPromptVendas || "").trim()
+        ? "GENERATING_COPY"
+        : !item.audioUrl
+          ? "GENERATING_AUDIO"
+          : !item.copyVideoUrl
+            ? "GENERATING_COPY_VIDEO"
+            : !item.videoFinalUrl
+              ? "MERGING_VIDEOS"
+              : "GENERATING_PLATFORM_METADATA";
+      await prisma.coletaDadosShoppe.update({
+        where: { id: item.id },
+        data: { pipelineStatus: resumeStatus as any, nextRunAt: null, lastError: null },
+      });
+      await logPipelineEvent({
+        coletaId: item.id,
+        stepName: "MIGRATE_MANUAL_FLOW",
+        message: `Item manual removido da etapa legada de afiliado; retomando em ${resumeStatus}.`,
+      });
+      return { ok: true, itemId: item.id, ran: "MIGRATE_MANUAL_FLOW", pipelineStatus: resumeStatus };
+    }
+
     // Manual videos already have media and an affiliate URL. Their first step is
     // copy generation; they must never fall back to the legacy Shopee scraper.
     if (item.inputMode === "MANUAL_VIDEO" && item.pipelineStatus === "GENERATING_COPY") {

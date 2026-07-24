@@ -5,7 +5,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function inferResumeStatus(item: any) {
-  if (item.inputMode === "MANUAL_VIDEO") {
+  // Items created before the manual-video flow can still be marked as
+  // SCRAPE_SOURCE even when the affiliate link was supplied by the user.
+  // Treat them as manual on resume so they never return to AFFILIATE_LINK_READY.
+  const isManualFlow = item.inputMode === "MANUAL_VIDEO" || Boolean(String(item.affiliateUrl || "").trim());
+  if (isManualFlow) {
     if (item.pipelineStatus === "PUBLISHED") return "PUBLISHED";
     if (!String(item.aiPromptVendas || "").trim()) return "GENERATING_COPY";
     if (!item.audioUrl) return "GENERATING_AUDIO";
@@ -76,6 +80,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         : inferResumeStatus(current);
 
     data.active = true;
+    if (current.inputMode !== "MANUAL_VIDEO" && String(current.affiliateUrl || "").trim()) {
+      data.inputMode = "MANUAL_VIDEO";
+    }
     data.pipelineStatus = resumedStatus;
     data.nextRunAt = null;
     data.lockedAt = null;
