@@ -61,6 +61,12 @@ export default function ColetaShopeePage() {
   const [url, setUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [manualFields, setManualFields] = useState({ titulo: "", url: "", descricao: "" });
+  const [manualVideoFile, setManualVideoFile] = useState<File | null>(null);
+  const [isManualSubmitting, setIsManualSubmitting] = useState(false);
+  const manualFileInputRef = useRef<HTMLInputElement>(null);
+
   const [selectedColeta, setSelectedColeta] = useState<ColetaItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editFields, setEditFields] = useState({
@@ -138,6 +144,40 @@ export default function ColetaShopeePage() {
       prev && selectedColeta.linksMedia?.some((item) => item.id === prev) ? prev : preferred?.id || null
     );
   }, [selectedColeta]);
+
+  const handleManualSubmit = async () => {
+    if (!manualFields.url || !manualFields.titulo || !manualVideoFile) {
+      alert("URL, Titulo e Video sao obrigatorios.");
+      return;
+    }
+    try {
+      setIsManualSubmitting(true);
+      const form = new FormData();
+      form.append("url", manualFields.url);
+      form.append("titulo", manualFields.titulo);
+      form.append("descricao", manualFields.descricao);
+      form.append("video", manualVideoFile, manualVideoFile.name);
+
+      const res = await fetch("/api/coleta-shopee/manual", {
+        method: "POST",
+        body: form,
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Erro no envio manual");
+      }
+
+      setManualFields({ titulo: "", url: "", descricao: "" });
+      setManualVideoFile(null);
+      setIsManualModalOpen(false);
+      await loadColetas();
+    } catch (error: any) {
+      alert(error.message || "Erro ao adicionar manualmente.");
+    } finally {
+      setIsManualSubmitting(false);
+    }
+  };
 
   const handleAddUrl = async () => {
     if (!url) return;
@@ -402,6 +442,15 @@ export default function ColetaShopeePage() {
               className="bg-indigo-600 hover:bg-indigo-700 whitespace-nowrap h-[56px] shadow-lg"
             >
               Cadastrar Produto
+            </Button>
+            <Button
+              variant="outlined"
+              size="large"
+              onClick={() => setIsManualModalOpen(true)}
+              sx={{ minWidth: 200, borderColor: "rgba(255,255,255,0.2)", color: "#e2e8f0" }}
+              className="hover:bg-white/5 whitespace-nowrap h-[56px]"
+            >
+              Adicionar Manualmente
             </Button>
           </div>
         </CardContent>
@@ -1256,6 +1305,82 @@ export default function ColetaShopeePage() {
             sx={{ bgcolor: "#7c3aed", "&:hover": { bgcolor: "#6d28d9" }, "&:disabled": { bgcolor: "rgba(124,58,237,0.3)" } }}
           >
             {videoColeta?.videoStatus === "RENDERING" ? "Gerando em segundo plano" : isGenerating ? "Enfileirando..." : "Criar Video TikTok"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={isManualModalOpen}
+        onClose={() => setIsManualModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: { bgcolor: "#0f172a", color: "#f8fafc", borderRadius: 2, border: "1px solid rgba(255,255,255,0.1)" },
+          },
+        }}
+      >
+        <DialogTitle>Cadastro Manual de Produto</DialogTitle>
+        <DialogContent className="space-y-4 pt-4">
+          <TextField
+            fullWidth
+            label="Link de Afiliado ou URL"
+            variant="filled"
+            value={manualFields.url}
+            onChange={(e) => setManualFields((p) => ({ ...p, url: e.target.value }))}
+            sx={fieldSx}
+          />
+          <TextField
+            fullWidth
+            label="Titulo do Produto"
+            variant="filled"
+            value={manualFields.titulo}
+            onChange={(e) => setManualFields((p) => ({ ...p, titulo: e.target.value }))}
+            sx={fieldSx}
+          />
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            label="Descricao (Opcional - Ajuda a IA)"
+            variant="filled"
+            value={manualFields.descricao}
+            onChange={(e) => setManualFields((p) => ({ ...p, descricao: e.target.value }))}
+            sx={fieldSx}
+          />
+          <Box>
+            <Typography variant="body2" sx={{ mb: 1, color: "#94a3b8" }}>
+              Arquivo de Video (Obrigatorio)
+            </Typography>
+            <input
+              type="file"
+              accept="video/mp4,video/webm"
+              ref={manualFileInputRef}
+              onChange={(e) => setManualVideoFile(e.target.files?.[0] || null)}
+              style={{ display: "none" }}
+            />
+            <Button
+              variant="outlined"
+              color="inherit"
+              onClick={() => manualFileInputRef.current?.click()}
+              startIcon={<CloudUploadIcon />}
+              fullWidth
+            >
+              {manualVideoFile ? manualVideoFile.name : "Selecionar Video"}
+            </Button>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button onClick={() => setIsManualModalOpen(false)} sx={{ color: "#94a3b8" }} disabled={isManualSubmitting}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleManualSubmit}
+            disabled={!manualFields.url || !manualFields.titulo || !manualVideoFile || isManualSubmitting}
+            className="bg-indigo-600 hover:bg-indigo-700"
+            startIcon={isManualSubmitting && <CircularProgress size={16} />}
+          >
+            {isManualSubmitting ? "Enviando..." : "Salvar"}
           </Button>
         </DialogActions>
       </Dialog>

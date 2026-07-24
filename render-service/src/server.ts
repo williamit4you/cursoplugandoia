@@ -159,6 +159,7 @@ function isSuspiciousProductTitle(value: unknown) {
   const text = cleanupMarketingText(value);
   if (!text) return true;
   if (text.toLowerCase() === "shopee__domain") return true;
+  if (text.toLowerCase() === "shopee brasil") return true;
   if (/^\d[\d\s\-_.]{5,}$/.test(text)) return true;
   if (text.length < 6) return true;
   return false;
