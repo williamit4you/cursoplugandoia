@@ -586,47 +586,110 @@ const server = http.createServer(async (req, res) => {
       if (!payload?.url) return json(res, 400, { error: "url is required" });
 
       const workerBase = (process.env.WORKER_FASTAPI_BASE_URL || "").replace(/\/+$/, "");
-      if (!workerBase) {
-        return json(res, 500, { error: "WORKER_FASTAPI_BASE_URL nao configurado para scraping Shopee." });
+
+      let rawTitulo = "";
+      let rawDescricao = "";
+      let rawDetalhes = "";
+      let videoRawUrl: string | null = null;
+      let imageRawUrls: string[] = [];
+      let workerOk = false;
+
+      // ── Strategy 1: Python worker (curl_cffi + Shopee API) ──────────
+      if (workerBase) {
+        try {
+          console.log(`[render-service][shopee/scrape] Strategy 1: Python worker at ${workerBase}/scraping-shopee-raw`);
+          const form = new FormData();
+          form.set("url", payload.url);
+          const workerRes = await fetch(`${workerBase}/scraping-shopee-raw`, {
+            method: "POST",
+            body: form as any,
+            signal: AbortSignal.timeout(60000),
+          });
+
+          if (workerRes.ok) {
+            const raw = await workerRes.json() as {
+              titulo?: string;
+              descricao?: string;
+              detalhes?: string;
+              videoRawUrl?: string | null;
+              imageRawUrls?: string[];
+            };
+
+            rawTitulo = cleanShopeeText(raw?.titulo || "");
+            rawDescricao = cleanShopeeText(raw?.descricao || "");
+            rawDetalhes = cleanShopeeText(raw?.detalhes || "");
+            videoRawUrl = raw?.videoRawUrl || null;
+            imageRawUrls = Array.isArray(raw?.imageRawUrls) ? raw.imageRawUrls : [];
+            workerOk = true;
+
+            console.log(
+              `[render-service][shopee/scrape] Worker result: title="${rawTitulo.slice(0, 50)}" video=${!!videoRawUrl} images=${imageRawUrls.length}`
+            );
+          } else {
+            console.warn(`[render-service][shopee/scrape] Worker failed: HTTP ${workerRes.status}`);
+          }
+        } catch (error: any) {
+          console.warn(`[render-service][shopee/scrape] Worker error: ${error?.message}`);
+        }
       }
 
-      console.log(`[render-service][shopee/scrape] Step 1/3 media via HTML: ${workerBase}/scraping-shopee-raw`);
-      const form = new FormData();
-      form.set("url", payload.url);
-      const workerRes = await fetch(`${workerBase}/scraping-shopee-raw`, {
-        method: "POST",
-        body: form as any,
-        signal: AbortSignal.timeout(60000),
-      });
-
-      if (!workerRes.ok) {
-        const errorText = await workerRes.text();
-        return json(res, 502, { error: `Worker raw falhou: HTTP ${workerRes.status} - ${errorText}` });
-      }
-
-      const raw = await workerRes.json() as {
-        titulo?: string;
-        descricao?: string;
-        detalhes?: string;
-        videoRawUrl?: string | null;
-        imageRawUrls?: string[];
-      };
-
-      const rawTitulo = cleanShopeeText(raw?.titulo || "");
-      const rawDescricao = cleanShopeeText(raw?.descricao || "");
-      const rawDetalhes = cleanShopeeText(raw?.detalhes || "");
-      const videoRawUrl = raw?.videoRawUrl || null;
-      const imageRawUrls = Array.isArray(raw?.imageRawUrls) ? raw.imageRawUrls : [];
-
-      console.log(
-        `[render-service][shopee/scrape] raw html found: title="${rawTitulo}" video=${!!videoRawUrl} images=${imageRawUrls.length}`
-      );
-
+      // ── Strategy 2: Puppeteer fallback (browse page like a real user) ──
       if (!videoRawUrl && imageRawUrls.length === 0) {
-        return json(res, 422, { error: "Captura HTML nao retornou nenhuma midia do produto." });
+        console.log("[render-service][shopee/scrape] Strategy 2: Puppeteer browser scraping fallback");
+        try {
+          const { scrapeShopeeProduct } = await import("./shopee-scrape.js");
+          const puppeteerResult = await scrapeShopeeProduct(payload.url);
+
+          if (puppeteerResult) {
+            // Use Puppeteer result directly — it already uploads to MinIO
+            console.log(
+              `[render-service][shopee/scrape] Puppeteer success: title="${(puppeteerResult.titulo || "").slice(0, 50)}" media=${puppeteerResult.linksMedia?.length || 0}`
+            );
+
+            if (puppeteerResult.linksMedia && puppeteerResult.linksMedia.length > 0) {
+              // Puppeteer path already uploaded to MinIO, return directly
+              const titulo = cleanupMarketingText(puppeteerResult.titulo || rawTitulo || deriveShopeeTitleFromUrl(payload.url));
+              const descricao = cleanupMarketingText(puppeteerResult.descricao || rawDescricao || "");
+              const detalhes = cleanupMarketingText(puppeteerResult.detalhes || rawDetalhes || "");
+
+              let aiPromptVendas = "";
+              try {
+                aiPromptVendas =
+                  puppeteerResult.aiPromptVendas ||
+                  (await generateSalesScript(titulo, descricao, detalhes)) ||
+                  buildFallbackSalesScript(titulo, descricao, detalhes);
+              } catch {
+                aiPromptVendas = buildFallbackSalesScript(titulo, descricao, detalhes);
+              }
+
+              return json(res, 200, {
+                titulo,
+                descricao,
+                detalhes,
+                aiPromptVendas,
+                linksMedia: puppeteerResult.linksMedia,
+              });
+            }
+
+            // Puppeteer found data but no media uploaded — extract raw URLs for processing below
+            if (!rawTitulo) rawTitulo = cleanShopeeText(puppeteerResult.titulo || "");
+            if (!rawDescricao) rawDescricao = cleanShopeeText(puppeteerResult.descricao || "");
+            if (!rawDetalhes) rawDetalhes = cleanShopeeText(puppeteerResult.detalhes || "");
+          }
+        } catch (error: any) {
+          console.warn(`[render-service][shopee/scrape] Puppeteer fallback error: ${error?.message}`);
+        }
       }
 
-      console.log("[render-service][shopee/scrape] Step 1/3 uploading media to MinIO...");
+      // ── Final check: do we have any media to process? ─────────────────
+      if (!videoRawUrl && imageRawUrls.length === 0) {
+        return json(res, 422, {
+          error: "Nenhuma midia encontrada. Tentamos: API Shopee + HTML scraping + Puppeteer browser. Possivel captcha ou produto sem midia.",
+        });
+      }
+
+      // ── Upload media to MinIO ─────────────────────────────────────────
+      console.log("[render-service][shopee/scrape] Uploading media to MinIO...");
       const ts = Date.now();
       const linksMedia: Array<{ tipo: "IMAGE" | "VIDEO"; url: string }> = [];
 
@@ -649,7 +712,11 @@ const server = http.createServer(async (req, res) => {
       if (videoRawUrl) {
         try {
           const vidRes = await fetch(videoRawUrl, {
-            headers: { referer: "https://shopee.com.br/" },
+            headers: {
+              referer: "https://shopee.com.br/",
+              "user-agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            },
             signal: AbortSignal.timeout(90000),
           });
           if (vidRes.ok) {
@@ -657,6 +724,8 @@ const server = http.createServer(async (req, res) => {
             const minioUrl = await uploadToMinio(buf, `shopee/videos/shopee_vid_${ts}.mp4`, "video/mp4");
             linksMedia.push({ tipo: "VIDEO", url: minioUrl });
             console.log(`[render-service][shopee/scrape] Video enviado: ${minioUrl}`);
+          } else {
+            console.warn(`[render-service][shopee/scrape] Video download falhou: HTTP ${vidRes.status}`);
           }
         } catch (error: any) {
           console.warn(`[render-service][shopee/scrape] Erro video:`, error?.message);
@@ -664,10 +733,10 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (linksMedia.length === 0) {
-        return json(res, 422, { error: "As midias foram detectadas no HTML, mas nenhuma conseguiu ser enviada ao MinIO." });
+        return json(res, 422, { error: "Midias detectadas mas nao foi possivel enviar ao MinIO. Verifique conectividade com o storage." });
       }
 
-      console.log("[render-service][shopee/scrape] Step 2/3 titles and descriptions via API...");
+      console.log("[render-service][shopee/scrape] Generating titles and sales copy...");
       const structured = await fetchShopeeStructuredDetails(payload.url);
       const structuredTitulo = cleanupMarketingText(structured?.titulo || "");
       const descricao = cleanupMarketingText(structured?.descricao || rawDescricao || "");
@@ -680,7 +749,6 @@ const server = http.createServer(async (req, res) => {
             : inferProductTitleFromContent(descricao, detalhes);
       const titulo = tituloBase || deriveShopeeTitleFromUrl(payload.url);
 
-      console.log("[render-service][shopee/scrape] Step 3/3 sales copy via AI...");
       let aiPromptVendas = "";
       try {
         aiPromptVendas =
