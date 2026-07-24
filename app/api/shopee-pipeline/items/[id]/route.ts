@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getShopeeContentArticles } from "@/lib/shopee-pipeline/contentArticles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,7 +52,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   });
 
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(item);
+  const relatedArticles = await getShopeeContentArticles(item.id);
+  return NextResponse.json({ ...item, relatedArticles });
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {

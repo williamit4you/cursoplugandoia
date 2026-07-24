@@ -70,6 +70,19 @@ type ColetaItem = {
   platformMetadata?: any;
   createdAt: string;
   updatedAt: string;
+  relatedArticles?: Array<{
+    briefId: string;
+    angle: string;
+    briefStatus: string;
+    briefTitle: string;
+    postId?: string | null;
+    postTitle?: string | null;
+    postStatus?: string | null;
+    slug?: string | null;
+    publishedAt?: string | null;
+    adminUrl?: string | null;
+    publicUrl?: string | null;
+  }>;
   pipelineSteps?: Array<{
     id: string;
     stepName: string;
@@ -176,6 +189,7 @@ const STEP_LABELS: Record<string, string> = {
   GENERATE_AFFILIATE_LINK: "Gerar link afiliado",
   CREATE_BIO_PRODUCT: "Criar produto na bio",
   CREATE_STORY_AD: "Agendar publicacoes",
+  CREATE_CONTENT_ARTICLES: "Criar artigos SEO",
 };
 
 const STEP_DETAILS: Record<
@@ -256,6 +270,14 @@ const STEP_DETAILS: Record<
     modal: ["Nao participa desta etapa"],
     minio: ["Usa o video final ja salvo"],
   },
+  CREATE_CONTENT_ARTICLES: {
+    title: "Criar artigos SEO",
+    summary: "Gera tres artigos ligados ao produto, com angulos diferentes para atrair buscas, apoiar a venda e permitir rastreio futuro dentro do portal.",
+    actions: ["Cria ou atualiza o produto SEO", "Gera os artigos de dor, demonstracao e venda", "Liga cada artigo ao item da Shopee", "Mantem a secao de links sociais sincronizada"],
+    application: ["Cria artigos no portal", "Liga os artigos ao produto e ao item do pipeline"],
+    modal: ["Nao participa desta etapa"],
+    minio: ["Usa apenas as URLs ja existentes do produto/video"],
+  },
 };
 
 function statusLabel(status: string) {
@@ -289,6 +311,7 @@ const MANUAL_PIPELINE_STEPS: Array<{ stepName: string; label: string }> = [
   { stepName: "MERGE_VIDEOS", label: "PiP final" },
   { stepName: "GENERATE_PLATFORM_METADATA", label: "Textos das redes" },
   { stepName: "CREATE_STORY_AD", label: "Agendamento" },
+  { stepName: "CREATE_CONTENT_ARTICLES", label: "Artigos SEO" },
 ];
 
 function stepIcon(status?: string | null) {
@@ -317,6 +340,13 @@ function truncateJson(value: unknown, maxLen = 900) {
   }
   if (text.length <= maxLen) return text;
   return `${text.slice(0, maxLen)}\n...(truncado)`;
+}
+
+function articleAngleLabel(angle?: string | null) {
+  if (angle === "PAIN") return "Dor";
+  if (angle === "PRODUCT") return "Demonstracao";
+  if (angle === "SALES") return "Venda";
+  return angle || "-";
 }
 
 function buildManualPostDescription(item?: Partial<ColetaItem> | null) {
@@ -1713,6 +1743,59 @@ export default function ShopeePipelinePage() {
                   </CardContent>
                 </Card>
               </div>
+
+              <Card variant="outlined" sx={{ borderColor: "rgba(255,255,255,0.08)", bgcolor: "transparent" }}>
+                <CardContent>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
+                    Artigos SEO relacionados
+                  </Typography>
+                  <Typography variant="caption" className="text-slate-400 block mt-1">
+                    Os artigos sao criados a partir deste item e continuam mostrando os links das redes quando as publicacoes ficarem prontas.
+                  </Typography>
+                  <div className="mt-3 space-y-2">
+                    {(selected.relatedArticles || []).length === 0 && (
+                      <Typography variant="caption" className="text-slate-400">
+                        Nenhum artigo vinculado ainda.
+                      </Typography>
+                    )}
+                    {(selected.relatedArticles || []).map((article) => (
+                      <div key={article.briefId} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <Typography variant="caption" className="text-slate-400">
+                              {articleAngleLabel(article.angle)}
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 800, color: "#e2e8f0" }}>
+                              {article.postTitle || article.briefTitle}
+                            </Typography>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            <Chip size="small" label={`Brief: ${article.briefStatus || "-"}`} />
+                            {article.postStatus ? <Chip size="small" color={article.postStatus === "PUBLISHED" ? "success" : "default"} label={`Post: ${article.postStatus}`} /> : null}
+                          </div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {article.adminUrl ? (
+                            <Button size="small" variant="outlined" href={article.adminUrl}>
+                              Abrir no sistema
+                            </Button>
+                          ) : null}
+                          {article.publicUrl ? (
+                            <Button size="small" variant="outlined" href={article.publicUrl} target="_blank" rel="noreferrer">
+                              Abrir publicado
+                            </Button>
+                          ) : null}
+                        </div>
+                        {article.publishedAt ? (
+                          <Typography variant="caption" className="text-slate-500 block mt-2">
+                            Publicado em {formatDate(article.publishedAt)}
+                          </Typography>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
               <Card variant="outlined" sx={{ borderColor: "rgba(255,255,255,0.08)", bgcolor: "transparent" }}>
                 <CardContent>

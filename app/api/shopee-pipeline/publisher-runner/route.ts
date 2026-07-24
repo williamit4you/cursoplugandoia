@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getToken } from "next-auth/jwt";
+import { syncShopeeContentArticleLinks } from "@/lib/shopee-pipeline/contentArticles";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -273,6 +274,8 @@ export async function GET(req: NextRequest) {
           data: { pipelineStatus: "PUBLISHED" as any, nextRunAt: null, lastError: null },
         }).catch(() => null);
       }
+
+      await syncShopeeContentArticleLinks(ad.coletaId).catch(() => null);
 
       results.push({ storyAdId: ad.id, coletaId: ad.coletaId, processed: adResults.length, results: adResults });
     }

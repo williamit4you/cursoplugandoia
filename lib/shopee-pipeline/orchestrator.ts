@@ -8,6 +8,7 @@ import { uploadBufferToMinio } from "@/lib/shopee-pipeline/minioUpload";
 import { mergeProductAndCopyVideos } from "@/lib/shopee-pipeline/merge";
 import { generateManualSalesCopy } from "@/lib/shopee-pipeline/salesCopy";
 import { generateManualPlatformMetadata } from "@/lib/shopee-pipeline/platformMetadata";
+import { ensureShopeeContentArticles } from "@/lib/shopee-pipeline/contentArticles";
 import { generateShopeeAffiliateShortLink } from "@/lib/shopee/openApi";
 import { computeNextSocialQueueTime } from "@/lib/socialQueueSchedule";
 import { v4 as uuidv4 } from "uuid";
@@ -1300,8 +1301,42 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
 
     if (item.pipelineStatus === "READY_FOR_STORY" || (item.inputMode === "MANUAL_VIDEO" && item.pipelineStatus === "READY_FOR_SCHEDULING")) {
       const stepName = "CREATE_STORY_AD";
+      const contentStepName = "CREATE_CONTENT_ARTICLES";
       const startedAt = now();
       const attempt = await nextAttemptForStep(item.id, stepName);
+
+      const runContentArticlesStep = async () => {
+        const contentStartedAt = now();
+        const contentAttempt = await nextAttemptForStep(item.id, contentStepName);
+        await upsertPipelineStep({
+          coletaId: item.id,
+          stepName: contentStepName,
+          status: "RUNNING",
+          attempt: contentAttempt,
+          startedAt: contentStartedAt,
+          requestPayload: { coletaId: item.id },
+        });
+
+        const result = await ensureShopeeContentArticles(item.id);
+        const contentFinishedAt = now();
+        await upsertPipelineStep({
+          coletaId: item.id,
+          stepName: contentStepName,
+          status: "SUCCESS",
+          attempt: contentAttempt,
+          startedAt: contentStartedAt,
+          finishedAt: contentFinishedAt,
+          durationMs: contentFinishedAt.getTime() - contentStartedAt.getTime(),
+          responsePayload: result,
+        });
+        await logPipelineEvent({
+          coletaId: item.id,
+          stepName: contentStepName,
+          message: "Artigos SEO do produto garantidos com sucesso.",
+          metadata: result,
+        });
+        return result;
+      };
 
       try {
         const existing = await prisma.storyAd.findUnique({ where: { coletaId: item.id }, include: { publications: true } });
@@ -1315,12 +1350,26 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
             affiliateUrl: existing.affiliateUrl,
             platformMetadata: item.platformMetadata,
           });
+          const refreshedExisting = await prisma.storyAd.findUnique({
+            where: { id: existing.id },
+            select: { scheduledAt: true },
+          });
+          const ensuredArticles = await runContentArticlesStep();
           await prisma.coletaDadosShoppe.update({
             where: { id: item.id },
-            data: { pipelineStatus: existing.scheduledAt ? ("SCHEDULED" as any) : ("READY_FOR_STORY" as any), nextRunAt: existing.scheduledAt || null, lastError: null },
+            data: {
+              pipelineStatus: refreshedExisting?.scheduledAt ? ("SCHEDULED" as any) : ("READY_FOR_STORY" as any),
+              nextRunAt: refreshedExisting?.scheduledAt || null,
+              lastError: null,
+            },
           });
-          await logPipelineEvent({ coletaId: item.id, stepName, message: "StoryAd ja existe. Nenhuma acao necessaria." });
-          return { ok: true, itemId: item.id, skipped: true, reason: "StoryAd already exists" };
+          await logPipelineEvent({
+            coletaId: item.id,
+            stepName,
+            message: "StoryAd ja existia; publicacoes e artigos foram garantidos.",
+            metadata: { storyAdId: existing.id, articles: ensuredArticles },
+          });
+          return { ok: true, itemId: item.id, skipped: true, reason: "StoryAd already exists", articles: ensuredArticles };
         }
 
         const title = String(item.titulo || "Produto Shopee").trim() || "Produto Shopee";
@@ -1375,6 +1424,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           select: { scheduledAt: true },
         });
         const effectiveScheduledAt = refreshedStoryAd?.scheduledAt || scheduledAt;
+        const ensuredArticles = await runContentArticlesStep();
 
         const finishedAt = now();
         await upsertPipelineStep({
@@ -1385,7 +1435,7 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           startedAt,
           finishedAt,
           durationMs: finishedAt.getTime() - startedAt.getTime(),
-          responsePayload: { storyAdId: storyAd.id, socialPostsCreated: true, scheduledAt: effectiveScheduledAt },
+          responsePayload: { storyAdId: storyAd.id, socialPostsCreated: true, scheduledAt: effectiveScheduledAt, articles: ensuredArticles },
         });
 
         await prisma.coletaDadosShoppe.update({
@@ -1393,8 +1443,13 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           data: { pipelineStatus: "SCHEDULED" as any, nextRunAt: effectiveScheduledAt, lastError: null },
         });
 
-        await logPipelineEvent({ coletaId: item.id, stepName, message: "StoryAd criado e publicacoes agendadas.", metadata: { storyAdId: storyAd.id, scheduledAt: effectiveScheduledAt } });
-        return { ok: true, itemId: item.id, ran: stepName, storyAdId: storyAd.id, scheduledAt: effectiveScheduledAt };
+        await logPipelineEvent({
+          coletaId: item.id,
+          stepName,
+          message: "StoryAd criado, publicacoes agendadas e artigos SEO preparados.",
+          metadata: { storyAdId: storyAd.id, scheduledAt: effectiveScheduledAt, articles: ensuredArticles },
+        });
+        return { ok: true, itemId: item.id, ran: stepName, storyAdId: storyAd.id, scheduledAt: effectiveScheduledAt, articles: ensuredArticles };
       } catch (error: any) {
         const message = error?.message || "Falha ao criar StoryAd";
         const retryDecision = decideRetry({ attempt, maxAttempts: 3, baseDelayMinutes: 30 });
