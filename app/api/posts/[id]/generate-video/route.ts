@@ -74,11 +74,12 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
       });
     }
 
-    const project = ensured.project;
-    const isDone = project.status === "DONE" && project.videoUrl;
-    const isBusy = project.status === "GENERATING" || project.status === "READY" || project.status === "RENDERING";
+    const projects = ensured.projects;
+    const queued: string[] = [];
+    const states = projects.map((project) => ({ project, isDone: project.status === "DONE" && project.videoUrl, isBusy: project.status === "GENERATING" || project.status === "READY" || project.status === "RENDERING" }));
 
-    if (!isDone && !isBusy) {
+    for (const { project, isDone, isBusy } of states) {
+      if (isDone || isBusy) continue;
       await upsertCodeVideoPipelineStep({
         projectId: project.id,
         stepName: "AUTO_START",
@@ -95,29 +96,17 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
       void runPipelineInBackground(req, project.id).catch((error) => {
         console.error("[video-engagement][background-run]", error);
       });
-    } else if (isDone) {
-      await logCodeVideoPipelineEvent({
-        projectId: project.id,
-        stepName: "AUTO_START",
-        message: "Projeto ja concluiu a renderizacao anteriormente. Nenhuma nova execucao foi iniciada.",
-      }).catch(() => null);
-    } else if (isBusy) {
-      await logCodeVideoPipelineEvent({
-        projectId: project.id,
-        stepName: "AUTO_START",
-        message: "Projeto ja estava em processamento. Mantendo execucao atual.",
-      }).catch(() => null);
+      queued.push(project.id);
     }
 
     return NextResponse.json({
       ok: true,
       skipped: false,
-      projectId: project.id,
-      status: !isDone && !isBusy ? "QUEUED" : project.status,
-      videoUrl: project.videoUrl || null,
+      projects: states.map(({ project, isDone, isBusy }) => ({ id: project.id, variant: project.newsVariant || "PRESENTER", status: !isDone && !isBusy ? "QUEUED" : project.status, videoUrl: project.videoUrl || null })),
+      queued,
       platforms: ensured.platforms,
-      alreadyDone: Boolean(isDone),
-      alreadyRunning: Boolean(!isDone && isBusy),
+      alreadyDone: states.every(({ isDone }) => Boolean(isDone)),
+      alreadyRunning: states.some(({ isDone, isBusy }) => !isDone && isBusy),
     });
   } catch (error: any) {
     console.error("[api/posts/[id]/generate-video POST]", error);

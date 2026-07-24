@@ -126,6 +126,7 @@ export async function POST(req: NextRequest) {
         summary,
         content,
         status: publishNow ? "PUBLISHED" : "DRAFT",
+        publishedAt: publishNow ? new Date() : null,
         sourceUrl,
         coverImage: buildTitleCoverDataUrl(titleBase, "SOLUCOES COM IA"),
       },

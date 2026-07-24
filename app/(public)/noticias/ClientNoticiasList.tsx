@@ -6,7 +6,7 @@ import Link from "next/link";
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-export default function ClientNoticiasList({ posts }: { posts: any[] }) {
+export default function ClientNoticiasList({ posts, categories = [], query = { q: "", category: "", page: 1 }, total = 0, pageSize = 12 }: { posts: any[]; categories?: any[]; query?: { q: string; category: string; page: number }; total?: number; pageSize?: number }) {
   // Exibição Editorial (Main Column e Sidebar)
   const mainPosts = posts.slice(0, 5);
   const sidePosts = posts.slice(5, 10);
@@ -22,8 +22,22 @@ export default function ClientNoticiasList({ posts }: { posts: any[] }) {
     );
   }
 
+  const linkFor = (params: { q?: string; category?: string; page?: number }) => {
+    const next = { ...query, ...params }; const search = new URLSearchParams();
+    if (next.q) search.set("q", next.q); if (next.category) search.set("categoria", next.category); if (next.page > 1) search.set("page", String(next.page));
+    return `/noticias${search.toString() ? `?${search}` : ""}`;
+  };
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Box component="form" action="/noticias" sx={{ mb: 2, display: "flex", gap: 1 }}>
+        <input name="q" defaultValue={query.q} placeholder="Busque notícias, IA, tecnologia..." className="w-full rounded-xl border border-slate-300 px-4 py-3" />
+        <button className="rounded-xl bg-red-700 px-6 py-3 font-bold text-white">Buscar</button>
+      </Box>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 4 }}>
+        <Link href={linkFor({ category: "", page: 1 })} className={`rounded-full px-3 py-1.5 text-sm font-bold ${!query.category ? "bg-red-700 text-white" : "bg-white border"}`}>Todas</Link>
+        {categories.map((category: any) => <Link key={category.id} href={linkFor({ category: category.slug, page: 1 })} className={`rounded-full px-3 py-1.5 text-sm font-bold ${query.category === category.slug ? "bg-red-700 text-white" : "bg-white border"}`}>{category.name}</Link>)}
+      </Box>
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 5 }}>
 
         {/* COLUNA PRINCIPAL - MANCHETES */}
@@ -236,6 +250,11 @@ export default function ClientNoticiasList({ posts }: { posts: any[] }) {
         </Box>
 
       </Box>
+      {totalPages > 1 && <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 5, alignItems: "center" }}>
+        {query.page > 1 && <Link href={linkFor({ page: query.page - 1 })} className="rounded-lg border bg-white px-4 py-2">Anterior</Link>}
+        <Typography variant="body2">Página {query.page} de {totalPages}</Typography>
+        {query.page < totalPages && <Link href={linkFor({ page: query.page + 1 })} className="rounded-lg bg-red-700 px-4 py-2 text-white">Próxima</Link>}
+      </Box>}
     </Container>
   );
 }

@@ -15,9 +15,9 @@ function normalizeSocialPlatforms(value: unknown) {
   return Array.from(new Set(platforms));
 }
 
-function desiredNewsPlatforms(rawPlatforms: unknown) {
+function desiredNewsPlatforms(rawPlatforms: unknown, variant: string) {
   const preferred = normalizeSocialPlatforms(rawPlatforms);
-  const base = ["TIKTOK", "YOUTUBE", "INSTAGRAM"];
+  const base = variant === "BROLL" ? ["YOUTUBE"] : ["TIKTOK", "YOUTUBE", "INSTAGRAM"];
   return Array.from(new Set([...base, ...preferred]));
 }
 
@@ -56,7 +56,8 @@ export async function ensureNewsSocialPostsForProject(project: {
   }
 
   const postId = metadata?.postId ? String(metadata.postId) : null;
-  const platforms = desiredNewsPlatforms(newsAutomation.platforms);
+  const newsVariant = String(metadata?.newsVariant || (project as any).newsVariant || "PRESENTER").toUpperCase();
+  const platforms = desiredNewsPlatforms(newsAutomation.platforms, newsVariant);
   const existing = await prisma.socialPost.findMany({
     where: {
       codeVideoProjectId: project.id,
@@ -88,6 +89,7 @@ export async function ensureNewsSocialPostsForProject(project: {
     await prisma.socialPost.create({
       data: {
         postId,
+        newsVariant,
         codeVideoProjectId: project.id,
         summary,
         videoUrl,
@@ -113,6 +115,7 @@ export async function ensureNewsSocialPostsForProject(project: {
         reconciled: true,
         createdCount: createdPlatforms.length,
         createdPlatforms,
+        newsVariant,
       },
     }).catch(() => null);
 
@@ -127,6 +130,7 @@ export async function ensureNewsSocialPostsForProject(project: {
   return {
     createdCount: createdPlatforms.length,
     createdPlatforms,
+    newsVariant,
     skipped: createdPlatforms.length === 0,
     reason: createdPlatforms.length === 0 ? "nothing_missing" : undefined,
   };

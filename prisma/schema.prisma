@@ -229,11 +229,46 @@ model Post {
   views       Int      @default(0)
   coverImage  String?  // URL do MinIO
   sourceUrl   String?  @unique // Evita duplicidade de rotinas do robô
+  publishedAt DateTime?
+  featured    Boolean  @default(false)
+  readTimeMinutes Int?
+  seoTitle    String?
+  metaDescription String?
+  origin      String   @default("MANUAL")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   socialPosts SocialPost[]
   aiUsageLogs AiUsageLog[]
+  categories  PostNewsCategory[]
+  codeVideoProjects CodeVideoProject[]
+
+  @@index([status, publishedAt])
+  @@index([featured, publishedAt])
+}
+
+model NewsCategory {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  color       String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  posts       PostNewsCategory[]
+}
+
+model PostNewsCategory {
+  postId     String
+  categoryId String
+  post       Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  category   NewsCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([postId, categoryId])
+  @@index([categoryId, postId])
 }
 
 model AffiliateComparison {
@@ -480,6 +515,7 @@ model SocialPost {
   title       String?
   summary     String
   videoUrl    String
+  newsVariant String?
   status      String   @default("DRAFT") // DRAFT, SCHEDULED, POSTED, FAILED
   scheduledTo DateTime?
   postedAt    DateTime?
@@ -517,6 +553,7 @@ model SocialPost {
 
   @@index([automationTaskId])
   @@index([automationTaskRunId])
+  @@index([postId, newsVariant])
 }
 
 model SocialPostClick {
@@ -537,6 +574,8 @@ model CodeVideoProject {
   id               String           @id @default(cuid())
   status           String           @default("DRAFT") // DRAFT | GENERATING | READY | RENDERING | DONE | FAILED
   projectType      String           @default("GENERIC") // GENERIC | PRODUCT_AD
+  postId           String?
+  newsVariant      String?
 
   // Entrada do usuário
   ideaPrompt       String
@@ -578,11 +617,14 @@ model CodeVideoProject {
   pipelineEvents     CodeVideoPipelineEvent[]
 
   socialPosts      SocialPost[]
+  post             Post?            @relation(fields: [postId], references: [id], onDelete: SetNull)
   automationAssetBundles AutomationAssetBundle[]
   question         VideoQuestion?
 
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+
+  @@index([postId, newsVariant])
 }
 
 model CodeVideoPipelineStep {

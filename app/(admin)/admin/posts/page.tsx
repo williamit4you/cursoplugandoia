@@ -16,6 +16,9 @@ export const dynamic = "force-dynamic";
 export default async function PostsPage() {
   const posts = await prisma.post.findMany({
     orderBy: { createdAt: "desc" },
+    include: {
+      codeVideoProjects: { select: { id: true, newsVariant: true, status: true, videoUrl: true, socialPosts: { select: { id: true, platform: true, status: true, scheduledTo: true } } } },
+    },
   });
 
   return (

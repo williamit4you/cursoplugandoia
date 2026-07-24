@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
         summary,
         content,
         status: "PUBLISHED",
+        publishedAt: new Date(),
         slug,
       },
     });

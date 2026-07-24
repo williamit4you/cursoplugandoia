@@ -302,8 +302,9 @@ export async function POST(req: NextRequest) {
     if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const isNewsProject = isNewsVideoProject(project);
+    const isNewsPresenterProject = isNewsProject && String((safeJsonParse(project.metadataJson || "{}") as any)?.newsVariant || project.newsVariant || "PRESENTER").toUpperCase() !== "BROLL";
     const videoSpec = safeJsonParse(project.videoSpecJson || "");
-    if (!isNewsProject && !videoSpec) {
+    if (!isNewsPresenterProject && !videoSpec) {
       return NextResponse.json({ error: "videoSpecJson is invalid JSON" }, { status: 400 });
     }
 
@@ -322,12 +323,12 @@ export async function POST(req: NextRequest) {
     await logCodeVideoPipelineEvent({
       projectId,
       stepName: "RENDER_VIDEO",
-      message: isNewsProject
+      message: isNewsPresenterProject
         ? "Iniciando geracao de audio e video falado da noticia via Modal..."
         : "Iniciando sintese de audio TTS e renderizacao no servico de video...",
     });
 
-    const result = isNewsProject
+    const result = isNewsPresenterProject
       ? await renderNewsAsTalkingHead(project)
       : await renderWithExternalService({
           projectId,
@@ -365,7 +366,7 @@ export async function POST(req: NextRequest) {
       projectId,
       level: "INFO",
       stepName: "RENDER_VIDEO",
-      message: isNewsProject ? "Audio e video falado da noticia gerados com sucesso!" : "Video compilado e renderizado com sucesso!",
+      message: isNewsPresenterProject ? "Audio e video falado da noticia gerados com sucesso!" : "Video compilado e renderizado com sucesso!",
       metadata: {
         videoUrl: result.videoUrl,
         audioUrl: result.audioUrl || null,

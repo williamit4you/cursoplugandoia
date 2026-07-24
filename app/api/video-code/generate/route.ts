@@ -322,6 +322,7 @@ export async function POST(req: NextRequest) {
 
     const metadata = safeParseMetadata(project.metadataJson);
     const isNewsProject = isNewsVideoProject(project);
+    const isNewsPresenterProject = isNewsProject && String((metadata as any)?.newsVariant || project.newsVariant || "PRESENTER").toUpperCase() !== "BROLL";
     const isProductAd = project.projectType === "PRODUCT_AD";
 
     await prisma.codeVideoProject.update({
@@ -347,7 +348,7 @@ export async function POST(req: NextRequest) {
         ? "YouTube (16:9, 1920x1080)"
         : "TikTok/Reels (9:16, 1080x1920)";
 
-    if (isNewsProject) {
+    if (isNewsPresenterProject) {
       const system = [
         "Voce e um redator de noticias e roteirista de videos curtos em portugues do Brasil.",
         "Sua tarefa e resumir uma materia em um texto curto, claro e falado, para video de ate 1 minuto.",

@@ -110,45 +110,22 @@ export async function ensureNewsVideoProjectForPost(postId: string) {
     return { post, skipped: true as const, reason: automation.reason };
   }
 
-  const existing = await prisma.codeVideoProject.findFirst({
+  const existing = await prisma.codeVideoProject.findMany({
     where: {
-      metadataJson: {
-        contains: `"postId":"${post.id}"`,
-      },
+      OR: [
+        { postId: post.id },
+        { metadataJson: { contains: `"postId":"${post.id}"` } },
+      ],
     },
     orderBy: { createdAt: "desc" },
   });
-
-  if (existing) {
-    await logCodeVideoPipelineEvent({
-      projectId: existing.id,
-      stepName: "QUEUE_FROM_POST",
-      message: "Reutilizando projeto de video-engajamento ja existente para este artigo.",
-      metadata: { postId: post.id, postStatus: post.status },
-    }).catch(() => null);
-    return { post, skipped: false as const, project: existing, platforms: automation.platforms };
-  }
 
   const plainContent = clip(htmlToPlainText(post.content || ""), 1600);
   const summary = clip(normalize(post.summary), 420);
   const durationSec = resolveDurationSec(automation.config.videoDurationSec);
   const articleUrl = articleUrlForSlug(post.slug);
 
-  const metadata = {
-    sourcePosts: [post.id],
-    postId: post.id,
-    postSlug: post.slug,
-    coverImage: post.coverImage || null,
-    articleUrl: articleUrl || null,
-    newsAutomation: {
-      enabled: true,
-      autoScheduleSocial: true,
-      platforms: automation.platforms,
-      source: "post_create_or_update",
-    },
-  };
-
-  const ideaPrompt = [
+  const baseIdeaPrompt = [
     `Crie um video curto de noticia em portugues do Brasil com no maximo ${durationSec} segundos.`,
     "Objetivo: resumir a noticia com clareza, ritmo alto, boa retencao e linguagem natural para Reels/TikTok/Shorts.",
     "O video deve ter narracao principal, legendas coerentes e cortes visuais profissionais com apoio de imagens/videos contextuais quando fizer sentido.",
@@ -162,46 +139,54 @@ export async function ensureNewsVideoProjectForPost(postId: string) {
     .filter(Boolean)
     .join("\n\n");
 
-  const project = await prisma.codeVideoProject.create({
-    data: {
-      projectType: "GENERIC",
-      ideaPrompt,
-      aspectRatio: "PORTRAIT_9_16",
-      videoDurationSec: durationSec,
-      ttsVoice: normalize(automation.config.ttsVoice) || "pt-BR-AntonioNeural",
-      ttsSpeed: normalize(automation.config.ttsSpeed) || "+5%",
-      useExternalMedia: Boolean(automation.config.pexelsEnabled),
-      title: clip(post.title, 120),
-      description: summary || clip(plainContent, 300),
-      metadataJson: JSON.stringify(metadata),
-    },
-  });
+  const variants = [
+    { key: "BROLL", useExternalMedia: true, platforms: ["YOUTUBE"] },
+    { key: "PRESENTER", useExternalMedia: false, platforms: ["INSTAGRAM", "TIKTOK", "YOUTUBE"] },
+  ] as const;
+  const projects = [] as any[];
 
-  await upsertCodeVideoPipelineStep({
-    projectId: project.id,
-    stepName: "QUEUE_FROM_POST",
-    status: "SUCCESS",
-    attempt: 1,
-    startedAt: new Date(),
-    finishedAt: new Date(),
-    responsePayload: {
+  for (const variant of variants) {
+    const legacyMatch = existing.find((item) => !item.newsVariant && item.metadataJson.includes(`"postId":"${post.id}"`));
+    const found = existing.find((item) => item.newsVariant === variant.key) || (variant.key === "PRESENTER" ? legacyMatch : undefined);
+    if (found) {
+      projects.push(found);
+      continue;
+    }
+
+    const metadata = {
+      sourcePosts: [post.id],
       postId: post.id,
-      postStatus: post.status,
-      platforms: automation.platforms,
-    },
-  }).catch(() => null);
+      postSlug: post.slug,
+      coverImage: post.coverImage || null,
+      articleUrl: articleUrl || null,
+      newsVariant: variant.key,
+      newsAutomation: {
+        enabled: true,
+        autoScheduleSocial: true,
+        platforms: variant.platforms,
+        source: "post_create_or_update",
+      },
+    };
+    const project = await prisma.codeVideoProject.create({
+      data: {
+        postId: post.id,
+        newsVariant: variant.key,
+        projectType: "GENERIC",
+        ideaPrompt: `${baseIdeaPrompt}\n\nVARIANTE: ${variant.key === "BROLL" ? "imagens e videos contextuais gratuitos, sem apresentadora" : "apresentadora com imagem animada"}.`,
+        aspectRatio: "PORTRAIT_9_16",
+        videoDurationSec: durationSec,
+        ttsVoice: normalize(automation.config.ttsVoice) || "pt-BR-AntonioNeural",
+        ttsSpeed: normalize(automation.config.ttsSpeed) || "+5%",
+        useExternalMedia: variant.useExternalMedia && Boolean(automation.config.pexelsEnabled),
+        title: clip(post.title, 120),
+        description: summary || clip(plainContent, 300),
+        metadataJson: JSON.stringify(metadata),
+      },
+    });
+    await upsertCodeVideoPipelineStep({ projectId: project.id, stepName: "QUEUE_FROM_POST", status: "SUCCESS", attempt: 1, startedAt: new Date(), finishedAt: new Date(), responsePayload: { postId: post.id, variant: variant.key, platforms: variant.platforms } }).catch(() => null);
+    await logCodeVideoPipelineEvent({ projectId: project.id, stepName: "QUEUE_FROM_POST", message: `Projeto ${variant.key} criado automaticamente a partir do artigo.`, metadata: { postId: post.id, postTitle: post.title, variant: variant.key, platforms: variant.platforms, durationSec } }).catch(() => null);
+    projects.push(project);
+  }
 
-  await logCodeVideoPipelineEvent({
-    projectId: project.id,
-    stepName: "QUEUE_FROM_POST",
-    message: "Projeto de video-engajamento criado automaticamente a partir do artigo.",
-    metadata: {
-      postId: post.id,
-      postTitle: post.title,
-      platforms: automation.platforms,
-      durationSec,
-    },
-  }).catch(() => null);
-
-  return { post, skipped: false as const, project, platforms: automation.platforms };
+  return { post, skipped: false as const, projects, platforms: automation.platforms };
 }

@@ -195,6 +195,15 @@ export default function PostsTable({ initialData }: { initialData: any[] }) {
                         Abrir no site
                       </Link>
                     )}
+                    {Array.isArray(item.codeVideoProjects) && item.codeVideoProjects.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {item.codeVideoProjects.map((project: any) => (
+                          <span key={project.id} className={`rounded px-1.5 py-0.5 text-[9px] font-black ${project.status === "DONE" ? "bg-emerald-50 text-emerald-700" : project.status === "FAILED" ? "bg-rose-50 text-rose-700" : "bg-violet-50 text-violet-700"}`}>
+                            {project.newsVariant || "PRESENTER"}: {project.status} · {project.socialPosts?.length || 0} fila(s)
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </td>
 
                   {/* Capa */}

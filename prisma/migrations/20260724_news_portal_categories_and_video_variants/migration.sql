@@ -1,0 +1,15 @@
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "publishedAt" TIMESTAMP(3), ADD COLUMN IF NOT EXISTS "featured" BOOLEAN NOT NULL DEFAULT false, ADD COLUMN IF NOT EXISTS "readTimeMinutes" INTEGER, ADD COLUMN IF NOT EXISTS "seoTitle" TEXT, ADD COLUMN IF NOT EXISTS "metaDescription" TEXT, ADD COLUMN IF NOT EXISTS "origin" TEXT NOT NULL DEFAULT 'MANUAL';
+ALTER TABLE "SocialPost" ADD COLUMN IF NOT EXISTS "newsVariant" TEXT;
+ALTER TABLE "CodeVideoProject" ADD COLUMN IF NOT EXISTS "postId" TEXT, ADD COLUMN IF NOT EXISTS "newsVariant" TEXT;
+CREATE TABLE IF NOT EXISTS "NewsCategory" ("id" TEXT NOT NULL, "name" TEXT NOT NULL, "slug" TEXT NOT NULL, "description" TEXT, "color" TEXT, "sortOrder" INTEGER NOT NULL DEFAULT 0, "active" BOOLEAN NOT NULL DEFAULT true, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL, CONSTRAINT "NewsCategory_pkey" PRIMARY KEY ("id"));
+CREATE TABLE IF NOT EXISTS "PostNewsCategory" ("postId" TEXT NOT NULL, "categoryId" TEXT NOT NULL, CONSTRAINT "PostNewsCategory_pkey" PRIMARY KEY ("postId", "categoryId"));
+CREATE UNIQUE INDEX IF NOT EXISTS "NewsCategory_slug_key" ON "NewsCategory"("slug");
+CREATE INDEX IF NOT EXISTS "Post_status_publishedAt_idx" ON "Post"("status", "publishedAt");
+CREATE INDEX IF NOT EXISTS "Post_featured_publishedAt_idx" ON "Post"("featured", "publishedAt");
+CREATE INDEX IF NOT EXISTS "SocialPost_postId_newsVariant_idx" ON "SocialPost"("postId", "newsVariant");
+CREATE INDEX IF NOT EXISTS "CodeVideoProject_postId_newsVariant_idx" ON "CodeVideoProject"("postId", "newsVariant");
+CREATE INDEX IF NOT EXISTS "PostNewsCategory_categoryId_postId_idx" ON "PostNewsCategory"("categoryId", "postId");
+DO $$ BEGIN ALTER TABLE "CodeVideoProject" ADD CONSTRAINT "CodeVideoProject_postId_fkey" FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "PostNewsCategory" ADD CONSTRAINT "PostNewsCategory_postId_fkey" FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "PostNewsCategory" ADD CONSTRAINT "PostNewsCategory_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "NewsCategory"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+UPDATE "Post" SET "publishedAt" = "createdAt" WHERE "status" = 'PUBLISHED' AND "publishedAt" IS NULL;
