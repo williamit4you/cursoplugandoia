@@ -483,7 +483,8 @@ export async function POST(req: NextRequest) {
       `A narração deve preencher aproximadamente ${project.videoDurationSec} segundos, com cerca de ${Math.round(project.videoDurationSec * 2.5)} palavras.`,
       "Use ganchos visuais e textuais fortes nos primeiros 3 segundos.",
       "NarrationText em português (pt-BR), tom energético e natural.",
-      "O narrationText deve conter APENAS o texto que será lido em voz alta, sem marcações.",
+      "O narrationText DEVE conter APENAS o texto puro que será lido em voz alta. É PROIBIDO incluir direções de vídeo, descrições de cena, emojis ou colchetes (ex: [Mostra produto], [Close], 🤔, 💧).",
+      "O texto deve ser uma copy de vendas direta, focada na DOR do cliente e na SOLUÇÃO que o produto traz (Fórmula PAS - Problem, Agitate, Solve). Nada de descrições teatrais.",
       "Nunca invente URLs falsas. Se não houver URL válida, deixe props.url vazio.",
       "Mantenha contraste forte entre fundo e texto.",
       "Use TitleScene no início e RetentionScene quando houver mídia real.",
@@ -560,7 +561,7 @@ export async function POST(req: NextRequest) {
           "Se DESCRICAO_COMERCIAL_EXISTENTE, USOS_RECOMENDADOS_EXISTENTES ou PUBLICO_ALVO_EXISTENTE estiverem vazios, preencha esses campos na saída.",
           "A description e a commercialDescription devem conter o link de comissão quando informado.",
           "Retorne youtubeTags como texto separado por vírgulas, sem hashtags e sem quebras de linha.",
-          "O resultado deve parecer um vendedor profissional e empolgado apresentando o produto.",
+          "O resultado deve ser um vendedor profissional, direto e empolgado. REFORÇANDO: O narrationText NÃO PODE TER COLCHETES, EMOJIS, NEM RUBRICAS VISUAIS.",
         ].join("\n")
       : [
           `IDEIA / TEMA: ${project.ideaPrompt}`,
