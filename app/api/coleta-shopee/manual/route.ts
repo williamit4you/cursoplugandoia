@@ -13,6 +13,7 @@ export async function POST(req: Request) {
     const titulo = String(formData.get("titulo") || "").trim();
     const descricao = String(formData.get("descricao") || "").trim();
     const creatorPersonaId = (formData.get("creatorPersonaId") as string) || null;
+    const useAi = String(formData.get("useAi") ?? "true").toLowerCase() !== "false";
     const videoFile = formData.get("video") as File | null;
 
     if (!url || !titulo || !descricao || !videoFile) {
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
         status: "COMPLETED",
         pipelineStatus: "GENERATING_COPY",
         pipelineKind: "SALES",
+        useAi,
         creatorPersonaId: creatorPersonaId,
         mediaVideoUrls: [videoUrlMinio],
         linksMedia: {

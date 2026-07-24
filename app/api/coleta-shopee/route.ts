@@ -18,11 +18,12 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { url, creatorPersonaId } = body;
+    const useAi = body?.useAi !== false;
     if (!url) {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
     }
 
-    const dataObj: any = { url, sourceUrl: url, inputMode: "SCRAPE_SOURCE", pipelineKind: "SALES" as any };
+    const dataObj: any = { url, sourceUrl: url, inputMode: "SCRAPE_SOURCE", pipelineKind: "SALES" as any, useAi };
     if (creatorPersonaId) {
       dataObj.creatorPersonaId = creatorPersonaId;
     }

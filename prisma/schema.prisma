@@ -1570,6 +1570,7 @@ model ColetaDadosShoppe {
   videoFinalUrl    String?  // URL do vídeo TikTok gerado (MinIO)
   videoStatus      String?  // RENDERING, COMPLETED, FAILED
   pipelineStatus   ShopeePipelineStatus @default(PENDING)
+  useAi            Boolean  @default(true)
   active           Boolean  @default(true)
   priority         Int      @default(0)
   lockedAt         DateTime?

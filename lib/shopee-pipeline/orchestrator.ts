@@ -6,6 +6,7 @@ import { scrapeShopeeAndPersist } from "@/lib/shopee-pipeline/scrape";
 import { generateModalAudio, generateModalVideo } from "@/lib/shopee-pipeline/modalClient";
 import { uploadBufferToMinio } from "@/lib/shopee-pipeline/minioUpload";
 import { mergeProductAndCopyVideos } from "@/lib/shopee-pipeline/merge";
+import { generateShopeeLowCostAudio, renderShopeeLowCostVoiceoverVideo } from "@/lib/shopee-pipeline/lowCostMedia";
 import { generateManualSalesCopy } from "@/lib/shopee-pipeline/salesCopy";
 import { generateManualPlatformMetadata } from "@/lib/shopee-pipeline/platformMetadata";
 import { ensureShopeeContentArticles } from "@/lib/shopee-pipeline/contentArticles";
@@ -706,15 +707,77 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           return { ok: true, itemId: item.id, ran: stepName, reusedAudioUrl: recoveredAudioUrl };
         }
 
+        const copy = String(item.aiPromptVendas || "").trim();
+        if (!copy) throw new Error("Copy de vendas (aiPromptVendas) ausente");
+
+        if (item.useAi === false) {
+          const scraperConfig = await prisma.scraperConfig.findFirst({
+            orderBy: { createdAt: "desc" },
+            select: { ttsVoice: true, ttsSpeed: true },
+          });
+
+          await upsertPipelineStep({
+            coletaId: item.id,
+            stepName,
+            status: "RUNNING",
+            attempt,
+            startedAt,
+            requestPayload: {
+              mode: "LOW_COST_TTS",
+              voice: scraperConfig?.ttsVoice || "pt-BR-AntonioNeural",
+              speed: scraperConfig?.ttsSpeed || "+5%",
+              targetTextPreview: copy.slice(0, 220),
+              targetTextLength: copy.length,
+              requests: [
+                {
+                  method: "POST",
+                  url: `${String(process.env.WORKER_FASTAPI_BASE_URL || process.env.FASTAPI_URL || "http://127.0.0.1:8000").trim().replace(/\/+$/, "")}/gerar-audio`,
+                  purpose: "Gerar audio TTS simples pelo worker local, sem Modal/ComfyUI",
+                },
+              ],
+            },
+          });
+          await logPipelineEvent({ coletaId: item.id, stepName, message: "Gerando audio em modo economico via TTS simples do worker." });
+
+          const audioUrl = await generateShopeeLowCostAudio({
+            coletaId: item.id,
+            text: copy,
+            voice: scraperConfig?.ttsVoice || "pt-BR-AntonioNeural",
+            speed: scraperConfig?.ttsSpeed || "+5%",
+          });
+
+          const finishedAt = now();
+          await upsertPipelineStep({
+            coletaId: item.id,
+            stepName,
+            status: "SUCCESS",
+            attempt,
+            startedAt,
+            finishedAt,
+            durationMs: finishedAt.getTime() - startedAt.getTime(),
+            requestPayload: {
+              mode: "LOW_COST_TTS",
+              targetTextPreview: copy.slice(0, 220),
+              targetTextLength: copy.length,
+            },
+            responsePayload: { audioUrl },
+          });
+
+          await prisma.coletaDadosShoppe.update({
+            where: { id: item.id },
+            data: { audioUrl, pipelineStatus: "AUDIO_READY" as any, nextRunAt: null, lastError: null },
+          });
+
+          await logPipelineEvent({ coletaId: item.id, stepName, message: "Audio economico gerado e salvo no MinIO.", metadata: { audioUrl } });
+          return { ok: true, itemId: item.id, ran: stepName, mode: "LOW_COST_TTS", audioUrl };
+        }
+
         const config = await prisma.shopeePipelineConfig.findFirst({
           where: { pipelineKind: "SALES" as any },
           orderBy: { createdAt: "desc" },
         });
         const { voiceRefUrl } = await resolvePersonaImageAndVoice(item.creatorPersonaId, config);
         if (!voiceRefUrl) throw new Error("Pipeline config missing userVoiceRefUrl or Persona missing voiceRefUrl");
-
-        const copy = String(item.aiPromptVendas || "").trim();
-        if (!copy) throw new Error("Copy de vendas (aiPromptVendas) ausente");
 
         await upsertPipelineStep({ coletaId: item.id, stepName, status: "RUNNING", attempt, startedAt });
         await logPipelineEvent({ coletaId: item.id, stepName, message: "Gerando audio via Modal (voice clone)" });
@@ -824,6 +887,81 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
       const attempt = await nextAttemptForStep(item.id, stepName);
 
       try {
+        if (item.useAi === false) {
+          const originalVideoUrl = String(item.mediaVideoUrls?.[0] || "").trim();
+          if (!originalVideoUrl) {
+            throw new Error("Nenhum video original encontrado em mediaVideoUrls[0]. Necessario fallback/manual.");
+          }
+          if (!item.audioUrl) throw new Error("audioUrl ausente");
+
+          await prisma.coletaDadosShoppe.update({
+            where: { id: item.id },
+            data: { pipelineStatus: "GENERATING_COPY_VIDEO" as any, lastError: null },
+          });
+
+          await upsertPipelineStep({
+            coletaId: item.id,
+            stepName,
+            status: "RUNNING",
+            attempt,
+            startedAt,
+            requestPayload: {
+              mode: "LOW_COST_VOICEOVER",
+              originalVideoUrl,
+              audioUrl: item.audioUrl,
+              requests: [
+                {
+                  method: "POST",
+                  url: `${String(process.env.WORKER_FASTAPI_BASE_URL || process.env.FASTAPI_URL || "http://127.0.0.1:8000").trim().replace(/\/+$/, "")}/voiceover-video`,
+                  purpose: "Criar video final com narracao sobre o video original, sem avatar/Modal/ComfyUI",
+                },
+              ],
+              note: "Modo economico: o worker remove o audio original do produto e aplica apenas a narracao TTS.",
+            },
+          });
+          await logPipelineEvent({ coletaId: item.id, stepName, message: "Gerando video final economico com narracao sobre o video original." });
+
+          const videoFinalUrl = await renderShopeeLowCostVoiceoverVideo({
+            coletaId: item.id,
+            originalVideoUrl,
+            audioUrl: item.audioUrl,
+          });
+
+          const finishedAt = now();
+          await upsertPipelineStep({
+            coletaId: item.id,
+            stepName,
+            status: "SUCCESS",
+            attempt,
+            startedAt,
+            finishedAt,
+            durationMs: finishedAt.getTime() - startedAt.getTime(),
+            requestPayload: {
+              mode: "LOW_COST_VOICEOVER",
+              originalVideoUrl,
+              audioUrl: item.audioUrl,
+            },
+            responsePayload: {
+              videoFinalUrl,
+              skippedAvatar: true,
+              skippedMerge: true,
+            },
+          });
+
+          await prisma.coletaDadosShoppe.update({
+            where: { id: item.id },
+            data: { videoFinalUrl, pipelineStatus: "FINAL_VIDEO_READY" as any, nextRunAt: null, lastError: null },
+          });
+
+          await logPipelineEvent({
+            coletaId: item.id,
+            stepName,
+            message: "Video economico concluido e salvo no MinIO. Avatar e merge PiP foram ignorados.",
+            metadata: { videoFinalUrl },
+          });
+          return { ok: true, itemId: item.id, ran: stepName, mode: "LOW_COST_VOICEOVER", videoFinalUrl };
+        }
+
         const config = await prisma.shopeePipelineConfig.findFirst({
           where: { pipelineKind: "SALES" as any },
           orderBy: { createdAt: "desc" },

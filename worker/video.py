@@ -903,6 +903,100 @@ async def merge_videos_endpoint(
             pass
 
 
+@app.post("/voiceover-video")
+async def voiceover_video_endpoint(
+    coleta_id: str = Form(...),
+    original_video_url: str = Form(...),
+    audio_url: str = Form(...),
+    upload_mode: str = Form("worker"),
+):
+    """
+    Modo economico para Shopee:
+      - Baixa o video original do produto
+      - Remove o audio original
+      - Coloca apenas a narracao TTS por cima
+      - Nao usa ComfyUI/Modal/avatar/PiP
+    """
+    uid = os.urandom(6).hex()
+    started_at = time.time()
+    work_dir = os.path.join(UPLOAD_DIR, f"voiceover_{coleta_id}_{uid}")
+    os.makedirs(work_dir, exist_ok=True)
+
+    original_path = os.path.join(work_dir, "original.mp4")
+    audio_path = os.path.join(work_dir, "voiceover.mp3")
+    output_path = os.path.join(OUTPUT_DIR, f"voiceover_{coleta_id}_{uid}.mp4")
+
+    source_clip = None
+    base_clip = None
+    audio_clip = None
+    final_clip = None
+
+    try:
+        orig_url = str(original_video_url or "").strip()
+        audio_src = str(audio_url or "").strip()
+        if not orig_url or not audio_src:
+            return JSONResponse({"error": "original_video_url e audio_url sao obrigatorios."}, status_code=400)
+
+        print("[Voiceover] Baixando video original e audio...", {"coleta_id": coleta_id, "uid": uid})
+        download_to_file(orig_url, original_path, timeout=180)
+        download_to_file(audio_src, audio_path, timeout=180)
+
+        source_clip = VideoFileClip(original_path).without_audio()
+        audio_clip = AudioFileClip(audio_path)
+        target_duration = max(0.1, float(audio_clip.duration or source_clip.duration or 0.1))
+
+        if source_clip.duration and source_clip.duration < target_duration:
+            loops = int(math.ceil(target_duration / source_clip.duration))
+            base_clip = concatenate_videoclips([source_clip] * loops).subclip(0, target_duration)
+        else:
+            base_clip = source_clip.subclip(0, min(source_clip.duration, target_duration))
+
+        final_clip = base_clip.set_audio(audio_clip).set_duration(target_duration)
+        final_clip.write_videofile(
+            output_path,
+            codec="libx264",
+            audio_codec="aac",
+            fps=getattr(source_clip, "fps", None) or 30,
+            preset="medium",
+            threads=4,
+            verbose=False,
+            logger=None,
+        )
+
+        elapsed = int((time.time() - started_at) * 1000)
+        print("[Voiceover] Video economico concluido", {"coleta_id": coleta_id, "elapsed_ms": elapsed})
+
+        if str(upload_mode).strip().lower() == "external":
+            with open(output_path, "rb") as f:
+                video_bytes = f.read()
+            return Response(
+                content=video_bytes,
+                media_type="video/mp4",
+                headers={"X-Coleta-Id": coleta_id, "X-Voiceover-Uid": uid},
+            )
+
+        minio_key = f"shopee/videos-final/lowcost_{coleta_id}_{uid}.mp4"
+        final_url = upload_to_minio(output_path, minio_key, "video/mp4")
+        return JSONResponse({"ok": True, "coleta_id": coleta_id, "videoUrl": final_url})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": str(e)}, status_code=500)
+    finally:
+        for clip in [final_clip, base_clip, source_clip, audio_clip]:
+            try:
+                if clip:
+                    clip.close()
+            except Exception:
+                pass
+        try:
+            shutil.rmtree(work_dir, ignore_errors=True)
+            if os.path.exists(output_path):
+                os.remove(output_path)
+        except Exception:
+            pass
+
+
 @app.post("/limpeza-video-process")
 async def limpeza_video_process_endpoint(
     job_id: str = Form(...),

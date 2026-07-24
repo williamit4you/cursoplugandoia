@@ -61,6 +61,9 @@ export default function IntegrationsPage() {
     updatedAt: string | null;
   }>({ loading: false, ok: null, message: "", updatedAt: null });
 
+  // News automation cost controls
+  const [newsPresenterAutoEnabled, setNewsPresenterAutoEnabled] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
@@ -109,6 +112,11 @@ export default function IntegrationsPage() {
           setYoutubeActive(youtube.isActive);
           setInitialYoutubeClientId(youtube.apiKey || "");
           setInitialYoutubeClientSecret(youtube.apiSecret || "");
+        }
+
+        const newsAutomation = data.find((d: any) => d.platform === "NEWS_AUTOMATION");
+        if (newsAutomation) {
+          setNewsPresenterAutoEnabled(Boolean(newsAutomation.isActive));
         }
 
         setLoading(false);
@@ -242,6 +250,31 @@ export default function IntegrationsPage() {
     }
   };
 
+  const handleSaveNewsAutomation = async () => {
+    setSaving(true);
+    setMsg({ type: "", text: "" });
+    try {
+      const res = await fetch("/api/integrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: "NEWS_AUTOMATION",
+          isActive: newsPresenterAutoEnabled,
+        }),
+      });
+      if (!res.ok) throw new Error("Erro ao salvar automação de notícias.");
+      toast.success(
+        newsPresenterAutoEnabled
+          ? "Vídeos automáticos de notícia com apresentador foram ativados."
+          : "Vídeos automáticos de notícia com apresentador foram desligados para economizar Modal."
+      );
+    } catch (err: any) {
+      toast.error(err.message || "Falha ao salvar automação de notícias.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleCheckYouTubeAuth = async () => {
     setYoutubeAuthCheck({ loading: true, ok: null, message: "", updatedAt: null });
     try {
@@ -325,6 +358,33 @@ export default function IntegrationsPage() {
       {msg.text && (
         <Alert severity={msg.type as any} sx={{ mb: 3 }}>{msg.text}</Alert>
       )}
+
+      <Paper sx={{ p: 4, borderRadius: 2, mb: 4, border: "1px solid #e2e8f0" }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 3, mb: 2 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: "bold" }} color="#4f46e5">Economia da Modal</Typography>
+            <Typography variant="body2" color="textSecondary">
+              Controle se notícias automáticas podem gerar vídeos com seu rosto/avatar. Desligado economiza GPU da Modal.
+            </Typography>
+          </Box>
+          <FormControlLabel
+            control={<Switch checked={newsPresenterAutoEnabled} onChange={(e) => setNewsPresenterAutoEnabled(e.target.checked)} color="primary" />}
+            label={newsPresenterAutoEnabled ? "Avatar automático ligado" : "Avatar automático desligado"}
+          />
+        </Box>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Alert severity={newsPresenterAutoEnabled ? "warning" : "success"} sx={{ mb: 3 }}>
+          {newsPresenterAutoEnabled
+            ? "Ligado: cada notícia poderá criar/renderizar a variante com apresentador, consumindo Modal."
+            : "Desligado: notícias automáticas não criam nem renderizam a variante com apresentador. Shopee e criação manual continuam funcionando."}
+        </Alert>
+
+        <Button variant="contained" onClick={handleSaveNewsAutomation} disabled={saving} sx={{ bgcolor: '#4f46e5', textTransform: 'none' }}>
+          {saving ? "Salvando..." : "Salvar controle de custo"}
+        </Button>
+      </Paper>
 
       {/* ── N8N ── */}
       <Paper sx={{ p: 4, borderRadius: 2, mb: 4 }}>

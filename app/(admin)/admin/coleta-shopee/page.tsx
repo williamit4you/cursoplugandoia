@@ -28,6 +28,8 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -68,7 +70,7 @@ export default function ColetaShopeePage() {
   const [personas, setPersonas] = useState<{ id: string; name: string }[]>([]);
 
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
-  const [manualFields, setManualFields] = useState({ titulo: "", url: "", descricao: "", creatorPersonaId: "" });
+  const [manualFields, setManualFields] = useState({ titulo: "", url: "", descricao: "", creatorPersonaId: "", useAi: true });
   const [manualVideoFile, setManualVideoFile] = useState<File | null>(null);
   const [isManualSubmitting, setIsManualSubmitting] = useState(false);
   const manualFileInputRef = useRef<HTMLInputElement>(null);
@@ -171,6 +173,7 @@ export default function ColetaShopeePage() {
       if (manualFields.creatorPersonaId) {
         form.append("creatorPersonaId", manualFields.creatorPersonaId);
       }
+      form.append("useAi", String(manualFields.useAi));
       form.append("video", manualVideoFile, manualVideoFile.name);
 
       const res = await fetch("/api/coleta-shopee/manual", {
@@ -183,7 +186,7 @@ export default function ColetaShopeePage() {
         throw new Error(data.error || "Erro no envio manual");
       }
 
-      setManualFields({ titulo: "", url: "", descricao: "", creatorPersonaId: "" });
+      setManualFields({ titulo: "", url: "", descricao: "", creatorPersonaId: "", useAi: true });
       setManualVideoFile(null);
       setIsManualModalOpen(false);
       await loadColetas();
@@ -1413,6 +1416,22 @@ export default function ColetaShopeePage() {
               ))}
             </Select>
           </FormControl>
+          <Box sx={{ p: 2, borderRadius: "14px", border: "1px solid rgba(148,163,184,0.22)", bgcolor: "rgba(15,23,42,0.65)" }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={manualFields.useAi}
+                  onChange={(e) => setManualFields((p) => ({ ...p, useAi: e.target.checked }))}
+                  color="primary"
+                />
+              }
+              label="Usar IA?"
+              sx={{ color: "#f8fafc", "& .MuiFormControlLabel-label": { fontWeight: 900 } }}
+            />
+            <Typography variant="caption" sx={{ display: "block", color: "#94a3b8", mt: 0.5, lineHeight: 1.5 }}>
+              Ligado: usa voz clonada/avatar via Modal. Desligado: gera a narração com TTS simples e aplica sobre o vídeo original, sem Modal/ComfyUI.
+            </Typography>
+          </Box>
           <Box>
             <Typography variant="body2" sx={{ mb: 1, color: "#94a3b8" }}>
               Arquivo de Video (Obrigatorio)

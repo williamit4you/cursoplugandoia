@@ -4,7 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { searchPexelsMedia, type PexelsAsset } from "@/lib/pexels";
 import { logCodeVideoPipelineEvent, upsertCodeVideoPipelineStep } from "@/lib/video-code/logger";
-import { isNewsVideoProject, parseProjectMetadata } from "@/lib/newsVideoProject";
+import { isNewsPresenterProject, isNewsVideoProject, parseProjectMetadata, resolveNewsAutoPresenterVideoEnabled } from "@/lib/newsVideoProject";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -322,8 +322,39 @@ export async function POST(req: NextRequest) {
 
     const metadata = safeParseMetadata(project.metadataJson);
     const isNewsProject = isNewsVideoProject(project);
-    const isNewsPresenterProject = isNewsProject && String((metadata as any)?.newsVariant || project.newsVariant || "PRESENTER").toUpperCase() !== "BROLL";
+    const isNewsPresenter = isNewsPresenterProject(project);
     const isProductAd = project.projectType === "PRODUCT_AD";
+
+    const autoPresenterEnabled = await resolveNewsAutoPresenterVideoEnabled(prisma);
+
+    if (isNewsPresenter && !autoPresenterEnabled) {
+      await prisma.codeVideoProject.update({
+        where: { id: projectId },
+        data: {
+          status: "SKIPPED",
+          errorMessage: "Geracao automatica de video de noticia com apresentador desativada para economia de Modal.",
+        },
+      });
+      await upsertCodeVideoPipelineStep({
+        projectId,
+        stepName: "GENERATE_SCRIPT",
+        status: "SKIPPED",
+        attempt: 1,
+        startedAt: new Date(),
+        finishedAt: new Date(),
+        responsePayload: { env: "NEWS_ARTICLE_AUTO_PRESENTER_VIDEO_ENABLED", enabled: false },
+      });
+      await logCodeVideoPipelineEvent({
+        projectId,
+        stepName: "GENERATE_SCRIPT",
+        message: "Projeto de noticia com apresentador ignorado: NEWS_ARTICLE_AUTO_PRESENTER_VIDEO_ENABLED esta desligado.",
+      }).catch(() => null);
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        reason: "news_presenter_auto_disabled",
+      });
+    }
 
     await prisma.codeVideoProject.update({
       where: { id: projectId },
@@ -348,7 +379,7 @@ export async function POST(req: NextRequest) {
         ? "YouTube (16:9, 1920x1080)"
         : "TikTok/Reels (9:16, 1080x1920)";
 
-    if (isNewsPresenterProject) {
+    if (isNewsPresenter) {
       const system = [
         "Voce e um redator de noticias e roteirista de videos curtos em portugues do Brasil.",
         "Sua tarefa e resumir uma materia em um texto curto, claro e falado, para video de ate 1 minuto.",

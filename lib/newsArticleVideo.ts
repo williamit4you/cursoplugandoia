@@ -2,6 +2,7 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { logCodeVideoPipelineEvent, upsertCodeVideoPipelineStep } from "@/lib/video-code/logger";
+import { resolveNewsAutoPresenterVideoEnabled } from "@/lib/newsVideoProject";
 
 function normalize(value: unknown) {
   return String(value || "").trim();
@@ -139,9 +140,12 @@ export async function ensureNewsVideoProjectForPost(postId: string) {
     .filter(Boolean)
     .join("\n\n");
 
+  const autoPresenterEnabled = await resolveNewsAutoPresenterVideoEnabled(prisma);
   const variants = [
     { key: "BROLL", useExternalMedia: true, platforms: ["YOUTUBE"] },
-    { key: "PRESENTER", useExternalMedia: false, platforms: ["INSTAGRAM", "TIKTOK", "YOUTUBE"] },
+    ...(autoPresenterEnabled
+      ? [{ key: "PRESENTER", useExternalMedia: false, platforms: ["INSTAGRAM", "TIKTOK", "YOUTUBE"] }]
+      : []),
   ] as const;
   const projects = [] as any[];
 

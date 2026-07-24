@@ -8,7 +8,7 @@ import { generateModalAudio, generateModalVideo } from "@/lib/shopee-pipeline/mo
 import { uploadBufferToMinio } from "@/lib/shopee-pipeline/minioUpload";
 import { resolveCreatorVideoDefaults } from "@/lib/creator-video/defaults";
 import { generateApproxVtt } from "@/lib/captions/vtt";
-import { isNewsVideoProject } from "@/lib/newsVideoProject";
+import { isNewsPresenterProject, isNewsVideoProject, resolveNewsAutoPresenterVideoEnabled } from "@/lib/newsVideoProject";
 import { ensureNewsSocialPostsForProject } from "@/lib/newsSocialQueue";
 
 export const dynamic = "force-dynamic";
@@ -302,9 +302,40 @@ export async function POST(req: NextRequest) {
     if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const isNewsProject = isNewsVideoProject(project);
-    const isNewsPresenterProject = isNewsProject && String((safeJsonParse(project.metadataJson || "{}") as any)?.newsVariant || project.newsVariant || "PRESENTER").toUpperCase() !== "BROLL";
+    const isNewsPresenter = isNewsPresenterProject(project);
     const videoSpec = safeJsonParse(project.videoSpecJson || "");
-    if (!isNewsPresenterProject && !videoSpec) {
+    const autoPresenterEnabled = await resolveNewsAutoPresenterVideoEnabled(prisma);
+
+    if (isNewsPresenter && !autoPresenterEnabled) {
+      await prisma.codeVideoProject.update({
+        where: { id: projectId },
+        data: {
+          status: "SKIPPED",
+          errorMessage: "Render automatico de video de noticia com apresentador desativado para economia de Modal.",
+        },
+      });
+      await upsertCodeVideoPipelineStep({
+        projectId,
+        stepName: "RENDER_VIDEO",
+        status: "SKIPPED",
+        attempt: 1,
+        startedAt: new Date(),
+        finishedAt: new Date(),
+        responsePayload: { env: "NEWS_ARTICLE_AUTO_PRESENTER_VIDEO_ENABLED", enabled: false },
+      });
+      await logCodeVideoPipelineEvent({
+        projectId,
+        stepName: "RENDER_VIDEO",
+        message: "Render de noticia com apresentador ignorado: NEWS_ARTICLE_AUTO_PRESENTER_VIDEO_ENABLED esta desligado.",
+      }).catch(() => null);
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        reason: "news_presenter_auto_disabled",
+      });
+    }
+
+    if (!isNewsPresenter && !videoSpec) {
       return NextResponse.json({ error: "videoSpecJson is invalid JSON" }, { status: 400 });
     }
 
@@ -323,12 +354,12 @@ export async function POST(req: NextRequest) {
     await logCodeVideoPipelineEvent({
       projectId,
       stepName: "RENDER_VIDEO",
-      message: isNewsPresenterProject
+      message: isNewsPresenter
         ? "Iniciando geracao de audio e video falado da noticia via Modal..."
         : "Iniciando sintese de audio TTS e renderizacao no servico de video...",
     });
 
-    const result = isNewsPresenterProject
+    const result = isNewsPresenter
       ? await renderNewsAsTalkingHead(project)
       : await renderWithExternalService({
           projectId,
@@ -366,7 +397,7 @@ export async function POST(req: NextRequest) {
       projectId,
       level: "INFO",
       stepName: "RENDER_VIDEO",
-      message: isNewsPresenterProject ? "Audio e video falado da noticia gerados com sucesso!" : "Video compilado e renderizado com sucesso!",
+      message: isNewsPresenter ? "Audio e video falado da noticia gerados com sucesso!" : "Video compilado e renderizado com sucesso!",
       metadata: {
         videoUrl: result.videoUrl,
         audioUrl: result.audioUrl || null,
