@@ -58,11 +58,11 @@ export async function POST(req: Request) {
     // Upload do video para o MinIO
     const arrayBuffer = await videoFile.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const bucket = process.env.MINIO_BUCKET || "shopee";
+    const bucket = process.env.MINIO_BUCKET_NAME || "uploads";
     
     const uniqueId = Date.now().toString();
     const fileExtension = videoFile.name.split('.').pop() || "mp4";
-    const objectKey = `uploads/shopee/manual_${uniqueId}.${fileExtension}`;
+    const objectKey = `shopee/manual_${uniqueId}.${fileExtension}`;
 
     await s3Client.send(
       new PutObjectCommand({
@@ -73,8 +73,8 @@ export async function POST(req: Request) {
       })
     );
 
-    const externalEndpoint = process.env.MINIO_ENDPOINT || "http://localhost:9000";
-    const videoUrlMinio = `${externalEndpoint}/${bucket}/${objectKey}`;
+    const publicBase = String(process.env.MINIO_PUBLIC_URL || "").replace(/\/+$/, "");
+    const videoUrlMinio = publicBase ? `${publicBase}/${objectKey}` : `${process.env.MINIO_ENDPOINT}/${bucket}/${objectKey}`;
 
     // Salvar no Banco
     const coleta = await prisma.coletaDadosShoppe.create({
