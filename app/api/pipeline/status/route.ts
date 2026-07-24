@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
           return acc;
         }, {} as Record<string, { family: string; total: number; healthy: number; attention: number; failed: number; disabled: number; runningNow: number }>),
       );
-      const [socialDue, socialFuture, socialProcessing, socialFailed, socialPostedToday, oldestSocial, alerts, estimatedCostToday] = await Promise.all([
+      const [socialDue, socialFuture, socialProcessing, socialFailed, socialPostedToday, oldestSocial, alerts, estimatedCostToday, integrations] = await Promise.all([
         sharedPrisma.socialPost.count({ where: { status: "SCHEDULED", scheduledTo: { lte: now } } }),
         sharedPrisma.socialPost.count({ where: { status: "SCHEDULED", scheduledTo: { gt: now } } }),
         sharedPrisma.socialPost.count({ where: { status: { in: ["PROCESSING_MEDIA", "PUBLISHING"] } } }),
@@ -96,6 +96,7 @@ export async function GET(req: NextRequest) {
         sharedPrisma.socialPost.findFirst({ where: { status: { in: ["SCHEDULED", "PROCESSING_MEDIA", "PUBLISHING", "FAILED"] } }, orderBy: { createdAt: "asc" }, select: { id: true, platform: true, status: true, createdAt: true, scheduledTo: true } }),
         sharedPrisma.operationAlert.findMany({ where: { status: { in: ["OPEN", "ACKNOWLEDGED"] } }, orderBy: [{ severity: "desc" }, { lastSeenAt: "desc" }], take: 10 }),
         sharedPrisma.costLedger.aggregate({ where: { occurredAt: { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) } }, _sum: { costUsd: true } }),
+        sharedPrisma.integrationSettings.findMany({ select: { platform: true, isActive: true } }),
       ]);
       if (socialDue > 0) await upsertOperationAlert({ fingerprint: "social:overdue", operationKey: "SOCIAL_PUBLISHER", severity: "CRITICAL", title: "Publicacoes sociais vencidas", message: `${socialDue} publicacao(oes) aguardam horario passado. Reagende ou publique agora.`, actionUrl: "/admin/social" });
       else await resolveOperationAlert("social:overdue");
