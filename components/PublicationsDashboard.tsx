@@ -122,17 +122,17 @@ const DEFAULT_FILTERS: Filters = {
 
 const PLATFORM_LABEL: Record<string, string> = {
   YOUTUBE: "YouTube",
+  META: "Meta",
   INSTAGRAM: "Instagram",
   TIKTOK: "TikTok",
-  FACEBOOK: "Facebook",
   LINKEDIN: "LinkedIn",
 };
 
 const PLATFORM_STYLE: Record<string, string> = {
   YOUTUBE: "bg-red-50 text-red-700 ring-red-100",
+  META: "bg-pink-50 text-pink-700 ring-pink-100",
   INSTAGRAM: "bg-pink-50 text-pink-700 ring-pink-100",
   TIKTOK: "bg-slate-50 text-slate-900 ring-slate-200",
-  FACEBOOK: "bg-blue-50 text-blue-700 ring-blue-100",
   LINKEDIN: "bg-sky-50 text-sky-700 ring-sky-100",
 };
 
@@ -167,7 +167,7 @@ function StatusBadge({ status }: { status?: string | null }) {
 
 function PlatformMark({ platform }: { platform: string }) {
   const label = PLATFORM_LABEL[platform] || platform;
-  const short = platform === "YOUTUBE" ? "YT" : platform === "INSTAGRAM" ? "IG" : platform === "TIKTOK" ? "TK" : label.slice(0, 2).toUpperCase();
+  const short = platform === "YOUTUBE" ? "YT" : platform === "META" ? "MET" : platform === "INSTAGRAM" ? "IG" : platform === "TIKTOK" ? "TK" : label.slice(0, 3).toUpperCase();
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black ring-1 ${PLATFORM_STYLE[platform] || "bg-slate-50 text-slate-700 ring-slate-200"}`} title={label}>
       <Video className="h-3 w-3" />
@@ -291,7 +291,7 @@ function publisherPath(platform?: string | null, postType?: string | null) {
   const normalizedType = (postType || "").toUpperCase();
   if (normalizedPlatform === "YOUTUBE") return "/api/social/publish-youtube";
   if (normalizedPlatform === "TIKTOK") return "/api/social/publish-tiktok";
-  if (normalizedPlatform === "INSTAGRAM" && normalizedType.includes("STORY")) return "/api/social/publish-story";
+  if ((normalizedPlatform === "META" || normalizedPlatform === "INSTAGRAM") && normalizedType.includes("STORY")) return "/api/social/publish-story";
   return "/api/social/publish";
 }
 
@@ -305,7 +305,7 @@ export default function PublicationsDashboard() {
   const pathname = usePathname();
   const lockedPlatform = useMemo(() => {
     if (pathname?.endsWith("/youtube")) return "YOUTUBE";
-    if (pathname?.endsWith("/instagram")) return "INSTAGRAM";
+    if (pathname?.endsWith("/instagram")) return "META";
     if (pathname?.endsWith("/tiktok")) return "TIKTOK";
     return "";
   }, [pathname]);
@@ -416,7 +416,8 @@ export default function PublicationsDashboard() {
   }, [filters, posts]);
 
   const groups = useMemo(() => sortGroups(groupPosts(filteredPosts), filters), [filteredPosts, filters]);
-  const selectedGroup = useMemo(() => groups.find((group) => group.id === selectedId) || groups[0] || null, [groups, selectedId]);
+  const explicitSelectedGroup = useMemo(() => groups.find((group) => group.id === selectedId) || null, [groups, selectedId]);
+  const selectedGroup = explicitSelectedGroup || groups[0] || null;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const kpis = useMemo(() => {
@@ -550,43 +551,43 @@ export default function PublicationsDashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f8fc] px-5 py-6 text-slate-900 lg:px-8">
+    <main className="min-h-screen bg-[#f6f8fc] px-3 py-4 text-slate-900 sm:px-5 lg:px-6">
       <ToastContainer position="top-right" autoClose={3000} />
-      <section className="mx-auto grid max-w-[1720px] gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="space-y-5">
+      <section className="mx-auto grid max-w-[1720px] gap-5 2xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="min-w-0 space-y-5">
           <div className="rounded-[24px] border border-slate-200 bg-white/90 p-5 shadow-sm">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-sm">
                   <ListChecks className="h-5 w-5" />
                 </div>
                 <div>
                   <h1 className="text-2xl font-black tracking-tight">Publicações</h1>
-                  <p className="text-sm font-medium text-slate-500">Gerencie YouTube, Instagram, TikTok e demais destinos em uma única fila.</p>
+                  <p className="text-sm font-medium text-slate-500">Gerencie YouTube, Meta, TikTok e demais destinos em uma única fila.</p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <button className={actionButtonClass()} onClick={fetchPosts} disabled={loading}>
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center xl:justify-end">
+                <button className={`${actionButtonClass()} justify-center`} onClick={fetchPosts} disabled={loading}>
                   <RefreshCcw className={`mr-2 inline h-4 w-4 ${loading ? "animate-spin" : ""}`} />
                   Atualizar
                 </button>
-                <button className={actionButtonClass()} onClick={runSocialCron} disabled={runningId === "cron"}>
+                <button className={`${actionButtonClass()} justify-center`} onClick={runSocialCron} disabled={runningId === "cron"}>
                   <Play className="mr-2 inline h-4 w-4" />
                   Rodar agora
                 </button>
-                <button className={actionButtonClass("primary")} onClick={requeueOldPosts} disabled={runningId === "requeue"}>
+                <button className={`${actionButtonClass("primary")} justify-center`} onClick={requeueOldPosts} disabled={runningId === "requeue"}>
                   <Calendar className="mr-2 inline h-4 w-4" />
                   Reagendar antigos
                 </button>
-                <button className={actionButtonClass("primary")} onClick={() => toast.info("Use o gerador de vídeos ou o editor existente para criar uma nova publicação.")}>
+                <button className={`${actionButtonClass("primary")} justify-center`} onClick={() => toast.info("Use o gerador de vídeos ou o editor existente para criar uma nova publicação.")}>
                   <Plus className="mr-2 inline h-4 w-4" />
                   Nova publicação
                 </button>
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
               {[
                 ["Agendados", kpis.scheduled, Calendar, "text-indigo-600 bg-indigo-50"],
                 ["Em fila", kpis.queue, Clock3, "text-amber-600 bg-amber-50"],
@@ -610,7 +611,7 @@ export default function PublicationsDashboard() {
           </div>
 
           <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="grid gap-3 xl:grid-cols-[minmax(220px,1.2fr)_repeat(7,minmax(120px,0.7fr))]">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-[minmax(220px,1.2fr)_repeat(7,minmax(120px,0.7fr))]">
               <label className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
@@ -636,9 +637,8 @@ export default function PublicationsDashboard() {
               <select className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold" value={filters.platform} disabled={Boolean(lockedPlatform)} onChange={(event) => setFilters((current) => ({ ...current, platform: event.target.value }))}>
                 <option value="">Plataforma</option>
                 <option value="YOUTUBE">YouTube</option>
-                <option value="INSTAGRAM">Instagram</option>
+                <option value="META">Meta</option>
                 <option value="TIKTOK">TikTok</option>
-                <option value="FACEBOOK">Facebook</option>
                 <option value="LINKEDIN">LinkedIn</option>
               </select>
 
@@ -690,7 +690,7 @@ export default function PublicationsDashboard() {
             ) : null}
 
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
-              <button className={actionButtonClass()} onClick={saveFilter}>
+                <button className={`${actionButtonClass()} justify-center`} onClick={saveFilter}>
                 <Filter className="mr-2 inline h-4 w-4" />
                 Salvar filtro
               </button>
@@ -711,7 +711,7 @@ export default function PublicationsDashboard() {
                 <p className="text-sm font-black">{total.toLocaleString("pt-BR")} publicações encontradas</p>
                 <p className="text-xs font-medium text-slate-500">Atalhos: “/” busca, “R” atualiza, “Esc” fecha detalhes.</p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:flex lg:flex-wrap">
                 <button className={actionButtonClass()} onClick={() => applyBulk("pause")} disabled={!selectedRows.length}>
                   <Pause className="mr-2 inline h-4 w-4" />
                   Pausar
@@ -729,7 +729,7 @@ export default function PublicationsDashboard() {
             {error ? <div className="m-4 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-bold text-rose-700">{error}</div> : null}
 
             <div className="overflow-x-auto">
-              <table className="min-w-[1050px] w-full text-left text-sm">
+              <table className="min-w-[980px] w-full text-left text-sm">
                 <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="w-10 px-4 py-3">
@@ -850,7 +850,30 @@ export default function PublicationsDashboard() {
           onRefresh={fetchPosts}
           runningId={runningId}
           cronStatus={cronStatus}
+          variant="sidebar"
         />
+
+        {selectedId && (
+          <div className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-sm 2xl:hidden" onClick={() => setSelectedId(null)}>
+            <div className="absolute inset-y-0 right-0 w-full max-w-[440px] overflow-y-auto bg-white p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()}>
+              <PublicationDetails
+                group={explicitSelectedGroup}
+                tab={detailsTab}
+                setTab={setDetailsTab}
+                onClose={() => setSelectedId(null)}
+                onPublish={publishNow}
+                onDuplicate={duplicatePost}
+                onDelete={deletePost}
+                onPause={(post) => updatePost(post, { status: "PAUSED" }, "Publicação pausada.")}
+                onCancel={(post) => updatePost(post, { status: "CANCELLED" }, "Publicação cancelada.")}
+                onRefresh={fetchPosts}
+                runningId={runningId}
+                cronStatus={cronStatus}
+                variant="drawer"
+              />
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );
@@ -869,6 +892,7 @@ function PublicationDetails({
   onRefresh,
   runningId,
   cronStatus,
+  variant = "sidebar",
 }: {
   group: PublicationGroup | null;
   tab: "summary" | "timeline" | "logs" | "media" | "info";
@@ -882,12 +906,19 @@ function PublicationDetails({
   onRefresh: () => void;
   runningId: string | null;
   cronStatus: any;
+  variant?: "sidebar" | "drawer";
 }) {
   const primary = group?.posts[0] || null;
   const hashtags = hashtagsFrom(group?.caption || "");
 
   return (
-    <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] overflow-y-auto rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm xl:block">
+    <aside
+      className={
+        variant === "drawer"
+          ? "block"
+          : "sticky top-4 hidden h-[calc(100vh-2rem)] overflow-y-auto rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm 2xl:block"
+      }
+    >
       {!group || !primary ? (
         <div className="flex h-full flex-col items-center justify-center text-center">
           <Grid2X2 className="mb-3 h-9 w-9 text-slate-300" />
