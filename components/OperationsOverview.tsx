@@ -62,6 +62,7 @@ function formatTime(value?: string) {
 export default function OperationsOverview() {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const runningOperations = (data?.operations || []).filter((operation) => String(operation.lastRun?.status || "") === "RUNNING");
 
   const checklistItems = data?.checklist ? [
     {
@@ -133,7 +134,7 @@ export default function OperationsOverview() {
 
       {error ? <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-bold text-amber-800">{error}</div> : null}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
         {[
           ["Operacoes", data?.summary.total ?? "-"],
           ["Rodando agora", data?.summary.runningNow ?? "-"],
@@ -168,6 +169,38 @@ export default function OperationsOverview() {
                   <span className="rounded-full bg-indigo-50 px-2 py-1 text-indigo-700">{family.runningNow} rodando</span>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {runningOperations.length ? (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Rodando agora</div>
+              <div className="mt-1 text-sm font-black text-slate-900">Operacoes em execucao neste momento</div>
+            </div>
+            <span className="rounded-full bg-indigo-100 px-2 py-1 text-[10px] font-black text-indigo-700">{runningOperations.length} ativa(s)</span>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {runningOperations.map((operation) => (
+              <Link
+                key={operation.key}
+                href={`/admin/operations/${encodeURIComponent(operation.key)}`}
+                className="rounded-2xl border border-indigo-200 bg-white px-4 py-3 hover:border-indigo-300 hover:shadow-sm"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-black text-slate-900">{operation.name}</div>
+                  <span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-black text-indigo-700">{operation.family}</span>
+                </div>
+                <div className="mt-2 text-xs text-slate-500">
+                  Iniciou em <strong className="text-slate-700">{formatTime(operation.lastRun?.startedAt)}</strong>
+                </div>
+                <div className="mt-1 text-xs text-slate-500">
+                  Processados: <strong className="text-slate-700">{operation.lastRun?.itemsProcessed ?? 0}</strong>
+                </div>
+              </Link>
             ))}
           </div>
         </div>

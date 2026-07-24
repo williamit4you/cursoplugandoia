@@ -299,7 +299,7 @@ function truncateJson(value: unknown, maxLen = 900) {
     text = String(value);
   }
   if (text.length <= maxLen) return text;
-  return `${text.slice(0, maxLen)}\nâ€¦(truncado)`;
+  return `${text.slice(0, maxLen)}\n...(truncado)`;
 }
 
 function buildManualPostDescription(item?: Partial<ColetaItem> | null) {

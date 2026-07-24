@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+﻿import { NextRequest } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
@@ -12,10 +12,9 @@ export const dynamic = "force-dynamic";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
-
-// GET /api/pipeline/status?since=ISO — SSE stream de logs em tempo real
-// O parâmetro ?since= filtra logs criados APÓS aquele timestamp,
-// evitando que logs antigos de execuções anteriores apareçam no monitor.
+// GET /api/pipeline/status?since=ISO - SSE stream de logs em tempo real.
+// O parametro ?since= filtra logs criados apos aquele timestamp,
+// evitando que logs antigos de execucoes anteriores aparecam no monitor.
 export async function GET(req: NextRequest) {
   if (req.nextUrl.searchParams.get("view") === "operation-runs") {
     try {
@@ -156,8 +155,8 @@ export async function GET(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       };
 
-      // Inicializa lastId com o ID do log mais recente ANTES do since
-      // para que o polling só busque logs NOVOS a partir do clique do botão
+      // Inicializa lastId com o ID do log mais recente antes do since
+      // para que o polling so busque logs novos a partir do clique do botao.
       let lastId = "";
       if (sinceDate) {
         try {
@@ -182,11 +181,11 @@ export async function GET(req: NextRequest) {
             logs.forEach((l: { id: string; step: string; message: string; level: string; createdAt: Date }) => send(l));
           }
         } catch {
-          // Silencia erros de DB para não quebrar o stream
+          // Silencia erros de DB para nao quebrar o stream.
         }
       };
 
-      // Polling a cada 2s por até 10 minutos (300 iterações)
+      // Polling a cada 2s por ate 10 minutos (300 iteracoes).
       for (let i = 0; i < 300; i++) {
         if (req.signal.aborted) break;
         await poll();
