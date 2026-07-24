@@ -17,13 +17,18 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { url } = body;
+    const { url, creatorPersonaId } = body;
     if (!url) {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
     }
 
+    const dataObj: any = { url, pipelineKind: "SALES" as any };
+    if (creatorPersonaId) {
+      dataObj.creatorPersonaId = creatorPersonaId;
+    }
+
     const coleta = await prisma.coletaDadosShoppe.create({
-      data: { url, pipelineKind: "SALES" as any }
+      data: dataObj
     });
 
     return NextResponse.json(coleta);

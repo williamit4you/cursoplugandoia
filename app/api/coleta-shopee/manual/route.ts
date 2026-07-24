@@ -12,6 +12,7 @@ export async function POST(req: Request) {
     const url = formData.get("url") as string;
     const titulo = formData.get("titulo") as string;
     const descricao = formData.get("descricao") as string || "";
+    const creatorPersonaId = formData.get("creatorPersonaId") as string || null;
     const videoFile = formData.get("video") as File | null;
 
     if (!url || !titulo || !videoFile) {
@@ -87,6 +88,7 @@ export async function POST(req: Request) {
         status: "COMPLETED",
         pipelineStatus: "COPY_READY",
         pipelineKind: "SALES",
+        creatorPersonaId: creatorPersonaId,
         mediaVideoUrls: [videoUrlMinio],
         linksMedia: {
           create: [

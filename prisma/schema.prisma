@@ -1540,6 +1540,9 @@ model ColetaDadosShoppe {
   bioProduct       BioProduct?
   engagementIdeas  EngagementIdea[]
 
+  creatorPersonaId String?
+  creatorPersona   CreatorPersona? @relation(fields: [creatorPersonaId], references: [id])
+
   @@unique([url, pipelineKind])
   @@index([pipelineKind])
 }
@@ -1914,4 +1917,16 @@ model EngagementIdea {
   @@index([templateType])
   @@index([status])
   @@index([createdAt])
+}
+
+model CreatorPersona {
+  id            String   @id @default(cuid())
+  name          String
+  imageUrl      String
+  voiceRefUrl   String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  coletasShopee ColetaDadosShoppe[]
 }

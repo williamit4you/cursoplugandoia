@@ -24,6 +24,10 @@ import {
   TextField,
   Tooltip,
   Typography,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -59,10 +63,12 @@ export default function ColetaShopeePage() {
   const [coletas, setColetas] = useState<ColetaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [url, setUrl] = useState("");
+  const [selectedPersonaId, setSelectedPersonaId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [personas, setPersonas] = useState<{ id: string; name: string }[]>([]);
 
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
-  const [manualFields, setManualFields] = useState({ titulo: "", url: "", descricao: "" });
+  const [manualFields, setManualFields] = useState({ titulo: "", url: "", descricao: "", creatorPersonaId: "" });
   const [manualVideoFile, setManualVideoFile] = useState<File | null>(null);
   const [isManualSubmitting, setIsManualSubmitting] = useState(false);
   const manualFileInputRef = useRef<HTMLInputElement>(null);
@@ -95,9 +101,15 @@ export default function ColetaShopeePage() {
   const loadColetas = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/coleta-shopee");
-      if (res.ok) {
-        setColetas(await res.json());
+      const [coletasRes, personasRes] = await Promise.all([
+        fetch("/api/coleta-shopee"),
+        fetch("/api/creator-personas"),
+      ]);
+      if (coletasRes.ok) {
+        setColetas(await coletasRes.json());
+      }
+      if (personasRes.ok) {
+        setPersonas(await personasRes.json());
       }
     } catch (error) {
       console.error(error);
@@ -156,6 +168,9 @@ export default function ColetaShopeePage() {
       form.append("url", manualFields.url);
       form.append("titulo", manualFields.titulo);
       form.append("descricao", manualFields.descricao);
+      if (manualFields.creatorPersonaId) {
+        form.append("creatorPersonaId", manualFields.creatorPersonaId);
+      }
       form.append("video", manualVideoFile, manualVideoFile.name);
 
       const res = await fetch("/api/coleta-shopee/manual", {
@@ -168,7 +183,7 @@ export default function ColetaShopeePage() {
         throw new Error(data.error || "Erro no envio manual");
       }
 
-      setManualFields({ titulo: "", url: "", descricao: "" });
+      setManualFields({ titulo: "", url: "", descricao: "", creatorPersonaId: "" });
       setManualVideoFile(null);
       setIsManualModalOpen(false);
       await loadColetas();
@@ -186,7 +201,7 @@ export default function ColetaShopeePage() {
       const res = await fetch("/api/coleta-shopee", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, creatorPersonaId: selectedPersonaId }),
       });
 
       if (!res.ok) {
@@ -412,6 +427,32 @@ export default function ColetaShopeePage() {
             1. Insira o Link do Produto
           </Typography>
           <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
+            <FormControl sx={{ minWidth: 200 }} size="medium">
+              <InputLabel id="persona-label-main" sx={{ color: "rgba(255,255,255,0.7)" }}>Vendedor (Opcional)</InputLabel>
+              <Select
+                labelId="persona-label-main"
+                value={selectedPersonaId}
+                label="Vendedor (Opcional)"
+                onChange={(e) => setSelectedPersonaId(e.target.value)}
+                sx={{
+                  bgcolor: "rgba(0,0,0,0.2)",
+                  color: "#f1f5f9",
+                  "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.2)" },
+                  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.3)" },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#6366f1" },
+                  "& .MuiSvgIcon-root": { color: "rgba(255,255,255,0.7)" },
+                }}
+              >
+                <MenuItem value="">
+                  <em>Aleatório / Padrão</em>
+                </MenuItem>
+                {personas.map((p) => (
+                  <MenuItem key={p.id} value={p.id}>
+                    {p.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <TextField
               fullWidth
               size="medium"
@@ -1347,6 +1388,31 @@ export default function ColetaShopeePage() {
             onChange={(e) => setManualFields((p) => ({ ...p, descricao: e.target.value }))}
             sx={fieldSx}
           />
+          <FormControl fullWidth size="medium" variant="filled" sx={fieldSx}>
+            <InputLabel id="persona-label-manual" sx={{ color: "rgba(255,255,255,0.7)" }}>Vendedor (Opcional)</InputLabel>
+            <Select
+              labelId="persona-label-manual"
+              value={manualFields.creatorPersonaId}
+              onChange={(e) => setManualFields((p) => ({ ...p, creatorPersonaId: e.target.value }))}
+              sx={{
+                bgcolor: "rgba(15,23,42,0.92)",
+                color: "#f8fafc",
+                borderRadius: "14px",
+                border: "1px solid rgba(148,163,184,0.18)",
+                "&::before, &::after": { display: "none" },
+                "& .MuiSelect-select": { padding: "25px 12px 8px" },
+              }}
+            >
+              <MenuItem value="">
+                <em>Aleatório / Padrão</em>
+              </MenuItem>
+              {personas.map((p) => (
+                <MenuItem key={p.id} value={p.id}>
+                  {p.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <Box>
             <Typography variant="body2" sx={{ mb: 1, color: "#94a3b8" }}>
               Arquivo de Video (Obrigatorio)

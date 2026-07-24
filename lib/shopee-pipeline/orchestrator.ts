@@ -29,6 +29,29 @@ function addMinutes(date: Date, minutes: number) {
   return new Date(date.getTime() + minutes * 60 * 1000);
 }
 
+async function resolvePersonaImageAndVoice(creatorPersonaId: string | null, config: any) {
+  let voiceRefUrl = config?.userVoiceRefUrl || null;
+  let imageUrl = config?.userBaseImageUrl || null;
+
+  if (creatorPersonaId) {
+    const persona = await prisma.creatorPersona.findUnique({ where: { id: creatorPersonaId } });
+    if (persona) {
+      if (persona.voiceRefUrl) voiceRefUrl = persona.voiceRefUrl;
+      if (persona.imageUrl) imageUrl = persona.imageUrl;
+    }
+  } else {
+    // Pick random active persona if none selected
+    const personas = await prisma.creatorPersona.findMany({ where: { active: true } });
+    if (personas.length > 0) {
+      const p = personas[Math.floor(Math.random() * personas.length)];
+      if (p.voiceRefUrl) voiceRefUrl = p.voiceRefUrl;
+      if (p.imageUrl) imageUrl = p.imageUrl;
+    }
+  }
+
+  return { voiceRefUrl, imageUrl };
+}
+
 const STORY_PUBLICATION_PLATFORMS = ["TIKTOK", "YOUTUBE", "INSTAGRAM"] as const;
 
 function storyPublicationToSocialPlatform(platform: (typeof STORY_PUBLICATION_PLATFORMS)[number]) {
@@ -565,8 +588,8 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           where: { pipelineKind: "SALES" as any },
           orderBy: { createdAt: "desc" },
         });
-        const voiceRefUrl = config?.userVoiceRefUrl || null;
-        if (!voiceRefUrl) throw new Error("Pipeline config missing userVoiceRefUrl");
+        const { voiceRefUrl } = await resolvePersonaImageAndVoice(item.creatorPersonaId, config);
+        if (!voiceRefUrl) throw new Error("Pipeline config missing userVoiceRefUrl or Persona missing voiceRefUrl");
 
         const copy = String(item.aiPromptVendas || "").trim();
         if (!copy) throw new Error("Copy de vendas (aiPromptVendas) ausente");
@@ -684,8 +707,8 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
           orderBy: { createdAt: "desc" },
         });
 
-        const imageUrl = config?.userBaseImageUrl || null;
-        if (!imageUrl) throw new Error("Pipeline config missing userBaseImageUrl");
+        const { imageUrl } = await resolvePersonaImageAndVoice(item.creatorPersonaId, config);
+        if (!imageUrl) throw new Error("Pipeline config missing userBaseImageUrl or Persona missing imageUrl");
         if (!item.audioUrl) throw new Error("audioUrl ausente");
 
         await prisma.coletaDadosShoppe.update({
