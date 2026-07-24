@@ -58,8 +58,30 @@ export async function scrapeShopeeAndPersist(params: { coletaId: string; product
   const descricaoNormalizada = descricao || detalhes || "";
   const detalhesNormalizados = detalhes || descricao || "";
 
+  const currentColeta = await prisma.coletaDadosShoppe.findUnique({
+    where: { id: coletaId },
+    select: { mediaVideoUrls: true },
+  });
+
+  const hasExistingVideoUrls = currentColeta?.mediaVideoUrls && currentColeta.mediaVideoUrls.length > 0;
+  
   const imageUrls = linksMedia.filter((m: any) => m.tipo === "IMAGE").map((m: any) => String(m.url).trim()).filter(Boolean);
-  const videoUrls = linksMedia.filter((m: any) => m.tipo === "VIDEO").map((m: any) => String(m.url).trim()).filter(Boolean);
+  const scrapedVideoUrls = linksMedia.filter((m: any) => m.tipo === "VIDEO").map((m: any) => String(m.url).trim()).filter(Boolean);
+  
+  const finalVideoUrls = hasExistingVideoUrls ? currentColeta.mediaVideoUrls : scrapedVideoUrls;
+
+  const linksMediaCreate = linksMedia.map((m: any) => ({
+    tipo: m.tipo,
+    urlMinio: m.url,
+  })).filter((m: any) => m.tipo !== "VIDEO" || !hasExistingVideoUrls);
+
+  // If there are existing videos, we also need to preserve them in linksMedia,
+  // but since we deleteMany, we recreate them from current mediaVideoUrls.
+  if (hasExistingVideoUrls) {
+    currentColeta.mediaVideoUrls.forEach((url) => {
+      linksMediaCreate.push({ tipo: "VIDEO", urlMinio: url });
+    });
+  }
 
   const updated = await prisma.coletaDadosShoppe.update({
     where: { id: coletaId },
@@ -77,13 +99,10 @@ export async function scrapeShopeeAndPersist(params: { coletaId: string; product
             : null,
       linksMedia: {
         deleteMany: {},
-        create: linksMedia.map((m: any) => ({
-          tipo: m.tipo,
-          urlMinio: m.url,
-        })),
+        create: linksMediaCreate,
       },
       mediaImageUrls: imageUrls,
-      mediaVideoUrls: videoUrls,
+      mediaVideoUrls: finalVideoUrls,
     },
     include: { linksMedia: true },
   });

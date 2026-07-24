@@ -158,8 +158,8 @@ export default function ColetaShopeePage() {
   }, [selectedColeta]);
 
   const handleManualSubmit = async () => {
-    if (!manualFields.url || !manualFields.titulo || !manualVideoFile) {
-      alert("URL, Titulo e Video sao obrigatorios.");
+    if (!manualFields.url || !manualVideoFile) {
+      alert("URL e Video sao obrigatorios.");
       return;
     }
     try {
@@ -1372,7 +1372,7 @@ export default function ColetaShopeePage() {
           />
           <TextField
             fullWidth
-            label="Titulo do Produto"
+            label="Titulo do Produto (Opcional - Buscado automaticamente se vazio)"
             variant="filled"
             value={manualFields.titulo}
             onChange={(e) => setManualFields((p) => ({ ...p, titulo: e.target.value }))}
@@ -1442,7 +1442,7 @@ export default function ColetaShopeePage() {
           <Button
             variant="contained"
             onClick={handleManualSubmit}
-            disabled={!manualFields.url || !manualFields.titulo || !manualVideoFile || isManualSubmitting}
+            disabled={!manualFields.url || !manualVideoFile || isManualSubmitting}
             className="bg-indigo-600 hover:bg-indigo-700"
             startIcon={isManualSubmitting && <CircularProgress size={16} />}
           >

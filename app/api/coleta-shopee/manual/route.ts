@@ -10,50 +10,16 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     
     const url = formData.get("url") as string;
-    const titulo = formData.get("titulo") as string;
-    const descricao = formData.get("descricao") as string || "";
-    const creatorPersonaId = formData.get("creatorPersonaId") as string || null;
+    const titulo = (formData.get("titulo") as string) || "";
+    const descricao = (formData.get("descricao") as string) || "";
+    const creatorPersonaId = (formData.get("creatorPersonaId") as string) || null;
     const videoFile = formData.get("video") as File | null;
 
-    if (!url || !titulo || !videoFile) {
+    if (!url || !videoFile) {
       return NextResponse.json(
-        { error: "URL, titulo e video sao obrigatorios" },
+        { error: "URL e video sao obrigatorios" },
         { status: 400 }
       );
-    }
-
-    // Gerar Script de Vendas via IA (Opcional, falha segura)
-    let aiPromptVendas = "";
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    if (OPENAI_API_KEY) {
-      try {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${OPENAI_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "system",
-                content: "Voce e um especialista em marketing para TikTok. Crie um roteiro de vendas curto e engajador para o produto."
-              },
-              {
-                role: "user",
-                content: `Crie um script curto de TikTok (ate 50 palavras) para vender este produto. Nao use hashtags.\nTitulo: ${titulo}\nDescricao: ${descricao}`
-              }
-            ]
-          })
-        });
-        if (response.ok) {
-          const data = await response.json();
-          aiPromptVendas = data.choices?.[0]?.message?.content || "";
-        }
-      } catch (err) {
-        console.error("Falha ao gerar IA Prompt:", err);
-      }
     }
 
     // Upload do video para o MinIO
@@ -82,11 +48,11 @@ export async function POST(req: Request) {
       data: {
         url, // Link de afiliado ou link do produto
         affiliateUrl: url,
-        titulo,
-        descricao,
-        aiPromptVendas,
-        status: "COMPLETED",
-        pipelineStatus: "COPY_READY",
+        titulo: titulo || null,
+        descricao: descricao || null,
+        aiPromptVendas: null,
+        status: "PENDING",
+        pipelineStatus: "PENDING",
         pipelineKind: "SALES",
         creatorPersonaId: creatorPersonaId,
         mediaVideoUrls: [videoUrlMinio],
