@@ -240,13 +240,13 @@ export default function SocialCalendarPage() {
             onClick={() => setCursor((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
             className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-sm"
           >
-            <- Mes anterior
+            Anterior
           </button>
           <button
             onClick={() => setCursor((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
             className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-sm"
           >
-            Proximo mes ->
+            Proximo mes
           </button>
         </div>
       </div>

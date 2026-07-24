@@ -23,9 +23,17 @@ export async function resolveSalesPageMetaPixelId(
   } catch (error: any) {
     // During the transition window the migration may not have run yet.
     // In that case, keep the landing operational with the env-based pixel.
-    if (error?.code !== "P2022") {
+    const isRecoverableBuildFailure =
+      error?.code === "P2022" ||
+      error?.code === "EACCES" ||
+      error?.code === "ECONNREFUSED" ||
+      error?.code === "ETIMEDOUT";
+
+    if (!isRecoverableBuildFailure) {
       throw error;
     }
+
+    console.warn(`sales page pixel fallback for ${pageKey}`, error);
   }
 
   // Transitional rule for the current landing:
