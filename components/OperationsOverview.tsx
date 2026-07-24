@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -24,7 +24,21 @@ type Overview = {
   queues: { socialDue: number; socialFuture: number; socialProcessing: number; socialFailed: number; socialPostedToday: number; oldestSocial?: { createdAt: string; platform: string; status: string } | null };
   summary: { total: number; healthy: number; attention: number; failed: number };
   alerts?: { id: string; severity: string; title: string; message: string; actionUrl?: string | null }[];
-  costs?: { estimatedCostTodayUsd: number };
+  costs?: { estimatedCostTodayUsd: number; dailyLimitUsd?: number | null; withinLimit?: boolean };
+  checklist?: {
+    noCriticalAlerts: boolean;
+    noOverdueQueue: boolean;
+    freshHeartbeats: boolean;
+    integrationsActive: boolean;
+    videosAccountedFor: boolean;
+    articlesReceivingVisits: boolean;
+    failuresReviewed: boolean;
+  };
+  checklistDetails?: {
+    overdueSocial?: number;
+    staleOperations?: string[];
+    inactiveIntegrations?: string[];
+  };
 };
 
 const statusStyles: Record<string, string> = {
@@ -47,6 +61,45 @@ function formatTime(value?: string) {
 export default function OperationsOverview() {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const checklistItems = data?.checklist ? [
+    {
+      key: "noCriticalAlerts",
+      label: "Sem alerta critico",
+      ok: data.checklist.noCriticalAlerts,
+      detail: data.alerts?.length ? `${data.alerts.length} alerta(s) aberto(s)` : "Nenhum alerta aberto",
+    },
+    {
+      key: "noOverdueQueue",
+      label: "Fila social no prazo",
+      ok: data.checklist.noOverdueQueue,
+      detail: `${data?.checklistDetails?.overdueSocial ?? 0} item(ns) vencido(s)`,
+    },
+    {
+      key: "freshHeartbeats",
+      label: "Crons com heartbeat recente",
+      ok: data.checklist.freshHeartbeats,
+      detail: data?.checklistDetails?.staleOperations?.length ? data.checklistDetails.staleOperations.join(", ") : "Nenhuma operacao stale",
+    },
+    {
+      key: "integrationsActive",
+      label: "Integracoes autenticadas",
+      ok: data.checklist.integrationsActive,
+      detail: data?.checklistDetails?.inactiveIntegrations?.length ? data.checklistDetails.inactiveIntegrations.join(", ") : "Todas ativas",
+    },
+    {
+      key: "failuresReviewed",
+      label: "Falhas da fila revisadas",
+      ok: data.checklist.failuresReviewed,
+      detail: `${data?.queues.socialFailed ?? 0} falha(s) pendente(s)`,
+    },
+    {
+      key: "costsWithinLimit",
+      label: "Custo dentro do limite",
+      ok: data?.costs?.withinLimit ?? true,
+      detail: data?.costs?.dailyLimitUsd ? `US$ ${Number(data.costs.estimatedCostTodayUsd || 0).toFixed(2)} / US$ ${Number(data.costs.dailyLimitUsd || 0).toFixed(2)}` : `US$ ${Number(data?.costs?.estimatedCostTodayUsd || 0).toFixed(2)} hoje`,
+    },
+  ] : [];
 
   const load = async () => {
     try {
@@ -107,12 +160,33 @@ export default function OperationsOverview() {
             <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-slate-500">{operation.description}</p>
             <div className="mt-3 border-t border-slate-100 pt-3 text-[11px] text-slate-500">
               <div>Ultima execucao: <strong className="text-slate-700">{formatTime(operation.lastRun?.startedAt)}</strong></div>
-              <div className="mt-1">Processados: <strong className="text-slate-700">{operation.lastRun?.itemsProcessed ?? 0}</strong> · Falhas: <strong className="text-slate-700">{operation.lastRun?.itemsFailed ?? 0}</strong></div>
+              <div className="mt-1">Processados: <strong className="text-slate-700">{operation.lastRun?.itemsProcessed ?? 0}</strong> | Falhas: <strong className="text-slate-700">{operation.lastRun?.itemsFailed ?? 0}</strong></div>
               {operation.lastRun?.errorMessage ? <div className="mt-2 line-clamp-2 text-rose-700">{operation.lastRun.errorMessage}</div> : null}
             </div>
           </Link>
         ))}
       </div>
+
+      {checklistItems.length ? (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Checklist diario</div>
+              <div className="mt-1 text-sm font-black text-slate-900">Leitura rapida da operacao</div>
+            </div>
+            <Link href="/api/operations/daily-report" target="_blank" className="text-xs font-black text-indigo-600 hover:underline">Abrir relatorio diario</Link>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {checklistItems.map((item) => (
+              <div key={item.key} className={`rounded-2xl border px-3 py-3 ${item.ok ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}>
+                <div className={`text-[10px] font-black uppercase tracking-wider ${item.ok ? "text-emerald-700" : "text-rose-700"}`}>{item.ok ? "OK" : "Acao"}</div>
+                <div className="mt-1 text-sm font-black text-slate-900">{item.label}</div>
+                <div className={`mt-2 text-xs ${item.ok ? "text-emerald-800" : "text-rose-800"}`}>{item.detail}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
         <span className="rounded-full bg-amber-50 px-3 py-1.5 text-amber-800">{data?.queues.socialDue ?? "-"} publicacoes vencidas</span>

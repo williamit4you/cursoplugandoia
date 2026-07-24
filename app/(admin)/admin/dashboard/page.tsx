@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client"
+﻿import { PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
 import DashboardMetrics from "@/components/DashboardMetrics"
@@ -43,7 +43,7 @@ export default async function DashboardPage() {
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">
           <p className="text-sm font-medium text-indigo-400">Bem-vindo de volta,</p>
-          <h1 className="text-4xl font-black text-white tracking-tight">Visão Geral</h1>
+          <h1 className="text-4xl font-black text-white tracking-tight">Visao Geral</h1>
         </div>
         
         <div className="flex items-center gap-2 text-slate-400 text-sm font-medium glass px-4 py-2 rounded-xl border-white/5">

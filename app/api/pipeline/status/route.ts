@@ -6,6 +6,7 @@ import { prisma as sharedPrisma } from "@/lib/prisma";
 import { DEFINITIONS } from "@/lib/operationObservability";
 import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
 import { resolveOperationAlert, upsertOperationAlert } from "@/lib/operationsControl";
+import { buildDailyChecklist, listStaleOperations } from "@/lib/operationsChecklist";
 
 export const dynamic = "force-dynamic";
 
@@ -38,14 +39,25 @@ export async function GET(req: NextRequest) {
     try {
       await requireAdminOrCronSecret(req);
       const now = new Date();
-      const definitions = await sharedPrisma.operationDefinition.findMany({ orderBy: [{ family: "asc" }, { name: "asc" }] });
+      const definitions = await sharedPrisma.operationDefinition.findMany({
+        orderBy: [{ family: "asc" }, { name: "asc" }],
+        include: { runs: { orderBy: { startedAt: "desc" }, take: 1 } },
+      });
       const runs = await sharedPrisma.operationRun.findMany({ orderBy: { startedAt: "desc" }, take: 250 });
       const latest = new Map<string, typeof runs[number]>();
       for (const run of runs) if (!latest.has(run.operationKey)) latest.set(run.operationKey, run);
+      const staleOperationKeys = listStaleOperations(
+        definitions.map((definition) => ({
+          key: definition.key,
+          expectedEverySec: definition.expectedEverySec,
+          runs: definition.runs.slice(0, 1).map((run) => ({ heartbeatAt: run.heartbeatAt })),
+        })),
+        now,
+      );
+      const staleOperationSet = new Set(staleOperationKeys);
       const operations = definitions.map((definition) => {
         const run = latest.get(definition.key);
-        const staleSeconds = Math.max(300, Number(definition.expectedEverySec || 300) * 3);
-        const stale = !run || (run.status === "RUNNING" && now.getTime() - run.heartbeatAt.getTime() > staleSeconds * 1000);
+        const stale = staleOperationSet.has(definition.key);
         return {
           key: definition.key,
           name: definition.name,
@@ -73,6 +85,15 @@ export async function GET(req: NextRequest) {
       const currentCostUsd = estimatedCostToday._sum.costUsd || 0;
       if (dailyCostLimitUsd > 0 && currentCostUsd >= dailyCostLimitUsd) await upsertOperationAlert({ fingerprint: "cost:daily-limit", severity: "CRITICAL", title: "Limite diario de custo atingido", message: `Custo estimado de US$ ${currentCostUsd.toFixed(2)} atingiu o limite de US$ ${dailyCostLimitUsd.toFixed(2)}.`, actionUrl: "/admin/dashboard" });
       else await resolveOperationAlert("cost:daily-limit");
+      const checklist = buildDailyChecklist({
+        alerts,
+        overdueSocial: socialDue,
+        staleOperations: staleOperationKeys,
+        integrations,
+        videosWithoutPublication: 0,
+        articlesWithoutVisits: 0,
+        socialFailed,
+      });
       return Response.json({
         ok: true,
         serverTime: now.toISOString(),
@@ -81,6 +102,12 @@ export async function GET(req: NextRequest) {
         queues: { socialDue, socialFuture, socialProcessing, socialFailed, socialPostedToday, oldestSocial },
         alerts,
         costs: { estimatedCostTodayUsd: currentCostUsd, dailyLimitUsd: dailyCostLimitUsd || null, withinLimit: dailyCostLimitUsd <= 0 || currentCostUsd < dailyCostLimitUsd },
+        checklist,
+        checklistDetails: {
+          overdueSocial: socialDue,
+          staleOperations: staleOperationKeys,
+          inactiveIntegrations: integrations.filter((item) => !item.isActive).map((item) => item.platform),
+        },
         summary: {
           total: operations.length,
           healthy: operations.filter((item) => item.status === "OK").length,

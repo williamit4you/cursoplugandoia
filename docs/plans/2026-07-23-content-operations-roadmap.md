@@ -1,4 +1,4 @@
-# Roadmap de Execucao: Conteudo, Operacao, UX e SEO
+﻿# Roadmap de Execucao: Conteudo, Operacao, UX e SEO
 
 ## Estado de encerramento
 
@@ -38,11 +38,13 @@ Esses itens permanecem visiveis para impedir que uma dependencia externa seja co
 
 - [x] Substituir menu plano por grupos Operacao, Crescimento e Sistemas, preservando rotas legadas.
 - [x] Criar primeira Central de Operacoes no Dashboard com cards de saude e filas sociais.
+  A Central agora tambem exibe um bloco de checklist diario com alertas, filas vencidas, heartbeat, integracoes, falhas e custo do dia.
 - [x] Criar componente reutilizavel de status, progresso, erro, retry e ultima atividade.
 - [x] Unificar nomenclatura principal do menu e registrar glossario de produto, artigo, video, publicacao, campanha e resultado.
 - [x] Criar pagina de detalhe por operacao com linha do tempo, alertas e retorno para a Central.
 - [x] Manter telas legadas acessiveis e adicionar retorno global para a Central de Operacoes.
 - [ ] Corrigir encoding quebrado em labels existentes e padronizar idioma.
+  O monitor social principal recebeu nova rodada de limpeza em 23/07/2026, incluindo cards, dicas, fallbacks e mensagens operacionais; o check geral continua pendente ate revisar telas legadas restantes.
 - [ ] Testar responsividade, acessibilidade, estados vazios, loading, erro e dados antigos.
 
 ## Fase 3 - Fila, calendario e recuperacao
@@ -89,6 +91,7 @@ Esses itens permanecem visiveis para impedir que uma dependencia externa seja co
 - [x] Criar circuit breaker para provedor indisponivel.
 - [x] Criar prioridade de fila e capacidade por rodada (`priority`, `maxItemsPerRun` e `processOneAtATime`) nos pipelines de producao.
 - [ ] Criar testes de idempotencia para cada etapa.
+  A suite `npm run test:operations` agora cobre UTMs, score SEO, bloqueio sem evidencia, normalizacao/fontes SEO, duplicidade entre angulos, contratos de provedores, plano de reagendamento social, heartbeat stale e checklist diario; o check geral continua pendente ate cobrir todas as etapas restantes.
 - [x] Criar validadores e testes locais de contrato para Meta, YouTube, storage e workers; testes reais permanecem dependentes das credenciais.
 - [x] Criar relatorio de desperdicio: video gerado sem publicacao e artigo sem visita, junto ao custo estimado diario.
 
@@ -125,7 +128,7 @@ Esses itens permanecem visiveis para impedir que uma dependencia externa seja co
 - [ ] Tres angulos nao sao conteudo duplicado.
   A validacao deterministica entre `PAIN`, `PRODUCT` e `COMPARISON` ja roda no pipeline SEO; o check final continua editorial.
 - [ ] Revisao humana concluida quando houver risco factual, medico, financeiro ou legal.
-- [x] Artigo consulta os `SocialPost` vinculados e mostra o vídeo gerado e URLs publicadas.
+- [x] Artigo consulta os `SocialPost` vinculados e mostra o video gerado e URLs publicadas.
 - [x] Canonical, sitemap, robots e schema `NewsArticle`/`VideoObject` adicionados.
-- [x] Notícias automatizadas nascem publicadas e a tela de Posts possui `Publicar todos` para recuperar rascunhos antigos.
-- [ ] SEO editorial com pesquisa de intenção, palavras-chave e revisão factual.
+- [x] Noticias automatizadas nascem publicadas e a tela de Posts possui `Publicar todos` para recuperar rascunhos antigos.
+- [ ] SEO editorial com pesquisa de intencao, palavras-chave e revisao factual.

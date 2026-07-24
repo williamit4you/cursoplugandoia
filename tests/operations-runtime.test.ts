@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { withCampaignTracking } from "../lib/trackingLinks";
+import { buildDailyChecklist, listStaleOperations } from "../lib/operationsChecklist";
 import { calculateSeoOpportunityScore, normalizeSeoSource, validateSeoAngleDistinctness, validateSeoRelease, validateSeoSources } from "../lib/seoGovernance";
 import { validateProviderResponse } from "../lib/providerContracts";
 import { buildSocialRequeuePlan } from "../lib/socialRequeuePlan";
@@ -98,4 +99,69 @@ test("social requeue plan remains idempotent for the same inputs", () => {
   const second = buildSocialRequeuePlan(input).map((item) => item.scheduledTo.toISOString());
 
   assert.deepEqual(second, first);
+});
+
+test("operation heartbeat stale detection is deterministic across thresholds", () => {
+  const now = new Date("2026-07-23T12:00:00.000Z");
+  const stale = listStaleOperations([
+    {
+      key: "social-cron",
+      expectedEverySec: 120,
+      runs: [{ heartbeatAt: new Date("2026-07-23T11:40:00.000Z") }],
+    },
+    {
+      key: "video-questions-cron",
+      expectedEverySec: 600,
+      runs: [{ heartbeatAt: new Date("2026-07-23T11:29:00.000Z") }],
+    },
+    {
+      key: "fresh-operation",
+      expectedEverySec: 300,
+      runs: [{ heartbeatAt: new Date("2026-07-23T11:58:00.000Z") }],
+    },
+  ], now);
+
+  assert.deepEqual(stale, ["social-cron", "video-questions-cron"]);
+});
+
+test("daily checklist is deterministic for the same operational snapshot", () => {
+  const input = {
+    alerts: [{ severity: "WARNING" }],
+    overdueSocial: 0,
+    staleOperations: [],
+    integrations: [
+      { platform: "YOUTUBE", isActive: true },
+      { platform: "META", isActive: true },
+    ],
+    videosWithoutPublication: 0,
+    articlesWithoutVisits: 0,
+    socialFailed: 0,
+  };
+
+  const first = buildDailyChecklist(input);
+  const second = buildDailyChecklist(input);
+
+  assert.deepEqual(second, first);
+  assert.equal(first.noCriticalAlerts, true);
+  assert.equal(first.integrationsActive, true);
+});
+
+test("daily checklist flags critical operational issues", () => {
+  const checklist = buildDailyChecklist({
+    alerts: [{ severity: "CRITICAL" }],
+    overdueSocial: 3,
+    staleOperations: ["social-cron"],
+    integrations: [{ platform: "YOUTUBE", isActive: false }],
+    videosWithoutPublication: 2,
+    articlesWithoutVisits: 5,
+    socialFailed: 1,
+  });
+
+  assert.equal(checklist.noCriticalAlerts, false);
+  assert.equal(checklist.noOverdueQueue, false);
+  assert.equal(checklist.freshHeartbeats, false);
+  assert.equal(checklist.integrationsActive, false);
+  assert.equal(checklist.videosAccountedFor, false);
+  assert.equal(checklist.articlesReceivingVisits, false);
+  assert.equal(checklist.failuresReviewed, false);
 });
