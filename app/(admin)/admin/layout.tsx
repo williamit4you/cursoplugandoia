@@ -67,7 +67,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
 
     { text: "Artigos", icon: <ArticleIcon />, path: "/admin/posts" },
     { text: "Videos de Produto", icon: <VideoCameraBackIcon />, path: "/admin/video-engajamento" },
-    { text: "Integracoes N8N", icon: <WebhookIcon />, path: "/admin/integrations" },
+    { text: "Integracoes", icon: <WebhookIcon />, path: "/admin/integrations" },
     { text: "Fila Social", icon: <VideoCameraBackIcon />, path: "/admin/social" },
     { text: "Social: YouTube", icon: <YouTubeIcon />, path: "/admin/social/youtube" },
     { text: "Social: Instagram", icon: <VideoCameraBackIcon />, path: "/admin/social/instagram" },

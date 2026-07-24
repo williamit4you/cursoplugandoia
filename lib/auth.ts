@@ -1,7 +1,7 @@
-import { NextAuthOptions } from "next-auth"
-import CredentialsProvider from "next-auth/providers/credentials"
-import bcrypt from "bcryptjs"
-import { prisma } from "./prisma"
+import { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
+import { prisma } from "./prisma";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -9,79 +9,79 @@ export const authOptions: NextAuthOptions = {
       name: "Admin Login",
       credentials: {
         email: { label: "Email", type: "email", placeholder: "admin@admin.com" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("E-mail e senha sÃ£o obrigatÃ³rios.")
+          throw new Error("E-mail e senha sao obrigatorios.");
         }
 
-        const inputEmail = String(credentials.email || "").trim().toLowerCase()
-        const inputPassword = String(credentials.password || "")
+        const inputEmail = String(credentials.email || "").trim().toLowerCase();
+        const inputPassword = String(credentials.password || "");
 
-        let user: any = null
+        let user: any = null;
         try {
           user = await prisma.user.findUnique({
-            where: { email: inputEmail }
-          })
+            where: { email: inputEmail },
+          });
         } catch (err: any) {
           // Dev fallback: allow ADMIN_EMAIL/ADMIN_PASSWORD when DB is unreachable.
           if (process.env.NODE_ENV !== "production") {
-            const adminEmail = String(process.env.ADMIN_EMAIL || "").trim().toLowerCase()
-            const adminPassword = String(process.env.ADMIN_PASSWORD || "")
+            const adminEmail = String(process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+            const adminPassword = String(process.env.ADMIN_PASSWORD || "");
             if (adminEmail && adminPassword && inputEmail === adminEmail && inputPassword === adminPassword) {
               return {
                 id: "env-admin",
                 email: adminEmail,
                 name: "Admin",
-                role: "ADMIN"
-              }
+                role: "ADMIN",
+              };
             }
           }
 
-          throw new Error(err?.message || "Falha ao conectar no banco para autenticar.")
+          throw new Error(err?.message || "Falha ao conectar no banco para autenticar.");
         }
 
         if (!user || !user.password) {
-          throw new Error("Credenciais invÃ¡lidas.")
+          throw new Error("Credenciais invalidas.");
         }
 
-        const isPasswordValid = await bcrypt.compare(inputPassword, user.password)
+        const isPasswordValid = await bcrypt.compare(inputPassword, user.password);
 
         if (!isPasswordValid) {
-          throw new Error("Credenciais invÃ¡lidas.")
+          throw new Error("Credenciais invalidas.");
         }
 
         return {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role
-        }
-      }
-    })
+          role: user.role,
+        };
+      },
+    }),
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as any).role
-        token.id = user.id
+        token.role = (user as any).role;
+        token.id = user.id;
       }
-      return token
+      return token;
     },
     async session({ session, token }) {
       if (token) {
-        ;(session.user as any).role = token.role as string
-        ;(session.user as any).id = token.id as string
+        (session.user as any).role = token.role as string;
+        (session.user as any).id = token.id as string;
       }
-      return session
-    }
+      return session;
+    },
   },
   pages: {
-    signIn: "/admin/login"
+    signIn: "/admin/login",
   },
   session: {
-    strategy: "jwt"
+    strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET
-}
+  secret: process.env.NEXTAUTH_SECRET,
+};
