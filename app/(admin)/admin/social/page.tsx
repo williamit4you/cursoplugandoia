@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
@@ -225,7 +225,7 @@ export default function SocialPostsDashboard() {
   }, [fetchPosts, fetchCronStatus]);
 
   const requeueOldPosts = useCallback(async () => {
-    if (!confirm("Reagendar todos os posts antigos que ainda nÃ£o foram publicados? Eles serÃ£o distribuÃ­dos no futuro em intervalos de 2 horas.")) return;
+    if (!confirm("Reagendar todos os posts antigos que ainda nao foram publicados? Eles serao distribuidos no futuro em intervalos de 2 horas.")) return;
     setRequeueLoading(true);
     try {
       const previewRes = await fetch("/api/social/posts/requeue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dryRun: true }) });
@@ -295,8 +295,8 @@ export default function SocialPostsDashboard() {
     try {
       const res = await fetch(`/api/social/posts/${id}/${action}`, { method: "POST" });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Falha na aÃ§Ã£o");
-      toast.success("AÃ§Ã£o realizada com sucesso!");
+      if (!res.ok) throw new Error(data.error || "Falha na acao");
+      toast.success("Acao realizada com sucesso!");
       fetchPosts(true);
     } catch (err: any) {
       toast.error(err.message);
@@ -323,12 +323,12 @@ export default function SocialPostsDashboard() {
         body: JSON.stringify({ socialPostId: post.id, bypassTimeCheck: true }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Falha ao processar publicaÃ§Ã£o");
+      if (!res.ok) throw new Error(data.error || "Falha ao processar publicacao");
       
       if (data.stillProcessing) {
-        toast.info("A Meta ainda estÃ¡ processando o vÃ­deo no container assÃ­ncrono. Aguarde um minuto.");
+        toast.info("A Meta ainda esta processando o video no container assincrono. Aguarde um minuto.");
       } else {
-        toast.success("PublicaÃ§Ã£o executada/atualizada com sucesso!");
+        toast.success("Publicacao executada/atualizada com sucesso!");
       }
       fetchPosts(true);
     } catch (err: any) {
@@ -381,7 +381,7 @@ export default function SocialPostsDashboard() {
             onClick={requeueOldPosts}
             disabled={requeueLoading}
             className="inline-flex items-center gap-2 px-3 py-2.5 bg-indigo-600 border border-indigo-600 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 text-xs font-black text-white"
-            title="Reagendar posts antigos nÃ£o publicados em intervalos de 2 horas"
+            title="Reagendar posts antigos nao publicados em intervalos de 2 horas"
           >
             <Calendar className={`w-4 h-4 ${requeueLoading ? "animate-spin" : ""}`} />
             <span className="hidden xl:inline">Reagendar antigos</span>
@@ -749,7 +749,7 @@ export default function SocialPostsDashboard() {
             <option value="SCHEDULED">Agendado</option>
             <option value="POSTED">Publicado</option>
             <option value="FAILED">Falhou</option>
-            <option value="PROCESSING_MEDIA">Processando MÃ­dia</option>
+            <option value="PROCESSING_MEDIA">Processando Midia</option>
           </select>
         </div>
 
@@ -787,7 +787,7 @@ export default function SocialPostsDashboard() {
             <p className="text-slate-500 text-sm font-medium">Carregando fila...</p>
           </div>
         ) : groupByVideo ? (
-          /* Agrupado por VÃ­deo */
+          /* Agrupado por Video */
           <div className="space-y-4">
             {groupedRows.map(group => (
               <div key={group.id} className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -845,7 +845,7 @@ export default function SocialPostsDashboard() {
                 {expandedGroups.has(group.id) && (
                   <div className="bg-slate-50/50 border-t border-slate-100 p-5 space-y-3">
                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                      <ListIcon className="w-3.5 h-3.5 text-slate-400" /> Detalhes das PublicaÃ§Ãµes
+                      <ListIcon className="w-3.5 h-3.5 text-slate-400" /> Detalhes das Publicacoes
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {group.items.map((p: any) => (
@@ -860,7 +860,7 @@ export default function SocialPostsDashboard() {
                                 <StatusBadge status={p.status} />
                               </div>
                               <p className="text-[10px] text-slate-400 mt-0.5">
-                                {p.scheduledTo ? `Agendado: ${new Date(p.scheduledTo).toLocaleString('pt-BR')}` : 'NÃ£o agendado'}
+                                {p.scheduledTo ? `Agendado: ${new Date(p.scheduledTo).toLocaleString('pt-BR')}` : 'Nao agendado'}
                               </p>
                               {p.log && (
                                 <p className="text-[9px] font-mono text-rose-600 mt-1 max-w-xs truncate" title={p.log}>
@@ -990,7 +990,7 @@ export default function SocialPostsDashboard() {
             <div className="text-center">
               <h3 className="text-base font-bold text-slate-800 mb-1">Nenhum post encontrado</h3>
               <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                Tente ajustar os filtros ou aguarde as prÃ³ximas automaÃ§Ãµes gerarem postagens.
+                Tente ajustar os filtros ou aguarde as proximas automacoes gerarem postagens.
               </p>
             </div>
           </div>
@@ -1000,7 +1000,7 @@ export default function SocialPostsDashboard() {
       {/* Pagination */}
       <div className="flex items-center justify-between bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
         <div className="text-xs text-slate-500 font-bold">
-          PÃ¡gina <span className="text-slate-800 font-black">{page}</span> de {Math.ceil(total / pageSize) || 1}
+          Pagina <span className="text-slate-800 font-black">{page}</span> de {Math.ceil(total / pageSize) || 1}
         </div>
         <div className="flex gap-2">
           <button 
@@ -1015,7 +1015,7 @@ export default function SocialPostsDashboard() {
             onClick={() => setPage(p => p + 1)}
             className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 shadow-lg shadow-indigo-600/10 transition-all"
           >
-            PrÃ³ximo
+            Proximo
           </button>
         </div>
       </div>

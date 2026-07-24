@@ -67,6 +67,27 @@ export async function GET(req: NextRequest) {
           lastRun: run || null,
         };
       });
+      const familySummary = Object.values(
+        operations.reduce((acc, operation) => {
+          const current = acc[operation.family] || {
+            family: operation.family,
+            total: 0,
+            healthy: 0,
+            attention: 0,
+            failed: 0,
+            disabled: 0,
+            runningNow: 0,
+          };
+          current.total += 1;
+          if (operation.status === "OK") current.healthy += 1;
+          else if (operation.status === "FAILED") current.failed += 1;
+          else if (operation.status === "DISABLED") current.disabled += 1;
+          else current.attention += 1;
+          if (String(operation.lastRun?.status || "") === "RUNNING") current.runningNow += 1;
+          acc[operation.family] = current;
+          return acc;
+        }, {} as Record<string, { family: string; total: number; healthy: number; attention: number; failed: number; disabled: number; runningNow: number }>),
+      );
       const [socialDue, socialFuture, socialProcessing, socialFailed, socialPostedToday, oldestSocial, alerts, estimatedCostToday] = await Promise.all([
         sharedPrisma.socialPost.count({ where: { status: "SCHEDULED", scheduledTo: { lte: now } } }),
         sharedPrisma.socialPost.count({ where: { status: "SCHEDULED", scheduledTo: { gt: now } } }),
@@ -113,7 +134,10 @@ export async function GET(req: NextRequest) {
           healthy: operations.filter((item) => item.status === "OK").length,
           attention: operations.filter((item) => ["ATTENTION", "STALE"].includes(item.status)).length,
           failed: operations.filter((item) => item.status === "FAILED").length,
+          disabled: operations.filter((item) => item.status === "DISABLED").length,
+          runningNow: operations.filter((item) => String(item.lastRun?.status || "") === "RUNNING").length,
         },
+        familySummary,
       });
     } catch (error: any) {
       const status = error?.message === "Unauthorized" ? 401 : 500;

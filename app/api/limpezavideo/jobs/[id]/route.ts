@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireLimpezaVideoSession } from "@/lib/limpezavideo/auth";
 import { toPlainJson } from "@/lib/limpezavideo/serialize";
@@ -25,7 +25,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   });
 
   if (!job) {
-    return NextResponse.json({ error: "Job não encontrado." }, { status: 404 });
+    return NextResponse.json({ error: "Job nao encontrado." }, { status: 404 });
   }
 
   return NextResponse.json({ job: toPlainJson(applyVideoCleanupJobDefaults(job)) });
@@ -44,7 +44,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   });
 
   if (!current) {
-    return NextResponse.json({ error: "Job nÃ£o encontrado." }, { status: 404 });
+    return NextResponse.json({ error: "Job nao encontrado." }, { status: 404 });
   }
 
   const body = await req.json().catch(() => ({}));

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -132,17 +132,17 @@ export default function SocialCalendarPage() {
   }, {} as Record<string, number>), [currentMonthPosts]);
 
   const requeueExpired = async () => {
-    if (!confirm("Reagendar todas as publicações antigas que não foram postadas? Os vídeos serão mantidos e distribuídos no futuro em intervalos de 2 horas, pulando horários já ocupados.")) return;
+    if (!confirm("Reagendar todas as publicacoes antigas que nao foram postadas? Os videos serao mantidos e distribuidos no futuro em intervalos de 2 horas, pulando horarios ja ocupados.")) return;
     setRequeueLoading(true);
     setNotice(null);
     try {
       const res = await fetch("/api/social/posts/requeue", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Não foi possível reagendar");
-      setNotice(data.count ? `${data.count} publicação(ões) antiga(s) reagendada(s) em intervalos de 2 horas.` : "Não há publicações antigas para reagendar.");
+      if (!res.ok) throw new Error(data.error || "Nao foi possivel reagendar");
+      setNotice(data.count ? `${data.count} publicacao(oes) antiga(s) reagendada(s) em intervalos de 2 horas.` : "Nao ha publicacoes antigas para reagendar.");
       await fetchPosts();
     } catch (error: any) {
-      setNotice(error.message || "Falha ao reagendar publicações");
+      setNotice(error.message || "Falha ao reagendar publicacoes");
     } finally {
       setRequeueLoading(false);
     }
@@ -184,7 +184,7 @@ export default function SocialCalendarPage() {
           status: editStatus
         })
       });
-      if (!res.ok) throw new Error("Erro ao salvar alterações");
+      if (!res.ok) throw new Error("Erro ao salvar alteracoes");
       
       await fetchPosts();
       setShowModal(false);
@@ -221,10 +221,10 @@ export default function SocialCalendarPage() {
         <div>
           <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
             <CalendarIcon className="w-6 h-6 text-indigo-600" />
-            Calendário Social
+            Calendario Social
           </h1>
           <p className="text-slate-500 text-sm font-medium mt-1">
-            Visualize e reagende seus vídeos programados para publicação nas redes.
+            Visualize e reagende seus videos programados para publicacao nas redes.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -234,25 +234,25 @@ export default function SocialCalendarPage() {
             className="inline-flex items-center gap-2 px-4 py-2 text-xs font-black text-white bg-indigo-600 border border-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-60 shadow-sm"
           >
             <RefreshCcw className={`w-3.5 h-3.5 ${requeueLoading ? "animate-spin" : ""}`} />
-            {requeueLoading ? "Reagendando..." : "Reagendar antigos (não postados)"}
+            {requeueLoading ? "Reagendando..." : "Reagendar antigos (nao postados)"}
           </button>
           <button
             onClick={() => setCursor((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
             className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-sm"
           >
-            ← Mês anterior
+            <- Mes anterior
           </button>
           <button
             onClick={() => setCursor((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
             className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-sm"
           >
-            Próximo mês →
+            Proximo mes ->
           </button>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-6 text-[11px] font-bold text-slate-500">
-        <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700">{currentMonthPosts.length} neste mês</span>
+        <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700">{currentMonthPosts.length} neste mes</span>
         <span className="px-2.5 py-1 rounded-full bg-rose-50 text-rose-700">{statusCounts.FAILED || 0} falharam</span>
         <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">{posts.filter(p => p.status === "SCHEDULED" && p.scheduledTo && new Date(p.scheduledTo) <= new Date()).length} vencidas</span>
       </div>
@@ -270,7 +270,7 @@ export default function SocialCalendarPage() {
           <strong className="text-slate-800 font-extrabold text-base">{monthLabel(cursor)}</strong>
           <span className="text-slate-400">|</span>
           <span className="text-slate-500 text-xs font-bold">
-            {loading ? "Carregando agenda..." : `${posts.length} publicação(ões) agendada(s)`}
+            {loading ? "Carregando agenda..." : `${posts.length} publicacao(oes) agendada(s)`}
           </span>
         </div>
         
@@ -292,7 +292,7 @@ export default function SocialCalendarPage() {
       {/* Calendar Grid */}
       <div className="grid grid-cols-7 gap-3 mb-10">
         {/* Week Days Headers */}
-        {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((label) => (
+        {["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"].map((label) => (
           <div key={label} className="text-xs font-black text-slate-400 uppercase tracking-widest px-2 py-1">
             {label}
           </div>
@@ -372,7 +372,7 @@ export default function SocialCalendarPage() {
             <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
-                  <span>Publicação Detalhada</span>
+                  <span>Publicacao Detalhada</span>
                   <span className={`px-2 py-0.5 rounded-lg border text-[10px] uppercase font-black ${
                     STATUS_LABELS[selectedPost.status]?.color || "bg-slate-100 text-slate-700"
                   }`}>
@@ -394,7 +394,7 @@ export default function SocialCalendarPage() {
               {/* Left Column: Info & Video Player */}
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Legenda / Sumário</h4>
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Legenda / Sumario</h4>
                   <p className="text-xs text-slate-700 leading-relaxed font-semibold max-h-32 overflow-y-auto bg-slate-50 border border-slate-100 p-3 rounded-2xl">
                     {selectedPost.summary || "Sem legenda."}
                   </p>
@@ -402,7 +402,7 @@ export default function SocialCalendarPage() {
 
                 {selectedPost.videoUrl ? (
                   <div>
-                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Vídeo Ingerido</h4>
+                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Video Ingerido</h4>
                     <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-950 aspect-[9/16] max-h-60 mx-auto flex items-center justify-center">
                       <video 
                         src={selectedPost.videoUrl} 
@@ -415,9 +415,9 @@ export default function SocialCalendarPage() {
                   <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-start gap-2.5">
                     <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
                     <div>
-                      <h5 className="text-xs font-bold text-amber-800">Vídeo não encontrado</h5>
+                      <h5 className="text-xs font-bold text-amber-800">Video nao encontrado</h5>
                       <p className="text-[10px] text-amber-600 leading-relaxed mt-0.5">
-                        Esta publicação não possui URL de vídeo associada.
+                        Esta publicacao nao possui URL de video associada.
                       </p>
                     </div>
                   </div>
@@ -497,7 +497,7 @@ export default function SocialCalendarPage() {
                   {/* Post log (in case of error or info) */}
                   {selectedPost.log && (
                     <div className="space-y-1">
-                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Histórico / Logs</h4>
+                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Historico / Logs</h4>
                       <p className="text-[10px] font-mono text-slate-500 bg-slate-900 text-slate-200 p-2.5 rounded-xl max-h-24 overflow-y-auto leading-relaxed border border-slate-800">
                         {selectedPost.log}
                       </p>
@@ -513,7 +513,7 @@ export default function SocialCalendarPage() {
                       disabled={saving}
                       className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 px-4 rounded-xl font-bold text-xs shadow-md shadow-indigo-600/10 flex items-center justify-center gap-1.5 disabled:opacity-50 transition-all"
                     >
-                      <Check className="w-4 h-4" /> {saving ? "Salvando..." : "Salvar Alterações"}
+                      <Check className="w-4 h-4" /> {saving ? "Salvando..." : "Salvar Alteracoes"}
                     </button>
                     <button
                       onClick={handleDelete}

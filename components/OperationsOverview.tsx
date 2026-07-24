@@ -22,7 +22,8 @@ type Operation = {
 type Overview = {
   operations: Operation[];
   queues: { socialDue: number; socialFuture: number; socialProcessing: number; socialFailed: number; socialPostedToday: number; oldestSocial?: { createdAt: string; platform: string; status: string } | null };
-  summary: { total: number; healthy: number; attention: number; failed: number };
+  summary: { total: number; healthy: number; attention: number; failed: number; disabled?: number; runningNow?: number };
+  familySummary?: Array<{ family: string; total: number; healthy: number; attention: number; failed: number; disabled: number; runningNow: number }>;
   alerts?: { id: string; severity: string; title: string; message: string; actionUrl?: string | null }[];
   costs?: { estimatedCostTodayUsd: number; dailyLimitUsd?: number | null; withinLimit?: boolean };
   checklist?: {
@@ -135,9 +136,11 @@ export default function OperationsOverview() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {[
           ["Operacoes", data?.summary.total ?? "-"],
+          ["Rodando agora", data?.summary.runningNow ?? "-"],
           ["Saudaveis", data?.summary.healthy ?? "-"],
           ["Atencao", data?.summary.attention ?? "-"],
           ["Falhas", data?.summary.failed ?? "-"],
+          ["Desligadas", data?.summary.disabled ?? "-"],
           ["Publicadas hoje", data?.queues.socialPostedToday ?? "-"],
         ].map(([label, value]) => (
           <div key={String(label)} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
@@ -146,6 +149,29 @@ export default function OperationsOverview() {
           </div>
         ))}
       </div>
+
+      {data?.familySummary?.length ? (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Operacoes por familia</div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {data.familySummary.map((family) => (
+              <div key={family.family} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-black text-slate-900">{family.family}</div>
+                  <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-600">{family.total} ops</span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black">
+                  <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700">{family.healthy} ok</span>
+                  <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700">{family.attention} atencao</span>
+                  <span className="rounded-full bg-rose-50 px-2 py-1 text-rose-700">{family.failed} falha</span>
+                  <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">{family.disabled} desligada</span>
+                  <span className="rounded-full bg-indigo-50 px-2 py-1 text-indigo-700">{family.runningNow} rodando</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {data?.operations.map((operation) => (

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -204,7 +204,7 @@ export default function SocialPostEditorPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Falha ao publicar");
-      toast.success(data?.stillProcessing ? "Processando na Meta... aguarde." : "Publicação disparada.");
+      toast.success(data?.stillProcessing ? "Processando na Meta... aguarde." : "Publicacao disparada.");
       await load();
     } catch (err: any) {
       toast.error(err.message || "Falha ao publicar");
@@ -233,11 +233,11 @@ export default function SocialPostEditorPage() {
           }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "Falha ao criar cópia");
-        toast.success(`Cópia criada (${platform}).`);
+        if (!res.ok) throw new Error(data.error || "Falha ao criar copia");
+        toast.success(`Copia criada (${platform}).`);
         router.push(`/admin/social/posts/${encodeURIComponent(String(data.id))}`);
       } catch (err: any) {
-        toast.error(err.message || "Falha ao criar cópia");
+        toast.error(err.message || "Falha ao criar copia");
       } finally {
         setSaving(false);
       }
@@ -285,7 +285,7 @@ export default function SocialPostEditorPage() {
           </div>
           <div className="text-xs font-mono text-slate-500 break-all">{id}</div>
           {dirty ? (
-            <div className="text-[11px] font-bold text-amber-700">Alterações não salvas</div>
+            <div className="text-[11px] font-bold text-amber-700">Alteracoes nao salvas</div>
           ) : (
             <div className="text-[11px] font-bold text-emerald-700">Sincronizado</div>
           )}
@@ -313,7 +313,7 @@ export default function SocialPostEditorPage() {
             onClick={() => save({ resetPublication: true })}
             disabled={saving || loading}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-black hover:bg-indigo-700 disabled:opacity-50"
-            title="Volta para SCHEDULED e limpa dados de publicação"
+            title="Volta para SCHEDULED e limpa dados de publicacao"
           >
             <Calendar className="w-4 h-4" />
             Reagendar + reset
@@ -356,7 +356,7 @@ export default function SocialPostEditorPage() {
                 <option value="STORY">STORY</option>
               </select>
               <div className="mt-1 text-[10px] text-slate-500">
-                YouTube/TikTok usam este mesmo post como vídeo curto (Shorts/Reels).
+                YouTube/TikTok usam este mesmo post como video curto (Shorts/Reels).
               </div>
             </div>
           </div>
@@ -385,7 +385,7 @@ export default function SocialPostEditorPage() {
                 onChange={(e) => setForm((s) => ({ ...s, scheduledTo: e.target.value }))}
                 className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-50"
               />
-              <div className="mt-1 text-[10px] text-slate-500">Deixe vazio para não agendar.</div>
+              <div className="mt-1 text-[10px] text-slate-500">Deixe vazio para nao agendar.</div>
             </div>
           </div>
 
@@ -401,7 +401,7 @@ export default function SocialPostEditorPage() {
           </div>
 
           <div>
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Legenda / descrição</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Legenda / descricao</label>
             <textarea
               value={form.summary}
               onChange={(e) => setForm((s) => ({ ...s, summary: e.target.value }))}
@@ -441,7 +441,7 @@ export default function SocialPostEditorPage() {
               </button>
             </div>
             <div className="mt-2 text-[10px] text-slate-500">
-              As cópias usam o mesmo vídeo/legenda e o mesmo “Agendar para”.
+              As copias usam o mesmo video/legenda e o mesmo "Agendar para".
             </div>
           </div>
 
@@ -462,7 +462,7 @@ export default function SocialPostEditorPage() {
                 Abrir publicado <ExternalLink className="w-4 h-4" />
               </a>
             ) : (
-              <div className="text-xs text-slate-400">Ainda não publicado.</div>
+              <div className="text-xs text-slate-400">Ainda nao publicado.</div>
             )}
             {post?.videoUrl ? (
               <a
@@ -471,7 +471,7 @@ export default function SocialPostEditorPage() {
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 text-xs font-black text-indigo-700 hover:underline"
               >
-                Abrir vídeo <ExternalLink className="w-4 h-4" />
+                Abrir video <ExternalLink className="w-4 h-4" />
               </a>
             ) : null}
           </div>
@@ -520,7 +520,7 @@ export default function SocialPostEditorPage() {
               </div>
             ) : null}
             <pre className="max-h-60 overflow-auto rounded-xl bg-slate-50 border border-slate-200 p-3 text-[11px] text-slate-700 whitespace-pre-wrap">
-              {post?.log ? String(post.log) : "—"}
+              {post?.log ? String(post.log) : "-"}
             </pre>
           </div>
         </div>

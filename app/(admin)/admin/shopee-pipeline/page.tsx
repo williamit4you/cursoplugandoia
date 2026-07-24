@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -211,18 +211,18 @@ const STEP_DETAILS: Record<
     minio: ["Entrega a imagem/audio se estiverem la", "Guarda o MP4 gerado como `copyVideoUrl`"],
   },
   MERGE_VIDEOS: {
-    title: "Composição PiP: produto + você comentando",
-    summary: "O vídeo original do produto fica no fundo (sem áudio). O vídeo IA com sua voz aparece como PiP no canto inferior direito, com cantos arredondados. Apenas o áudio do vídeo IA é mantido.",
+    title: "Composicao PiP: produto + voce comentando",
+    summary: "O video original do produto fica no fundo (sem audio). O video IA com sua voz aparece como PiP no canto inferior direito, com cantos arredondados. Apenas o audio do video IA e mantido.",
     actions: [
       "Chama o worker `/merge-videos`",
-      "Worker baixa o vídeo original (fundo) e o vídeo copy/IA (PiP)",
-      "Compõe os dois: produto no fundo, você comentando no quadradinho",
-      "Áudio do produto removido — apenas sua voz é mantida",
+      "Worker baixa o video original (fundo) e o video copy/IA (PiP)",
+      "Compoe os dois: produto no fundo, voce comentando no quadradinho",
+      "Audio do produto removido - apenas sua voz e mantida",
     ],
-    saves: "O MP4 final (1080×1920) volta para o Next, e o Next salva no MinIO como `videoFinalUrl`.",
-    application: ["Envia para o worker as URLs do vídeo original e do vídeo copy/IA", "Recebe o MP4 composto", "Salva o resultado"],
-    modal: ["Não participa desta etapa"],
-    minio: ["Fornece o vídeo copy/IA", "Guarda o vídeo final com PiP"],
+    saves: "O MP4 final (1080x1920) volta para o Next, e o Next salva no MinIO como `videoFinalUrl`.",
+    application: ["Envia para o worker as URLs do video original e do video copy/IA", "Recebe o MP4 composto", "Salva o resultado"],
+    modal: ["Nao participa desta etapa"],
+    minio: ["Fornece o video copy/IA", "Guarda o video final com PiP"],
   },
   GENERATE_AFFILIATE_LINK: {
     title: "Gerar link afiliado",
@@ -266,8 +266,8 @@ function secondsUntil(value?: string | null, nowMs = Date.now()) {
 
 const PIPELINE_STEPS: Array<{ stepName: string; label: string }> = [
   { stepName: "SCRAPE_MEDIA", label: "Scraping" },
-  { stepName: "GENERATE_AUDIO", label: "Áudio" },
-  { stepName: "GENERATE_COPY_VIDEO", label: "Vídeo Copy" },
+  { stepName: "GENERATE_AUDIO", label: "Audio" },
+  { stepName: "GENERATE_COPY_VIDEO", label: "Video Copy" },
   { stepName: "MERGE_VIDEOS", label: "Merge" },
   { stepName: "GENERATE_AFFILIATE_LINK", label: "Afiliado" },
   { stepName: "CREATE_BIO_PRODUCT", label: "Bio" },
@@ -299,7 +299,7 @@ function truncateJson(value: unknown, maxLen = 900) {
     text = String(value);
   }
   if (text.length <= maxLen) return text;
-  return `${text.slice(0, maxLen)}\n…(truncado)`;
+  return `${text.slice(0, maxLen)}\nâ€¦(truncado)`;
 }
 
 function buildManualPostDescription(item?: Partial<ColetaItem> | null) {
@@ -321,8 +321,8 @@ function renderProviderEvents(metadata: any) {
         const http = evt?.details?.http || null;
         const request = http?.request || null;
         const response = http?.response || null;
-        const title = `${evt?.step || "?"} • ${evt?.message || ""}`.trim();
-        const subtitle = `${typeof evt?.elapsedMs === "number" ? `${evt.elapsedMs}ms` : ""}${evt?.podId ? ` • podId=${evt.podId}` : ""}`.trim();
+        const title = `${evt?.step || "?"} | ${evt?.message || ""}`.trim();
+        const subtitle = `${typeof evt?.elapsedMs === "number" ? `${evt.elapsedMs}ms` : ""}${evt?.podId ? ` | podId=${evt.podId}` : ""}`.trim();
 
         return (
           <details key={`${evt?.at || "evt"}-${idx}`} className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
@@ -604,7 +604,7 @@ export default function ShopeePipelinePage() {
       setSnackbar({
         open: true,
         severity: "warning",
-        message: `${label} ainda não está disponível neste item.`,
+        message: `${label} ainda nao esta disponivel neste item.`, 
       });
       return;
     }
@@ -620,7 +620,7 @@ export default function ShopeePipelinePage() {
       setSnackbar({
         open: true,
         severity: "error",
-        message: `Não foi possível copiar ${label.toLowerCase()}.`,
+        message: `Nao foi possivel copiar ${label.toLowerCase()}.`, 
       });
     }
   }, []);
@@ -631,7 +631,7 @@ export default function ShopeePipelinePage() {
       setSnackbar({
         open: true,
         severity: "warning",
-        message: "Link ainda não está disponível neste item.",
+        message: "Link ainda nao esta disponivel neste item.",
       });
       return;
     }
@@ -642,7 +642,7 @@ export default function ShopeePipelinePage() {
       setSnackbar({
         open: true,
         severity: "error",
-        message: "Não foi possível abrir o link.",
+        message: "Nao foi possivel abrir o link.",
       });
     }
   }, []);
@@ -706,14 +706,14 @@ export default function ShopeePipelinePage() {
         open: true,
         severity: "success",
         message: selectedNextRunDraft
-          ? `Próxima execução agendada para ${formatDate(new Date(selectedNextRunDraft).toISOString())}.`
-          : "Agendamento removido. O item pode rodar assim que ficar elegível.",
+          ? `Proxima execucao agendada para ${formatDate(new Date(selectedNextRunDraft).toISOString())}.`
+          : "Agendamento removido. O item pode rodar assim que ficar elegivel.",
       });
     } catch (error: any) {
       setSnackbar({
         open: true,
         severity: "error",
-        message: error?.message || "Falha ao salvar horário.",
+        message: error?.message || "Falha ao salvar horario.",
       });
     }
   };
@@ -726,7 +726,7 @@ export default function ShopeePipelinePage() {
       setSnackbar({
         open: true,
         severity: "success",
-        message: "Agendamento removido. O item pode rodar assim que ficar elegível.",
+        message: "Agendamento removido. O item pode rodar assim que ficar elegivel.",
       });
     } catch (error: any) {
       setSnackbar({
@@ -769,25 +769,25 @@ export default function ShopeePipelinePage() {
           <Box className="space-y-1" sx={{ maxWidth: 780 }}>
             <Typography sx={{ fontWeight: 950, lineHeight: 1.15 }}>Nada para rodar</Typography>
             <Typography variant="body2" sx={{ opacity: 0.95 }}>
-              <b>Motivo:</b> {reason || "Nenhum item elegível no momento."}
+              <b>Motivo:</b> {reason || "Nenhum item elegivel no momento."}
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.95 }}>
               <b>Regra:</b>{" "}
-              {rule || "Escolhe 1 item elegível (active=true, status != PAUSED/PUBLISHED, nextRunAt <= agora, sem lock recente)."}
+              {rule || "Escolhe 1 item elegivel (active=true, status != PAUSED/PUBLISHED, nextRunAt <= agora, sem lock recente)."}
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.95 }}>
               <b>Para rodar:</b>{" "}
-              {howToFix || "Garanta um item elegível e clique em “Rodar agora” (raio verde)."}
+              {howToFix || "Garanta um item elegivel e clique em \"Rodar agora\" (raio verde)."}
             </Typography>
             {details?.counts ? (
               <Typography variant="caption" sx={{ opacity: 0.9, display: "block" }}>
-                Diagnóstico: ativos={details.counts.totalActive}, excluídos(PAUSED/PUBLISHED)={details.counts.excludedByStatus},
+                Diagnostico: ativos={details.counts.totalActive}, excluidos(PAUSED/PUBLISHED)={details.counts.excludedByStatus},
                 bloqueados(nextRunAt)={details.counts.blockedByNextRunAt}, bloqueados(lock)={details.counts.blockedByLock}.
               </Typography>
             ) : null}
             {details?.samples?.earliestFuture?.nextRunAt ? (
               <Typography variant="caption" sx={{ opacity: 0.9, display: "block" }}>
-                Próximo agendado: {String(details.samples.earliestFuture.id)} em {String(details.samples.earliestFuture.nextRunAt)}.
+                Proximo agendado: {String(details.samples.earliestFuture.id)} em {String(details.samples.earliestFuture.nextRunAt)}.
               </Typography>
             ) : null}
             {details?.samples?.locked?.lockedAt ? (
@@ -972,8 +972,8 @@ export default function ShopeePipelinePage() {
             }}
           >
             <MenuItem value="all">Ativas + pausadas</MenuItem>
-            <MenuItem value="true">Só ativas</MenuItem>
-            <MenuItem value="false">Só pausadas</MenuItem>
+            <MenuItem value="true">So ativas</MenuItem>
+            <MenuItem value="false">So pausadas</MenuItem>
           </TextField>
           <TextField
             select
@@ -992,10 +992,10 @@ export default function ShopeePipelinePage() {
             }}
           >
             <MenuItem value="priority_desc_updatedAt_desc">Ordenar: prioridade</MenuItem>
-            <MenuItem value="createdAt_asc">Ordenar: criação (antigos)</MenuItem>
-            <MenuItem value="createdAt_desc">Ordenar: criação (novos)</MenuItem>
+            <MenuItem value="createdAt_asc">Ordenar: criacao (antigos)</MenuItem>
+            <MenuItem value="createdAt_desc">Ordenar: criacao (novos)</MenuItem>
             <MenuItem value="updatedAt_desc">Ordenar: atualizado (recentes)</MenuItem>
-            <MenuItem value="nextRunAt_asc">Ordenar: próximo agendamento</MenuItem>
+            <MenuItem value="nextRunAt_asc">Ordenar: proximo agendamento</MenuItem>
             <MenuItem value="status_asc">Ordenar: status</MenuItem>
           </TextField>
           <Tooltip title="Atualizar">
@@ -1041,8 +1041,8 @@ export default function ShopeePipelinePage() {
                 Automacao do pipeline
               </Typography>
               <Typography variant="body2" sx={{ color: "#475569" }}>
-                Cron interno: {internalCron?.started ? "iniciado" : "nao iniciado"} • verifica a cada{" "}
-                {Math.round((internalCron?.tickMs || 60000) / 1000)}s • pipeline {cronConfig?.enabled ? "ligado" : "desligado"}
+                Cron interno: {internalCron?.started ? "iniciado" : "nao iniciado"} | verifica a cada{" "}
+                {Math.round((internalCron?.tickMs || 60000) / 1000)}s | pipeline {cronConfig?.enabled ? "ligado" : "desligado"}
               </Typography>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1083,18 +1083,18 @@ export default function ShopeePipelinePage() {
               {lastCronRun.itemId ? (
                 <div className="mt-1 text-xs font-semibold text-slate-600">
                   Item: {shortId(lastCronRun.itemId)}
-                  {lastCronRun.step ? ` • etapa: ${String(lastCronRun.step)}` : ""}
-                  {lastCronRun.ok === false ? " • falhou" : ""}
+                  {lastCronRun.step ? ` | etapa: ${String(lastCronRun.step)}` : ""}
+                  {lastCronRun.ok === false ? " | falhou" : ""}
                 </div>
               ) : lastCronRun.runSkipped ? (
                 <div className="mt-1 text-xs font-semibold text-slate-600">
-                  Sem item: {lastCronRun.runReason || lastCronRun.reason || "nenhum elegível"}
+                  Sem item: {lastCronRun.runReason || lastCronRun.reason || "nenhum elegivel"}
                 </div>
               ) : null}
             </div>
           </div>
           <Typography variant="caption" sx={{ mt: 1.5, display: "block", color: "#475569" }}>
-            Endpoint de diagnostico: <code>/api/shopee-pipeline/internal-cron</code> • endpoint manual: <code>/api/shopee-pipeline/cron</code>
+            Endpoint de diagnostico: <code>/api/shopee-pipeline/internal-cron</code> | endpoint manual: <code>/api/shopee-pipeline/cron</code>
           </Typography>
         </CardContent>
       </Card>
@@ -1136,14 +1136,14 @@ export default function ShopeePipelinePage() {
                   <TableCell>#</TableCell>
                   <TableCell>ID</TableCell>
                   <TableCell>Criado</TableCell>
-                  <TableCell align="left">Ações</TableCell>
+                  <TableCell align="left">Acoes</TableCell>
                   <TableCell>Produto</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Ativa</TableCell>
-                  <TableCell>Próx. Execução</TableCell>
+                  <TableCell>Prox. Execucao</TableCell>
                   <TableCell>Lock</TableCell>
                   <TableCell>Tentativas</TableCell>
-                  <TableCell>Último Erro</TableCell>
+                  <TableCell>Ultimo Erro</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -1208,16 +1208,16 @@ export default function ShopeePipelinePage() {
                     <TableCell>
                       <Chip size="small" label={statusLabel(item.pipelineStatus)} color={statusColor(item.pipelineStatus) as any} />
                     </TableCell>
-                    <TableCell>{item.active ? "Sim" : "Não"}</TableCell>
+                    <TableCell>{item.active ? "Sim" : "Nao"}</TableCell>
                     <TableCell>
                       {item.lockedAt
                         ? lockAgeMinutes(item.lockedAt) != null && lockAgeMinutes(item.lockedAt)! >= 2 && item.pipelineStatus === "GENERATING_COPY_VIDEO"
                           ? `Lock antigo; cron pode retomar`
-                          : `Em execução desde ${formatDate(item.lockedAt)}`
+                          : `Em execucao desde ${formatDate(item.lockedAt)}`
                         : item.nextRunAt
                           ? formatDate(item.nextRunAt)
                           : item.active
-                            ? "Próximo ciclo"
+                            ? "Proximo ciclo"
                             : "-"}
                     </TableCell>
                     <TableCell>
@@ -1269,11 +1269,11 @@ export default function ShopeePipelinePage() {
                 <div className="flex flex-col gap-2">
                   <div className="font-extrabold">Como funciona</div>
                   <div className="text-sm">
-                    Este pipeline executa <b>1 etapa por ciclo</b> (por cron ou por “Rodar agora”). Se a próxima etapa depende de serviços externos, ela pode virar{" "}
+                    Este pipeline executa <b>1 etapa por ciclo</b> (por cron ou por "Rodar agora"). Se a proxima etapa depende de servicos externos, ela pode virar{" "}
                     <b>RETRY_SCHEDULED</b> e agendar <b>nextRunAt</b>.
                   </div>
                   <div className="text-sm text-slate-700">
-                    Próxima execução deste item: <b>{selected.nextRunAt ? formatDate(selected.nextRunAt) : "assim que o cron rodar (sem nextRunAt)"}</b>
+                    Proxima execucao deste item: <b>{selected.nextRunAt ? formatDate(selected.nextRunAt) : "assim que o cron rodar (sem nextRunAt)"}</b>
                     {cronConfig?.enabled ? (
                       <>
                         {" "}
@@ -1484,7 +1484,7 @@ export default function ShopeePipelinePage() {
                           <div>
                             <div className="text-sm font-extrabold">Acompanhar postagem</div>
                             <div className="mt-1 text-xs text-slate-600">
-                              O agendamento cria um <b>StoryAd</b> e os <b>SocialPosts</b> imediatamente. Quando o horÃ¡rio (<code>scheduledAt</code>) chega, o publisher apenas consome esses posts e publica em YouTube, Meta e TikTok.
+                              O agendamento cria um <b>StoryAd</b> e os <b>SocialPosts</b> imediatamente. Quando o horario (<code>scheduledAt</code>) chega, o publisher apenas consome esses posts e publica em YouTube, Meta e TikTok.
                             </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
@@ -1508,7 +1508,7 @@ export default function ShopeePipelinePage() {
                           if (!storyAd?.id) {
                             return (
                               <div className="mt-3 text-xs text-slate-500">
-                                StoryAd ainda nÃ£o estÃ¡ carregado neste item.
+                                StoryAd ainda nao esta carregado neste item.
                               </div>
                             );
                           }
@@ -1539,7 +1539,7 @@ export default function ShopeePipelinePage() {
                               </div>
 
                               <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
-                                <div className="text-xs font-extrabold text-slate-500">PublicaÃ§Ãµes</div>
+                                <div className="text-xs font-extrabold text-slate-500">Publicacoes</div>
                                 {publications.length ? (
                                   <div className="mt-2 overflow-auto">
                                     <table className="min-w-full text-xs">
@@ -1595,7 +1595,7 @@ export default function ShopeePipelinePage() {
                                     </table>
                                   </div>
                                 ) : (
-                                  <div className="mt-2 text-xs text-slate-400">Nenhuma publicaÃ§Ã£o cadastrada.</div>
+                                  <div className="mt-2 text-xs text-slate-400">Nenhuma publicacao cadastrada.</div>
                                 )}
                               </div>
                             </div>
@@ -1609,7 +1609,7 @@ export default function ShopeePipelinePage() {
                       if (!step) {
                         return (
                           <Typography variant="caption" className="text-slate-400">
-                            Nenhuma execução registrada para esta etapa ainda.
+                            Nenhuma execucao registrada para esta etapa ainda.
                           </Typography>
                         );
                       }
@@ -1620,13 +1620,13 @@ export default function ShopeePipelinePage() {
                             <div className="mt-1 text-sm font-bold text-slate-100">{statusLabel(step.status)}</div>
                             <div className="mt-2 text-xs text-slate-400">Tentativa</div>
                             <div className="mt-1 text-sm text-slate-200">{step.attempt}</div>
-                            <div className="mt-2 text-xs text-slate-400">Início</div>
+                            <div className="mt-2 text-xs text-slate-400">Inicio</div>
                             <div className="mt-1 text-sm text-slate-200">{formatDate(step.startedAt)}</div>
                             <div className="mt-2 text-xs text-slate-400">Fim</div>
                             <div className="mt-1 text-sm text-slate-200">{formatDate(step.finishedAt)}</div>
-                            <div className="mt-2 text-xs text-slate-400">Duração</div>
+                            <div className="mt-2 text-xs text-slate-400">Duracao</div>
                             <div className="mt-1 text-sm text-slate-200">{step.durationMs ? `${step.durationMs} ms` : "-"}</div>
-                            <div className="mt-2 text-xs text-slate-400">Próx. retry</div>
+                            <div className="mt-2 text-xs text-slate-400">Prox. retry</div>
                             <div className="mt-1 text-sm text-slate-200">{formatDate(step.nextRetryAt)}</div>
                             {step.errorMessage ? (
                               <>
@@ -1663,17 +1663,17 @@ export default function ShopeePipelinePage() {
                       <Chip size="small" label={statusLabel(selected.pipelineStatus)} color={statusColor(selected.pipelineStatus) as any} />
                     </div>
                     <Typography variant="caption" className="text-slate-400 block mt-2">
-                      Próx. Execução:{" "}
+                      Prox. Execucao:{" "}
                       {selected.lockedAt
                         ? lockAgeMinutes(selected.lockedAt) != null &&
                           lockAgeMinutes(selected.lockedAt)! >= 2 &&
                           selected.pipelineStatus === "GENERATING_COPY_VIDEO"
                           ? `Lock antigo; cron pode retomar`
-                          : `Em execução desde ${formatDate(selected.lockedAt)}`
+                          : `Em execucao desde ${formatDate(selected.lockedAt)}`
                         : selected.nextRunAt
                           ? formatDate(selected.nextRunAt)
                           : selected.active
-                            ? "Próximo ciclo do cron"
+                            ? "Proximo ciclo do cron"
                             : "-"}
                     </Typography>
                     <Typography variant="caption" className="text-slate-400 block mt-2">
@@ -1703,7 +1703,7 @@ export default function ShopeePipelinePage() {
                     Controle manual
                   </Typography>
                   <Typography variant="caption" className="text-slate-400 block mt-1">
-                    Use “Continuar agora” para deixar o item elegível no próximo ciclo, destravar e retomar do ponto mais próximo possível com base nos artefatos já gerados.
+                    Use "Continuar agora" para deixar o item elegivel no proximo ciclo, destravar e retomar do ponto mais proximo possivel com base nos artefatos ja gerados.
                   </Typography>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <Button size="small" variant="contained" startIcon={<BoltIcon />} onClick={() => continueNow(selected)}>
@@ -1723,17 +1723,17 @@ export default function ShopeePipelinePage() {
 
                   <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
                     <TextField
-                      label="Agendar próxima execução"
+                      label="Agendar proxima execucao"
                       type="datetime-local"
                       value={selectedNextRunDraft}
                       onChange={(e) => setSelectedNextRunDraft(e.target.value)}
                       size="small"
                       sx={darkFieldSx}
                       slotProps={{ inputLabel: { shrink: true } }}
-                      helperText="Se ficar vazio, roda no próximo ciclo do cron. Se preencher uma data futura, espera até esse horário."
+                      helperText="Se ficar vazio, roda no proximo ciclo do cron. Se preencher uma data futura, espera ate esse horario."
                     />
                     <Button size="small" variant="outlined" onClick={saveNextRunForSelected}>
-                      Salvar horário
+                      Salvar horario
                     </Button>
                   </div>
                 </CardContent>
@@ -1831,19 +1831,19 @@ export default function ShopeePipelinePage() {
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 900, color: "#e2e8f0" }}>Configuração do Pipeline</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 900, color: "#e2e8f0" }}>Configuracao do Pipeline</DialogTitle>
         <DialogContent sx={{ pb: 3, color: "#e2e8f0" }}>
           {configLoading || !configDraft ? (
             <div className="flex items-center gap-2">
               <CircularProgress size={18} />
               <Typography variant="caption" className="text-slate-400">
-                Carregando configuração...
+                Carregando configuracao...
               </Typography>
             </div>
           ) : (
             <Box className="space-y-3">
               <Typography variant="body2" className="text-slate-300">
-                “Rodar agora” roda <b>1 item elegível</b> por clique (independente do cron).
+                "Rodar agora" roda <b>1 item elegivel</b> por clique (independente do cron).
               </Typography>
 
               <div className="grid grid-cols-3 gap-3">
@@ -1871,10 +1871,10 @@ export default function ShopeePipelinePage() {
                   slotProps={{ inputLabel: { shrink: true } }}
                 />
                 <TextField
-                  label="Máx. itens por ciclo (cron)"
+                  label="Max. itens por ciclo (cron)"
                   value={String(configDraft.maxItemsPerRun)}
                   onChange={(e) => setConfigDraft((p: any) => ({ ...p, maxItemsPerRun: e.target.value }))}
-                  helperText="Limite por execução automática. (Manual sempre tenta 1)."
+                  helperText="Limite por execucao automatica. (Manual sempre tenta 1)."
                   size="small"
                   sx={darkFieldSx}
                   slotProps={{ inputLabel: { shrink: true } }}
@@ -1887,25 +1887,25 @@ export default function ShopeePipelinePage() {
                 </Typography>
                 <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 800, color: "#e2e8f0" }}>
                   Proxima chamada aceita: {configDraft.nextCronRunAt ? formatDate(configDraft.nextCronRunAt) : "na proxima chamada externa"}
-                  {configDraft.lastCronRunAt ? ` • ultima: ${formatDate(configDraft.lastCronRunAt)}` : ""}
+                  {configDraft.lastCronRunAt ? ` | ultima: ${formatDate(configDraft.lastCronRunAt)}` : ""}
                 </Typography>
               </Box>
 
               <TextField
-                label="URL pública do áudio de referência (voz)"
+                label="URL publica do audio de referencia (voz)"
                 value={configDraft.userVoiceRefUrl}
                 onChange={(e) => setConfigDraft((p: any) => ({ ...p, userVoiceRefUrl: e.target.value }))}
-                helperText="Pasta/URL pública do MinIO onde ficam os áudios de referência do usuário (voice clone)."
+                helperText="Pasta/URL publica do MinIO onde ficam os audios de referencia do usuario (voice clone)."
                 size="small"
                 fullWidth
                 sx={darkFieldSx}
                 slotProps={{ inputLabel: { shrink: true } }}
               />
               <TextField
-                label="URL pública da imagem base (avatar/foto)"
+                label="URL publica da imagem base (avatar/foto)"
                 value={configDraft.userBaseImageUrl}
                 onChange={(e) => setConfigDraft((p: any) => ({ ...p, userBaseImageUrl: e.target.value }))}
-                helperText="Pasta/URL pública do MinIO onde ficam as imagens base do usuário (usado no vídeo)."
+                helperText="Pasta/URL publica do MinIO onde ficam as imagens base do usuario (usado no video)."
                 size="small"
                 fullWidth
                 sx={darkFieldSx}

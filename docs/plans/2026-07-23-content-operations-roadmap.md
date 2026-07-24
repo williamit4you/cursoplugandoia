@@ -38,13 +38,13 @@ Esses itens permanecem visiveis para impedir que uma dependencia externa seja co
 
 - [x] Substituir menu plano por grupos Operacao, Crescimento e Sistemas, preservando rotas legadas.
 - [x] Criar primeira Central de Operacoes no Dashboard com cards de saude e filas sociais.
-  A Central agora tambem exibe um bloco de checklist diario com alertas, filas vencidas, heartbeat, integracoes, falhas e custo do dia.
+  A Central agora tambem exibe um bloco de checklist diario com alertas, filas vencidas, heartbeat, integracoes, falhas e custo do dia, alem de resumo de operacoes rodando e distribuicao por familia.
 - [x] Criar componente reutilizavel de status, progresso, erro, retry e ultima atividade.
 - [x] Unificar nomenclatura principal do menu e registrar glossario de produto, artigo, video, publicacao, campanha e resultado.
 - [x] Criar pagina de detalhe por operacao com linha do tempo, alertas e retorno para a Central.
 - [x] Manter telas legadas acessiveis e adicionar retorno global para a Central de Operacoes.
 - [ ] Corrigir encoding quebrado em labels existentes e padronizar idioma.
-  O monitor social principal recebeu nova rodada de limpeza em 23/07/2026, incluindo cards, dicas, fallbacks e mensagens operacionais; o check geral continua pendente ate revisar telas legadas restantes.
+  O monitor social principal recebeu nova rodada de limpeza em 23/07/2026 e 24/07/2026, incluindo cards, dicas, fallbacks e mensagens operacionais; calendario social, dashboard, editor de post social, Shopee Pipeline e mensagens de API tambem tiveram nova limpeza. O check geral continua pendente ate revisar telas legadas restantes.
 - [ ] Testar responsividade, acessibilidade, estados vazios, loading, erro e dados antigos.
 
 ## Fase 3 - Fila, calendario e recuperacao
