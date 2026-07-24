@@ -85,7 +85,7 @@ export async function POST(req: Request) {
         descricao,
         aiPromptVendas,
         status: "COMPLETED",
-        pipelineStatus: "COMPLETED",
+        pipelineStatus: "MEDIA_SCRAPED",
         pipelineKind: "SALES",
         mediaVideoUrls: [videoUrlMinio],
         linksMedia: {
