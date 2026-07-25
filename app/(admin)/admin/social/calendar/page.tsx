@@ -527,7 +527,7 @@ export default function SocialCalendarPage() {
 
                   {/* Link to Social Queue */}
                   <Link
-                    href={`/admin/social?q=${selectedPost.id}`}
+                    href={`/admin/social?q=${encodeURIComponent(selectedPost.id)}&focus=${encodeURIComponent(selectedPost.id)}`}
                     className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 text-xs font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all"
                   >
                     <ExternalLink className="w-3.5 h-3.5" /> Ver na Fila Social

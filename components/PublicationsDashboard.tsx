@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   ArrowDownUp,
@@ -157,6 +157,7 @@ const STATUS_META: Record<string, { label: string; className: string; priority: 
   PUBLISHING: { label: "Enviando", className: "bg-violet-50 text-violet-700 ring-violet-100", priority: 6 },
   AWAITING_API: { label: "Aguardando API", className: "bg-cyan-50 text-cyan-700 ring-cyan-100", priority: 6 },
   PUBLISHED: { label: "Publicado", className: "bg-emerald-50 text-emerald-700 ring-emerald-100", priority: 1 },
+  POSTED: { label: "Publicado", className: "bg-emerald-50 text-emerald-700 ring-emerald-100", priority: 1 },
   PAUSED: { label: "Pausado", className: "bg-slate-100 text-slate-700 ring-slate-200", priority: 7 },
   CANCELLED: { label: "Cancelado", className: "bg-slate-100 text-slate-500 ring-slate-200", priority: 8 },
   FAILED: { label: "Falhou", className: "bg-rose-50 text-rose-700 ring-rose-100", priority: 9 },
@@ -170,6 +171,16 @@ function statusMeta(status?: string | null) {
     className: "bg-slate-100 text-slate-600 ring-slate-200",
     priority: 2,
   };
+}
+
+function matchesStatusFilter(status?: string | null, filter?: string | null) {
+  const current = String(status || "").toUpperCase();
+  const expected = String(filter || "").toUpperCase();
+  if (!expected) return true;
+  if (expected === "PUBLISHED") return ["PUBLISHED", "POSTED"].includes(current);
+  if (expected === "PROCESSING") return ["PROCESSING", "PROCESSING_MEDIA", "PUBLISHING", "AWAITING_API"].includes(current);
+  if (expected === "FAILED") return ["FAILED", "ERROR", "NEEDS_ATTENTION"].includes(current);
+  return current === expected;
 }
 
 function StatusBadge({ status }: { status?: string | null }) {
@@ -292,7 +303,7 @@ function overallStatus(group: PublicationGroup) {
   const statuses = group.posts.map((post) => (post.status || "").toUpperCase());
   if (statuses.some((status) => ["FAILED", "ERROR", "NEEDS_ATTENTION"].includes(status))) return "FAILED";
   if (statuses.some((status) => ["PUBLISHING", "PROCESSING", "PROCESSING_MEDIA", "AWAITING_API"].includes(status))) return "PROCESSING";
-  if (statuses.every((status) => status === "PUBLISHED")) return "PUBLISHED";
+  if (statuses.every((status) => status === "PUBLISHED" || status === "POSTED")) return "PUBLISHED";
   if (statuses.some((status) => status === "SCHEDULED")) return "SCHEDULED";
   if (statuses.some((status) => status === "QUEUED")) return "QUEUED";
   return statuses[0] || "DRAFT";
@@ -324,6 +335,9 @@ function actionButtonClass(tone: "default" | "danger" | "primary" = "default") {
 
 export default function PublicationsDashboard() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const focusPostId = String(searchParams?.get("focus") || "").trim();
+  const searchPostId = String(searchParams?.get("q") || "").trim();
   const lockedPlatform = useMemo(() => {
     if (pathname?.endsWith("/youtube")) return "YOUTUBE";
     if (pathname?.endsWith("/instagram")) return "META";
@@ -346,6 +360,16 @@ export default function PublicationsDashboard() {
   const [detailsTab, setDetailsTab] = useState<"summary" | "timeline" | "logs" | "media" | "info">("summary");
 
   useEffect(() => setFilters((current) => ({ ...current, platform: lockedPlatform || current.platform })), [lockedPlatform]);
+
+  useEffect(() => {
+    if (!searchPostId) return;
+    setPage(1);
+    setPageSize(100);
+    setFilters((current) => ({
+      ...current,
+      q: searchPostId,
+    }));
+  }, [searchPostId]);
 
   useEffect(() => {
     try {
@@ -424,7 +448,10 @@ export default function PublicationsDashboard() {
       const hasMedia = Boolean(post.videoUrl || post.thumbnailUrl || post.imageUrl);
       const dateValue = post.scheduledTo || post.postedAt || post.createdAt;
       if (filters.q && !text.includes(filters.q.toLowerCase())) return false;
-      if (filters.platformStatus && status !== filters.platformStatus) return false;
+      if (filters.status && !matchesStatusFilter(status, filters.status)) return false;
+      if (filters.platform && String(post.platform || "").toUpperCase() !== String(filters.platform).toUpperCase()) return false;
+      if (filters.postType && String(post.postType || "").toUpperCase() !== String(filters.postType).toUpperCase()) return false;
+      if (filters.platformStatus && !matchesStatusFilter(status, filters.platformStatus)) return false;
       if (filters.account && !(post.accountName || post.integrationAccountName || "").toLowerCase().includes(filters.account.toLowerCase())) return false;
       if (filters.origin && origin !== filters.origin) return false;
       if (filters.media === "with" && !hasMedia) return false;
@@ -443,6 +470,14 @@ export default function PublicationsDashboard() {
   const explicitSelectedGroup = useMemo(() => groups.find((group) => group.id === selectedId) || null, [groups, selectedId]);
   const selectedGroup = explicitSelectedGroup || groups[0] || null;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  useEffect(() => {
+    if (!focusPostId) return;
+    const focusedGroup = groups.find((group) => group.posts.some((post) => post.id === focusPostId));
+    if (!focusedGroup) return;
+    setSelectedId(focusedGroup.id);
+    setDetailsTab("summary");
+  }, [focusPostId, groups]);
 
   const kpis = useMemo(() => {
     const statuses = posts.map((post) => (post.status || "").toUpperCase());

@@ -102,7 +102,17 @@ export async function GET(req: NextRequest) {
     const q = (searchParams.get("q") || "").trim();
 
     const where: any = {};
-    if (status && status !== "ALL") where.status = status;
+    if (status && status !== "ALL") {
+      if (status === "PUBLISHED") {
+        where.status = { in: ["PUBLISHED", "POSTED"] };
+      } else if (status === "PROCESSING") {
+        where.status = { in: ["PROCESSING", "PROCESSING_MEDIA", "PUBLISHING", "AWAITING_API"] };
+      } else if (status === "FAILED") {
+        where.status = { in: ["FAILED", "ERROR", "NEEDS_ATTENTION"] };
+      } else {
+        where.status = status;
+      }
+    }
     if (platform && platform !== "ALL") where.platform = platform;
     if (postType && postType !== "ALL") where.postType = postType;
     if (q) {

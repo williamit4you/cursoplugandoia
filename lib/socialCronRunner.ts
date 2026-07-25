@@ -42,7 +42,7 @@ export async function runSocialCron(params: { baseUrl: string; limit?: number })
 
   const posts = await prisma.socialPost.findMany({
     where: {
-      OR: [{ status: "SCHEDULED", scheduledTo: { lte: now } }, { status: "PROCESSING_MEDIA" }],
+      OR: [{ status: "SCHEDULED", scheduledTo: { lte: now } }, { status: "PROCESSING_MEDIA" }, { status: "PUBLISHING" }],
     },
     orderBy: [{ scheduledTo: "asc" }, { createdAt: "asc" }],
     take: limit,
@@ -110,6 +110,10 @@ export async function runSocialCron(params: { baseUrl: string; limit?: number })
         },
       });
     } else if (result.data?.stillProcessing) {
+      await prisma.socialPost.update({
+        where: { id: post.id },
+        data: { status: "PROCESSING_MEDIA" },
+      });
       await appendPostLog(post.id, "Meta ainda processando; o cron tentara novamente.");
     } else if (!result.ok) {
       await prisma.socialPost.update({ where: { id: post.id }, data: { status: "SCHEDULED" } });

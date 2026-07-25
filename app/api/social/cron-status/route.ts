@@ -58,6 +58,7 @@ export async function GET(req: NextRequest) {
         OR: [
           { status: "SCHEDULED", scheduledTo: { lte: now } },
           { status: "PROCESSING_MEDIA" },
+          { status: "PUBLISHING" },
         ],
       } as any,
       orderBy: [{ scheduledTo: "asc" as const }, { createdAt: "asc" as const }],
