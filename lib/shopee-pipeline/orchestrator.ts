@@ -131,6 +131,7 @@ async function ensureStorySocialPosts(params: {
           scheduledTo,
           platform: socialPlatform,
           postType: "REEL",
+          log: `${socialPost.log || ""}${socialPost.log ? "\n" : ""}[${new Date().toLocaleTimeString("pt-BR")}] Origem: SHOPEE_PIPELINE`,
         },
       });
     } else {
@@ -143,6 +144,7 @@ async function ensureStorySocialPosts(params: {
           scheduledTo,
           platform: socialPlatform,
           postType: "REEL",
+          log: `[${new Date().toLocaleTimeString("pt-BR")}] Origem: SHOPEE_PIPELINE`,
         },
       });
     }

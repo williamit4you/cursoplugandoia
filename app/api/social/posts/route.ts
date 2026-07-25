@@ -36,6 +36,46 @@ function normalizeSortDir(v: string | null) {
   return v === "asc" ? "asc" : "desc";
 }
 
+function parseProjectMetadata(text: string | null | undefined) {
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return {};
+  }
+}
+
+function detectOrigin(item: any, shopeeSocialPostIds: Set<string>) {
+  if (shopeeSocialPostIds.has(item.id)) return "SHOPEE";
+  const project = item.codeVideoProject || null;
+  const metadata = parseProjectMetadata(project?.metadataJson);
+  const log = String(item.log || "").toLowerCase();
+  const videoUrl = String(item.videoUrl || "").toLowerCase();
+
+  if (
+    item.postId ||
+    item.newsVariant ||
+    project?.postId ||
+    project?.newsVariant ||
+    metadata?.newsAutomation ||
+    metadata?.postId
+  ) {
+    return "NEWS";
+  }
+
+  if (
+    project?.projectType === "PRODUCT_AD" ||
+    metadata?.shopee ||
+    metadata?.source === "SHOPEE_PIPELINE" ||
+    log.includes("shopee") ||
+    videoUrl.includes("/shopee/") ||
+    videoUrl.includes("shopee/")
+  ) {
+    return "SHOPEE";
+  }
+
+  return "OTHER";
+}
+
 // Retorna posts (ou um único post por ?id=xxx)
 export async function GET(req: NextRequest) {
   try {
@@ -77,15 +117,66 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * pageSize;
 
-    const [total, items] = await Promise.all([
+    const [total, rawItems] = await Promise.all([
       prisma.socialPost.count({ where }),
       prisma.socialPost.findMany({
         where,
         orderBy: [{ [sortBy]: sortDir } as any, { createdAt: "desc" }],
         skip,
         take: pageSize,
+        include: {
+          codeVideoProject: {
+            select: {
+              id: true,
+              projectType: true,
+              postId: true,
+              newsVariant: true,
+              metadataJson: true,
+            },
+          },
+          post: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+            },
+          },
+        },
       }),
     ]);
+
+    const rawIds = rawItems.map((item) => item.id);
+    const storyPublications = rawIds.length
+      ? await prisma.storyPublication.findMany({
+          where: {
+            OR: rawIds.map((id) => ({
+              responsePayload: {
+                path: ["socialPostId"],
+                equals: id,
+              },
+            })),
+          },
+          select: {
+            responsePayload: true,
+            storyAd: {
+              select: {
+                coletaId: true,
+              },
+            },
+          },
+        })
+      : [];
+
+    const shopeeSocialPostIds = new Set(
+      storyPublications
+        .map((publication) => String((publication.responsePayload as any)?.socialPostId || "").trim())
+        .filter(Boolean)
+    );
+
+    const items = rawItems.map((item) => ({
+      ...item,
+      origin: detectOrigin(item, shopeeSocialPostIds),
+    }));
 
     return NextResponse.json({ items, total, page, pageSize, sortBy, sortDir });
   } catch (error) {

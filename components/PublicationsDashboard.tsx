@@ -136,6 +136,18 @@ const PLATFORM_STYLE: Record<string, string> = {
   LINKEDIN: "bg-sky-50 text-sky-700 ring-sky-100",
 };
 
+const ORIGIN_LABEL: Record<string, string> = {
+  SHOPEE: "Shopee",
+  NEWS: "Notícias",
+  OTHER: "Outros",
+};
+
+const ORIGIN_STYLE: Record<string, string> = {
+  SHOPEE: "bg-orange-50 text-orange-700 ring-orange-100",
+  NEWS: "bg-blue-50 text-blue-700 ring-blue-100",
+  OTHER: "bg-slate-50 text-slate-600 ring-slate-200",
+};
+
 const STATUS_META: Record<string, { label: string; className: string; priority: number }> = {
   DRAFT: { label: "Rascunho", className: "bg-slate-100 text-slate-700 ring-slate-200", priority: 2 },
   SCHEDULED: { label: "Agendado", className: "bg-amber-50 text-amber-700 ring-amber-100", priority: 3 },
@@ -172,6 +184,15 @@ function PlatformMark({ platform }: { platform: string }) {
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black ring-1 ${PLATFORM_STYLE[platform] || "bg-slate-50 text-slate-700 ring-slate-200"}`} title={label}>
       <Video className="h-3 w-3" />
       {short}
+    </span>
+  );
+}
+
+function OriginBadge({ origin }: { origin?: string | null }) {
+  const key = String(origin || "OTHER").toUpperCase();
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black ring-1 ${ORIGIN_STYLE[key] || ORIGIN_STYLE.OTHER}`}>
+      {ORIGIN_LABEL[key] || key}
     </span>
   );
 }
@@ -260,7 +281,7 @@ function groupPosts(posts: SocialPost[]): PublicationGroup[] {
       createdAt: primary.createdAt,
       updatedAt: groupedPosts.map((post) => post.updatedAt || post.createdAt).filter(Boolean).sort().pop(),
       accountName: primary.accountName || primary.integrationAccountName || "Conta principal",
-      origin: primary.origin || primary.source || "Sistema",
+      origin: String(primary.origin || primary.source || "OTHER").toUpperCase(),
       postType: primary.postType || "REEL",
       posts: groupedPosts.sort((a, b) => String(a.platform).localeCompare(String(b.platform))),
     };
@@ -398,13 +419,14 @@ export default function PublicationsDashboard() {
     return posts.filter((post) => {
       const text = `${post.title || ""} ${post.summary || ""} ${post.id} ${post.platform}`.toLowerCase();
       const status = (post.status || "").toUpperCase();
+      const origin = String(post.origin || post.source || "OTHER").toUpperCase();
       const hasError = Boolean(post.error || post.lastError || ["FAILED", "ERROR", "NEEDS_ATTENTION"].includes(status));
       const hasMedia = Boolean(post.videoUrl || post.thumbnailUrl || post.imageUrl);
       const dateValue = post.scheduledTo || post.postedAt || post.createdAt;
       if (filters.q && !text.includes(filters.q.toLowerCase())) return false;
       if (filters.platformStatus && status !== filters.platformStatus) return false;
       if (filters.account && !(post.accountName || post.integrationAccountName || "").toLowerCase().includes(filters.account.toLowerCase())) return false;
-      if (filters.origin && !(post.origin || post.source || "").toLowerCase().includes(filters.origin.toLowerCase())) return false;
+      if (filters.origin && origin !== filters.origin) return false;
       if (filters.media === "with" && !hasMedia) return false;
       if (filters.media === "without" && hasMedia) return false;
       if (filters.errors === "with" && !hasError) return false;
@@ -416,6 +438,8 @@ export default function PublicationsDashboard() {
   }, [filters, posts]);
 
   const groups = useMemo(() => sortGroups(groupPosts(filteredPosts), filters), [filteredPosts, filters]);
+  const visiblePostIds = useMemo(() => filteredPosts.map((post) => post.id), [filteredPosts]);
+  const allVisibleSelected = visiblePostIds.length > 0 && visiblePostIds.every((id) => selectedRows.includes(id));
   const explicitSelectedGroup = useMemo(() => groups.find((group) => group.id === selectedId) || null, [groups, selectedId]);
   const selectedGroup = explicitSelectedGroup || groups[0] || null;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -540,12 +564,67 @@ export default function PublicationsDashboard() {
   }
 
   async function applyBulk(action: "pause" | "cancel" | "publish") {
-    const selectedPosts = posts.filter((post) => selectedRows.includes(post.id));
+    const selectedPosts = filteredPosts.filter((post) => selectedRows.includes(post.id));
     if (!selectedPosts.length) return;
     for (const post of selectedPosts) {
       if (action === "pause") await updatePost(post, { status: "PAUSED" }, "Publicações pausadas.");
       if (action === "cancel") await updatePost(post, { status: "CANCELLED" }, "Publicações canceladas.");
       if (action === "publish") await publishNow(post);
+    }
+    setSelectedRows([]);
+  }
+
+  async function cancelSelectedNews() {
+    const selectedNews = filteredPosts.filter((post) => selectedRows.includes(post.id) && String(post.origin || "").toUpperCase() === "NEWS");
+    if (!selectedNews.length) {
+      toast.info("Nenhuma publicação de notícia selecionada neste filtro.");
+      return;
+    }
+    if (!window.confirm(`Cancelar ${selectedNews.length} publicação(ões) de notícia selecionada(s)?`)) return;
+    for (const post of selectedNews) {
+      await updatePost(post, { status: "CANCELLED" }, "Notícias selecionadas canceladas.");
+    }
+    setSelectedRows([]);
+  }
+
+  async function cancelSelectedNonShopee() {
+    const selectedNonShopee = filteredPosts.filter((post) => selectedRows.includes(post.id) && String(post.origin || post.source || "OTHER").toUpperCase() !== "SHOPEE");
+    if (!selectedNonShopee.length) {
+      toast.info("Nenhuma publicação não-Shopee selecionada neste filtro.");
+      return;
+    }
+    if (!window.confirm(`Cancelar ${selectedNonShopee.length} publicação(ões) que não são da Shopee?`)) return;
+    for (const post of selectedNonShopee) {
+      await updatePost(post, { status: "CANCELLED" }, "Publicações não-Shopee canceladas.");
+    }
+    setSelectedRows([]);
+  }
+
+  async function rescheduleSelectedShopee() {
+    const selectedShopee = filteredPosts
+      .filter((post) => selectedRows.includes(post.id) && String(post.origin || "").toUpperCase() === "SHOPEE")
+      .sort((a, b) => String(a.scheduledTo || a.createdAt || "").localeCompare(String(b.scheduledTo || b.createdAt || "")));
+    if (!selectedShopee.length) {
+      toast.info("Nenhuma publicação da Shopee selecionada neste filtro.");
+      return;
+    }
+    const startDateText = window.prompt("Data inicial para reagendar os posts da Shopee (AAAA-MM-DD). Em branco = amanhã.", "");
+    const start = startDateText?.trim() ? new Date(`${startDateText.trim()}T09:00:00`) : new Date();
+    if (!startDateText?.trim()) start.setDate(start.getDate() + 1);
+    start.setHours(9, 0, 0, 0);
+    if (Number.isNaN(start.getTime())) {
+      toast.error("Data inicial inválida.");
+      return;
+    }
+    if (!window.confirm(`Reagendar ${selectedShopee.length} publicação(ões) da Shopee a partir de ${formatDate(start.toISOString())}, em intervalos de 4 horas?`)) return;
+
+    for (let index = 0; index < selectedShopee.length; index += 1) {
+      const scheduledTo = new Date(start.getTime() + index * 4 * 60 * 60 * 1000);
+      await updatePost(
+        selectedShopee[index],
+        { status: "SCHEDULED", scheduledTo: scheduledTo.toISOString(), resetPublication: true } as any,
+        "Shopee reagendada para os próximos dias.",
+      );
     }
     setSelectedRows([]);
   }
@@ -662,6 +741,13 @@ export default function PublicationsDashboard() {
                 <option value="FAILED">Falhou</option>
               </select>
 
+              <select className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold" value={filters.origin} onChange={(event) => setFilters((current) => ({ ...current, origin: event.target.value }))}>
+                <option value="">Origem</option>
+                <option value="SHOPEE">Shopee</option>
+                <option value="NEWS">Notícias</option>
+                <option value="OTHER">Outros</option>
+              </select>
+
               <select className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold" value={filters.postType} onChange={(event) => setFilters((current) => ({ ...current, postType: event.target.value }))}>
                 <option value="">Tipo</option>
                 <option value="REEL">Reel/Short</option>
@@ -690,9 +776,29 @@ export default function PublicationsDashboard() {
             ) : null}
 
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
-                <button className={`${actionButtonClass()} justify-center`} onClick={saveFilter}>
+              <button className={`${actionButtonClass()} justify-center`} onClick={saveFilter}>
                 <Filter className="mr-2 inline h-4 w-4" />
                 Salvar filtro
+              </button>
+              <button
+                className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700 hover:bg-blue-100"
+                onClick={() => {
+                  setPage(1);
+                  setPageSize(500);
+                  setFilters((current) => ({ ...current, origin: "NEWS", platform: "META", status: "SCHEDULED", platformStatus: "" }));
+                }}
+              >
+                Notícias Meta agendadas
+              </button>
+              <button
+                className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-orange-700 hover:bg-orange-100"
+                onClick={() => {
+                  setPage(1);
+                  setPageSize(500);
+                  setFilters((current) => ({ ...current, origin: "SHOPEE", status: "SCHEDULED", platformStatus: "" }));
+                }}
+              >
+                Shopee agendados
               </button>
               {savedFilters.map((item) => (
                 <button key={item.name} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700 hover:bg-white" onClick={() => setFilters(item.filters)}>
@@ -708,10 +814,16 @@ export default function PublicationsDashboard() {
           <div className="rounded-[24px] border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-col gap-3 border-b border-slate-100 p-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-sm font-black">{total.toLocaleString("pt-BR")} publicações encontradas</p>
-                <p className="text-xs font-medium text-slate-500">Atalhos: “/” busca, “R” atualiza, “Esc” fecha detalhes.</p>
+                <p className="text-sm font-black">{filteredPosts.length.toLocaleString("pt-BR")} publicações exibidas</p>
+                <p className="text-xs font-medium text-slate-500">{total.toLocaleString("pt-BR")} carregadas no servidor. Atalhos: “/” busca, “R” atualiza, “Esc” fecha detalhes.</p>
               </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:flex lg:flex-wrap">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
+                <button className={actionButtonClass()} onClick={() => setSelectedRows((current) => Array.from(new Set([...current, ...visiblePostIds])))} disabled={!visiblePostIds.length}>
+                  Selecionar visíveis
+                </button>
+                <button className={actionButtonClass()} onClick={() => setSelectedRows([])} disabled={!selectedRows.length}>
+                  Limpar seleção
+                </button>
                 <button className={actionButtonClass()} onClick={() => applyBulk("pause")} disabled={!selectedRows.length}>
                   <Pause className="mr-2 inline h-4 w-4" />
                   Pausar
@@ -723,6 +835,12 @@ export default function PublicationsDashboard() {
                 <button className={actionButtonClass("danger")} onClick={() => applyBulk("cancel")} disabled={!selectedRows.length}>
                   Cancelar selecionadas
                 </button>
+                <button className={actionButtonClass("danger")} onClick={cancelSelectedNonShopee} disabled={!selectedRows.length}>
+                  Cancelar não-Shopee
+                </button>
+                <button className={actionButtonClass("primary")} onClick={rescheduleSelectedShopee} disabled={!selectedRows.length}>
+                  Reagendar Shopee
+                </button>
               </div>
             </div>
 
@@ -733,7 +851,17 @@ export default function PublicationsDashboard() {
                 <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="w-10 px-4 py-3">
-                      <input type="checkbox" checked={posts.length > 0 && selectedRows.length === posts.length} onChange={(event) => setSelectedRows(event.target.checked ? posts.map((post) => post.id) : [])} />
+                      <input
+                        type="checkbox"
+                        checked={allVisibleSelected}
+                        onChange={(event) => {
+                          setSelectedRows((current) => {
+                            if (event.target.checked) return Array.from(new Set([...current, ...visiblePostIds]));
+                            return current.filter((id) => !visiblePostIds.includes(id));
+                          });
+                        }}
+                        title="Selecionar publicações filtradas nesta página"
+                      />
                     </th>
                     <th className="px-4 py-3">Publicação</th>
                     <th className="px-4 py-3">Plataformas</th>
@@ -772,7 +900,10 @@ export default function PublicationsDashboard() {
                               </div>
                               <div className="min-w-0">
                                 <p className="line-clamp-1 font-black text-slate-900">{group.title}</p>
-                                <p className="line-clamp-2 max-w-xl text-xs font-medium text-slate-500">{group.caption}</p>
+                                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                  <OriginBadge origin={group.origin} />
+                                  <span className="line-clamp-1 max-w-xl text-xs font-medium text-slate-500">{group.caption}</span>
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -826,6 +957,8 @@ export default function PublicationsDashboard() {
                   <option value={10}>10</option>
                   <option value={20}>20</option>
                   <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={500}>500</option>
                 </select>
               </div>
               <div className="flex items-center justify-between gap-3">
@@ -942,7 +1075,7 @@ function PublicationDetails({
             <div className="min-w-0 text-sm">
               <p className="font-black">{group.accountName}</p>
               <p className="mt-1 text-xs font-medium text-slate-500">ID: {primary.id}</p>
-              <p className="mt-1 text-xs font-medium text-slate-500">Origem: {group.origin}</p>
+              <div className="mt-2"><OriginBadge origin={group.origin} /></div>
             </div>
           </div>
 
