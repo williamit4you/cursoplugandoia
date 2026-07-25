@@ -51,6 +51,7 @@ type ColetaItem = {
   id: string;
   url: string;
   inputMode?: "SCRAPE_SOURCE" | "MANUAL_VIDEO" | string;
+  useAi?: boolean | null;
   titulo?: string | null;
   descricao?: string | null;
   detalhes?: string | null;
@@ -313,6 +314,51 @@ const MANUAL_PIPELINE_STEPS: Array<{ stepName: string; label: string }> = [
   { stepName: "CREATE_STORY_AD", label: "Agendamento" },
   { stepName: "CREATE_CONTENT_ARTICLES", label: "Artigos SEO" },
 ];
+
+const MANUAL_PIPELINE_STEPS_LOW_COST: Array<{ stepName: string; label: string }> = [
+  { stepName: "GENERATE_SALES_COPY", label: "Roteiro" },
+  { stepName: "GENERATE_AUDIO", label: "Audio" },
+  { stepName: "GENERATE_COPY_VIDEO", label: "Narracao no video" },
+  { stepName: "GENERATE_PLATFORM_METADATA", label: "Textos das redes" },
+  { stepName: "CREATE_STORY_AD", label: "Agendamento" },
+  { stepName: "CREATE_CONTENT_ARTICLES", label: "Artigos SEO" },
+];
+
+function isLowCostManualItem(item?: Partial<ColetaItem> | null) {
+  return item?.inputMode === "MANUAL_VIDEO" && item?.useAi === false;
+}
+
+function pipelineStepsForItem(item?: Partial<ColetaItem> | null) {
+  if (item?.inputMode === "MANUAL_VIDEO") {
+    return isLowCostManualItem(item) ? MANUAL_PIPELINE_STEPS_LOW_COST : MANUAL_PIPELINE_STEPS;
+  }
+  return LEGACY_PIPELINE_STEPS;
+}
+
+function stepLabelForItem(stepName: string, item?: Partial<ColetaItem> | null) {
+  const steps = pipelineStepsForItem(item);
+  return steps.find((step) => step.stepName === stepName)?.label || stepLabel(stepName);
+}
+
+function stepDetailsForItem(stepName: string, item?: Partial<ColetaItem> | null) {
+  if (isLowCostManualItem(item) && stepName === "GENERATE_COPY_VIDEO") {
+    return {
+      title: "Aplicar narracao simples sobre o video original",
+      summary: "No modo economico, o sistema nao cria avatar nem video falado por IA. Ele pega o audio TTS e monta direto sobre o video original da Shopee.",
+      actions: [
+        "Chama o worker `/voiceover-video`",
+        "Remove o audio original do produto",
+        "Aplica apenas a narracao TTS no video",
+        "Salva o MP4 final pronto para agendamento",
+      ],
+      saves: "O Next salva o MP4 final no MinIO como `videoFinalUrl`.",
+      application: ["Envia `originalVideoUrl` e `audioUrl` para o worker", "Recebe o MP4 final e grava no item"],
+      modal: ["Nao participa desta etapa"],
+      minio: ["Guarda o video final com a narracao aplicada"],
+    };
+  }
+  return STEP_DETAILS[stepName];
+}
 
 function stepIcon(status?: string | null) {
   if (status === "SUCCESS") return <CheckCircleIcon fontSize="small" />;
@@ -1448,8 +1494,8 @@ export default function ShopeePipelinePage() {
                   </div>
 
                   <div className="mt-3">
-                    <Stepper alternativeLabel nonLinear activeStep={Math.max(0, (selected.inputMode === "MANUAL_VIDEO" ? MANUAL_PIPELINE_STEPS : LEGACY_PIPELINE_STEPS).findIndex((s) => s.stepName === focusedStepName))}>
-                      {(selected.inputMode === "MANUAL_VIDEO" ? MANUAL_PIPELINE_STEPS : LEGACY_PIPELINE_STEPS).map((s) => {
+                    <Stepper alternativeLabel nonLinear activeStep={Math.max(0, pipelineStepsForItem(selected).findIndex((s) => s.stepName === focusedStepName))}>
+                      {pipelineStepsForItem(selected).map((s) => {
                         const step = (selected.pipelineSteps || []).find((p) => p.stepName === s.stepName);
                         const status = step?.status || null;
                         const ts = (step as any)?.finishedAt || (step as any)?.updatedAt || null;
@@ -1474,33 +1520,33 @@ export default function ShopeePipelinePage() {
                 <Card variant="outlined" sx={{ borderColor: "rgba(255,255,255,0.10)", bgcolor: "transparent" }}>
                   <CardContent>
                     <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
-                      Etapa: {stepLabel(focusedStepName)}
+                      Etapa: {stepLabelForItem(focusedStepName, selected)}
                     </Typography>
-                    {STEP_DETAILS[focusedStepName] ? (
+                    {stepDetailsForItem(focusedStepName, selected) ? (
                       <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3 text-slate-900">
-                        <div className="text-sm font-extrabold">{STEP_DETAILS[focusedStepName].title}</div>
-                        <div className="mt-1 text-sm text-slate-700">{STEP_DETAILS[focusedStepName].summary}</div>
+                        <div className="text-sm font-extrabold">{stepDetailsForItem(focusedStepName, selected)?.title}</div>
+                        <div className="mt-1 text-sm text-slate-700">{stepDetailsForItem(focusedStepName, selected)?.summary}</div>
                         <div className="mt-2 text-xs font-bold text-slate-500">O que faz</div>
                         <ul className="mt-1 list-disc pl-5 text-sm text-slate-700">
-                          {STEP_DETAILS[focusedStepName].actions.map((action) => (
+                          {(stepDetailsForItem(focusedStepName, selected)?.actions || []).map((action) => (
                             <li key={action}>{action}</li>
                           ))}
                         </ul>
-                        {STEP_DETAILS[focusedStepName].waits ? (
+                        {stepDetailsForItem(focusedStepName, selected)?.waits ? (
                           <div className="mt-2 text-sm text-slate-700">
-                            <b>Espera:</b> {STEP_DETAILS[focusedStepName].waits}
+                            <b>Espera:</b> {stepDetailsForItem(focusedStepName, selected)?.waits}
                           </div>
                         ) : null}
-                        {STEP_DETAILS[focusedStepName].saves ? (
+                        {stepDetailsForItem(focusedStepName, selected)?.saves ? (
                           <div className="mt-1 text-sm text-slate-700">
-                            <b>Salva:</b> {STEP_DETAILS[focusedStepName].saves}
+                            <b>Salva:</b> {stepDetailsForItem(focusedStepName, selected)?.saves}
                           </div>
                         ) : null}
                         <div className="mt-3 grid gap-2 md:grid-cols-3">
                           <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
                             <div className="text-xs font-extrabold text-slate-500">Na aplicacao</div>
                             <ul className="mt-1 list-disc pl-4 text-sm text-slate-700">
-                              {(STEP_DETAILS[focusedStepName].application || []).map((item) => (
+                              {(stepDetailsForItem(focusedStepName, selected)?.application || []).map((item) => (
                                 <li key={item}>{item}</li>
                               ))}
                             </ul>
@@ -1508,7 +1554,7 @@ export default function ShopeePipelinePage() {
                           <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
                             <div className="text-xs font-extrabold text-slate-500">Na Modal</div>
                             <ul className="mt-1 list-disc pl-4 text-sm text-slate-700">
-                              {(STEP_DETAILS[focusedStepName].modal || []).map((item) => (
+                              {(stepDetailsForItem(focusedStepName, selected)?.modal || []).map((item) => (
                                 <li key={item}>{item}</li>
                               ))}
                             </ul>
@@ -1516,7 +1562,7 @@ export default function ShopeePipelinePage() {
                           <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
                             <div className="text-xs font-extrabold text-slate-500">No MinIO</div>
                             <ul className="mt-1 list-disc pl-4 text-sm text-slate-700">
-                              {(STEP_DETAILS[focusedStepName].minio || []).map((item) => (
+                              {(stepDetailsForItem(focusedStepName, selected)?.minio || []).map((item) => (
                                 <li key={item}>{item}</li>
                               ))}
                             </ul>
