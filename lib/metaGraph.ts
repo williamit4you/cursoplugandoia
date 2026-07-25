@@ -126,7 +126,14 @@ export async function checkAndPublishInstagramContainer(
     `https://graph.facebook.com/v19.0/${creationId}?fields=status_code&access_token=${accessToken}`
   );
   const statusData = await statusRes.json();
+  if (!statusRes.ok || statusData?.error) {
+    throw new Error(`Meta nao retornou o status do container: ${statusData?.error?.message || JSON.stringify(statusData)}`);
+  }
   const statusCode: string = statusData.status_code;
+
+  if (!statusCode) {
+    throw new Error(`Meta retornou container sem status_code: ${JSON.stringify(statusData)}`);
+  }
 
   if (statusCode === "ERROR") {
     throw new Error(`Meta processamento falhou: ${JSON.stringify(statusData)}`);

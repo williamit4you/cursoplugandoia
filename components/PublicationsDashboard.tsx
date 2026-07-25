@@ -340,6 +340,7 @@ export default function PublicationsDashboard() {
   const searchParams = useSearchParams();
   const focusPostId = String(searchParams?.get("focus") || "").trim();
   const searchPostId = String(searchParams?.get("q") || "").trim();
+  const requestedStatus = String(searchParams?.get("status") || "").trim().toUpperCase();
   const lockedPlatform = useMemo(() => {
     if (pathname?.endsWith("/youtube")) return "YOUTUBE";
     if (pathname?.endsWith("/instagram")) return "META";
@@ -378,6 +379,14 @@ export default function PublicationsDashboard() {
     }));
     setAppliedFilters((current) => ({ ...current, q: searchPostId }));
   }, [searchPostId]);
+
+  useEffect(() => {
+    if (!requestedStatus) return;
+    const next = { ...DEFAULT_FILTERS, platform: lockedPlatform, status: requestedStatus };
+    setPage(1);
+    setFilters(next);
+    setAppliedFilters(next);
+  }, [lockedPlatform, requestedStatus]);
 
   useEffect(() => {
     try {
@@ -647,6 +656,17 @@ export default function PublicationsDashboard() {
     setSelectedRows([]);
   }
 
+  async function rescheduleSelected() {
+    const selectedPosts = filteredPosts.filter((post) => selectedRows.includes(post.id));
+    if (!selectedPosts.length) return;
+    if (!window.confirm(`Reprogramar ${selectedPosts.length} publicação(ões) selecionada(s) a partir de 30 minutos?`)) return;
+    const start = Date.now() + 30 * 60_000;
+    for (let index = 0; index < selectedPosts.length; index += 1) {
+      await updatePost(selectedPosts[index], { status: "SCHEDULED", scheduledTo: new Date(start + index * 5 * 60_000).toISOString(), resetPublication: true } as any, "Publicação reprogramada.");
+    }
+    setSelectedRows([]);
+  }
+
   return (
     <main className="min-h-screen bg-[#f6f8fc] px-3 py-4 text-slate-900 sm:px-5 lg:px-6">
       <ToastContainer position="top-right" autoClose={3000} />
@@ -677,6 +697,10 @@ export default function PublicationsDashboard() {
                   <Calendar className="mr-2 inline h-4 w-4" />
                   Reagendar antigos
                 </button>
+                <Link href="/admin/social?status=FAILED" className={`${actionButtonClass("danger")} text-center`}>
+                  <AlertTriangle className="mr-2 inline h-4 w-4" />
+                  Central de falhas
+                </Link>
                 <button className={`${actionButtonClass("primary")} justify-center`} onClick={() => toast.info("Use o gerador de vídeos ou o editor existente para criar uma nova publicação.")}>
                   <Plus className="mr-2 inline h-4 w-4" />
                   Nova publicação
@@ -866,6 +890,10 @@ export default function PublicationsDashboard() {
                 </button>
                 <button className={actionButtonClass("danger")} onClick={cancelSelectedNonShopee} disabled={!selectedRows.length}>
                   Cancelar não-Shopee
+                </button>
+                <button className={actionButtonClass("primary")} onClick={rescheduleSelected} disabled={!selectedRows.length}>
+                  <RotateCcw className="mr-2 inline h-4 w-4" />
+                  Reprogramar selecionadas
                 </button>
                 <button className={actionButtonClass("primary")} onClick={rescheduleSelectedShopee} disabled={!selectedRows.length}>
                   Reagendar Shopee

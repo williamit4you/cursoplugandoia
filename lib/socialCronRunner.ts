@@ -40,13 +40,20 @@ export async function runSocialCron(params: { baseUrl: string; limit?: number })
 
   markSocialCronRunning(startedAt);
 
-  const posts = await prisma.socialPost.findMany({
-    where: {
-      OR: [{ status: "SCHEDULED", scheduledTo: { lte: now } }, { status: "PROCESSING_MEDIA" }, { status: "PUBLISHING" }],
-    },
+  // Due publications and Meta container checks are independent queues. A stuck
+  // container must never consume all worker capacity and prevent new posts from
+  // starting at their scheduled time.
+  const duePosts = await prisma.socialPost.findMany({
+    where: { status: "SCHEDULED", scheduledTo: { lte: now } },
     orderBy: [{ scheduledTo: "asc" }, { createdAt: "asc" }],
     take: limit,
   });
+  const processingPosts = await prisma.socialPost.findMany({
+    where: { status: { in: ["PROCESSING_MEDIA", "PUBLISHING"] } },
+    orderBy: [{ updatedAt: "asc" }, { createdAt: "asc" }],
+    take: limit,
+  });
+  const posts = [...duePosts, ...processingPosts];
 
   const tiktokSettings = await prisma.integrationSettings.findUnique({ where: { platform: "TIKTOK" } }).catch(() => null);
   const results: any[] = [];

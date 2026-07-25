@@ -12,6 +12,7 @@ O painel carregava somente uma página da API (20 itens por padrão) e aplicava 
 4. Tornar o campo de data explícito: relevante, agendada, publicada ou criação.
 5. Exibir na `/bio` os 50 produtos ativos mais recentes, com foto, nome, descrição, CTA direto ao afiliado e rastreio de clique.
 6. Preservar integralmente a criação de vídeo, a coleta, o link afiliado, os workers e o cron existentes.
+7. Garantir publicação social resiliente: containers Meta lentos são consultados, falhas transitórias são reagendadas e nunca bloqueiam posts vencidos.
 
 ## Contrato da listagem social
 
@@ -45,6 +46,8 @@ Não há scraping durante a visita pública. Os dados e mídias vêm do que a es
 | Bio responsiva para celular, notebook e desktop | Concluído para a vitrine | Grade 1/2/3 colunas e CTAs de toque. |
 | Mural com foto, nome, descrição e afiliado | Concluído para novos `BioProduct` | Foto e CTA rastreados na `/bio`. |
 | Cadastro manual com link afiliado informado | Concluído | A Bio é criada/garantida antes do agendamento social; não chama geração de link. |
+| Fila Meta justa e recuperação de container | Concluído | Posts vencidos e consultas de containers usam filas separadas; após 10 consultas sem finalização, nova tentativa em 30 min; após 3 ciclos, falha auditável. |
+| Central de falhas e reprogramação em lote | Concluído | `/admin/social?status=FAILED` filtra falhas; itens selecionados podem ser reprogramados a partir de 30 min. |
 | Preencher produtos legados sem `BioProduct` | Pendente | Rotina administrativa idempotente, após autorização para escrever no banco. |
 | Validar painel administrativo em viewport real | Pendente | Testar 360 px, 1280 px e >=1720 px; a tabela ainda rola horizontalmente no celular. |
 | Testes de regressão de vídeo/publicação | Concluído nesta entrega | Build e 12 testes operacionais verdes. |

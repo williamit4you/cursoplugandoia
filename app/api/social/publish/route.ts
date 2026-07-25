@@ -9,6 +9,20 @@ export const dynamic = "force-dynamic";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
+async function scheduleMetaRetry(socialPostId: string, reason: string) {
+  const current = await prisma.socialPost.findUnique({ where: { id: socialPostId }, select: { log: true } });
+  const retries = (current?.log || "").match(/Nova tentativa Meta em 30 minutos/g)?.length || 0;
+  const prefix = current?.log ? `${current.log}\n` : "";
+  const entry = `[${new Date().toLocaleTimeString("pt-BR")}]`;
+  if (retries >= 2) {
+    await prisma.socialPost.update({ where: { id: socialPostId }, data: { status: "FAILED", metaContainerId: null, log: `${prefix}${entry} Falha Meta após 3 tentativas: ${reason}` } });
+    return { failed: true };
+  }
+  const retryAt = new Date(Date.now() + 30 * 60_000);
+  await prisma.socialPost.update({ where: { id: socialPostId }, data: { status: "SCHEDULED", scheduledTo: retryAt, metaContainerId: null, log: `${prefix}${entry} Nova tentativa Meta em 30 minutos: ${reason}` } });
+  return { failed: false, retryAt };
+}
+
 /**
  * POST /api/social/publish
  *
@@ -63,8 +77,9 @@ export async function POST(req: NextRequest) {
 
     const appendLog = async (msg: string) => {
       const now = `[${new Date().toLocaleTimeString("pt-BR")}]`;
-      const current = socialPost.log || "";
-      const updated = current ? `${current}\n${now} ${msg}` : `${now} ${msg}`;
+      const current = await prisma.socialPost.findUnique({ where: { id: targetSocialPostId }, select: { log: true } });
+      const previous = current?.log || "";
+      const updated = previous ? `${previous}\n${now} ${msg}` : `${now} ${msg}`;
       await prisma.socialPost.update({
         where: { id: targetSocialPostId },
         data: { log: updated },
@@ -87,7 +102,7 @@ export async function POST(req: NextRequest) {
         data: {
           status: "PROCESSING_MEDIA",
           metaContainerId: creationId,
-          log: `[${new Date().toLocaleTimeString("pt-BR")}] ✅ Container criado (ID: ${creationId}). Aguardando Meta processar o vídeo...`,
+          log: `${socialPost.log || ""}${socialPost.log ? "\n" : ""}[${new Date().toLocaleTimeString("pt-BR")}] Container criado (ID: ${creationId}). Aguardando Meta processar o vídeo...`,
         },
       });
 
@@ -116,6 +131,12 @@ export async function POST(req: NextRequest) {
       );
 
       if (result.status !== "FINISHED") {
+        const current = await prisma.socialPost.findUnique({ where: { id: targetSocialPostId }, select: { log: true } });
+        const checks = ((current?.log || "").match(/Verificando status do container/g) || []).length;
+        if (checks >= 10) {
+          const retry = await scheduleMetaRetry(targetSocialPostId, `Container ${metaContainerId} não finalizou após ${checks} consultas.`);
+          return NextResponse.json({ success: false, retryScheduled: !retry.failed, failed: retry.failed, retryAt: retry.retryAt?.toISOString?.() || null }, { status: 202 });
+        }
         // Ainda processando — informa a UI para tentar de novo
         await appendLog(`⏳ Status atual: ${result.status}. Continue aguardando...`);
         return NextResponse.json({
@@ -129,7 +150,8 @@ export async function POST(req: NextRequest) {
       igId = result.igPostId || null;
       await appendLog(`✅ Publicado no Instagram! ID: ${igId}`);
     } catch (e: any) {
-      errors.push(`IG: ${e.message}`);
+      const retry = await scheduleMetaRetry(targetSocialPostId, e.message || "Falha ao consultar/publicar container");
+      return NextResponse.json({ success: false, retryScheduled: !retry.failed, failed: retry.failed, retryAt: retry.retryAt?.toISOString?.() || null, error: e.message }, { status: retry.failed ? 500 : 202 });
       await appendLog(`❌ Erro IG: ${e.message}`);
     }
 
@@ -169,14 +191,8 @@ export async function POST(req: NextRequest) {
 
     if (targetSocialPostId) {
       try {
-        const currentPost = await prisma.socialPost.findUnique({ where: { id: targetSocialPostId } });
-        await prisma.socialPost.update({
-          where: { id: targetSocialPostId },
-          data: {
-            status: "FAILED",
-            log: currentPost?.log ? `${currentPost.log}\n${logEntry}` : logEntry,
-          },
-        });
+        const retry = await scheduleMetaRetry(targetSocialPostId, errorMessage);
+        return NextResponse.json({ success: false, retryScheduled: !retry.failed, failed: retry.failed, retryAt: retry.retryAt?.toISOString?.() || null, error: errorMessage }, { status: retry.failed ? 500 : 202 });
       } catch (dbErr) {
         console.error("Failed to update SocialPost status to FAILED:", dbErr);
       }
