@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import s3Client from "@/lib/s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 
@@ -44,36 +45,119 @@ export async function POST(req: Request) {
     const publicBase = String(process.env.MINIO_PUBLIC_URL || "").replace(/\/+$/, "");
     const videoUrlMinio = publicBase ? `${publicBase}/${objectKey}` : `${process.env.MINIO_ENDPOINT}/${bucket}/${objectKey}`;
 
-    // Salvar no Banco
-    const coleta = await prisma.coletaDadosShoppe.create({
-      data: {
-        // `url` remains populated for the legacy unique key. New pipeline decisions
-        // use inputMode/sourceUrl and never interpret this affiliate URL as a product URL.
-        url,
-        sourceUrl: null,
-        inputMode: "MANUAL_VIDEO",
-        affiliateUrl: url,
-        titulo,
-        descricao,
-        aiPromptVendas: null,
-        status: "COMPLETED",
-        pipelineStatus: "GENERATING_COPY",
-        pipelineKind: "SALES",
-        useAi,
-        creatorPersonaId: creatorPersonaId,
-        mediaVideoUrls: [videoUrlMinio],
-        linksMedia: {
-          create: [
-            {
-              tipo: "VIDEO",
-              urlMinio: videoUrlMinio,
-            }
-          ]
-        }
+    const existing = await prisma.coletaDadosShoppe.findFirst({
+      where: { url, pipelineKind: "SALES" as any },
+      include: {
+        storyAd: {
+          include: {
+            publications: {
+              select: {
+                responsePayload: true,
+              },
+            },
+          },
+        },
+        bioProduct: {
+          select: { id: true },
+        },
       },
     });
 
-    return NextResponse.json({ success: true, coleta });
+    const socialPostIds = (existing?.storyAd?.publications || [])
+      .map((publication) => String((publication.responsePayload as any)?.socialPostId || "").trim())
+      .filter(Boolean);
+
+    const baseData = {
+      // `url` remains populated for the legacy unique key. New pipeline decisions
+      // use inputMode/sourceUrl and never interpret this affiliate URL as a product URL.
+      url,
+      sourceUrl: null,
+      inputMode: "MANUAL_VIDEO" as any,
+      affiliateUrl: url,
+      titulo,
+      descricao,
+      detalhes: null,
+      aiPromptVendas: null,
+      audioUrl: null,
+      copyVideoUrl: null,
+      videoFinalUrl: null,
+      platformMetadata: Prisma.JsonNull,
+      mediaImageUrls: [],
+      mediaVideoUrls: [videoUrlMinio],
+      status: "COMPLETED",
+      pipelineStatus: "GENERATING_COPY" as any,
+      pipelineKind: "SALES" as any,
+      useAi,
+      creatorPersonaId: creatorPersonaId,
+      active: true,
+      lockedAt: null,
+      lockedBy: null,
+      nextRunAt: null,
+      attemptCount: 0,
+      lastError: null,
+    };
+
+    const coleta = existing
+      ? await prisma.$transaction(async (tx) => {
+          if (socialPostIds.length) {
+            await tx.socialPost.deleteMany({
+              where: { id: { in: socialPostIds } },
+            });
+          }
+
+          if (existing.storyAd?.id) {
+            await tx.storyAd.delete({
+              where: { id: existing.storyAd.id },
+            });
+          }
+
+          if (existing.bioProduct?.id) {
+            await tx.bioProduct.delete({
+              where: { id: existing.bioProduct.id },
+            });
+          }
+
+          await tx.shopeePipelineEvent.deleteMany({
+            where: { coletaId: existing.id },
+          });
+
+          await tx.shopeePipelineStep.deleteMany({
+            where: { coletaId: existing.id },
+          });
+
+          return tx.coletaDadosShoppe.update({
+            where: { id: existing.id },
+            data: {
+              ...baseData,
+              linksMedia: {
+                deleteMany: {},
+                create: [
+                  {
+                    tipo: "VIDEO",
+                    urlMinio: videoUrlMinio,
+                  },
+                ],
+              },
+            },
+            include: { linksMedia: true },
+          });
+        })
+      : await prisma.coletaDadosShoppe.create({
+          data: {
+            ...baseData,
+            linksMedia: {
+              create: [
+                {
+                  tipo: "VIDEO",
+                  urlMinio: videoUrlMinio,
+                },
+              ],
+            },
+          },
+          include: { linksMedia: true },
+        });
+
+    return NextResponse.json({ success: true, reusedExisting: Boolean(existing), coleta });
   } catch (error: any) {
     console.error("Erro manual upload:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
