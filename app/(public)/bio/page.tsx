@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import BioProductLink from "./BioProductLink";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function BioIndexPage({ searchParams }: { searchParams?: Re
         : {}),
     },
     orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-    take: 60,
+    take: 50,
     include: { category: true },
   });
 
@@ -100,11 +101,7 @@ export default async function BioIndexPage({ searchParams }: { searchParams?: Re
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {products.map((p) => (
-          <Link
-            key={p.id}
-            href={`/bio/${p.slug}`}
-            className="group rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition"
-          >
+          <article key={p.id} className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:bg-white/10">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="text-xs text-slate-400">{p.category?.name || "Produto"}</div>
@@ -114,19 +111,20 @@ export default async function BioIndexPage({ searchParams }: { searchParams?: Re
             </div>
 
             {p.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={p.imageUrl}
-                alt={p.title}
-                className="mt-3 h-44 w-full rounded-xl object-cover"
-                loading="lazy"
-              />
+              <BioProductLink slug={p.slug} href={p.affiliateUrl} className="mt-3 block w-full rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.imageUrl} alt={`Ver ${p.title} na Shopee`} className="h-44 w-full rounded-xl object-cover" loading="lazy" />
+              </BioProductLink>
             ) : (
               <div className="mt-3 h-44 w-full rounded-xl bg-white/5" />
             )}
 
             <div className="mt-3 line-clamp-3 text-sm text-slate-300">{p.description}</div>
-          </Link>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Link href={`/bio/${p.slug}`} className="rounded-xl border border-white/15 px-3 py-2 text-center text-sm font-bold text-slate-100 hover:bg-white/10">Detalhes</Link>
+              <BioProductLink slug={p.slug} href={p.affiliateUrl} className="rounded-xl bg-emerald-400 px-3 py-2 text-sm font-black text-slate-950 transition hover:bg-emerald-300">Ver na Shopee</BioProductLink>
+            </div>
+          </article>
         ))}
       </div>
 

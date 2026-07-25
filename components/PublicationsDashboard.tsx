@@ -99,6 +99,7 @@ type Filters = {
   origin: string;
   media: string;
   errors: string;
+  dateField: "relevant" | "scheduled" | "published" | "created";
   sortBy: "scheduledTo" | "updatedAt" | "createdAt" | "status";
   sortDir: "asc" | "desc";
 };
@@ -116,6 +117,7 @@ const DEFAULT_FILTERS: Filters = {
   origin: "",
   media: "",
   errors: "",
+  dateField: "relevant",
   sortBy: "scheduledTo",
   sortDir: "desc",
 };
@@ -346,6 +348,7 @@ export default function PublicationsDashboard() {
   }, [pathname]);
 
   const [posts, setPosts] = useState<SocialPost[]>([]);
+  const [stats, setStats] = useState({ scheduled: 0, queue: 0, processing: 0, failed: 0, published: 0 });
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -357,9 +360,13 @@ export default function PublicationsDashboard() {
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [savedFilters, setSavedFilters] = useState<{ name: string; filters: Filters }[]>([]);
   const [filters, setFilters] = useState<Filters>({ ...DEFAULT_FILTERS, platform: lockedPlatform });
+  const [appliedFilters, setAppliedFilters] = useState<Filters>({ ...DEFAULT_FILTERS, platform: lockedPlatform });
   const [detailsTab, setDetailsTab] = useState<"summary" | "timeline" | "logs" | "media" | "info">("summary");
 
-  useEffect(() => setFilters((current) => ({ ...current, platform: lockedPlatform || current.platform })), [lockedPlatform]);
+  useEffect(() => {
+    setFilters((current) => ({ ...current, platform: lockedPlatform || current.platform }));
+    setAppliedFilters((current) => ({ ...current, platform: lockedPlatform || current.platform }));
+  }, [lockedPlatform]);
 
   useEffect(() => {
     if (!searchPostId) return;
@@ -369,6 +376,7 @@ export default function PublicationsDashboard() {
       ...current,
       q: searchPostId,
     }));
+    setAppliedFilters((current) => ({ ...current, q: searchPostId }));
   }, [searchPostId]);
 
   useEffect(() => {
@@ -384,24 +392,25 @@ export default function PublicationsDashboard() {
     setLoading(true);
     setError("");
     try {
-      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), sortBy: filters.sortBy, sortDir: filters.sortDir });
-      if (filters.q.trim()) params.set("q", filters.q.trim());
-      if (filters.status) params.set("status", filters.status);
-      if (filters.platform) params.set("platform", filters.platform);
-      if (filters.postType) params.set("postType", filters.postType);
+      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), sortBy: appliedFilters.sortBy, sortDir: appliedFilters.sortDir });
+      (Object.entries(appliedFilters) as [keyof Filters, string][]).forEach(([key, value]) => {
+        if (value && key !== "sortBy" && key !== "sortDir") params.set(key, value);
+      });
       const res = await fetch(`/api/social/posts?${params.toString()}`, { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Não foi possível carregar as publicações.");
       setPosts(Array.isArray(data?.items) ? data.items : []);
       setTotal(Number(data?.total || 0));
+      setStats({ ...stats, ...(data?.stats || {}) });
     } catch (err: any) {
       setError(err?.message || "Erro ao carregar publicações.");
       setPosts([]);
       setTotal(0);
+      setStats({ scheduled: 0, queue: 0, processing: 0, failed: 0, published: 0 });
     } finally {
       setLoading(false);
     }
-  }, [filters.platform, filters.postType, filters.q, filters.sortBy, filters.sortDir, filters.status, page, pageSize]);
+  }, [appliedFilters, page, pageSize]);
 
   const fetchCronStatus = useCallback(async () => {
     try {
@@ -438,33 +447,11 @@ export default function PublicationsDashboard() {
     return () => window.removeEventListener("keydown", handler);
   }, [fetchPosts]);
 
-  const filteredPosts = useMemo(() => {
-    const range = periodRange(filters.period, filters.dateFrom, filters.dateTo);
-    return posts.filter((post) => {
-      const text = `${post.title || ""} ${post.summary || ""} ${post.id} ${post.platform}`.toLowerCase();
-      const status = (post.status || "").toUpperCase();
-      const origin = String(post.origin || post.source || "OTHER").toUpperCase();
-      const hasError = Boolean(post.error || post.lastError || ["FAILED", "ERROR", "NEEDS_ATTENTION"].includes(status));
-      const hasMedia = Boolean(post.videoUrl || post.thumbnailUrl || post.imageUrl);
-      const dateValue = post.scheduledTo || post.postedAt || post.createdAt;
-      if (filters.q && !text.includes(filters.q.toLowerCase())) return false;
-      if (filters.status && !matchesStatusFilter(status, filters.status)) return false;
-      if (filters.platform && String(post.platform || "").toUpperCase() !== String(filters.platform).toUpperCase()) return false;
-      if (filters.postType && String(post.postType || "").toUpperCase() !== String(filters.postType).toUpperCase()) return false;
-      if (filters.platformStatus && !matchesStatusFilter(status, filters.platformStatus)) return false;
-      if (filters.account && !(post.accountName || post.integrationAccountName || "").toLowerCase().includes(filters.account.toLowerCase())) return false;
-      if (filters.origin && origin !== filters.origin) return false;
-      if (filters.media === "with" && !hasMedia) return false;
-      if (filters.media === "without" && hasMedia) return false;
-      if (filters.errors === "with" && !hasError) return false;
-      if (filters.errors === "without" && hasError) return false;
-      if (range.from && dateValue && new Date(dateValue) < new Date(`${range.from}T00:00:00`)) return false;
-      if (range.to && dateValue && new Date(dateValue) > new Date(`${range.to}T23:59:59`)) return false;
-      return true;
-    });
-  }, [filters, posts]);
+  // The API has already applied every filter before pagination. Keep this alias
+  // so selection and bulk actions can only operate on server-confirmed results.
+  const filteredPosts = posts;
 
-  const groups = useMemo(() => sortGroups(groupPosts(filteredPosts), filters), [filteredPosts, filters]);
+  const groups = useMemo(() => sortGroups(groupPosts(filteredPosts), appliedFilters), [filteredPosts, appliedFilters]);
   const visiblePostIds = useMemo(() => filteredPosts.map((post) => post.id), [filteredPosts]);
   const allVisibleSelected = visiblePostIds.length > 0 && visiblePostIds.every((id) => selectedRows.includes(id));
   const explicitSelectedGroup = useMemo(() => groups.find((group) => group.id === selectedId) || null, [groups, selectedId]);
@@ -479,16 +466,12 @@ export default function PublicationsDashboard() {
     setDetailsTab("summary");
   }, [focusPostId, groups]);
 
-  const kpis = useMemo(() => {
-    const statuses = posts.map((post) => (post.status || "").toUpperCase());
-    return {
-      scheduled: statuses.filter((status) => status === "SCHEDULED").length,
-      queue: statuses.filter((status) => ["QUEUED", "DRAFT"].includes(status)).length,
-      processing: statuses.filter((status) => ["PROCESSING", "PROCESSING_MEDIA", "PUBLISHING", "AWAITING_API"].includes(status)).length,
-      failed: statuses.filter((status) => ["FAILED", "ERROR", "NEEDS_ATTENTION"].includes(status)).length,
-      published: statuses.filter((status) => status === "PUBLISHED").length,
-    };
-  }, [posts]);
+  const filtersChanged = JSON.stringify(filters) !== JSON.stringify(appliedFilters);
+  function applyFilters(next = filters) {
+    setPage(1);
+    setSelectedRows([]);
+    setAppliedFilters(next);
+  }
 
   async function updatePost(post: SocialPost, changes: Partial<SocialPost>, success: string) {
     setRunningId(post.id);
@@ -703,13 +686,13 @@ export default function PublicationsDashboard() {
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 min-[1800px]:grid-cols-5">
               {[
-                ["Agendados", kpis.scheduled, Calendar, "text-indigo-600 bg-indigo-50"],
-                ["Em fila", kpis.queue, Clock3, "text-amber-600 bg-amber-50"],
-                ["Processando", kpis.processing, Loader2, "text-blue-600 bg-blue-50"],
-                ["Falhas", kpis.failed, AlertTriangle, "text-rose-600 bg-rose-50"],
-                ["Publicados", kpis.published, Send, "text-emerald-600 bg-emerald-50"],
-              ].map(([label, value, Icon, color]) => (
-                <div key={String(label)} className="rounded-2xl border border-slate-200 bg-white p-4">
+                ["Agendados", stats.scheduled, "SCHEDULED", Calendar, "text-indigo-600 bg-indigo-50"],
+                ["Em fila", stats.queue, "QUEUED", Clock3, "text-amber-600 bg-amber-50"],
+                ["Processando", stats.processing, "PROCESSING", Loader2, "text-blue-600 bg-blue-50"],
+                ["Falhas", stats.failed, "FAILED", AlertTriangle, "text-rose-600 bg-rose-50"],
+                ["Publicados", stats.published, "PUBLISHED", Send, "text-emerald-600 bg-emerald-50"],
+              ].map(([label, value, status, Icon, color]) => (
+                <button key={String(label)} type="button" onClick={() => { const next = { ...filters, status: String(status) }; setFilters(next); applyFilters(next); }} className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50/30 focus:outline-none focus:ring-2 focus:ring-indigo-400" title={`Mostrar ${String(label).toLowerCase()}`}>
                   <div className="flex items-center gap-3">
                     <span className={`flex h-10 w-10 items-center justify-center rounded-2xl ${color}`}>
                       {React.createElement(Icon as any, { className: "h-5 w-5" })}
@@ -719,7 +702,7 @@ export default function PublicationsDashboard() {
                       <p className="text-2xl font-black">{value as number}</p>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -746,6 +729,13 @@ export default function PublicationsDashboard() {
                 <option value="week">Últimos 7 dias</option>
                 <option value="month">Último mês</option>
                 <option value="custom">Personalizado</option>
+              </select>
+
+              <select className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold" value={filters.dateField} onChange={(event) => setFilters((current) => ({ ...current, dateField: event.target.value as Filters["dateField"] }))}>
+                <option value="relevant">Data relevante</option>
+                <option value="scheduled">Data agendada</option>
+                <option value="published">Data publicada</option>
+                <option value="created">Data de criação</option>
               </select>
 
               <select className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold" value={filters.platform} disabled={Boolean(lockedPlatform)} onChange={(event) => setFilters((current) => ({ ...current, platform: event.target.value }))}>
@@ -811,6 +801,10 @@ export default function PublicationsDashboard() {
             ) : null}
 
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
+              <button className={actionButtonClass("primary")} onClick={() => applyFilters()} disabled={loading}>
+                <Filter className="mr-2 inline h-4 w-4" />
+                {filtersChanged ? "Aplicar filtro" : "Filtrar"}
+              </button>
               <button className={`${actionButtonClass()} justify-center`} onClick={saveFilter}>
                 <Filter className="mr-2 inline h-4 w-4" />
                 Salvar filtro
