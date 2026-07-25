@@ -553,7 +553,7 @@ export default function PublicationsDashboard() {
   return (
     <main className="min-h-screen bg-[#f6f8fc] px-3 py-4 text-slate-900 sm:px-5 lg:px-6">
       <ToastContainer position="top-right" autoClose={3000} />
-      <section className="mx-auto grid max-w-[1720px] gap-5 2xl:grid-cols-[minmax(0,1fr)_420px]">
+      <section className="mx-auto grid max-w-[1720px] gap-5 min-[1800px]:grid-cols-[minmax(0,1fr)_420px]">
         <div className="min-w-0 space-y-5">
           <div className="rounded-[24px] border border-slate-200 bg-white/90 p-5 shadow-sm">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -587,7 +587,7 @@ export default function PublicationsDashboard() {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 min-[1800px]:grid-cols-5">
               {[
                 ["Agendados", kpis.scheduled, Calendar, "text-indigo-600 bg-indigo-50"],
                 ["Em fila", kpis.queue, Clock3, "text-amber-600 bg-amber-50"],
@@ -611,7 +611,7 @@ export default function PublicationsDashboard() {
           </div>
 
           <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-[minmax(220px,1.2fr)_repeat(7,minmax(120px,0.7fr))]">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-[1800px]:grid-cols-[minmax(220px,1.2fr)_repeat(7,minmax(120px,0.7fr))]">
               <label className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
@@ -654,7 +654,7 @@ export default function PublicationsDashboard() {
                 <option value="FAILED">Falhou</option>
               </select>
 
-              <select className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold" value={filters.platformStatus} onChange={(event) => setFilters((current) => ({ ...current, platformStatus: event.target.value }))}>
+              <select className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold" value={filters.platformStatus} onChange={(event) => setFilters((current) => ({ ...current, platformStatus: event.target.value }))}>
                 <option value="">Status plataforma</option>
                 <option value="SCHEDULED">Agendado</option>
                 <option value="PROCESSING">Processando</option>
@@ -854,7 +854,7 @@ export default function PublicationsDashboard() {
         />
 
         {selectedId && (
-          <div className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-sm 2xl:hidden" onClick={() => setSelectedId(null)}>
+          <div className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-sm min-[1800px]:hidden" onClick={() => setSelectedId(null)}>
             <div className="absolute inset-y-0 right-0 w-full max-w-[440px] overflow-y-auto bg-white p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()}>
               <PublicationDetails
                 group={explicitSelectedGroup}
@@ -916,7 +916,7 @@ function PublicationDetails({
       className={
         variant === "drawer"
           ? "block"
-          : "sticky top-4 hidden h-[calc(100vh-2rem)] overflow-y-auto rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm 2xl:block"
+          : "sticky top-4 hidden h-[calc(100vh-2rem)] overflow-y-auto rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm min-[1800px]:block"
       }
     >
       {!group || !primary ? (
