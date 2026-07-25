@@ -1445,6 +1445,35 @@ export async function runShopeePipelineOnce(params?: { origin?: string }) {
       const startedAt = now();
       const attempt = await nextAttemptForStep(item.id, stepName);
 
+      // Manual videos receive the affiliate URL during registration and skip the
+      // legacy AFFILIATE_LINK_READY state. Guarantee the sales wall entry here,
+      // before any social post can be scheduled, so the Reel never precedes /bio.
+      if (item.inputMode === "MANUAL_VIDEO") {
+        const existingBio = await prisma.bioProduct.findUnique({ where: { coletaId: item.id }, select: { id: true } });
+        if (!existingBio) {
+          const title = String(item.titulo || "Produto Shopee").trim() || "Produto Shopee";
+          const affiliateUrl = String(item.affiliateUrl || "").trim();
+          if (!affiliateUrl) throw new Error("Link de afiliado ausente no cadastro manual; não é seguro agendar sem a Bio.");
+          const slug = `${slugify(title) || "produto"}-${item.id.slice(-6)}`;
+          const imageUrl = item.mediaImageUrls?.[0] ? String(item.mediaImageUrls[0]).trim() : null;
+          const videoUrl = String(item.videoFinalUrl || item.mediaVideoUrls?.[0] || "").trim() || null;
+          await prisma.bioProduct.create({
+            data: {
+              coletaId: item.id,
+              slug,
+              title,
+              description: String(item.descricao || item.aiPromptVendas || title).trim().slice(0, 2000) || title,
+              imageUrl,
+              videoUrl,
+              affiliateUrl,
+              active: true,
+              publishedAt: now(),
+            },
+          });
+          await logPipelineEvent({ coletaId: item.id, stepName: "CREATE_BIO_PRODUCT", message: "BioProduct criado a partir do link informado no cadastro manual.", metadata: { slug } });
+        }
+      }
+
       const runContentArticlesStep = async () => {
         const contentStartedAt = now();
         const contentAttempt = await nextAttemptForStep(item.id, contentStepName);
