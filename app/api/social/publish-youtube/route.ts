@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
       clientId: settings.apiKey,
       clientSecret: settings.apiSecret,
       redirectUri,
+      thumbnailUrl: socialPost.thumbUrl,
     });
 
     const postUrl = `https://www.youtube.com/watch?v=${videoId}`;

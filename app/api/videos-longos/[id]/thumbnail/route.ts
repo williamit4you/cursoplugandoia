@@ -1,0 +1,4 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { LONG_FORM_PROJECT_TYPE, createFreeThumbnail, parseLongFormMetadata } from "@/lib/longFormMarketing";
+export async function POST(req: NextRequest, ctx: { params: { id: string } }) { const project = await prisma.codeVideoProject.findFirst({ where: { id: ctx.params.id, projectType: LONG_FORM_PROJECT_TYPE } }); if (!project) return NextResponse.json({ error: "Nao encontrado" }, { status: 404 }); const body = await req.json().catch(() => ({})); const title = String(body.title || project.title || project.ideaPrompt); const url = await createFreeThumbnail(project.id, title, parseLongFormMetadata(project.metadataJson)); return NextResponse.json(await prisma.codeVideoProject.update({ where: { id: project.id }, data: { title: title.slice(0, 100), thumbUrl: url } })); }

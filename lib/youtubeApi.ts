@@ -10,6 +10,7 @@ export async function publishYouTubeVideo({
   clientId,
   clientSecret,
   redirectUri,
+  thumbnailUrl,
 }: {
   title: string;
   description: string;
@@ -19,6 +20,7 @@ export async function publishYouTubeVideo({
   clientId: string;
   clientSecret: string;
   redirectUri: string;
+  thumbnailUrl?: string | null;
 }) {
   const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
   // Não confie em `access_token` persistido (pode estar expirado e sem `expiry_date`).
@@ -54,7 +56,16 @@ export async function publishYouTubeVideo({
     },
   });
 
-  return res.data.id;
+  const videoId = res.data.id;
+  if (!videoId) throw new Error("YouTube nao retornou o ID do video publicado");
+  if (!videoId) throw new Error("YouTube nao retornou o ID do video publicado");
+  if (videoId && thumbnailUrl) {
+    const thumb = await fetch(thumbnailUrl);
+    if (!thumb.ok || !thumb.body) throw new Error(`Falha ao baixar thumbnail: ${thumb.status}`);
+    await youtube.thumbnails.set({ videoId, media: { body: Readable.fromWeb(thumb.body as any) } });
+  }
+
+  return videoId;
 }
 
 export async function getYouTubeVideoViews({

@@ -1,0 +1,7 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { LONG_FORM_PROJECT_TYPE, parseLongFormMetadata } from "@/lib/longFormMarketing";
+export const dynamic = "force-dynamic";
+async function read(id: string) { return prisma.codeVideoProject.findFirst({ where: { id, projectType: LONG_FORM_PROJECT_TYPE }, include: { socialPosts: { orderBy: { createdAt: "desc" } }, pipelineEvents: { orderBy: { createdAt: "desc" }, take: 30 } } }); }
+export async function GET(_: NextRequest, ctx: { params: { id: string } }) { const project = await read(ctx.params.id); return project ? NextResponse.json(project) : NextResponse.json({ error: "Nao encontrado" }, { status: 404 }); }
+export async function PATCH(req: NextRequest, ctx: { params: { id: string } }) { const project = await read(ctx.params.id); if (!project) return NextResponse.json({ error: "Nao encontrado" }, { status: 404 }); const body = await req.json(); const meta = parseLongFormMetadata(project.metadataJson); const data: any = {}; if (body.title != null) data.title = String(body.title).slice(0, 100); if (body.description != null) data.description = String(body.description).slice(0, 4500); if (body.narrationText != null) data.narrationText = String(body.narrationText); if (body.metadata) data.metadataJson = JSON.stringify({ ...meta, ...body.metadata }); return NextResponse.json(await prisma.codeVideoProject.update({ where: { id: project.id }, data })); }
