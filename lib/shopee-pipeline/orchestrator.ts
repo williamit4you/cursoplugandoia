@@ -67,10 +67,12 @@ function buildStorySocialSummary(params: {
   description: string;
   affiliateUrl: string;
 }) {
-  const parts = [params.title.trim(), params.description.trim(), params.affiliateUrl.trim()]
+  // Legacy fallback used only when platform metadata is unavailable. URLs are
+  // deliberately omitted because Instagram captions should direct people to Bio.
+  return [params.title.trim(), params.description.trim(), "Confira os detalhes no link da bio."]
     .filter(Boolean)
-    .map((value, index) => (index === 2 ? `Produto com desconto (link de afiliado): ${value}` : value));
-  return parts.join("\n\n").slice(0, 1800);
+    .join("\n\n")
+    .slice(0, 1800);
 }
 
 async function ensureStorySocialPosts(params: {

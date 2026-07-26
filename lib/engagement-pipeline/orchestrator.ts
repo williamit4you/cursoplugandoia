@@ -36,10 +36,12 @@ function buildStorySocialSummary(params: {
   description: string;
   affiliateUrl: string;
 }) {
-  const parts = [params.title.trim(), params.description.trim(), params.affiliateUrl.trim()]
+  // This is a legacy contingency path. Never expose an affiliate URL or label
+  // in an Instagram-ready caption.
+  return [params.title.trim(), params.description.trim(), "Confira os detalhes no link da bio."]
     .filter(Boolean)
-    .map((value, index) => (index === 2 ? `Produto com desconto (link de afiliado): ${value}` : value));
-  return parts.join("\n\n").slice(0, 1800);
+    .join("\n\n")
+    .slice(0, 1800);
 }
 
 async function ensureStorySocialPosts(params: {

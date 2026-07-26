@@ -65,6 +65,13 @@ function ensureHashtags(value: unknown, fallbackSource: string, max: number) {
   return extractKeywords(fallbackSource, max);
 }
 
+function ensureInstagramHashtags(value: unknown, fallbackSource: string) {
+  const specific = normalizeHashtags(value, 8);
+  const keywordTags = extractKeywords(fallbackSource, 8);
+  const discoveryTags = ["#achadosshopee", "#dicasdecompra", "#comprasonline", "#achadinhos"];
+  return Array.from(new Set([...specific, ...keywordTags, ...discoveryTags])).slice(0, 8);
+}
+
 function buildYoutubeDescription(params: {
   baseDescription: string;
   caption: string;
@@ -114,7 +121,10 @@ function readPlatform(
     return { platform, title: safeTitle, caption, hashtags: safeHashtags, cta: safeCta, description };
   }
 
-  const safeHashtags = ensureHashtags(value?.hashtags, `${fallback.title} ${caption} ${fallback.productDescription}`, platform === "INSTAGRAM" ? 8 : 5);
+  const safeHashtags =
+    platform === "INSTAGRAM"
+      ? ensureInstagramHashtags(value?.hashtags, `${fallback.title} ${caption} ${fallback.productDescription}`)
+      : ensureHashtags(value?.hashtags, `${fallback.title} ${caption} ${fallback.productDescription}`, 5);
   const safeCta = ensureBioCta(cta);
   const description = `${caption}\n\n${safeHashtags.join(" ")}\n\n${safeCta}`.replace(/\n{3,}/g, "\n\n").trim();
   if (/https?:\/\//i.test(description)) {
@@ -157,8 +167,17 @@ export async function generateManualPlatformMetadata(params: {
           content: JSON.stringify({
             task: "Gere JSON com as chaves TIKTOK, INSTAGRAM e YOUTUBE. Cada chave deve conter title, caption, hashtags (array), cta e description.",
             rules: {
+              copywriting: [
+                "Você é um copywriter brasileiro sênior. Escreva em português do Brasil impecável, natural e humano.",
+                "Use apenas benefícios e características comprováveis pela descrição; transforme especificações em utilidade para a pessoa.",
+                "Jamais comece com 'Compre', 'Aproveite', 'Produto', o título bruto, nem use linguagem de anúncio genérica.",
+                "Não escreva 'link de afiliado', 'link afiliado', 'produto com desconto' ou qualquer aviso sobre comissão.",
+                "Não copie nem resuma a descrição do anúncio em bloco: escreva uma nova copy, fluida e objetiva.",
+              ],
+              instagram_standard:
+                "Para INSTAGRAM, entregue uma legenda com dois parágrafos curtos: abra com um gancho natural de situação, desejo ou problema real; em seguida mostre 2 ou 3 benefícios factuais e concretos. Finalize com um CTA leve, por exemplo 'Veja os detalhes no link da bio'. Não inclua URL. Hashtags: de 5 a 8, sem repetições, combinando intenção de compra, categoria, material/uso do produto e descoberta. Evite hashtags vazias ou excessivamente genéricas.",
               TIKTOK: "Legenda curta com 3 a 5 hashtags específicas. Não inclua URL. CTA obrigatório: link na bio.",
-              INSTAGRAM: "Legenda curta ou média com 3 a 8 hashtags específicas. Não inclua URL. CTA obrigatório: link na bio.",
+              INSTAGRAM: "Legenda curta ou média com 5 a 8 hashtags específicas. Não inclua URL. CTA obrigatório: link na bio.",
               YOUTUBE: "Título SEO claro (até 100 caracteres), descrição útil e o link de afiliado literal na primeira linha. Até 3 hashtags relevantes.",
               price: priceText ? `Você pode citar somente este preço/oferta informado: ${priceText}` : "Não mencione preço ou promoção.",
             },
