@@ -4,6 +4,7 @@ import { LONG_FORM_PROJECT_TYPE } from "@/lib/longFormMarketing";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 2100;
 
 async function invoke(origin: string, path: string, body?: unknown) {
   const response = await fetch(`${origin}${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), cache: "no-store", signal: AbortSignal.timeout(1000 * 60 * 35) });

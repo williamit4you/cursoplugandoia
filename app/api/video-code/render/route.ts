@@ -13,6 +13,7 @@ import { ensureNewsSocialPostsForProject } from "@/lib/newsSocialQueue";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 2100;
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -170,7 +171,7 @@ async function renderWithExternalService(params: {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
-    signal: AbortSignal.timeout(1000 * 60 * 20),
+    signal: AbortSignal.timeout(1000 * 60 * 35),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -364,6 +365,8 @@ export async function POST(req: NextRequest) {
       : await renderWithExternalService({
           projectId,
           project: {
+            projectType: project.projectType,
+            videoDurationSec: project.videoDurationSec,
             aspectRatio: project.aspectRatio,
             fps: project.fps,
             narrationText: project.narrationText,
@@ -374,6 +377,8 @@ export async function POST(req: NextRequest) {
           videoSpec,
         });
 
+    const actualDurationSec = Number((result as any).durationSec);
+    const metadata = safeJsonParse(project.metadataJson || "") || {};
     const updated = await prisma.codeVideoProject.update({
       where: { id: projectId },
       data: {
@@ -383,6 +388,9 @@ export async function POST(req: NextRequest) {
         captionsUrl: result.captionsUrl || project.captionsUrl,
         renderProgress: 100,
         errorMessage: null,
+        ...(project.projectType === "LONG_FORM_MARKETING" && Number.isFinite(actualDurationSec)
+          ? { metadataJson: JSON.stringify({ ...metadata, actualDurationSec }) }
+          : {}),
       },
     });
 

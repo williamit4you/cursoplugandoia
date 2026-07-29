@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { LONG_FORM_MODEL, LONG_FORM_PROJECT_TYPE, createFreeThumbnail, findPexelsAssets, parseLongFormMetadata } from "@/lib/longFormMarketing";
+import { LONG_FORM_MODEL, LONG_FORM_PROJECT_TYPE, LONG_FORM_TARGET_DURATION_SEC, createFreeThumbnail, findPexelsAssets, parseLongFormMetadata } from "@/lib/longFormMarketing";
 import { logCodeVideoPipelineEvent, upsertCodeVideoPipelineStep } from "@/lib/video-code/logger";
 
 export const dynamic = "force-dynamic";
-const TARGET_DURATION_SEC = 600;
+const TARGET_DURATION_SEC = LONG_FORM_TARGET_DURATION_SEC;
 const MIN_NARRATION_WORDS = 1_550;
 const MAX_NARRATION_WORDS = 1_700;
 function object(text: string) { try { return JSON.parse(text); } catch { const a = text.indexOf("{"); const b = text.lastIndexOf("}"); if (a >= 0 && b > a) try { return JSON.parse(text.slice(a, b + 1)); } catch {} return null; } }

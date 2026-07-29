@@ -828,7 +828,7 @@ export default function PublicationsDashboard() {
 
             <label className="mt-3 flex w-fit items-center gap-2 text-xs font-bold text-slate-600">
               <Calendar className="h-4 w-4 text-indigo-600" />
-              SerÃ¡ postado em
+              Será postado em
               <input
                 type="date"
                 value={filters.scheduledDate}
@@ -938,7 +938,7 @@ export default function PublicationsDashboard() {
                     <th className="px-4 py-3">Status geral</th>
                     <th className="px-4 py-3">
                       <button className="inline-flex items-center gap-1" onClick={() => setFilters((current) => ({ ...current, sortBy: "scheduledTo", sortDir: current.sortDir === "asc" ? "desc" : "asc" }))}>
-                        SerÃ¡ postado em <ArrowDownUp className="h-3 w-3" />
+                        Será postado em <ArrowDownUp className="h-3 w-3" />
                       </button>
                     </th>
                     <th className="px-4 py-3">Atualizado em</th>

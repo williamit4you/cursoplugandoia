@@ -1,6 +1,12 @@
 import path from "path";
 import { config } from "dotenv";
+import { execFile } from "child_process";
+import { promisify } from "util";
 config({ path: path.resolve(process.cwd(), "..", ".env") });
+
+const execFileAsync = promisify(execFile);
+const LONG_FORM_PROJECT_TYPE = "LONG_FORM_MARKETING";
+const LONG_FORM_MIN_DURATION_SEC = 300;
 
 import http from "http";
 import fs from "fs/promises";
@@ -18,6 +24,8 @@ import { mercadoLivreBrowserImages, mercadoLivreBrowserSearch } from "./mercadol
 type RenderRequest = {
   projectId: string;
   project: {
+    projectType?: string | null;
+    videoDurationSec?: number | null;
     aspectRatio?: string | null;
     fps?: number | null;
     narrationText?: string | null;
@@ -120,6 +128,13 @@ function totalDurationInFramesFromSpec(videoSpec: any, fps: number) {
     frames += sceneFrames;
   }
   return Math.max(1, frames);
+}
+
+async function mediaDurationSec(filePath: string) {
+  const { stdout } = await execFileAsync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filePath]);
+  const duration = Number.parseFloat(stdout.trim());
+  if (!Number.isFinite(duration) || duration <= 0) throw new Error("ffprobe nao retornou uma duracao valida");
+  return duration;
 }
 
 function normalizeShopeeText(value: unknown) {
@@ -507,6 +522,10 @@ async function renderProject(payload: RenderRequest) {
 
       const fps = project.fps || 30;
       const durationInFrames = totalDurationInFramesFromSpec(videoSpec, fps);
+      const plannedDurationSec = durationInFrames / fps;
+      if (project.projectType === LONG_FORM_PROJECT_TYPE && plannedDurationSec < LONG_FORM_MIN_DURATION_SEC) {
+        throw new Error(`Video longo bloqueado: timeline de ${Math.round(plannedDurationSec)}s; minimo de ${LONG_FORM_MIN_DURATION_SEC}s.`);
+      }
       const composition = { ...comp, fps, durationInFrames };
 
       await renderMedia({
@@ -517,6 +536,11 @@ async function renderProject(payload: RenderRequest) {
         inputProps: { videoSpec, audioUrl, transcription },
         browserExecutable: browserPath,
       });
+
+      const actualDurationSec = await mediaDurationSec(localMp4);
+      if (project.projectType === LONG_FORM_PROJECT_TYPE && actualDurationSec < LONG_FORM_MIN_DURATION_SEC) {
+        throw new Error(`Video longo bloqueado: MP4 final com ${Math.round(actualDurationSec)}s; minimo de ${LONG_FORM_MIN_DURATION_SEC}s.`);
+      }
 
       const buffer = await fs.readFile(localMp4);
       const key = `code-video-${projectId}.mp4`;
@@ -534,6 +558,7 @@ async function renderProject(payload: RenderRequest) {
         projectId,
         audioUrl,
         videoUrl: `${publicBase}/${key}`,
+        durationSec: actualDurationSec,
       };
     } finally {
       await removeIfExists(localMp4);
