@@ -58,11 +58,15 @@ export async function publishYouTubeVideo({
 
   const videoId = res.data.id;
   if (!videoId) throw new Error("YouTube nao retornou o ID do video publicado");
-  if (!videoId) throw new Error("YouTube nao retornou o ID do video publicado");
-  if (videoId && thumbnailUrl) {
-    const thumb = await fetch(thumbnailUrl);
-    if (!thumb.ok || !thumb.body) throw new Error(`Falha ao baixar thumbnail: ${thumb.status}`);
-    await youtube.thumbnails.set({ videoId, media: { body: Readable.fromWeb(thumb.body as any) } });
+  if (thumbnailUrl) {
+    try {
+      const thumb = await fetch(thumbnailUrl);
+      if (!thumb.ok || !thumb.body) throw new Error(`Falha ao baixar thumbnail: ${thumb.status}`);
+      await youtube.thumbnails.set({ videoId, media: { body: Readable.fromWeb(thumb.body as any) } });
+    } catch (error) {
+      // O vídeo já foi enviado. Falha na miniatura não deve marcar a publicação como falha.
+      console.warn("Não foi possível aplicar a miniatura do YouTube", error);
+    }
   }
 
   return videoId;

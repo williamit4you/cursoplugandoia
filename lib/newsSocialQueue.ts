@@ -7,7 +7,8 @@ import { logCodeVideoPipelineEvent, upsertCodeVideoPipelineStep } from "@/lib/vi
 import { withCampaignTracking } from "@/lib/trackingLinks";
 
 function normalizeSocialPlatforms(value: unknown) {
-  const allowed = new Set(["YOUTUBE", "INSTAGRAM", "TIKTOK", "LINKEDIN"]);
+  // Meta/Instagram is intentionally excluded from automatic news publishing.
+  const allowed = new Set(["YOUTUBE", "TIKTOK", "LINKEDIN"]);
   const raw = Array.isArray(value) ? value : [];
   const platforms = raw
     .map((item) => String(item || "").toUpperCase())
@@ -17,8 +18,9 @@ function normalizeSocialPlatforms(value: unknown) {
 
 function desiredNewsPlatforms(rawPlatforms: unknown, variant: string) {
   const preferred = normalizeSocialPlatforms(rawPlatforms);
-  const base = variant === "BROLL" ? ["YOUTUBE"] : ["TIKTOK", "YOUTUBE", "INSTAGRAM"];
-  return Array.from(new Set([...base, ...preferred]));
+  // Do not infer platforms here. This function is run by the cron as a
+  // reconciliation step, so defaults here could resurrect a cancelled queue.
+  return preferred;
 }
 
 function buildNewsSocialSummary(project: {

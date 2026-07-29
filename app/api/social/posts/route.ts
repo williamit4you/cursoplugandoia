@@ -155,6 +155,7 @@ export async function GET(req: NextRequest) {
     const errors = searchParams.get("errors") || "";
     const dateField = searchParams.get("dateField") || "relevant";
     const range = dateRange(searchParams);
+    const scheduledDate = searchParams.get("scheduledDate") || "";
 
     const where: any = {};
     if (platform && platform !== "ALL") where.platform = platform;
@@ -242,7 +243,9 @@ export async function GET(req: NextRequest) {
         && (!account || textAccount.includes(account))
         && (!media || (media === "with" ? hasMedia : !hasMedia))
         && (!errors || (errors === "with" ? hasError : !hasError))
-        && inDateRange(dateFor(item, dateField), range);
+        && inDateRange(dateFor(item, dateField), range)
+        // Exact calendar-day filter for the actual planned publication date.
+        && (!scheduledDate || inDateRange(item.scheduledTo, { from: scheduledDate, to: scheduledDate }));
     };
 
     const contextualItems = enrichedItems.filter((item) => matches(item, false));

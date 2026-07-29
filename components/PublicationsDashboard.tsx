@@ -91,6 +91,7 @@ type Filters = {
   period: "all" | "today" | "week" | "month" | "custom";
   dateFrom: string;
   dateTo: string;
+  scheduledDate: string;
   platform: string;
   postType: string;
   status: string;
@@ -109,6 +110,7 @@ const DEFAULT_FILTERS: Filters = {
   period: "all",
   dateFrom: "",
   dateTo: "",
+  scheduledDate: "",
   platform: "",
   postType: "",
   status: "",
@@ -757,7 +759,7 @@ export default function PublicationsDashboard() {
 
               <select className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold" value={filters.dateField} onChange={(event) => setFilters((current) => ({ ...current, dateField: event.target.value as Filters["dateField"] }))}>
                 <option value="relevant">Data relevante</option>
-                <option value="scheduled">Data agendada</option>
+                <option value="scheduled">SerÃ¡ postado em</option>
                 <option value="published">Data publicada</option>
                 <option value="created">Data de criação</option>
               </select>
@@ -823,6 +825,17 @@ export default function PublicationsDashboard() {
                 <input type="date" value={filters.dateTo} onChange={(event) => setFilters((current) => ({ ...current, dateTo: event.target.value }))} className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold" />
               </div>
             ) : null}
+
+            <label className="mt-3 flex w-fit items-center gap-2 text-xs font-bold text-slate-600">
+              <Calendar className="h-4 w-4 text-indigo-600" />
+              SerÃ¡ postado em
+              <input
+                type="date"
+                value={filters.scheduledDate}
+                onChange={(event) => setFilters((current) => ({ ...current, scheduledDate: event.target.value }))}
+                className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold"
+              />
+            </label>
 
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
               <button className={actionButtonClass("primary")} onClick={() => applyFilters()} disabled={loading}>
@@ -925,7 +938,7 @@ export default function PublicationsDashboard() {
                     <th className="px-4 py-3">Status geral</th>
                     <th className="px-4 py-3">
                       <button className="inline-flex items-center gap-1" onClick={() => setFilters((current) => ({ ...current, sortBy: "scheduledTo", sortDir: current.sortDir === "asc" ? "desc" : "asc" }))}>
-                        Data agendada <ArrowDownUp className="h-3 w-3" />
+                        SerÃ¡ postado em <ArrowDownUp className="h-3 w-3" />
                       </button>
                     </th>
                     <th className="px-4 py-3">Atualizado em</th>
