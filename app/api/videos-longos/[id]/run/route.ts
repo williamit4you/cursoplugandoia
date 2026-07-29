@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { LONG_FORM_PROJECT_TYPE } from "@/lib/longFormMarketing";
+import { LONG_FORM_PROJECT_TYPE, parseLongFormMetadata } from "@/lib/longFormMarketing";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,8 +18,14 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
   if (!project) return NextResponse.json({ error: "Nao encontrado" }, { status: 404 });
   const origin = new URL(req.url).origin;
   try {
-    await prisma.codeVideoProject.update({ where: { id: project.id }, data: { status: "GENERATING", errorMessage: null } });
-    await invoke(origin, `/api/videos-longos/${project.id}/plan`);
+    if (!project.videoSpecJson) {
+      await prisma.codeVideoProject.update({ where: { id: project.id }, data: { status: "GENERATING", errorMessage: null } });
+      await invoke(origin, `/api/videos-longos/${project.id}/plan`);
+    }
+    const reviewed = await prisma.codeVideoProject.findUnique({ where: { id: project.id } });
+    if (!reviewed || !parseLongFormMetadata(reviewed.metadataJson).planningApproved) {
+      return NextResponse.json({ error: "Roteiro pronto para revisao. Aprove o planejamento antes de renderizar e agendar." }, { status: 409 });
+    }
     await invoke(origin, "/api/video-code/render", { projectId: project.id });
     const scheduled = await invoke(origin, `/api/videos-longos/${project.id}/schedule`, { approve: true });
     return NextResponse.json(scheduled);
