@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import http from "node:http";
+import https from "node:https";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
@@ -146,6 +148,48 @@ function externalRenderServiceUrl() {
   return value ? value.replace(/\/+$/, "") : "";
 }
 
+function postLongRunningJson(
+  urlValue: string,
+  payload: unknown,
+  timeoutMs: number,
+): Promise<{ status: number; text: string }> {
+  return new Promise((resolve, reject) => {
+    const url = new URL(urlValue);
+    const body = JSON.stringify(payload);
+    const transport = url.protocol === "https:" ? https : http;
+    const request = transport.request(
+      url,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+        },
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+        response.on("end", () =>
+          resolve({
+            status: response.statusCode || 500,
+            text: Buffer.concat(chunks).toString("utf8"),
+          }),
+        );
+      },
+    );
+
+    request.setTimeout(timeoutMs, () => {
+      request.destroy(
+        new Error(
+          `O servico de render nao respondeu em ${Math.round(timeoutMs / 60_000)} minutos.`,
+        ),
+      );
+    });
+    request.on("error", reject);
+    request.end(body);
+  });
+}
+
 async function downloadUrlToBuffer(url: string) {
   const res = await fetch(url, {
     cache: "no-store",
@@ -167,15 +211,22 @@ async function renderWithExternalService(params: {
     throw new Error("VIDEO_RENDER_SERVICE_URL not configured");
   }
 
-  const res = await fetch(`${baseUrl}/render`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-    signal: AbortSignal.timeout(1000 * 60 * 35),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data?.error || `Render service failed (HTTP ${res.status})`);
+  const response = await postLongRunningJson(
+    `${baseUrl}/render`,
+    params,
+    1000 * 60 * 35,
+  );
+  let data: any = {};
+  try {
+    data = JSON.parse(response.text || "{}");
+  } catch {
+    data = {};
+  }
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(
+      data?.error ||
+        `Render service failed (HTTP ${response.status}): ${response.text.slice(0, 500)}`,
+    );
   }
   return data;
 }

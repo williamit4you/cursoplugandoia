@@ -37,14 +37,30 @@ export async function POST(
     );
   }
 
+  let existingSpec: any = null;
+  try {
+    existingSpec = JSON.parse(project.videoSpecJson || "{}");
+  } catch {
+    existingSpec = null;
+  }
+  const existingNarrationWords = String(project.narrationText || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+  const canReusePlan =
+    existingNarrationWords >= 500 &&
+    Array.isArray(existingSpec?.scenes) &&
+    existingSpec.scenes.length > 0;
+
   try {
     await prisma.codeVideoProject.update({
       where: { id: project.id },
       data: {
         status: "GENERATING",
         errorMessage: null,
-        videoSpecJson: "{}",
-        narrationText: null,
+        ...(!canReusePlan
+          ? { videoSpecJson: "{}", narrationText: null }
+          : {}),
         videoUrl: null,
         audioUrl: null,
         captionsUrl: null,
@@ -57,10 +73,18 @@ export async function POST(
       message: "Processamento completo iniciado pelo operador.",
     });
 
-    await requireSuccess(
-      await planLongFormVideo(req, { params: { id: project.id } }),
-      "Geracao do roteiro",
-    );
+    if (canReusePlan) {
+      await logCodeVideoPipelineEvent({
+        projectId: project.id,
+        stepName: "LONG_FORM_PLAN",
+        message: `Roteiro existente reutilizado (${existingNarrationWords} palavras e ${existingSpec.scenes.length} cenas). Retomando diretamente do render.`,
+      });
+    } else {
+      await requireSuccess(
+        await planLongFormVideo(req, { params: { id: project.id } }),
+        "Geracao do roteiro",
+      );
+    }
     const planned = await prisma.codeVideoProject.findUnique({
       where: { id: project.id },
     });
