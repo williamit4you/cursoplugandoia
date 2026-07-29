@@ -2,431 +2,662 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type Project = any;
+type Project = {
+  id: string;
+  status: string;
+  title?: string | null;
+  ideaPrompt: string;
+  metadataJson: string;
+  videoUrl?: string | null;
+  thumbUrl?: string | null;
+  errorMessage?: string | null;
+  renderProgress?: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type FormState = {
+  id?: string;
+  title: string;
+  stage: "TOPO" | "MEIO" | "FUNDO";
+  subtopics: string[];
+};
 
 const MAX_SUBTOPICS = 50;
+const emptyForm = (): FormState => ({
+  title: "",
+  stage: "TOPO",
+  subtopics: [""],
+});
+
+const statusConfig: Record<
+  string,
+  { label: string; className: string }
+> = {
+  DRAFT: { label: "Rascunho", className: "bg-slate-100 text-slate-700" },
+  GENERATING: {
+    label: "Gerando roteiro",
+    className: "bg-blue-100 text-blue-700",
+  },
+  READY: {
+    label: "Roteiro pronto",
+    className: "bg-violet-100 text-violet-700",
+  },
+  RENDERING: {
+    label: "Renderizando",
+    className: "bg-amber-100 text-amber-800",
+  },
+  DONE: { label: "Concluido", className: "bg-emerald-100 text-emerald-700" },
+  FAILED: { label: "Falhou", className: "bg-red-100 text-red-700" },
+};
+
+function parseMetadata(project: Project) {
+  try {
+    return JSON.parse(project.metadataJson || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function projectTitle(project: Project) {
+  return project.title || project.ideaPrompt || "Video sem titulo";
+}
 
 export function LongFormMarketingApp() {
   const [items, setItems] = useState<Project[]>([]);
-  const [selected, setSelected] = useState<Project | null>(null);
-  const [title, setTitle] = useState("");
-  const [topics, setTopics] = useState(["", "", "", ""]);
-  const [stage, setStage] = useState("TOPO");
-  const [busy, setBusy] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [form, setForm] = useState<FormState | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("TODOS");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [processingIds, setProcessingIds] = useState<string[]>([]);
   const [notice, setNotice] = useState("");
-  const [, setInsights] = useState<any>({ items: [] });
-
-  const meta = useMemo(() => {
-    try {
-      return JSON.parse(selected?.metadataJson || "{}");
-    } catch {
-      return {};
-    }
-  }, [selected]);
+  const [error, setError] = useState("");
 
   const call = async (url: string, options?: RequestInit) => {
     const response = await fetch(url, options);
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "Falha na producao.");
+    if (!response.ok) {
+      throw new Error(data.error || "Falha na operacao.");
+    }
     return data.project || data;
   };
 
-  const load = async () => {
-    const data = await call("/api/videos-longos", { cache: "no-store" });
-    setItems(data.items || []);
-  };
-
-  const loadInsights = async () => {
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
-      setInsights(await call("/api/videos-longos/insights", { cache: "no-store" }));
-    } catch {
-      setInsights({ items: [] });
+      const data = await call("/api/videos-longos", { cache: "no-store" });
+      setItems(data.items || []);
+      setSelectedIds((current) =>
+        current.filter((id) =>
+          (data.items || []).some((item: Project) => item.id === id),
+        ),
+      );
+    } catch (loadError: any) {
+      setError(loadError.message);
+    } finally {
+      if (!silent) setLoading(false);
     }
-  };
-
-  const open = async (id: string) => {
-    setSelected(await call(`/api/videos-longos/${id}`, { cache: "no-store" }));
-    await loadInsights();
   };
 
   useEffect(() => {
     void load();
-    void loadInsights();
+    const timer = window.setInterval(() => void load(true), 5000);
+    return () => window.clearInterval(timer);
   }, []);
 
-  const addSubtopic = () => {
-    setTopics((current) =>
-      current.length < MAX_SUBTOPICS ? [...current, ""] : current,
-    );
+  const filteredItems = useMemo(() => {
+    const normalizedSearch = search.trim().toLocaleLowerCase("pt-BR");
+    return items.filter((item) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        projectTitle(item).toLocaleLowerCase("pt-BR").includes(normalizedSearch);
+      const matchesStatus =
+        statusFilter === "TODOS" || item.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [items, search, statusFilter]);
+
+  const allVisibleSelected =
+    filteredItems.length > 0 &&
+    filteredItems.every((item) => selectedIds.includes(item.id));
+
+  const openCreate = () => {
+    setError("");
+    setForm(emptyForm());
   };
 
-  const removeSubtopic = (index: number) => {
-    setTopics((current) =>
-      current.length > 4
-        ? current.filter((_, itemIndex) => itemIndex !== index)
+  const openEdit = (project: Project) => {
+    const metadata = parseMetadata(project);
+    setError("");
+    setForm({
+      id: project.id,
+      title: project.ideaPrompt || project.title || "",
+      stage: metadata.funnelStage || "TOPO",
+      subtopics:
+        Array.isArray(metadata.subtopics) && metadata.subtopics.length
+          ? metadata.subtopics
+          : [""],
+    });
+  };
+
+  const addSubtopic = () => {
+    setForm((current) =>
+      current && current.subtopics.length < MAX_SUBTOPICS
+        ? { ...current, subtopics: [...current.subtopics, ""] }
         : current,
     );
   };
 
-  const createPlan = async () => {
-    setBusy("plan");
+  const removeSubtopic = (index: number) => {
+    setForm((current) => {
+      if (!current || current.subtopics.length <= 1) return current;
+      return {
+        ...current,
+        subtopics: current.subtopics.filter(
+          (_, itemIndex) => itemIndex !== index,
+        ),
+      };
+    });
+  };
+
+  const updateSubtopic = (index: number, value: string) => {
+    setForm((current) =>
+      current
+        ? {
+            ...current,
+            subtopics: current.subtopics.map((topic, itemIndex) =>
+              itemIndex === index ? value : topic,
+            ),
+          }
+        : current,
+    );
+  };
+
+  const processProject = async (id: string) => {
+    setProcessingIds((current) =>
+      current.includes(id) ? current : [...current, id],
+    );
+    setError("");
+    setNotice("Processamento iniciado. A lista atualiza automaticamente.");
+    await load(true);
     try {
-      const project = await call("/api/videos-longos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workingTitle: title,
-          subtopics: topics,
-          funnelStage: stage,
-          externalMediaPolicy: "PEXELS_AND_UPLOADS",
-        }),
-      });
-      const planned = await call(`/api/videos-longos/${project.id}/plan`, {
-        method: "POST",
-      });
-      setSelected(planned);
-      await load();
-      setNotice(
-        "Roteiro pronto. Revise a cobertura, escolha titulo/capa e aprove antes do render.",
-      );
-    } catch (error: any) {
-      setNotice(error.message);
+      await call(`/api/videos-longos/${id}/process`, { method: "POST" });
+      setNotice("Video criado com sucesso.");
+    } catch (processError: any) {
+      setError(processError.message);
     } finally {
-      setBusy("");
+      setProcessingIds((current) =>
+        current.filter((projectId) => projectId !== id),
+      );
+      await load(true);
     }
   };
 
-  const save = async () => {
-    if (!selected) return;
-    setBusy("save");
-    try {
-      setSelected(
-        await call(`/api/videos-longos/${selected.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: selected.title,
-            description: selected.description,
-            narrationText: selected.narrationText,
-          }),
-        }),
-      );
-      await load();
-      setNotice("Revisao salva.");
-    } catch (error: any) {
-      setNotice(error.message);
-    } finally {
-      setBusy("");
+  const saveForm = async (reprocess: boolean) => {
+    if (!form) return;
+    const subtopics = form.subtopics
+      .map((topic) => topic.trim())
+      .filter(Boolean);
+    if (form.title.trim().length < 5) {
+      setError("Informe um titulo com pelo menos 5 caracteres.");
+      return;
     }
-  };
-
-  const choose = async (option: any) => {
-    if (!selected) return;
-    setBusy("choice");
-    try {
-      setSelected(
-        await call(`/api/videos-longos/${selected.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: option.title,
-            thumbUrl: option.url,
-            metadata: { selectedTitle: option.title },
-          }),
-        }),
-      );
-    } catch (error: any) {
-      setNotice(error.message);
-    } finally {
-      setBusy("");
-    }
-  };
-
-  const approveAndRender = async () => {
-    if (
-      !selected ||
-      !confirm("Aprovar roteiro, renderizar e agendar no YouTube?")
-    ) {
+    if (!subtopics.length) {
+      setError("Informe pelo menos um subtitulo.");
       return;
     }
 
-    setBusy("render");
+    setSaving(true);
+    setError("");
     try {
-      await call(`/api/videos-longos/${selected.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          metadata: { planningApproved: true, finalApproved: true },
-        }),
-      });
-      setNotice("Render e agendamento em andamento...");
-      setSelected(
-        await call(`/api/videos-longos/${selected.id}/run`, { method: "POST" }),
-      );
-      await load();
-      setNotice("Video renderizado e agendado.");
-    } catch (error: any) {
-      setNotice(`Processo interrompido: ${error.message}`);
-      await open(selected.id);
+      let project: Project;
+      if (form.id) {
+        project = await call(`/api/videos-longos/${form.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workingTitle: form.title,
+            subtopics,
+            funnelStage: form.stage,
+          }),
+        });
+        setNotice("Alteracoes salvas.");
+      } else {
+        project = await call("/api/videos-longos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workingTitle: form.title,
+            subtopics,
+            funnelStage: form.stage,
+            externalMediaPolicy: "PEXELS_AND_UPLOADS",
+          }),
+        });
+        setNotice("Video salvo como rascunho.");
+      }
+      setForm(null);
+      await load(true);
+      if (reprocess) void processProject(project.id);
+    } catch (saveError: any) {
+      setError(saveError.message);
     } finally {
-      setBusy("");
+      setSaving(false);
     }
   };
 
+  const deleteProjects = async (ids: string[]) => {
+    if (!ids.length) return;
+    if (
+      !window.confirm(
+        `Excluir ${ids.length} video(s)? Essa acao remove os registros ainda nao publicados.`,
+      )
+    ) {
+      return;
+    }
+    setError("");
+    try {
+      await call("/api/videos-longos", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      setSelectedIds([]);
+      setNotice(`${ids.length} video(s) excluido(s).`);
+      await load(true);
+    } catch (deleteError: any) {
+      setError(deleteError.message);
+    }
+  };
+
+  const toggleAllVisible = () => {
+    if (allVisibleSelected) {
+      const visibleIds = new Set(filteredItems.map((item) => item.id));
+      setSelectedIds((current) =>
+        current.filter((id) => !visibleIds.has(id)),
+      );
+      return;
+    }
+    setSelectedIds((current) =>
+      Array.from(
+        new Set([...current, ...filteredItems.map((item) => item.id)]),
+      ),
+    );
+  };
+
   return (
-    <div className="space-y-6">
-      <header className="rounded-3xl bg-gradient-to-br from-black via-zinc-900 to-red-950 p-7 text-white">
-        <p className="text-xs font-black tracking-[.25em] text-red-300">
-          PLUGANDO IA • EDUCACAO
-        </p>
-        <h1 className="mt-2 text-3xl font-black">
-          Videos Longos de Marketing
-        </h1>
-        <p className="mt-2 text-sm text-zinc-300">
-          Planeje, revise e aprove antes de renderizar. O video so agenda apos
-          confirmar roteiro, capa e duracao.
-        </p>
+    <div className="space-y-5">
+      <header className="flex flex-col gap-4 rounded-3xl bg-gradient-to-br from-slate-950 via-zinc-900 to-red-950 p-7 text-white md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-xs font-black tracking-[.25em] text-red-300">
+            PLUGANDO IA • EDUCACAO
+          </p>
+          <h1 className="mt-2 text-3xl font-black">Videos Longos</h1>
+          <p className="mt-2 text-sm text-zinc-300">
+            Crie, edite e reprocesse videos a partir de um titulo e seus
+            subtitulos.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={openCreate}
+          className="rounded-xl bg-red-600 px-5 py-3 text-sm font-black text-white shadow-lg hover:bg-red-700"
+        >
+          + Criar video
+        </button>
       </header>
 
       {notice ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
           {notice}
         </div>
       ) : null}
+      {error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+          {error}
+        </div>
+      ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <section className="rounded-3xl border bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-black">1. Planejar aula</h2>
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-slate-200 p-4 lg:flex-row lg:items-center">
           <input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Titulo-base"
-            className="mt-4 w-full rounded-xl border p-3 font-bold"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por titulo..."
+            className="min-w-0 flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-red-400"
           />
-
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {["TOPO", "MEIO", "FUNDO"].map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setStage(item)}
-                className={`rounded-xl p-2 text-xs font-black ${
-                  stage === item ? "bg-red-600 text-white" : "bg-slate-100"
-                }`}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-              <span>Subtopicos</span>
-              <span>
-                {topics.length}/{MAX_SUBTOPICS}
-              </span>
-            </div>
-
-            {topics.map((topic, index) => (
-              <div key={index} className="flex gap-2">
-                <input
-                  value={topic}
-                  onChange={(event) =>
-                    setTopics((current) =>
-                      current.map((value, itemIndex) =>
-                        itemIndex === index ? event.target.value : value,
-                      ),
-                    )
-                  }
-                  placeholder={`Subtopico ${index + 1}`}
-                  className="min-w-0 flex-1 rounded-xl border p-2.5 text-sm"
-                />
-                {topics.length > 4 ? (
-                  <button
-                    type="button"
-                    onClick={() => removeSubtopic(index)}
-                    className="rounded-xl border px-3 text-sm font-bold text-slate-500"
-                    aria-label={`Remover subtopico ${index + 1}`}
-                    title="Remover subtopico"
-                  >
-                    ×
-                  </button>
-                ) : null}
-              </div>
-            ))}
-
-            <button
-              type="button"
-              disabled={topics.length >= MAX_SUBTOPICS}
-              onClick={addSubtopic}
-              className="text-sm font-bold text-red-700 disabled:cursor-not-allowed disabled:text-slate-400"
-            >
-              + Adicionar subtopico
-            </button>
-          </div>
-
-          <button
-            disabled={Boolean(busy)}
-            onClick={createPlan}
-            className="mt-5 w-full rounded-xl bg-red-600 p-3 font-black text-white disabled:opacity-50"
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold"
           >
-            {busy === "plan" ? "Planejando..." : "Gerar roteiro para revisao"}
-          </button>
-        </section>
-
-        <section className="rounded-3xl border bg-white p-6 shadow-sm">
-          <div className="flex justify-between">
-            <h2 className="text-xl font-black">Biblioteca</h2>
-            <button onClick={load} className="text-sm font-bold text-red-700">
-              Atualizar
-            </button>
-          </div>
-          <div className="mt-4 max-h-[430px] space-y-2 overflow-auto">
-            {items.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => open(item.id)}
-                className="w-full rounded-xl border p-3 text-left hover:bg-red-50"
-              >
-                <div className="flex justify-between gap-2">
-                  <b className="text-sm">{item.title || item.ideaPrompt}</b>
-                  <span className="text-xs font-black">{item.status}</span>
-                </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  {item.socialPosts?.[0]?.scheduledTo
-                    ? `Agendado: ${new Date(item.socialPosts[0].scheduledTo).toLocaleString("pt-BR")}`
-                    : new Date(item.createdAt).toLocaleString("pt-BR")}
-                </p>
-              </button>
+            <option value="TODOS">Todos os status</option>
+            {Object.entries(statusConfig).map(([value, config]) => (
+              <option key={value} value={value}>
+                {config.label}
+              </option>
             ))}
-          </div>
-        </section>
-      </div>
+          </select>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold"
+          >
+            Atualizar
+          </button>
+          <button
+            type="button"
+            disabled={!selectedIds.length}
+            onClick={() => void deleteProjects(selectedIds)}
+            className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-bold text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Excluir selecionados ({selectedIds.length})
+          </button>
+        </div>
 
-      {selected ? (
-        <section className="rounded-3xl border bg-white p-6 shadow-sm">
-          <div className="flex flex-wrap justify-between gap-3">
-            <div>
-              <p className="text-xs font-black tracking-widest text-red-600">
-                2. REVISAO EDITORIAL
-              </p>
-              <h2 className="text-2xl font-black">
-                {selected.title || selected.ideaPrompt}
-              </h2>
-            </div>
-            <span className="rounded-full bg-black px-3 py-1 text-xs font-black text-white">
-              {selected.status}
-            </span>
-          </div>
-
-          <div className="mt-5 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <button
-                  disabled={Boolean(busy)}
-                  onClick={save}
-                  className="rounded-xl border px-4 py-2.5 text-sm font-black"
-                >
-                  Salvar revisao
-                </button>
-                <button
-                  disabled={Boolean(busy) || selected.status !== "READY"}
-                  onClick={approveAndRender}
-                  className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50"
-                >
-                  {busy === "render"
-                    ? "Renderizando..."
-                    : "Aprovar, renderizar e agendar"}
-                </button>
-              </div>
-
-              <label className="block text-xs font-bold">
-                Titulo
-                <input
-                  value={selected.title || ""}
-                  onChange={(event) =>
-                    setSelected({ ...selected, title: event.target.value })
-                  }
-                  className="mt-1 w-full rounded-xl border p-3 text-base"
-                />
-              </label>
-
-              <label className="block text-xs font-bold">
-                Roteiro
-                <textarea
-                  value={selected.narrationText || ""}
-                  onChange={(event) =>
-                    setSelected({
-                      ...selected,
-                      narrationText: event.target.value,
-                    })
-                  }
-                  className="mt-1 h-64 w-full rounded-xl border p-3 text-sm"
-                />
-              </label>
-
-              <label className="block text-xs font-bold">
-                Descricao
-                <textarea
-                  value={selected.description || ""}
-                  onChange={(event) =>
-                    setSelected({
-                      ...selected,
-                      description: event.target.value,
-                    })
-                  }
-                  className="mt-1 h-32 w-full rounded-xl border p-3 text-sm"
-                />
-              </label>
-
-              <div className="rounded-xl bg-slate-50 p-3 text-sm">
-                <b>Cobertura dos subtopicos</b>
-                <ul className="mt-2 list-disc space-y-1 pl-5">
-                  {(meta.subtopicCoverage || []).map((item: any) => (
-                    <li key={item.subtopic}>
-                      <b>{item.subtopic}:</b> {item.explanation}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <p className="text-xs text-slate-500">
-                Tags: {(meta.youtubeTags || []).join(", ")}
-              </p>
-            </div>
-
-            <aside className="space-y-4 rounded-2xl bg-slate-50 p-4">
-              <p className="text-sm font-black">Escolha titulo e thumbnail</p>
-              {(meta.thumbnailOptions || []).map((option: any) => (
-                <button
-                  key={option.url}
-                  disabled={Boolean(busy)}
-                  onClick={() => choose(option)}
-                  className={`block w-full overflow-hidden rounded-xl border text-left ${
-                    selected.thumbUrl === option.url
-                      ? "border-red-600 ring-2 ring-red-200"
-                      : "border-slate-200"
-                  }`}
-                >
-                  <img
-                    src={option.url}
-                    alt={option.title}
-                    className="aspect-video w-full object-cover"
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[980px] border-collapse text-left">
+            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="w-12 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={toggleAllVisible}
+                    aria-label="Selecionar videos visiveis"
                   />
-                  <span className="block p-2 text-xs font-bold">
-                    {option.title}
-                  </span>
-                </button>
-              ))}
-              {selected.videoUrl ? (
-                <video
-                  src={selected.videoUrl}
-                  controls
-                  className="w-full rounded-xl"
-                />
+                </th>
+                <th className="px-4 py-3">Video</th>
+                <th className="px-4 py-3">Subtitulos</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Atualizado em</th>
+                <th className="px-4 py-3 text-right">Acoes</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">
+                    Carregando videos...
+                  </td>
+                </tr>
               ) : null}
-            </aside>
+              {!loading && !filteredItems.length ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center">
+                    <p className="font-bold text-slate-700">
+                      Nenhum video encontrado.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={openCreate}
+                      className="mt-3 text-sm font-black text-red-700"
+                    >
+                      Criar o primeiro video
+                    </button>
+                  </td>
+                </tr>
+              ) : null}
+              {filteredItems.map((project) => {
+                const metadata = parseMetadata(project);
+                const subtopicCount = Array.isArray(metadata.subtopics)
+                  ? metadata.subtopics.length
+                  : 0;
+                const processing =
+                  processingIds.includes(project.id) ||
+                  ["GENERATING", "RENDERING"].includes(project.status);
+                const status =
+                  statusConfig[project.status] || statusConfig.DRAFT;
+                return (
+                  <tr key={project.id} className="hover:bg-slate-50/80">
+                    <td className="px-4 py-4 align-top">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(project.id)}
+                        onChange={() =>
+                          setSelectedIds((current) =>
+                            current.includes(project.id)
+                              ? current.filter((id) => id !== project.id)
+                              : [...current, project.id],
+                          )
+                        }
+                        aria-label={`Selecionar ${projectTitle(project)}`}
+                      />
+                    </td>
+                    <td className="max-w-[420px] px-4 py-4 align-top">
+                      <div className="flex gap-3">
+                        {project.thumbUrl ? (
+                          <img
+                            src={project.thumbUrl}
+                            alt=""
+                            className="h-14 w-24 rounded-lg border object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-14 w-24 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-400">
+                            16:9
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate font-bold text-slate-900">
+                            {projectTitle(project)}
+                          </p>
+                          {project.errorMessage ? (
+                            <p
+                              className="mt-1 line-clamp-2 text-xs text-red-600"
+                              title={project.errorMessage}
+                            >
+                              {project.errorMessage}
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-xs text-slate-500">
+                              Criado em{" "}
+                              {new Date(project.createdAt).toLocaleString(
+                                "pt-BR",
+                              )}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 align-top text-sm font-semibold text-slate-700">
+                      {subtopicCount}
+                    </td>
+                    <td className="px-4 py-4 align-top">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${status.className}`}
+                      >
+                        {status.label}
+                      </span>
+                      {project.status === "RENDERING" ? (
+                        <p className="mt-1 text-xs text-slate-500">
+                          {Math.round(Number(project.renderProgress || 0))}%
+                        </p>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-4 align-top text-sm text-slate-600">
+                      {new Date(project.updatedAt).toLocaleString("pt-BR")}
+                    </td>
+                    <td className="px-4 py-4 align-top">
+                      <div className="flex justify-end gap-2">
+                        {project.videoUrl ? (
+                          <a
+                            href={project.videoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-lg border px-3 py-2 text-xs font-bold text-emerald-700"
+                          >
+                            Ver video
+                          </a>
+                        ) : null}
+                        <button
+                          type="button"
+                          disabled={processing}
+                          onClick={() => openEdit(project)}
+                          className="rounded-lg border px-3 py-2 text-xs font-bold disabled:opacity-40"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          disabled={processing}
+                          onClick={() => void processProject(project.id)}
+                          className="rounded-lg bg-red-600 px-3 py-2 text-xs font-black text-white disabled:opacity-40"
+                        >
+                          {processing
+                            ? "Processando..."
+                            : project.status === "DRAFT"
+                              ? "Criar video"
+                              : "Reprocessar"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={processing}
+                          onClick={() => void deleteProjects([project.id])}
+                          className="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-700 disabled:opacity-40"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {form ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
+          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b px-6 py-5">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">
+                  {form.id ? "Editar video" : "Criar video longo"}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Informe o titulo e os assuntos que devem ser explicados.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setForm(null)}
+                className="rounded-full border px-3 py-1.5 text-lg text-slate-500"
+                aria-label="Fechar"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-5 overflow-y-auto p-6">
+              <label className="block text-sm font-bold text-slate-700">
+                Titulo do video
+                <input
+                  value={form.title}
+                  onChange={(event) =>
+                    setForm({ ...form, title: event.target.value })
+                  }
+                  placeholder="Ex.: Como fazer sua primeira venda na Shopee"
+                  className="mt-2 w-full rounded-xl border border-slate-200 p-3 font-semibold outline-none focus:border-red-400"
+                />
+              </label>
+
+              <div>
+                <p className="text-sm font-bold text-slate-700">
+                  Etapa do funil
+                </p>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {(["TOPO", "MEIO", "FUNDO"] as const).map((stage) => (
+                    <button
+                      key={stage}
+                      type="button"
+                      onClick={() => setForm({ ...form, stage })}
+                      className={`rounded-xl p-2.5 text-xs font-black ${
+                        form.stage === stage
+                          ? "bg-red-600 text-white"
+                          : "bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {stage}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-slate-700">Subtitulos</p>
+                  <span className="text-xs font-bold text-slate-500">
+                    {form.subtopics.length}/{MAX_SUBTOPICS}
+                  </span>
+                </div>
+                <div className="mt-2 space-y-2">
+                  {form.subtopics.map((topic, index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        value={topic}
+                        onChange={(event) =>
+                          updateSubtopic(index, event.target.value)
+                        }
+                        placeholder={`Subtitulo ${index + 1}`}
+                        className="min-w-0 flex-1 rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-red-400"
+                      />
+                      <button
+                        type="button"
+                        disabled={form.subtopics.length <= 1}
+                        onClick={() => removeSubtopic(index)}
+                        className="rounded-xl border px-3 font-bold text-slate-500 disabled:opacity-30"
+                        aria-label={`Remover subtitulo ${index + 1}`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  disabled={form.subtopics.length >= MAX_SUBTOPICS}
+                  onClick={addSubtopic}
+                  className="mt-3 text-sm font-black text-red-700 disabled:opacity-40"
+                >
+                  + Adicionar subtitulo
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 border-t bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setForm(null)}
+                className="rounded-xl border bg-white px-4 py-2.5 text-sm font-bold"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void saveForm(false)}
+                className="rounded-xl border bg-white px-4 py-2.5 text-sm font-bold disabled:opacity-40"
+              >
+                Salvar rascunho
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void saveForm(true)}
+                className="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-black text-white disabled:opacity-40"
+              >
+                {saving
+                  ? "Salvando..."
+                  : form.id
+                    ? "Salvar e reprocessar"
+                    : "Criar video"}
+              </button>
+            </div>
           </div>
-        </section>
+        </div>
       ) : null}
     </div>
   );

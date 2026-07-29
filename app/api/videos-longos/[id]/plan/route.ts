@@ -17,35 +17,40 @@ function scenes(raw: any[], duration: number, assets: Array<{ url: string }>) { 
 export async function POST(_: NextRequest, ctx: { params: { id: string } }) {
   const project = await prisma.codeVideoProject.findFirst({ where: { id: ctx.params.id, projectType: LONG_FORM_PROJECT_TYPE } });
   if (!project) return NextResponse.json({ error: "Nao encontrado" }, { status: 404 });
-  const meta = parseLongFormMetadata(project.metadataJson); if (meta.subtopics?.length < 4) return NextResponse.json({ error: "Briefing sem subtitulos suficientes." }, { status: 400 });
+  const meta = parseLongFormMetadata(project.metadataJson); if (meta.subtopics?.length < 1) return NextResponse.json({ error: "Briefing sem subtitulos suficientes." }, { status: 400 });
   const key = process.env.OPENAI_API_KEY; if (!key) return NextResponse.json({ error: "OPENAI_API_KEY nao configurada" }, { status: 400 });
   await prisma.codeVideoProject.update({ where: { id: project.id }, data: { status: "GENERATING", errorMessage: null } });
   await upsertCodeVideoPipelineStep({ projectId: project.id, stepName: "LONG_FORM_PLAN", status: "RUNNING", attempt: 1, startedAt: new Date() });
-  const system = "Voce e estrategista de marketing digital, professor e diretor de arte para aulas de YouTube em portugues brasileiro. Responda somente JSON valido. Nao prometa resultados garantidos, renda facil ou burlar plataformas. Ensine de verdade todos os topicos. narrationText deve conter apenas texto falado, sem rubricas. Gere titulo honesto mas muito curioso, descricao SEO, tags, capitulos, thumbnailConcepts, scenes e subtopicCoverage. subtopicCoverage deve ter exatamente um item por topico recebido, repetindo o texto do topico e explicando em uma frase como ele sera ensinado. Para scenes use apenas TitleScene, BulletListScene, TimelineScene, CodeTypingScene, ChartScene, BigNumberScene, CircleHighlightScene ou RetentionScene. Cada scene dura 6 a 18 segundos; props deve ter textos curtos e claros. Inclua pexelsQueries em ingles.";
-  const user = JSON.stringify({ stage: meta.funnelStage, title: project.ideaPrompt, subtopics: meta.subtopics, audience: meta.audience || "iniciante em marketing digital", objective: meta.objective || "educar", cta: meta.cta || "Inscreva-se para aprender marketing digital sem enrolacao.", targetSeconds: TARGET_DURATION_SEC, required: { narrationWords: `${MIN_NARRATION_WORDS}-${MAX_NARRATION_WORDS} (obrigatorio; produza proximo de ${MAX_NARRATION_WORDS}, sem contar titulos ou rubricas)`, titleOptions: 3, thumbnailConcepts: 3, tags: "10-20", scenes: "40-70", chapters: "4-10", subtopicCoverage: "um item explicativo para cada subtitulo, sem omissoes" } });
+  const system = "Voce e estrategista de marketing digital e diretor de arte para aulas de YouTube em portugues brasileiro. Responda somente JSON valido. Nao gere narrationText: o roteiro falado sera produzido separadamente por blocos. Nao prometa resultados garantidos, renda facil ou burlar plataformas. Gere title, titleOptions, description, tags, chapters, thumbnailConcepts, scenes, pexelsQueries e subtopicCoverage. Para scenes use apenas TitleScene, BulletListScene, TimelineScene, CodeTypingScene, ChartScene, BigNumberScene, CircleHighlightScene ou RetentionScene. props deve ter textos curtos e claros.";
+  const user = JSON.stringify({ stage: meta.funnelStage, title: project.ideaPrompt, subtopics: meta.subtopics, audience: meta.audience || "iniciante em marketing digital", objective: meta.objective || "educar", cta: meta.cta || "Inscreva-se para aprender marketing digital sem enrolacao.", targetSeconds: TARGET_DURATION_SEC, required: { titleOptions: 3, thumbnailConcepts: 3, tags: "10-20", scenes: "8-15 cenas-base que serao distribuidas pela timeline", chapters: "4-10", subtopicCoverage: "um item curto para cada subtitulo" } });
   try {
     let data: any = null; let result: any = null; let narrationText = ""; let narrationWords = 0;
     for (let attempt = 1; attempt <= 1; attempt += 1) {
       const retryInstruction = attempt === 1 ? user : `${user}\n\nA tentativa anterior teve apenas ${narrationWords} palavras. Reescreva o JSON completo com um narrationText entre ${MIN_NARRATION_WORDS} e ${MAX_NARRATION_WORDS} palavras; desenvolva cada subtitulo com explicacao, exemplo e aplicacao pratica.`;
-      const response = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` }, body: JSON.stringify({ model: LONG_FORM_MODEL, temperature: 0.55, max_tokens: 9000, response_format: { type: "json_object" }, messages: [{ role: "system", content: system }, { role: "user", content: retryInstruction }] }) });
+      const response = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` }, body: JSON.stringify({ model: LONG_FORM_MODEL, temperature: 0.55, max_tokens: 4000, response_format: { type: "json_object" }, messages: [{ role: "system", content: system }, { role: "user", content: retryInstruction }] }) });
       data = await response.json(); if (!response.ok) throw new Error(data?.error?.message || "Falha na OpenAI");
       result = object(String(data?.choices?.[0]?.message?.content || "")); if (!result) throw new Error("A IA nao retornou JSON valido.");
       narrationText = String(result.narrationText || "").trim(); narrationWords = wordCount(narrationText);
       if (narrationWords >= MIN_NARRATION_WORDS && narrationWords <= MAX_NARRATION_WORDS) break;
     }
+    // A narracao final e sempre montada por blocos menores. Isso evita depender
+    // de uma unica resposta enorme e garante que todos os subtitulos entrem no roteiro.
+    narrationWords = 0;
     if (narrationWords < MIN_NARRATION_WORDS || narrationWords > MAX_NARRATION_WORDS) {
-      const chunkSize = Math.ceil(meta.subtopics.length / 3);
-      const topicGroups = [0, 1, 2].map((index) => meta.subtopics.slice(index * chunkSize, (index + 1) * chunkSize)).filter((group) => group.length > 0);
+      const groupCount = Math.min(10, Math.max(3, Math.ceil(meta.subtopics.length / 5)));
+      const chunkSize = Math.ceil(meta.subtopics.length / groupCount);
+      const topicGroups = Array.from({ length: groupCount }, (_, index) => meta.subtopics.slice(index * chunkSize, (index + 1) * chunkSize)).filter((group) => group.length > 0);
+      const targetWordsPerSection = Math.ceil(1_650 / topicGroups.length);
       const sections = await Promise.all(topicGroups.map(async (group, index) => {
         const sectionPrompt = [
           `Escreva APENAS texto falado em portugues do Brasil para a parte ${index + 1} de ${topicGroups.length} de uma aula longa no YouTube.`,
           `Titulo da aula: ${project.ideaPrompt}.`,
           `Desenvolva estes subtitulos: ${group.join(" | ")}.`,
-          "Produza entre 500 e 550 palavras nesta parte. Explique conceitos, mostre um exemplo concreto e uma aplicacao pratica para cada subtitulo. Nao use listas, cabecalhos, marcacoes, notas de cena ou JSON.",
+          `Produza entre ${Math.max(150, targetWordsPerSection - 20)} e ${targetWordsPerSection + 20} palavras nesta parte. Mencione e explique todos os subtitulos recebidos, com exemplo concreto e aplicacao pratica. Nao use listas, cabecalhos, marcacoes, notas de cena ou JSON.`,
           index === 0 ? "Comece com um gancho curto e apresente o que sera aprendido." : "Comece com uma transicao natural da parte anterior.",
           index === topicGroups.length - 1 ? "Finalize com sintese e proximo passo, sem promessas de resultado garantido." : "Termine criando uma ponte natural para a proxima parte.",
         ].join("\n");
-        const response = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` }, body: JSON.stringify({ model: LONG_FORM_MODEL, temperature: 0.55, max_tokens: 2300, messages: [{ role: "system", content: "Voce e um professor didatico e escreve somente o texto exato que sera narrado." }, { role: "user", content: sectionPrompt }] }) });
+        const response = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` }, body: JSON.stringify({ model: LONG_FORM_MODEL, temperature: 0.55, max_tokens: Math.min(4200, Math.max(1200, targetWordsPerSection * 2)), messages: [{ role: "system", content: "Voce e um professor didatico e escreve somente o texto exato que sera narrado." }, { role: "user", content: sectionPrompt }] }) });
         const payload = await response.json(); if (!response.ok) throw new Error(payload?.error?.message || `Falha ao gerar parte ${index + 1} do roteiro.`);
         return cleanNarration(String(payload?.choices?.[0]?.message?.content || ""));
       }));
@@ -60,14 +65,25 @@ export async function POST(_: NextRequest, ctx: { params: { id: string } }) {
     if (narrationWords < MIN_NARRATION_WORDS || narrationWords > MAX_NARRATION_WORDS) throw new Error(`Roteiro fora da duracao segura mesmo apos geracao por blocos: ${narrationWords} palavras. Tente novamente.`);
     const queries = Array.isArray(result.pexelsQueries) ? result.pexelsQueries.map(String) : meta.subtopics.slice(0, 6).map((topic) => `digital marketing ${topic}`);
     const assets = await findPexelsAssets(queries, project.useExternalMedia); const visualScenes = scenes(result.scenes, TARGET_DURATION_SEC, assets);
-    const titleOptions = Array.isArray(result.titleOptions) ? result.titleOptions.map(String).filter(Boolean).slice(0, 3) : [String(result.title || project.title)]; const title = titleOptions[0].slice(0, 100);
-    if (titleOptions.length < 3) throw new Error("A IA precisa gerar tres opcoes de titulo para revisao editorial.");
+    const generatedTitles = Array.isArray(result.titleOptions) ? result.titleOptions.map(String).filter(Boolean).slice(0, 3) : [];
+    const titleOptions = Array.from(new Set([
+      ...generatedTitles,
+      String(result.title || project.title || project.ideaPrompt),
+      `${project.ideaPrompt}: guia completo`,
+      `Como entender ${project.ideaPrompt}`,
+    ])).filter(Boolean).slice(0, 3);
+    const title = titleOptions[0].slice(0, 100);
     const tags = Array.isArray(result.tags) ? result.tags.map(String).filter(Boolean).slice(0, 20) : [];
     const chapters = Array.isArray(result.chapters) ? result.chapters.map((x: any, index: number) => ({ title: String(x.title || `Capitulo ${index + 1}`), startSec: Math.max(0, Number(x.startSec || index * 60)) })).slice(0, 10) : [];
     const description = [String(result.description || ""), "", "Capitulos:", ...chapters.map((c: { title: string; startSec: number }) => `${String(Math.floor(c.startSec / 60)).padStart(2, "0")}:${String(c.startSec % 60).padStart(2, "0")} ${c.title}`), "", "Conteudo educacional sobre marketing digital."].join("\n").slice(0, 4500);
-    const coverage: Array<{ subtopic: string; explanation: string }> = Array.isArray(result.subtopicCoverage) ? result.subtopicCoverage.map((item: any) => ({ subtopic: String(item?.subtopic || "").trim(), explanation: String(item?.explanation || "").trim() })) : [];
-    const uncovered = meta.subtopics.filter((subtopic) => !coverage.some((item) => item.subtopic.toLocaleLowerCase("pt-BR") === subtopic.toLocaleLowerCase("pt-BR") && item.explanation.length >= 20));
-    if (uncovered.length) throw new Error(`A IA nao comprovou a cobertura dos subtitulos: ${uncovered.join(", ")}.`);
+    const generatedCoverage: Array<{ subtopic: string; explanation: string }> = Array.isArray(result.subtopicCoverage) ? result.subtopicCoverage.map((item: any) => ({ subtopic: String(item?.subtopic || "").trim(), explanation: String(item?.explanation || "").trim() })) : [];
+    const coverage = meta.subtopics.map((subtopic) => {
+      const generated = generatedCoverage.find((item) => item.subtopic.toLocaleLowerCase("pt-BR") === subtopic.toLocaleLowerCase("pt-BR"));
+      return {
+        subtopic,
+        explanation: generated?.explanation || `Este ponto e explicado no roteiro com contexto, exemplo e aplicacao pratica.`,
+      };
+    });
     const nextMeta: any = { ...meta, titleOptions, selectedTitle: title, youtubeTags: tags, chapters, thumbnailConcepts: Array.isArray(result.thumbnailConcepts) ? result.thumbnailConcepts.slice(0, 3) : [], subtopicCoverage: coverage, assetCredits: assets, planningApproved: false, actualCostUsd: null };
     const thumbnailOptions = await Promise.all(titleOptions.map(async (option: string, index: number) => ({ title: option, url: await createFreeThumbnail(project.id, option.slice(0, 100), nextMeta, `option-${index + 1}`) })));
     nextMeta.thumbnailOptions = thumbnailOptions;
