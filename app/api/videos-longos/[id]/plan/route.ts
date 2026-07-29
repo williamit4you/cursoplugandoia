@@ -9,6 +9,8 @@ const MIN_NARRATION_WORDS = 1_550;
 const MAX_NARRATION_WORDS = 1_700;
 function object(text: string) { try { return JSON.parse(text); } catch { const a = text.indexOf("{"); const b = text.lastIndexOf("}"); if (a >= 0 && b > a) try { return JSON.parse(text.slice(a, b + 1)); } catch {} return null; } }
 function wordCount(text: string) { return text.trim().split(/\s+/).filter(Boolean).length; }
+function cleanNarration(text: string) { return text.replace(/^```(?:text|markdown)?\s*/i, "").replace(/\s*```$/, "").trim(); }
+function trimNarration(text: string, maxWords: number) { const words = text.trim().split(/\s+/); if (words.length <= maxWords) return text.trim(); const clipped = words.slice(0, maxWords).join(" "); const lastStop = Math.max(clipped.lastIndexOf("."), clipped.lastIndexOf("!"), clipped.lastIndexOf("?")); return `${lastStop > clipped.length * 0.85 ? clipped.slice(0, lastStop + 1) : clipped}.`; }
 function scenes(raw: any[], duration: number, assets: Array<{ url: string }>) { const allowed = new Set(["TitleScene", "BulletListScene", "TimelineScene", "CodeTypingScene", "ChartScene", "BigNumberScene", "CircleHighlightScene", "RetentionScene"]); const input = Array.isArray(raw) ? raw.slice(0, 70) : []; const fallback = [{ sceneTemplate: "TitleScene", props: { title: "Marketing digital sem enrolacao", subtitle: "Aula completa" } }, { sceneTemplate: "BulletListScene", props: { title: "O que voce vai aprender", items: ["Estrategia", "Execucao", "Proximos passos"] } }]; const selected = input.length ? input : fallback; const count = Math.max(40, Math.min(70, selected.length)); const baseSeconds = Math.floor(duration / count); const remainingSeconds = duration - baseSeconds * count;
   return Array.from({ length: count }, (_, index) => { const scene = selected[index % selected.length]; const template = allowed.has(scene?.sceneTemplate) ? scene.sceneTemplate : "BulletListScene"; const media = assets[index % Math.max(assets.length, 1)]?.url; const props = { ...(scene?.props || {}), backgroundColor: index % 2 ? "#111111" : "#080808", textColor: "#ffffff", accentColor: "#dc2626", fontFamily: "Arial Black, Arial" }; const durationSec = baseSeconds + (index < remainingSeconds ? 1 : 0); if (template === "RetentionScene" && media) props.url = media; if (template === "RetentionScene" && !media) return { id: `scene-${index + 1}`, sceneTemplate: "BulletListScene", durationSec, props: { ...props, title: props.title || "Ponto importante", items: Array.isArray(props.items) ? props.items : [props.subtitle || "Aplique este passo"] } }; return { id: `scene-${index + 1}`, sceneTemplate: template, durationSec, props }; }); }
 
@@ -23,7 +25,7 @@ export async function POST(_: NextRequest, ctx: { params: { id: string } }) {
   const user = JSON.stringify({ stage: meta.funnelStage, title: project.ideaPrompt, subtopics: meta.subtopics, audience: meta.audience || "iniciante em marketing digital", objective: meta.objective || "educar", cta: meta.cta || "Inscreva-se para aprender marketing digital sem enrolacao.", targetSeconds: TARGET_DURATION_SEC, required: { narrationWords: `${MIN_NARRATION_WORDS}-${MAX_NARRATION_WORDS} (obrigatorio; produza proximo de ${MAX_NARRATION_WORDS}, sem contar titulos ou rubricas)`, titleOptions: 3, thumbnailConcepts: 3, tags: "10-20", scenes: "40-70", chapters: "4-10", subtopicCoverage: "um item explicativo para cada subtitulo, sem omissoes" } });
   try {
     let data: any = null; let result: any = null; let narrationText = ""; let narrationWords = 0;
-    for (let attempt = 1; attempt <= 2; attempt += 1) {
+    for (let attempt = 1; attempt <= 1; attempt += 1) {
       const retryInstruction = attempt === 1 ? user : `${user}\n\nA tentativa anterior teve apenas ${narrationWords} palavras. Reescreva o JSON completo com um narrationText entre ${MIN_NARRATION_WORDS} e ${MAX_NARRATION_WORDS} palavras; desenvolva cada subtitulo com explicacao, exemplo e aplicacao pratica.`;
       const response = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` }, body: JSON.stringify({ model: LONG_FORM_MODEL, temperature: 0.55, max_tokens: 9000, response_format: { type: "json_object" }, messages: [{ role: "system", content: system }, { role: "user", content: retryInstruction }] }) });
       data = await response.json(); if (!response.ok) throw new Error(data?.error?.message || "Falha na OpenAI");
@@ -31,7 +33,31 @@ export async function POST(_: NextRequest, ctx: { params: { id: string } }) {
       narrationText = String(result.narrationText || "").trim(); narrationWords = wordCount(narrationText);
       if (narrationWords >= MIN_NARRATION_WORDS && narrationWords <= MAX_NARRATION_WORDS) break;
     }
-    if (narrationWords < MIN_NARRATION_WORDS || narrationWords > MAX_NARRATION_WORDS) throw new Error(`Roteiro fora da duracao segura apos duas tentativas: ${narrationWords} palavras. O video longo exige entre ${MIN_NARRATION_WORDS} e ${MAX_NARRATION_WORDS} palavras.`);
+    if (narrationWords < MIN_NARRATION_WORDS || narrationWords > MAX_NARRATION_WORDS) {
+      const chunkSize = Math.ceil(meta.subtopics.length / 3);
+      const topicGroups = [0, 1, 2].map((index) => meta.subtopics.slice(index * chunkSize, (index + 1) * chunkSize)).filter((group) => group.length > 0);
+      const sections = await Promise.all(topicGroups.map(async (group, index) => {
+        const sectionPrompt = [
+          `Escreva APENAS texto falado em portugues do Brasil para a parte ${index + 1} de ${topicGroups.length} de uma aula longa no YouTube.`,
+          `Titulo da aula: ${project.ideaPrompt}.`,
+          `Desenvolva estes subtitulos: ${group.join(" | ")}.`,
+          "Produza entre 500 e 550 palavras nesta parte. Explique conceitos, mostre um exemplo concreto e uma aplicacao pratica para cada subtitulo. Nao use listas, cabecalhos, marcacoes, notas de cena ou JSON.",
+          index === 0 ? "Comece com um gancho curto e apresente o que sera aprendido." : "Comece com uma transicao natural da parte anterior.",
+          index === topicGroups.length - 1 ? "Finalize com sintese e proximo passo, sem promessas de resultado garantido." : "Termine criando uma ponte natural para a proxima parte.",
+        ].join("\n");
+        const response = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` }, body: JSON.stringify({ model: LONG_FORM_MODEL, temperature: 0.55, max_tokens: 2300, messages: [{ role: "system", content: "Voce e um professor didatico e escreve somente o texto exato que sera narrado." }, { role: "user", content: sectionPrompt }] }) });
+        const payload = await response.json(); if (!response.ok) throw new Error(payload?.error?.message || `Falha ao gerar parte ${index + 1} do roteiro.`);
+        return cleanNarration(String(payload?.choices?.[0]?.message?.content || ""));
+      }));
+      narrationText = sections.join("\n\n"); narrationWords = wordCount(narrationText);
+      if (narrationWords < MIN_NARRATION_WORDS) {
+        const missing = Math.min(500, MIN_NARRATION_WORDS - narrationWords + 80);
+        const response = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` }, body: JSON.stringify({ model: LONG_FORM_MODEL, temperature: 0.5, max_tokens: 1800, messages: [{ role: "system", content: "Escreva somente texto falado, sem titulo, lista, JSON ou rubrica." }, { role: "user", content: `Crie uma secao complementar de aproximadamente ${missing} palavras para a aula ${project.ideaPrompt}. Aprofunde exemplos e aplicacoes praticas destes topicos sem repetir a introducao: ${meta.subtopics.join(" | ")}. Termine com uma conclusao natural.` }] }) });
+        const payload = await response.json(); if (!response.ok) throw new Error(payload?.error?.message || "Falha ao complementar o roteiro."); narrationText = `${narrationText}\n\n${cleanNarration(String(payload?.choices?.[0]?.message?.content || ""))}`; narrationWords = wordCount(narrationText);
+      }
+      if (narrationWords > MAX_NARRATION_WORDS) { narrationText = trimNarration(narrationText, 1675); narrationWords = wordCount(narrationText); }
+    }
+    if (narrationWords < MIN_NARRATION_WORDS || narrationWords > MAX_NARRATION_WORDS) throw new Error(`Roteiro fora da duracao segura mesmo apos geracao por blocos: ${narrationWords} palavras. Tente novamente.`);
     const queries = Array.isArray(result.pexelsQueries) ? result.pexelsQueries.map(String) : meta.subtopics.slice(0, 6).map((topic) => `digital marketing ${topic}`);
     const assets = await findPexelsAssets(queries, project.useExternalMedia); const visualScenes = scenes(result.scenes, TARGET_DURATION_SEC, assets);
     const titleOptions = Array.isArray(result.titleOptions) ? result.titleOptions.map(String).filter(Boolean).slice(0, 3) : [String(result.title || project.title)]; const title = titleOptions[0].slice(0, 100);

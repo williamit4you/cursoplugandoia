@@ -1,18 +1,433 @@
 "use client";
+
 import { useEffect, useMemo, useState } from "react";
+
 type Project = any;
 
+const MAX_SUBTOPICS = 50;
+
 export function LongFormMarketingApp() {
-  const [items, setItems] = useState<Project[]>([]), [selected, setSelected] = useState<Project | null>(null), [title, setTitle] = useState(""), [topics, setTopics] = useState(["", "", "", ""]), [stage, setStage] = useState("TOPO"), [busy, setBusy] = useState(""), [notice, setNotice] = useState(""), [insights, setInsights] = useState<any>({ items: [] });
-  const meta = useMemo(() => { try { return JSON.parse(selected?.metadataJson || "{}"); } catch { return {}; } }, [selected]);
-  const call = async (url: string, options?: RequestInit) => { const response = await fetch(url, options); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error || "Falha na producao."); return data.project || data; };
-  const load = async () => { const data = await call("/api/videos-longos", { cache: "no-store" }); setItems(data.items || []); };
-  const loadInsights = async () => { try { setInsights(await call("/api/videos-longos/insights", { cache: "no-store" })); } catch { setInsights({ items: [] }); } };
-  const open = async (id: string) => { setSelected(await call(`/api/videos-longos/${id}`, { cache: "no-store" })); await loadInsights(); };
-  useEffect(() => { void load(); void loadInsights(); }, []);
-  const createPlan = async () => { setBusy("plan"); try { const project = await call("/api/videos-longos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workingTitle: title, subtopics: topics, funnelStage: stage, externalMediaPolicy: "PEXELS_AND_UPLOADS" }) }); const planned = await call(`/api/videos-longos/${project.id}/plan`, { method: "POST" }); setSelected(planned); await load(); setNotice("Roteiro pronto. Revise a cobertura, escolha titulo/capa e aprove antes do render."); } catch (error: any) { setNotice(error.message); } finally { setBusy(""); } };
-  const save = async () => { if (!selected) return; setBusy("save"); try { setSelected(await call(`/api/videos-longos/${selected.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: selected.title, description: selected.description, narrationText: selected.narrationText }) })); await load(); setNotice("Revisao salva."); } catch (error: any) { setNotice(error.message); } finally { setBusy(""); } };
-  const choose = async (option: any) => { if (!selected) return; setBusy("choice"); try { setSelected(await call(`/api/videos-longos/${selected.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: option.title, thumbUrl: option.url, metadata: { selectedTitle: option.title } }) })); } catch (error: any) { setNotice(error.message); } finally { setBusy(""); } };
-  const approveAndRender = async () => { if (!selected || !confirm("Aprovar roteiro, renderizar e agendar no YouTube?")) return; setBusy("render"); try { await call(`/api/videos-longos/${selected.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ metadata: { planningApproved: true, finalApproved: true } }) }); setNotice("Render e agendamento em andamento..."); setSelected(await call(`/api/videos-longos/${selected.id}/run`, { method: "POST" })); await load(); setNotice("Video renderizado e agendado."); } catch (error: any) { setNotice(`Processo interrompido: ${error.message}`); await open(selected.id); } finally { setBusy(""); } };
-  return <div className="space-y-6"><header className="rounded-3xl bg-gradient-to-br from-black via-zinc-900 to-red-950 p-7 text-white"><p className="text-xs font-black tracking-[.25em] text-red-300">PLUGANDO IA • EDUCACAO</p><h1 className="mt-2 text-3xl font-black">Videos Longos de Marketing</h1><p className="mt-2 text-sm text-zinc-300">Planeje, revise e aprove antes de renderizar. O video so agenda apos confirmar roteiro, capa e duracao.</p></header>{notice ? <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">{notice}</div> : null}<div className="grid gap-6 xl:grid-cols-2"><section className="rounded-3xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-black">1. Planejar aula</h2><input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Titulo-base" className="mt-4 w-full rounded-xl border p-3 font-bold"/><div className="mt-3 grid grid-cols-3 gap-2">{["TOPO", "MEIO", "FUNDO"].map((item) => <button key={item} onClick={() => setStage(item)} className={`rounded-xl p-2 text-xs font-black ${stage === item ? "bg-red-600 text-white" : "bg-slate-100"}`}>{item}</button>)}</div><div className="mt-4 space-y-2">{topics.map((topic, index) => <input key={index} value={topic} onChange={(event) => setTopics((current) => current.map((value, i) => i === index ? event.target.value : value))} placeholder={`Subtopico ${index + 1}`} className="w-full rounded-xl border p-2.5 text-sm"/>)}<button onClick={() => topics.length < 10 && setTopics([...topics, ""])} className="text-sm font-bold text-red-700">+ Adicionar subtopico</button></div><button disabled={Boolean(busy)} onClick={createPlan} className="mt-5 w-full rounded-xl bg-red-600 p-3 font-black text-white disabled:opacity-50">{busy === "plan" ? "Planejando..." : "Gerar roteiro para revisao"}</button></section><section className="rounded-3xl border bg-white p-6 shadow-sm"><div className="flex justify-between"><h2 className="text-xl font-black">Biblioteca</h2><button onClick={load} className="text-sm font-bold text-red-700">Atualizar</button></div><div className="mt-4 max-h-[430px] space-y-2 overflow-auto">{items.map((item) => <button key={item.id} onClick={() => open(item.id)} className="w-full rounded-xl border p-3 text-left hover:bg-red-50"><div className="flex justify-between gap-2"><b className="text-sm">{item.title || item.ideaPrompt}</b><span className="text-xs font-black">{item.status}</span></div><p className="mt-1 text-xs text-slate-500">{item.socialPosts?.[0]?.scheduledTo ? `Agendado: ${new Date(item.socialPosts[0].scheduledTo).toLocaleString("pt-BR")}` : new Date(item.createdAt).toLocaleString("pt-BR")}</p></button>)}</div></section></div>{selected ? <section className="rounded-3xl border bg-white p-6 shadow-sm"><div className="flex flex-wrap justify-between gap-3"><div><p className="text-xs font-black tracking-widest text-red-600">2. REVISAO EDITORIAL</p><h2 className="text-2xl font-black">{selected.title || selected.ideaPrompt}</h2></div><span className="rounded-full bg-black px-3 py-1 text-xs font-black text-white">{selected.status}</span></div><div className="mt-5 grid gap-5 lg:grid-cols-[1.2fr_.8fr]"><div className="space-y-4"><div className="flex flex-wrap gap-2"><button disabled={Boolean(busy)} onClick={save} className="rounded-xl border px-4 py-2.5 text-sm font-black">Salvar revisao</button><button disabled={Boolean(busy) || selected.status !== "READY"} onClick={approveAndRender} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">{busy === "render" ? "Renderizando..." : "Aprovar, renderizar e agendar"}</button></div><label className="block text-xs font-bold">Titulo<input value={selected.title || ""} onChange={(event) => setSelected({ ...selected, title: event.target.value })} className="mt-1 w-full rounded-xl border p-3 text-base"/></label><label className="block text-xs font-bold">Roteiro<textarea value={selected.narrationText || ""} onChange={(event) => setSelected({ ...selected, narrationText: event.target.value })} className="mt-1 h-64 w-full rounded-xl border p-3 text-sm"/></label><label className="block text-xs font-bold">Descricao<textarea value={selected.description || ""} onChange={(event) => setSelected({ ...selected, description: event.target.value })} className="mt-1 h-32 w-full rounded-xl border p-3 text-sm"/></label><div className="rounded-xl bg-slate-50 p-3 text-sm"><b>Cobertura dos subtopicos</b><ul className="mt-2 list-disc space-y-1 pl-5">{(meta.subtopicCoverage || []).map((item: any) => <li key={item.subtopic}><b>{item.subtopic}:</b> {item.explanation}</li>)}</ul></div><p className="text-xs text-slate-500">Tags: {(meta.youtubeTags || []).join(", ")}</p></div><aside className="space-y-4 rounded-2xl bg-slate-50 p-4"><p className="text-sm font-black">Escolha titulo e thumbnail</p>{(meta.thumbnailOptions || []).map((option: any) => <button key={option.url} disabled={Boolean(busy)} onClick={() => choose(option)} className={`block w-full overflow-hidden rounded-xl border text-left ${selected.thumbUrl === option.url ? "border-red-600 ring-2 ring-red-200" : "border-slate-200"}`}><img src={option.url} alt={option.title} className="aspect-video w-full object-cover"/><span className="block p-2 text-xs font-bold">{option.title}</span></button>)}{selected.videoUrl ? <video src={selected.videoUrl} controls className="w-full rounded-xl"/> : null}</aside></div></section> : null}</div>;
+  const [items, setItems] = useState<Project[]>([]);
+  const [selected, setSelected] = useState<Project | null>(null);
+  const [title, setTitle] = useState("");
+  const [topics, setTopics] = useState(["", "", "", ""]);
+  const [stage, setStage] = useState("TOPO");
+  const [busy, setBusy] = useState("");
+  const [notice, setNotice] = useState("");
+  const [, setInsights] = useState<any>({ items: [] });
+
+  const meta = useMemo(() => {
+    try {
+      return JSON.parse(selected?.metadataJson || "{}");
+    } catch {
+      return {};
+    }
+  }, [selected]);
+
+  const call = async (url: string, options?: RequestInit) => {
+    const response = await fetch(url, options);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Falha na producao.");
+    return data.project || data;
+  };
+
+  const load = async () => {
+    const data = await call("/api/videos-longos", { cache: "no-store" });
+    setItems(data.items || []);
+  };
+
+  const loadInsights = async () => {
+    try {
+      setInsights(await call("/api/videos-longos/insights", { cache: "no-store" }));
+    } catch {
+      setInsights({ items: [] });
+    }
+  };
+
+  const open = async (id: string) => {
+    setSelected(await call(`/api/videos-longos/${id}`, { cache: "no-store" }));
+    await loadInsights();
+  };
+
+  useEffect(() => {
+    void load();
+    void loadInsights();
+  }, []);
+
+  const addSubtopic = () => {
+    setTopics((current) =>
+      current.length < MAX_SUBTOPICS ? [...current, ""] : current,
+    );
+  };
+
+  const removeSubtopic = (index: number) => {
+    setTopics((current) =>
+      current.length > 4
+        ? current.filter((_, itemIndex) => itemIndex !== index)
+        : current,
+    );
+  };
+
+  const createPlan = async () => {
+    setBusy("plan");
+    try {
+      const project = await call("/api/videos-longos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workingTitle: title,
+          subtopics: topics,
+          funnelStage: stage,
+          externalMediaPolicy: "PEXELS_AND_UPLOADS",
+        }),
+      });
+      const planned = await call(`/api/videos-longos/${project.id}/plan`, {
+        method: "POST",
+      });
+      setSelected(planned);
+      await load();
+      setNotice(
+        "Roteiro pronto. Revise a cobertura, escolha titulo/capa e aprove antes do render.",
+      );
+    } catch (error: any) {
+      setNotice(error.message);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const save = async () => {
+    if (!selected) return;
+    setBusy("save");
+    try {
+      setSelected(
+        await call(`/api/videos-longos/${selected.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: selected.title,
+            description: selected.description,
+            narrationText: selected.narrationText,
+          }),
+        }),
+      );
+      await load();
+      setNotice("Revisao salva.");
+    } catch (error: any) {
+      setNotice(error.message);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const choose = async (option: any) => {
+    if (!selected) return;
+    setBusy("choice");
+    try {
+      setSelected(
+        await call(`/api/videos-longos/${selected.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: option.title,
+            thumbUrl: option.url,
+            metadata: { selectedTitle: option.title },
+          }),
+        }),
+      );
+    } catch (error: any) {
+      setNotice(error.message);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const approveAndRender = async () => {
+    if (
+      !selected ||
+      !confirm("Aprovar roteiro, renderizar e agendar no YouTube?")
+    ) {
+      return;
+    }
+
+    setBusy("render");
+    try {
+      await call(`/api/videos-longos/${selected.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          metadata: { planningApproved: true, finalApproved: true },
+        }),
+      });
+      setNotice("Render e agendamento em andamento...");
+      setSelected(
+        await call(`/api/videos-longos/${selected.id}/run`, { method: "POST" }),
+      );
+      await load();
+      setNotice("Video renderizado e agendado.");
+    } catch (error: any) {
+      setNotice(`Processo interrompido: ${error.message}`);
+      await open(selected.id);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <header className="rounded-3xl bg-gradient-to-br from-black via-zinc-900 to-red-950 p-7 text-white">
+        <p className="text-xs font-black tracking-[.25em] text-red-300">
+          PLUGANDO IA • EDUCACAO
+        </p>
+        <h1 className="mt-2 text-3xl font-black">
+          Videos Longos de Marketing
+        </h1>
+        <p className="mt-2 text-sm text-zinc-300">
+          Planeje, revise e aprove antes de renderizar. O video so agenda apos
+          confirmar roteiro, capa e duracao.
+        </p>
+      </header>
+
+      {notice ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">
+          {notice}
+        </div>
+      ) : null}
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section className="rounded-3xl border bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-black">1. Planejar aula</h2>
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Titulo-base"
+            className="mt-4 w-full rounded-xl border p-3 font-bold"
+          />
+
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {["TOPO", "MEIO", "FUNDO"].map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setStage(item)}
+                className={`rounded-xl p-2 text-xs font-black ${
+                  stage === item ? "bg-red-600 text-white" : "bg-slate-100"
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+              <span>Subtopicos</span>
+              <span>
+                {topics.length}/{MAX_SUBTOPICS}
+              </span>
+            </div>
+
+            {topics.map((topic, index) => (
+              <div key={index} className="flex gap-2">
+                <input
+                  value={topic}
+                  onChange={(event) =>
+                    setTopics((current) =>
+                      current.map((value, itemIndex) =>
+                        itemIndex === index ? event.target.value : value,
+                      ),
+                    )
+                  }
+                  placeholder={`Subtopico ${index + 1}`}
+                  className="min-w-0 flex-1 rounded-xl border p-2.5 text-sm"
+                />
+                {topics.length > 4 ? (
+                  <button
+                    type="button"
+                    onClick={() => removeSubtopic(index)}
+                    className="rounded-xl border px-3 text-sm font-bold text-slate-500"
+                    aria-label={`Remover subtopico ${index + 1}`}
+                    title="Remover subtopico"
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            ))}
+
+            <button
+              type="button"
+              disabled={topics.length >= MAX_SUBTOPICS}
+              onClick={addSubtopic}
+              className="text-sm font-bold text-red-700 disabled:cursor-not-allowed disabled:text-slate-400"
+            >
+              + Adicionar subtopico
+            </button>
+          </div>
+
+          <button
+            disabled={Boolean(busy)}
+            onClick={createPlan}
+            className="mt-5 w-full rounded-xl bg-red-600 p-3 font-black text-white disabled:opacity-50"
+          >
+            {busy === "plan" ? "Planejando..." : "Gerar roteiro para revisao"}
+          </button>
+        </section>
+
+        <section className="rounded-3xl border bg-white p-6 shadow-sm">
+          <div className="flex justify-between">
+            <h2 className="text-xl font-black">Biblioteca</h2>
+            <button onClick={load} className="text-sm font-bold text-red-700">
+              Atualizar
+            </button>
+          </div>
+          <div className="mt-4 max-h-[430px] space-y-2 overflow-auto">
+            {items.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => open(item.id)}
+                className="w-full rounded-xl border p-3 text-left hover:bg-red-50"
+              >
+                <div className="flex justify-between gap-2">
+                  <b className="text-sm">{item.title || item.ideaPrompt}</b>
+                  <span className="text-xs font-black">{item.status}</span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {item.socialPosts?.[0]?.scheduledTo
+                    ? `Agendado: ${new Date(item.socialPosts[0].scheduledTo).toLocaleString("pt-BR")}`
+                    : new Date(item.createdAt).toLocaleString("pt-BR")}
+                </p>
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      {selected ? (
+        <section className="rounded-3xl border bg-white p-6 shadow-sm">
+          <div className="flex flex-wrap justify-between gap-3">
+            <div>
+              <p className="text-xs font-black tracking-widest text-red-600">
+                2. REVISAO EDITORIAL
+              </p>
+              <h2 className="text-2xl font-black">
+                {selected.title || selected.ideaPrompt}
+              </h2>
+            </div>
+            <span className="rounded-full bg-black px-3 py-1 text-xs font-black text-white">
+              {selected.status}
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  disabled={Boolean(busy)}
+                  onClick={save}
+                  className="rounded-xl border px-4 py-2.5 text-sm font-black"
+                >
+                  Salvar revisao
+                </button>
+                <button
+                  disabled={Boolean(busy) || selected.status !== "READY"}
+                  onClick={approveAndRender}
+                  className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50"
+                >
+                  {busy === "render"
+                    ? "Renderizando..."
+                    : "Aprovar, renderizar e agendar"}
+                </button>
+              </div>
+
+              <label className="block text-xs font-bold">
+                Titulo
+                <input
+                  value={selected.title || ""}
+                  onChange={(event) =>
+                    setSelected({ ...selected, title: event.target.value })
+                  }
+                  className="mt-1 w-full rounded-xl border p-3 text-base"
+                />
+              </label>
+
+              <label className="block text-xs font-bold">
+                Roteiro
+                <textarea
+                  value={selected.narrationText || ""}
+                  onChange={(event) =>
+                    setSelected({
+                      ...selected,
+                      narrationText: event.target.value,
+                    })
+                  }
+                  className="mt-1 h-64 w-full rounded-xl border p-3 text-sm"
+                />
+              </label>
+
+              <label className="block text-xs font-bold">
+                Descricao
+                <textarea
+                  value={selected.description || ""}
+                  onChange={(event) =>
+                    setSelected({
+                      ...selected,
+                      description: event.target.value,
+                    })
+                  }
+                  className="mt-1 h-32 w-full rounded-xl border p-3 text-sm"
+                />
+              </label>
+
+              <div className="rounded-xl bg-slate-50 p-3 text-sm">
+                <b>Cobertura dos subtopicos</b>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {(meta.subtopicCoverage || []).map((item: any) => (
+                    <li key={item.subtopic}>
+                      <b>{item.subtopic}:</b> {item.explanation}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <p className="text-xs text-slate-500">
+                Tags: {(meta.youtubeTags || []).join(", ")}
+              </p>
+            </div>
+
+            <aside className="space-y-4 rounded-2xl bg-slate-50 p-4">
+              <p className="text-sm font-black">Escolha titulo e thumbnail</p>
+              {(meta.thumbnailOptions || []).map((option: any) => (
+                <button
+                  key={option.url}
+                  disabled={Boolean(busy)}
+                  onClick={() => choose(option)}
+                  className={`block w-full overflow-hidden rounded-xl border text-left ${
+                    selected.thumbUrl === option.url
+                      ? "border-red-600 ring-2 ring-red-200"
+                      : "border-slate-200"
+                  }`}
+                >
+                  <img
+                    src={option.url}
+                    alt={option.title}
+                    className="aspect-video w-full object-cover"
+                  />
+                  <span className="block p-2 text-xs font-bold">
+                    {option.title}
+                  </span>
+                </button>
+              ))}
+              {selected.videoUrl ? (
+                <video
+                  src={selected.videoUrl}
+                  controls
+                  className="w-full rounded-xl"
+                />
+              ) : null}
+            </aside>
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
 }

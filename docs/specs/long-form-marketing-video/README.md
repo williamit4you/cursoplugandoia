@@ -346,7 +346,7 @@ Separar `plan` e `render` é obrigatório: evita pagar por áudio, thumbnail e G
 
 - [ ] Definir JSON Schema para estratégia, roteiro, cenas, assets e metadata.
 - [ ] Criar prompts por funil com regras de conteúdo honesto e cobertura de tópicos.
-- [ ] Validar 4–10 subtópicos e comprovar cobertura de 100% antes de liberar revisão.
+- [ ] Validar 4–50 subtópicos e comprovar cobertura de 100% antes de liberar revisão.
 - [ ] Usar Structured Outputs e registrar modelo/tokens/custo por etapa.
 - [ ] Testar cinco briefings reais com `gpt-4o-mini`, registrar falhas e avaliar melhoria de prompt/schema antes de considerar qualquer troca de modelo.
 

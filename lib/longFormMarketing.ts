@@ -10,7 +10,17 @@ export const LONG_FORM_TARGET_DURATION_SEC = 600;
 export const LONG_FORM_MIN_DURATION_SEC = 300;
 export type LongFormMetadata = { kind: "LONG_FORM_MARKETING"; funnelStage: "TOPO" | "MEIO" | "FUNDO"; subtopics: string[]; audience?: string; objective?: string; cta?: string; tone?: string; externalMediaPolicy?: "PEXELS_AND_UPLOADS" | "UPLOADS_ONLY"; youtubeTags?: string[]; titleOptions?: string[]; chapters?: Array<{ title: string; startSec: number }>; thumbnailConcepts?: Array<{ title: string; text: string; visual: string }>; thumbnailOptions?: Array<{ title: string; url: string }>; subtopicCoverage?: Array<{ subtopic: string; explanation: string }>; selectedTitle?: string; estimatedCostUsd?: number; actualCostUsd?: number | null; actualDurationSec?: number | null; planningApproved?: boolean; finalApproved?: boolean; scheduledSocialPostId?: string; assetCredits?: Array<{ url: string; source: string; query: string }> };
 export function parseLongFormMetadata(value: string | null | undefined): LongFormMetadata { try { const raw = JSON.parse(value || "{}"); return raw?.kind === "LONG_FORM_MARKETING" ? raw : ({} as LongFormMetadata); } catch { return {} as LongFormMetadata; } }
-export function normalizeSubtopics(value: unknown) { return Array.from(new Set((Array.isArray(value) ? value : []).map((x) => String(x || "").trim()).filter(Boolean))).slice(0, 10); }
+export const LONG_FORM_MAX_SUBTOPICS = 50;
+
+export function normalizeSubtopics(value: unknown) {
+  return Array.from(
+    new Set(
+      (Array.isArray(value) ? value : [])
+        .map((item) => String(item || "").trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, LONG_FORM_MAX_SUBTOPICS);
+}
 export function durationFromVideoSpec(value: string | null | undefined) {
   try {
     const spec = JSON.parse(value || "{}");
