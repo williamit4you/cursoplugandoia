@@ -233,6 +233,14 @@ async function renderWithExternalService(params: {
 
 function buildLongFormSegments(videoSpec: any, narrationText: string) {
   const scenes = Array.isArray(videoSpec?.scenes) ? videoSpec.scenes : [];
+  const palettes = [
+    { backgroundColor: "#0f172a", accentColor: "#38bdf8", textColor: "#f8fafc" },
+    { backgroundColor: "#312e81", accentColor: "#fbbf24", textColor: "#ffffff" },
+    { backgroundColor: "#064e3b", accentColor: "#34d399", textColor: "#ecfdf5" },
+    { backgroundColor: "#7f1d1d", accentColor: "#fb7185", textColor: "#fff7ed" },
+    { backgroundColor: "#3b0764", accentColor: "#c084fc", textColor: "#faf5ff" },
+    { backgroundColor: "#0c4a6e", accentColor: "#22d3ee", textColor: "#ecfeff" },
+  ];
   const sceneGroups: any[][] = [];
   let currentScenes: any[] = [];
   let currentDuration = 0;
@@ -298,13 +306,81 @@ function buildLongFormSegments(videoSpec: any, narrationText: string) {
           segmentCount: sceneGroups.length,
           totalDurationSec: durationSec,
         },
-        scenes: group.map((scene, sceneIndex) => ({
-          ...scene,
-          id: `segment-${index + 1}-scene-${sceneIndex + 1}`,
-        })),
+        scenes: group.map((scene, sceneIndex) => {
+          const palette =
+            palettes[(index * Math.max(1, group.length) + sceneIndex) % palettes.length];
+          const sourceProps = scene?.props || {};
+          const title =
+            String(
+              sourceProps.title ||
+                sourceProps.subtitle ||
+                `Ponto importante ${index + 1}.${sceneIndex + 1}`,
+            ).trim() || `Ponto importante ${index + 1}.${sceneIndex + 1}`;
+          const props: any = {
+            ...sourceProps,
+            ...palette,
+            title,
+            chartColor: palette.accentColor,
+            highlightColor: palette.accentColor,
+            circleColor: palette.accentColor,
+          };
+          if (
+            scene?.sceneTemplate === "BulletListScene" &&
+            !Array.isArray(props.items)
+          ) {
+            props.items = [title, "Exemplo pratico", "Aplicacao imediata"];
+          }
+          if (
+            scene?.sceneTemplate === "TimelineScene" &&
+            !Array.isArray(props.items)
+          ) {
+            props.items = [
+              { label: "Contexto", text: title },
+              { label: "Acao", text: "Coloque este ponto em pratica" },
+            ];
+          }
+          if (scene?.sceneTemplate === "CodeTypingScene" && !props.code) {
+            props.code = `${title}\n\nEntenda\nVeja um exemplo\nAplique`;
+          }
+          if (
+            scene?.sceneTemplate === "ChartScene" &&
+            !Array.isArray(props.dataPoints)
+          ) {
+            props.dataPoints = [
+              { label: "Inicio", value: 25 },
+              { label: "Pratica", value: 70 },
+              { label: "Evolucao", value: 100 },
+            ];
+          }
+          if (scene?.sceneTemplate === "BigNumberScene") {
+            props.number = props.number || `${index + 1}`;
+            props.subtitle = props.subtitle || title;
+          }
+          if (scene?.sceneTemplate === "CircleHighlightScene") {
+            props.centerText = props.centerText || title.slice(0, 24);
+            props.surroundingTexts = Array.isArray(props.surroundingTexts)
+              ? props.surroundingTexts
+              : ["Contexto", "Exemplo", "Acao"];
+          }
+          return {
+            ...scene,
+            id: `segment-${index + 1}-scene-${sceneIndex + 1}`,
+            props,
+          };
+        }),
       },
     };
   });
+}
+
+function brazilianTtsText(text: string) {
+  return text
+    .replace(/\bShopee\b/gi, "Xópi")
+    .replace(/\be-commerce\b/gi, "comércio eletrônico")
+    .replace(/\bCNPJ\b/g, "C N P J")
+    .replace(/\bCPF\b/g, "C P F")
+    .replace(/\bSEO\b/g, "S E O")
+    .replace(/\bapp\b/gi, "aplicativo");
 }
 
 async function renderLongFormInSegments(params: {
@@ -325,7 +401,9 @@ async function renderLongFormInSegments(params: {
   }
 
   const originalMetadata = safeJsonParse(params.project.metadataJson || "") || {};
-  const previousSegments = Array.isArray(originalMetadata.renderSegments)
+  const previousSegments =
+    Number(originalMetadata.segmentPipelineVersion) === 2 &&
+    Array.isArray(originalMetadata.renderSegments)
     ? originalMetadata.renderSegments
     : [];
   const segmentState = segments.map((segment) => {
@@ -339,6 +417,13 @@ async function renderLongFormInSegments(params: {
       status: previous?.videoUrl ? "SUCCESS" : "PENDING",
       videoUrl: previous?.videoUrl || null,
       audioUrl: previous?.audioUrl || null,
+      audioStatus: previous?.audioUrl ? "SUCCESS" : "PENDING",
+      videoStatus: previous?.videoUrl ? "SUCCESS" : "PENDING",
+      currentStage: previous?.videoUrl
+        ? "DONE"
+        : previous?.audioUrl
+          ? "VIDEO"
+          : "AUDIO",
       errorMessage: null,
     };
   });
@@ -348,11 +433,18 @@ async function renderLongFormInSegments(params: {
       data: {
         metadataJson: JSON.stringify({
           ...originalMetadata,
+          segmentPipelineVersion: 2,
           renderSegments: segmentState,
           mergeStatus,
         }),
         renderProgress:
-          (segmentState.filter((item) => item.status === "SUCCESS").length /
+          (segmentState.reduce(
+            (total, item) =>
+              total +
+              (item.audioStatus === "SUCCESS" ? 0.25 : 0) +
+              (item.videoStatus === "SUCCESS" ? 0.75 : 0),
+            0,
+          ) /
             segments.length) *
           90,
       },
@@ -372,6 +464,63 @@ async function renderLongFormInSegments(params: {
     }
 
     state.status = "RUNNING";
+    if (!state.audioUrl) {
+      state.audioStatus = "RUNNING";
+      state.currentStage = "AUDIO";
+      await persist();
+      await logCodeVideoPipelineEvent({
+        projectId: params.projectId,
+        stepName: `AUDIO_SEGMENT_${segment.index + 1}`,
+        message: `Gerando audio em portugues do Brasil para ${state.label.toLowerCase()}.`,
+      });
+      try {
+        const audioResponse = await postLongRunningJson(
+          `${baseUrl}/audio`,
+          {
+            projectId: `${params.projectId}-part-${segment.index + 1}`,
+            text: brazilianTtsText(segment.narrationText),
+            voice: params.project.ttsVoice,
+            speed: params.project.ttsSpeed,
+          },
+          1000 * 60 * 10,
+        );
+        let audioData: any = {};
+        try {
+          audioData = JSON.parse(audioResponse.text || "{}");
+        } catch {
+          audioData = {};
+        }
+        if (
+          audioResponse.status < 200 ||
+          audioResponse.status >= 300 ||
+          !audioData.audioUrl
+        ) {
+          throw new Error(
+            audioData?.error ||
+              `Falha ao gerar audio (HTTP ${audioResponse.status}).`,
+          );
+        }
+        state.audioUrl = audioData.audioUrl;
+        state.audioStatus = "SUCCESS";
+        state.currentStage = "VIDEO";
+        await persist();
+        await logCodeVideoPipelineEvent({
+          projectId: params.projectId,
+          stepName: `AUDIO_SEGMENT_${segment.index + 1}`,
+          message: `Audio da ${state.label.toLowerCase()} concluido e disponivel.`,
+          metadata: { audioUrl: audioData.audioUrl },
+        });
+      } catch (error: any) {
+        state.status = "FAILED";
+        state.audioStatus = "FAILED";
+        state.errorMessage = error?.message || "Falha ao gerar audio.";
+        await persist("FAILED");
+        throw new Error(`${state.label} falhou no audio: ${state.errorMessage}`);
+      }
+    }
+
+    state.videoStatus = "RUNNING";
+    state.currentStage = "VIDEO";
     await persist();
     await logCodeVideoPipelineEvent({
       projectId: params.projectId,
@@ -386,13 +535,17 @@ async function renderLongFormInSegments(params: {
           projectType: "LONG_FORM_SEGMENT",
           videoDurationSec: segment.durationSec,
           narrationText: segment.narrationText,
-          audioUrl: null,
+          audioUrl: state.audioUrl,
+          skipTranscription: true,
         },
         videoSpec: segment.videoSpec,
       });
       state.status = "SUCCESS";
       state.videoUrl = result.videoUrl;
-      state.audioUrl = result.audioUrl || null;
+      state.audioUrl = result.audioUrl || state.audioUrl;
+      state.audioStatus = "SUCCESS";
+      state.videoStatus = "SUCCESS";
+      state.currentStage = "DONE";
       state.errorMessage = null;
       await persist();
       await logCodeVideoPipelineEvent({
@@ -403,6 +556,7 @@ async function renderLongFormInSegments(params: {
       });
     } catch (error: any) {
       state.status = "FAILED";
+      state.videoStatus = "FAILED";
       state.errorMessage = error?.message || "Falha ao renderizar segmento.";
       await persist("FAILED");
       throw new Error(`${state.label} falhou: ${state.errorMessage}`);

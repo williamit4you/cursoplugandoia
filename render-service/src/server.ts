@@ -33,11 +33,13 @@ type RenderRequest = {
     talkingHeadVideoUrl?: string | null;
     ttsVoice?: string | null;
     ttsSpeed?: string | null;
+    skipTranscription?: boolean | null;
   };
   videoSpec: any;
 };
 
 let renderQueue: Promise<void> = Promise.resolve();
+let cachedBundlePromise: Promise<string> | null = null;
 
 function json(res: http.ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -110,6 +112,21 @@ async function bundleWithRetry(bundleFn: (args: any) => Promise<string>, entryPo
   }
 
   throw lastError || new Error("Falha ao gerar bundle Remotion.");
+}
+
+async function getCachedBundle(
+  bundleFn: (args: any) => Promise<string>,
+  entryPoint: string,
+) {
+  if (!cachedBundlePromise) {
+    cachedBundlePromise = bundleWithRetry(bundleFn, entryPoint).catch(
+      (error) => {
+        cachedBundlePromise = null;
+        throw error;
+      },
+    );
+  }
+  return cachedBundlePromise;
 }
 
 function totalDurationInFramesFromSpec(videoSpec: any, fps: number) {
@@ -436,6 +453,41 @@ async function generateNarrationMp3(params: { text: string; voice: string; speed
   return Buffer.from(await res.arrayBuffer());
 }
 
+async function generateAudioArtifact(payload: {
+  projectId: string;
+  text: string;
+  voice?: string;
+  speed?: string;
+}) {
+  const projectId = String(payload.projectId || "").trim();
+  const text = String(payload.text || "").trim();
+  if (!projectId) throw new Error("projectId is required");
+  if (!text) throw new Error("text is required");
+  const bucketName = process.env.MINIO_BUCKET_NAME || "uploads";
+  const publicBase = process.env.MINIO_PUBLIC_URL;
+  if (!publicBase) throw new Error("MINIO_PUBLIC_URL not configured");
+  await ensureBucket(bucketName);
+  const mp3 = await generateNarrationMp3({
+    text,
+    voice: payload.voice || "pt-BR-AntonioNeural",
+    speed: payload.speed || "+5%",
+  });
+  const audioKey = `code-video-audio-${projectId}.mp3`;
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: bucketName,
+      Key: audioKey,
+      Body: mp3,
+      ContentType: "audio/mpeg",
+    }),
+  );
+  return {
+    projectId,
+    audioUrl: `${publicBase}/${audioKey}`,
+    bytes: mp3.length,
+  };
+}
+
 async function transcribeAudio(audioUrl: string) {
   const baseUrl = (process.env.WORKER_FASTAPI_BASE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
   const url = `${baseUrl}/transcrever-palavras`;
@@ -486,7 +538,10 @@ async function renderProject(payload: RenderRequest) {
       audioUrl = `${publicBase}/${audioKey}`;
     }
 
-    const transcription = audioUrl ? await transcribeAudio(audioUrl) : null;
+    const transcription =
+      audioUrl && project.skipTranscription !== true
+        ? await transcribeAudio(audioUrl)
+        : null;
 
     // eslint-disable-next-line no-eval
     const req = eval("require") as (name: string) => any;
@@ -502,7 +557,7 @@ async function renderProject(payload: RenderRequest) {
     const localMp4 = path.join(outDir, `code-video-${projectId}.mp4`);
 
     try {
-      bundleLocation = await bundleWithRetry(bundle, entryPoint);
+      bundleLocation = await getCachedBundle(bundle, entryPoint);
 
       const compositions = await getCompositions(bundleLocation, {
         inputProps: { videoSpec, audioUrl, transcription },
@@ -562,7 +617,6 @@ async function renderProject(payload: RenderRequest) {
       };
     } finally {
       await removeIfExists(localMp4);
-      await removeIfExists(bundleLocation);
       await removeIfExists(outDir);
     }
   });
@@ -724,6 +778,37 @@ const server = http.createServer(async (req, res) => {
       console.error("[render-service] S3 ERROR:", error);
       if (error.$metadata) console.error("[render-service] S3 METADATA:", error.$metadata);
       return json(res, 500, { error: error?.message || "Render failed" });
+    }
+  }
+
+  if (req.method === "POST" && req.url === "/audio") {
+    try {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(Buffer.from(chunk));
+      const payload = safeJsonParse(
+        Buffer.concat(chunks).toString("utf8"),
+      ) as {
+        projectId?: string;
+        text?: string;
+        voice?: string;
+        speed?: string;
+      } | null;
+      if (!payload) return json(res, 400, { error: "Invalid JSON" });
+      return json(
+        res,
+        200,
+        await generateAudioArtifact({
+          projectId: String(payload.projectId || ""),
+          text: String(payload.text || ""),
+          voice: payload.voice,
+          speed: payload.speed,
+        }),
+      );
+    } catch (error: any) {
+      console.error("[render-service][audio]", error);
+      return json(res, 500, {
+        error: error?.message || "Audio generation failed",
+      });
     }
   }
 

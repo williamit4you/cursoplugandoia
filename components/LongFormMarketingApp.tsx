@@ -1059,8 +1059,10 @@ function ProjectDetails({
                   const segmentStatus =
                     segment.status === "SUCCESS"
                       ? "Concluida"
+                      : segment.audioStatus === "RUNNING"
+                        ? "Gerando audio"
                       : segment.status === "RUNNING"
-                        ? "Renderizando"
+                        ? "Renderizando video"
                         : segment.status === "FAILED"
                           ? "Falhou"
                           : "Aguardando";
@@ -1095,6 +1097,16 @@ function ProjectDetails({
                           className="mt-2 inline-flex rounded-lg bg-white px-2.5 py-1.5 text-xs font-black text-emerald-700"
                         >
                           Assistir parte
+                        </a>
+                      ) : null}
+                      {segment.audioUrl ? (
+                        <a
+                          href={segment.audioUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ml-2 mt-2 inline-flex rounded-lg bg-white px-2.5 py-1.5 text-xs font-black text-violet-700"
+                        >
+                          Ouvir audio
                         </a>
                       ) : null}
                     </article>
@@ -1156,6 +1168,32 @@ function ProjectDetails({
             <div className="rounded-2xl border border-slate-200 p-4">
               <h3 className="font-black text-slate-900">Artefatos</h3>
               <div className="mt-3 flex flex-wrap gap-2">
+                {renderSegments
+                  .filter((segment: any) => segment.videoUrl)
+                  .map((segment: any) => (
+                    <a
+                      key={segment.index}
+                      href={segment.videoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-700"
+                    >
+                      Abrir parte {Number(segment.index) + 1}
+                    </a>
+                  ))}
+                {renderSegments
+                  .filter((segment: any) => segment.audioUrl)
+                  .map((segment: any) => (
+                    <a
+                      key={`audio-${segment.index}`}
+                      href={segment.audioUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-black text-violet-700"
+                    >
+                      Ouvir audio {Number(segment.index) + 1}
+                    </a>
+                  ))}
                 {project.videoUrl ? (
                   <a
                     href={project.videoUrl}
@@ -1196,7 +1234,10 @@ function ProjectDetails({
                     Abrir capa
                   </a>
                 ) : null}
-                {!project.videoUrl &&
+                {!renderSegments.some(
+                  (segment: any) => segment.videoUrl || segment.audioUrl,
+                ) &&
+                !project.videoUrl &&
                 !project.audioUrl &&
                 !project.captionsUrl &&
                 !project.thumbUrl ? (

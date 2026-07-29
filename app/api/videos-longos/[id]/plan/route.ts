@@ -11,8 +11,125 @@ function object(text: string) { try { return JSON.parse(text); } catch { const a
 function wordCount(text: string) { return text.trim().split(/\s+/).filter(Boolean).length; }
 function cleanNarration(text: string) { return text.replace(/^```(?:text|markdown)?\s*/i, "").replace(/\s*```$/, "").trim(); }
 function trimNarration(text: string, maxWords: number) { const words = text.trim().split(/\s+/); if (words.length <= maxWords) return text.trim(); const clipped = words.slice(0, maxWords).join(" "); const lastStop = Math.max(clipped.lastIndexOf("."), clipped.lastIndexOf("!"), clipped.lastIndexOf("?")); return `${lastStop > clipped.length * 0.85 ? clipped.slice(0, lastStop + 1) : clipped}.`; }
-function scenes(raw: any[], duration: number, assets: Array<{ url: string }>) { const allowed = new Set(["TitleScene", "BulletListScene", "TimelineScene", "CodeTypingScene", "ChartScene", "BigNumberScene", "CircleHighlightScene", "RetentionScene"]); const input = Array.isArray(raw) ? raw.slice(0, 70) : []; const fallback = [{ sceneTemplate: "TitleScene", props: { title: "Marketing digital sem enrolacao", subtitle: "Aula completa" } }, { sceneTemplate: "BulletListScene", props: { title: "O que voce vai aprender", items: ["Estrategia", "Execucao", "Proximos passos"] } }]; const selected = input.length ? input : fallback; const count = Math.max(40, Math.min(70, selected.length)); const baseSeconds = Math.floor(duration / count); const remainingSeconds = duration - baseSeconds * count;
-  return Array.from({ length: count }, (_, index) => { const scene = selected[index % selected.length]; const template = allowed.has(scene?.sceneTemplate) ? scene.sceneTemplate : "BulletListScene"; const media = assets[index % Math.max(assets.length, 1)]?.url; const props = { ...(scene?.props || {}), backgroundColor: index % 2 ? "#111111" : "#080808", textColor: "#ffffff", accentColor: "#dc2626", fontFamily: "Arial Black, Arial" }; const durationSec = baseSeconds + (index < remainingSeconds ? 1 : 0); if (template === "RetentionScene" && media) props.url = media; if (template === "RetentionScene" && !media) return { id: `scene-${index + 1}`, sceneTemplate: "BulletListScene", durationSec, props: { ...props, title: props.title || "Ponto importante", items: Array.isArray(props.items) ? props.items : [props.subtitle || "Aplique este passo"] } }; return { id: `scene-${index + 1}`, sceneTemplate: template, durationSec, props }; }); }
+function scenes(raw: any[], duration: number, assets: Array<{ url: string }>) {
+  const allowed = new Set([
+    "TitleScene",
+    "BulletListScene",
+    "TimelineScene",
+    "CodeTypingScene",
+    "ChartScene",
+    "BigNumberScene",
+    "CircleHighlightScene",
+    "RetentionScene",
+  ]);
+  const palettes = [
+    { backgroundColor: "#0f172a", accentColor: "#38bdf8", textColor: "#f8fafc" },
+    { backgroundColor: "#312e81", accentColor: "#fbbf24", textColor: "#ffffff" },
+    { backgroundColor: "#064e3b", accentColor: "#34d399", textColor: "#ecfdf5" },
+    { backgroundColor: "#7f1d1d", accentColor: "#fb7185", textColor: "#fff7ed" },
+    { backgroundColor: "#3b0764", accentColor: "#c084fc", textColor: "#faf5ff" },
+    { backgroundColor: "#0c4a6e", accentColor: "#22d3ee", textColor: "#ecfeff" },
+  ];
+  const input = Array.isArray(raw) ? raw.slice(0, 70) : [];
+  const fallback = [
+    {
+      sceneTemplate: "TitleScene",
+      props: {
+        title: "Marketing digital sem enrolacao",
+        subtitle: "Aula completa",
+      },
+    },
+    {
+      sceneTemplate: "BulletListScene",
+      props: {
+        title: "O que voce vai aprender",
+        items: ["Estrategia", "Execucao", "Proximos passos"],
+      },
+    },
+  ];
+  const selected = input.length ? input : fallback;
+  const count = Math.max(40, Math.min(70, selected.length));
+  const baseSeconds = Math.floor(duration / count);
+  const remainingSeconds = duration - baseSeconds * count;
+
+  return Array.from({ length: count }, (_, index) => {
+    const scene = selected[index % selected.length];
+    const template = allowed.has(scene?.sceneTemplate)
+      ? scene.sceneTemplate
+      : "BulletListScene";
+    const palette = palettes[index % palettes.length];
+    const media = assets[index % Math.max(assets.length, 1)]?.url;
+    const sourceProps = scene?.props || {};
+    const title =
+      String(
+        sourceProps.title ||
+          sourceProps.subtitle ||
+          `Ponto importante ${index + 1}`,
+      ).trim() || `Ponto importante ${index + 1}`;
+    const props: any = {
+      ...sourceProps,
+      ...palette,
+      chartColor: palette.accentColor,
+      highlightColor: palette.accentColor,
+      circleColor: palette.accentColor,
+      fontFamily: "Arial Black, Arial",
+      title,
+    };
+
+    if (template === "BulletListScene" && !Array.isArray(props.items)) {
+      props.items = [title, "Exemplo pratico", "Como aplicar agora"];
+    }
+    if (template === "TimelineScene" && !Array.isArray(props.items)) {
+      props.items = [
+        { label: "Entenda", text: title },
+        { label: "Aplique", text: "Transforme a explicacao em uma acao" },
+      ];
+    }
+    if (template === "CodeTypingScene" && !props.code) {
+      props.code = `${title}\n\n1. Entenda o conceito\n2. Veja o exemplo\n3. Coloque em pratica`;
+    }
+    if (template === "ChartScene" && !Array.isArray(props.dataPoints)) {
+      props.dataPoints = [
+        { label: "Inicio", value: 25 },
+        { label: "Aplicacao", value: 65 },
+        { label: "Resultado", value: 100 },
+      ];
+    }
+    if (template === "BigNumberScene") {
+      props.number = props.number || `${index + 1}`;
+      props.subtitle = props.subtitle || title;
+    }
+    if (template === "CircleHighlightScene") {
+      props.centerText = props.centerText || title.slice(0, 24);
+      props.surroundingTexts = Array.isArray(props.surroundingTexts)
+        ? props.surroundingTexts
+        : ["Contexto", "Exemplo", "Acao"];
+    }
+    if (template === "RetentionScene" && media) props.url = media;
+
+    const durationSec =
+      baseSeconds + (index < remainingSeconds ? 1 : 0);
+    if (template === "RetentionScene" && !media) {
+      return {
+        id: `scene-${index + 1}`,
+        sceneTemplate: "BulletListScene",
+        durationSec,
+        props: {
+          ...props,
+          items: Array.isArray(props.items)
+            ? props.items
+            : [title, "Exemplo visual", "Aplicacao pratica"],
+        },
+      };
+    }
+    return {
+      id: `scene-${index + 1}`,
+      sceneTemplate: template,
+      durationSec,
+      props,
+    };
+  });
+}
 
 export async function POST(_: NextRequest, ctx: { params: { id: string } }) {
   const project = await prisma.codeVideoProject.findFirst({ where: { id: ctx.params.id, projectType: LONG_FORM_PROJECT_TYPE } });
