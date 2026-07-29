@@ -231,6 +231,224 @@ async function renderWithExternalService(params: {
   return data;
 }
 
+function buildLongFormSegments(videoSpec: any, narrationText: string) {
+  const scenes = Array.isArray(videoSpec?.scenes) ? videoSpec.scenes : [];
+  const sceneGroups: any[][] = [];
+  let currentScenes: any[] = [];
+  let currentDuration = 0;
+
+  for (const scene of scenes) {
+    const duration = Math.max(1, Number(scene?.durationSec || 1));
+    if (currentScenes.length && currentDuration + duration > 75) {
+      sceneGroups.push(currentScenes);
+      currentScenes = [];
+      currentDuration = 0;
+    }
+    currentScenes.push(scene);
+    currentDuration += duration;
+    if (currentDuration >= 55) {
+      sceneGroups.push(currentScenes);
+      currentScenes = [];
+      currentDuration = 0;
+    }
+  }
+  if (currentScenes.length) sceneGroups.push(currentScenes);
+
+  const words = narrationText.trim().split(/\s+/).filter(Boolean);
+  const totalDuration = sceneGroups.reduce(
+    (total, group) =>
+      total +
+      group.reduce(
+        (groupTotal, scene) =>
+          groupTotal + Math.max(1, Number(scene?.durationSec || 1)),
+        0,
+      ),
+    0,
+  );
+  let wordCursor = 0;
+
+  return sceneGroups.map((group, index) => {
+    const durationSec = group.reduce(
+      (total, scene) => total + Math.max(1, Number(scene?.durationSec || 1)),
+      0,
+    );
+    const remainingWords = words.length - wordCursor;
+    const wordAmount =
+      index === sceneGroups.length - 1
+        ? remainingWords
+        : Math.max(
+            1,
+            Math.round((words.length * durationSec) / Math.max(1, totalDuration)),
+          );
+    const segmentNarration = words
+      .slice(wordCursor, wordCursor + wordAmount)
+      .join(" ");
+    wordCursor += wordAmount;
+
+    return {
+      index,
+      durationSec,
+      narrationText: segmentNarration,
+      videoSpec: {
+        ...videoSpec,
+        content: {
+          ...(videoSpec?.content || {}),
+          narrationText: segmentNarration,
+          segmentIndex: index + 1,
+          segmentCount: sceneGroups.length,
+          totalDurationSec: durationSec,
+        },
+        scenes: group.map((scene, sceneIndex) => ({
+          ...scene,
+          id: `segment-${index + 1}-scene-${sceneIndex + 1}`,
+        })),
+      },
+    };
+  });
+}
+
+async function renderLongFormInSegments(params: {
+  projectId: string;
+  project: any;
+  videoSpec: any;
+}) {
+  const baseUrl = externalRenderServiceUrl();
+  if (!baseUrl) {
+    throw new Error("VIDEO_RENDER_SERVICE_URL not configured");
+  }
+  const segments = buildLongFormSegments(
+    params.videoSpec,
+    String(params.project.narrationText || ""),
+  );
+  if (!segments.length) {
+    throw new Error("O plano visual nao possui cenas para renderizar.");
+  }
+
+  const originalMetadata = safeJsonParse(params.project.metadataJson || "") || {};
+  const previousSegments = Array.isArray(originalMetadata.renderSegments)
+    ? originalMetadata.renderSegments
+    : [];
+  const segmentState = segments.map((segment) => {
+    const previous = previousSegments.find(
+      (item: any) => Number(item?.index) === segment.index,
+    );
+    return {
+      index: segment.index,
+      label: `Parte ${segment.index + 1}`,
+      durationSec: segment.durationSec,
+      status: previous?.videoUrl ? "SUCCESS" : "PENDING",
+      videoUrl: previous?.videoUrl || null,
+      audioUrl: previous?.audioUrl || null,
+      errorMessage: null,
+    };
+  });
+  const persist = async (mergeStatus = "PENDING") => {
+    await prisma.codeVideoProject.update({
+      where: { id: params.projectId },
+      data: {
+        metadataJson: JSON.stringify({
+          ...originalMetadata,
+          renderSegments: segmentState,
+          mergeStatus,
+        }),
+        renderProgress:
+          (segmentState.filter((item) => item.status === "SUCCESS").length /
+            segments.length) *
+          90,
+      },
+    });
+  };
+  await persist();
+
+  for (const segment of segments) {
+    const state = segmentState[segment.index];
+    if (state.videoUrl) {
+      await logCodeVideoPipelineEvent({
+        projectId: params.projectId,
+        stepName: `RENDER_SEGMENT_${segment.index + 1}`,
+        message: `${state.label} reutilizada: ${Math.round(segment.durationSec)}s.`,
+      });
+      continue;
+    }
+
+    state.status = "RUNNING";
+    await persist();
+    await logCodeVideoPipelineEvent({
+      projectId: params.projectId,
+      stepName: `RENDER_SEGMENT_${segment.index + 1}`,
+      message: `Renderizando ${state.label.toLowerCase()} de ${segments.length} (${Math.round(segment.durationSec)}s).`,
+    });
+    try {
+      const result = await renderWithExternalService({
+        projectId: `${params.projectId}-part-${segment.index + 1}`,
+        project: {
+          ...params.project,
+          projectType: "LONG_FORM_SEGMENT",
+          videoDurationSec: segment.durationSec,
+          narrationText: segment.narrationText,
+          audioUrl: null,
+        },
+        videoSpec: segment.videoSpec,
+      });
+      state.status = "SUCCESS";
+      state.videoUrl = result.videoUrl;
+      state.audioUrl = result.audioUrl || null;
+      state.errorMessage = null;
+      await persist();
+      await logCodeVideoPipelineEvent({
+        projectId: params.projectId,
+        stepName: `RENDER_SEGMENT_${segment.index + 1}`,
+        message: `${state.label} concluida e salva (${Math.round(Number(result.durationSec || segment.durationSec))}s).`,
+        metadata: { videoUrl: result.videoUrl },
+      });
+    } catch (error: any) {
+      state.status = "FAILED";
+      state.errorMessage = error?.message || "Falha ao renderizar segmento.";
+      await persist("FAILED");
+      throw new Error(`${state.label} falhou: ${state.errorMessage}`);
+    }
+  }
+
+  await persist("RUNNING");
+  await logCodeVideoPipelineEvent({
+    projectId: params.projectId,
+    stepName: "MERGE_SEGMENTS",
+    message: `Unindo ${segmentState.length} partes em um unico MP4.`,
+  });
+  const response = await postLongRunningJson(
+    `${baseUrl}/concat`,
+    {
+      projectId: params.projectId,
+      videoUrls: segmentState.map((segment) => segment.videoUrl),
+    },
+    1000 * 60 * 35,
+  );
+  let merged: any = {};
+  try {
+    merged = JSON.parse(response.text || "{}");
+  } catch {
+    merged = {};
+  }
+  if (response.status < 200 || response.status >= 300 || !merged.videoUrl) {
+    await persist("FAILED");
+    throw new Error(
+      merged?.error ||
+        `Falha ao unir os segmentos (HTTP ${response.status}).`,
+    );
+  }
+  await persist("SUCCESS");
+  await logCodeVideoPipelineEvent({
+    projectId: params.projectId,
+    stepName: "MERGE_SEGMENTS",
+    message: "Partes unidas com sucesso. MP4 final disponivel.",
+    metadata: { videoUrl: merged.videoUrl },
+  });
+  return {
+    videoUrl: merged.videoUrl,
+    durationSec: Number(merged.durationSec || 0),
+  };
+}
+
 async function renderNewsAsTalkingHead(project: any) {
   const defaults = await resolveCreatorVideoDefaults(null, "ENGAGEMENT");
   const voiceRefUrl = String(defaults.voiceRefUrl || "").trim();
@@ -413,7 +631,13 @@ export async function POST(req: NextRequest) {
 
     const result = isNewsPresenter
       ? await renderNewsAsTalkingHead(project)
-      : await renderWithExternalService({
+      : project.projectType === "LONG_FORM_MARKETING"
+        ? await renderLongFormInSegments({
+            projectId,
+            project,
+            videoSpec,
+          })
+        : await renderWithExternalService({
           projectId,
           project: {
             projectType: project.projectType,
@@ -429,7 +653,16 @@ export async function POST(req: NextRequest) {
         });
 
     const actualDurationSec = Number((result as any).durationSec);
-    const metadata = safeJsonParse(project.metadataJson || "") || {};
+    const latestMetadataRow =
+      project.projectType === "LONG_FORM_MARKETING"
+        ? await prisma.codeVideoProject.findUnique({
+            where: { id: projectId },
+            select: { metadataJson: true },
+          })
+        : null;
+    const metadata =
+      safeJsonParse(latestMetadataRow?.metadataJson || project.metadataJson || "") ||
+      {};
     const updated = await prisma.codeVideoProject.update({
       where: { id: projectId },
       data: {

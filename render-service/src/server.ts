@@ -568,6 +568,129 @@ async function renderProject(payload: RenderRequest) {
   });
 }
 
+async function concatRenderedVideos(payload: {
+  projectId: string;
+  videoUrls: string[];
+}) {
+  return withRenderLock(async () => {
+    const projectId = String(payload?.projectId || "").trim();
+    const videoUrls = Array.isArray(payload?.videoUrls)
+      ? payload.videoUrls.map(String).filter(Boolean)
+      : [];
+    if (!projectId) throw new Error("projectId is required");
+    if (videoUrls.length < 2) {
+      throw new Error("At least two videoUrls are required");
+    }
+
+    const bucketName = process.env.MINIO_BUCKET_NAME || "uploads";
+    const publicBase = process.env.MINIO_PUBLIC_URL;
+    if (!publicBase) throw new Error("MINIO_PUBLIC_URL not configured");
+    await ensureBucket(bucketName);
+
+    const safeProjectId = projectId.replace(/[^a-zA-Z0-9_-]/g, "-");
+    const outDir = path.resolve(
+      process.cwd(),
+      ".remotion-temp",
+      `${safeProjectId}-concat`,
+    );
+    await fs.mkdir(outDir, { recursive: true });
+    const localFiles: string[] = [];
+    const concatList = path.join(outDir, "concat.txt");
+    const finalFile = path.join(outDir, "final.mp4");
+
+    try {
+      for (let index = 0; index < videoUrls.length; index += 1) {
+        const response = await fetch(videoUrls[index], {
+          signal: AbortSignal.timeout(10 * 60 * 1000),
+        });
+        if (!response.ok) {
+          throw new Error(
+            `Falha ao baixar parte ${index + 1} (HTTP ${response.status})`,
+          );
+        }
+        const localFile = path.join(
+          outDir,
+          `part-${String(index + 1).padStart(3, "0")}.mp4`,
+        );
+        await fs.writeFile(
+          localFile,
+          Buffer.from(await response.arrayBuffer()),
+        );
+        localFiles.push(localFile);
+      }
+
+      await fs.writeFile(
+        concatList,
+        localFiles
+          .map((file) => `file '${file.replace(/'/g, "'\\''")}'`)
+          .join("\n"),
+        "utf8",
+      );
+      try {
+        await execFileAsync("ffmpeg", [
+          "-y",
+          "-f",
+          "concat",
+          "-safe",
+          "0",
+          "-i",
+          concatList,
+          "-c",
+          "copy",
+          "-movflags",
+          "+faststart",
+          finalFile,
+        ]);
+      } catch {
+        await execFileAsync("ffmpeg", [
+          "-y",
+          "-f",
+          "concat",
+          "-safe",
+          "0",
+          "-i",
+          concatList,
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "22",
+          "-c:a",
+          "aac",
+          "-movflags",
+          "+faststart",
+          finalFile,
+        ]);
+      }
+
+      const durationSec = await mediaDurationSec(finalFile);
+      if (durationSec < LONG_FORM_MIN_DURATION_SEC) {
+        throw new Error(
+          `Video final com ${Math.round(durationSec)}s; minimo de ${LONG_FORM_MIN_DURATION_SEC}s.`,
+        );
+      }
+      const key = `code-video-${projectId}.mp4`;
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: bucketName,
+          Key: key,
+          Body: await fs.readFile(finalFile),
+          ContentType: "video/mp4",
+        }),
+      );
+      return {
+        projectId,
+        videoUrl: `${publicBase}/${key}`,
+        durationSec,
+        segmentCount: videoUrls.length,
+      };
+    } finally {
+      await removeIfExists(outDir);
+    }
+  });
+}
+
 const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/health") {
     return json(res, 200, { ok: true, service: "render-service" });
@@ -601,6 +724,27 @@ const server = http.createServer(async (req, res) => {
       console.error("[render-service] S3 ERROR:", error);
       if (error.$metadata) console.error("[render-service] S3 METADATA:", error.$metadata);
       return json(res, 500, { error: error?.message || "Render failed" });
+    }
+  }
+
+  if (req.method === "POST" && req.url === "/concat") {
+    try {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(Buffer.from(chunk));
+      const payload = safeJsonParse(
+        Buffer.concat(chunks).toString("utf8"),
+      ) as { projectId?: string; videoUrls?: string[] } | null;
+      if (!payload) return json(res, 400, { error: "Invalid JSON" });
+      const response = await concatRenderedVideos({
+        projectId: String(payload.projectId || ""),
+        videoUrls: Array.isArray(payload.videoUrls) ? payload.videoUrls : [],
+      });
+      return json(res, 200, response);
+    } catch (error: any) {
+      console.error("[render-service][concat]", error);
+      return json(res, 500, {
+        error: error?.message || "Video concat failed",
+      });
     }
   }
 

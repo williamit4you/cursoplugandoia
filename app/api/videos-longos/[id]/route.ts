@@ -90,6 +90,8 @@ export async function PATCH(
           thumbnailConcepts: undefined,
           thumbnailOptions: undefined,
           subtopicCoverage: undefined,
+          renderSegments: undefined,
+          mergeStatus: undefined,
           planningApproved: false,
           finalApproved: false,
           actualDurationSec: null,

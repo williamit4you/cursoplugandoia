@@ -300,17 +300,31 @@ export function LongFormMarketingApp() {
     }
   };
 
-  const openDetails = async (id: string) => {
-    setDetailsLoading(true);
+  const openDetails = async (id: string, silent = false) => {
+    if (!silent) setDetailsLoading(true);
     setError("");
     try {
       setDetails(await call(`/api/videos-longos/${id}`, { cache: "no-store" }));
     } catch (detailsError: any) {
       setError(detailsError.message);
     } finally {
-      setDetailsLoading(false);
+      if (!silent) setDetailsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (
+      !details?.id ||
+      !["GENERATING", "RENDERING"].includes(details.status)
+    ) {
+      return;
+    }
+    const timer = window.setInterval(
+      () => void openDetails(details.id, true),
+      5000,
+    );
+    return () => window.clearInterval(timer);
+  }, [details?.id, details?.status]);
 
   const saveForm = async (reprocess: boolean) => {
     if (!form) return;
@@ -864,6 +878,9 @@ function ProjectDetails({
   const events = Array.isArray(project.pipelineEvents)
     ? project.pipelineEvents
     : [];
+  const renderSegments = Array.isArray(metadata.renderSegments)
+    ? metadata.renderSegments
+    : [];
   const standardSteps = [
     {
       key: "BRIEFING",
@@ -1011,6 +1028,84 @@ function ProjectDetails({
                 </article>
               ))}
             </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+              <div>
+                <h3 className="font-black text-slate-900">
+                  Partes do video
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Cada parte tem aproximadamente um minuto e fica disponivel
+                  assim que termina.
+                </p>
+              </div>
+              {renderSegments.length ? (
+                <span className="text-xs font-black text-slate-600">
+                  {
+                    renderSegments.filter(
+                      (segment: any) => segment.status === "SUCCESS",
+                    ).length
+                  }
+                  /{renderSegments.length} concluidas • Merge:{" "}
+                  {metadata.mergeStatus || "PENDING"}
+                </span>
+              ) : null}
+            </div>
+            {renderSegments.length ? (
+              <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+                {renderSegments.map((segment: any) => {
+                  const segmentStatus =
+                    segment.status === "SUCCESS"
+                      ? "Concluida"
+                      : segment.status === "RUNNING"
+                        ? "Renderizando"
+                        : segment.status === "FAILED"
+                          ? "Falhou"
+                          : "Aguardando";
+                  return (
+                    <article
+                      key={segment.index}
+                      className={`rounded-xl border p-3 ${
+                        stepStyle[segment.status] || stepStyle.PENDING
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-black">
+                          {segment.label || `Parte ${segment.index + 1}`}
+                        </p>
+                        <span className="text-[11px] font-bold">
+                          {Math.round(Number(segment.durationSec || 0))}s
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs font-semibold">
+                        {segmentStatus}
+                      </p>
+                      {segment.errorMessage ? (
+                        <p className="mt-1 line-clamp-3 text-xs">
+                          {segment.errorMessage}
+                        </p>
+                      ) : null}
+                      {segment.videoUrl ? (
+                        <a
+                          href={segment.videoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-flex rounded-lg bg-white px-2.5 py-1.5 text-xs font-black text-emerald-700"
+                        >
+                          Assistir parte
+                        </a>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="p-5 text-sm text-slate-500">
+                As partes aparecerao aqui quando o render segmentado iniciar.
+              </p>
+            )}
           </section>
 
           <section className="rounded-2xl border border-slate-200">
