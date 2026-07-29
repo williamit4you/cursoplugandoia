@@ -4,22 +4,18 @@ import {
   LONG_FORM_PROJECT_TYPE,
   parseLongFormMetadata,
 } from "@/lib/longFormMarketing";
+import { POST as planLongFormVideo } from "../plan/route";
+import { POST as renderCodeVideo } from "../../../video-code/render/route";
+import { logCodeVideoPipelineEvent } from "@/lib/video-code/logger";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 2100;
 
-async function invoke(origin: string, path: string, body?: unknown) {
-  const response = await fetch(`${origin}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    cache: "no-store",
-    signal: AbortSignal.timeout(1000 * 60 * 35),
-  });
+async function requireSuccess(response: Response, stage: string) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.error || `Falha na etapa ${path}`);
+    throw new Error(payload?.error || `Falha na etapa ${stage}`);
   }
   return payload;
 }
@@ -41,7 +37,6 @@ export async function POST(
     );
   }
 
-  const origin = new URL(req.url).origin;
   try {
     await prisma.codeVideoProject.update({
       where: { id: project.id },
@@ -56,8 +51,16 @@ export async function POST(
         renderProgress: 0,
       },
     });
+    await logCodeVideoPipelineEvent({
+      projectId: project.id,
+      stepName: "LONG_FORM_PROCESS",
+      message: "Processamento completo iniciado pelo operador.",
+    });
 
-    await invoke(origin, `/api/videos-longos/${project.id}/plan`);
+    await requireSuccess(
+      await planLongFormVideo(req, { params: { id: project.id } }),
+      "Geracao do roteiro",
+    );
     const planned = await prisma.codeVideoProject.findUnique({
       where: { id: project.id },
     });
@@ -73,14 +76,28 @@ export async function POST(
       },
     });
 
-    await invoke(origin, "/api/video-code/render", {
-      projectId: project.id,
-    });
+    const renderRequest = new NextRequest(
+      new URL("/api/video-code/render", req.url),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id }),
+      },
+    );
+    await requireSuccess(
+      await renderCodeVideo(renderRequest),
+      "Renderizacao do video",
+    );
     const completed = await prisma.codeVideoProject.findUnique({
       where: { id: project.id },
       include: {
         socialPosts: { orderBy: { createdAt: "desc" }, take: 1 },
       },
+    });
+    await logCodeVideoPipelineEvent({
+      projectId: project.id,
+      stepName: "LONG_FORM_PROCESS",
+      message: "Processamento completo finalizado com sucesso.",
     });
     return NextResponse.json(completed);
   } catch (error: any) {
@@ -91,6 +108,12 @@ export async function POST(
         data: { status: "FAILED", errorMessage: message },
       })
       .catch(() => null);
+    await logCodeVideoPipelineEvent({
+      projectId: project.id,
+      stepName: "LONG_FORM_PROCESS",
+      level: "ERROR",
+      message,
+    }).catch(() => null);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -13,6 +13,7 @@ async function read(id: string) {
     where: { id, projectType: LONG_FORM_PROJECT_TYPE },
     include: {
       socialPosts: { orderBy: { createdAt: "desc" } },
+      pipelineSteps: { orderBy: { createdAt: "asc" } },
       pipelineEvents: { orderBy: { createdAt: "desc" }, take: 30 },
     },
   });
