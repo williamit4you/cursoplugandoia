@@ -3,7 +3,6 @@ import Link from "next/link";
 import {
   ArrowRight,
   BadgeCheck,
-  HeartHandshake,
   Search,
   ShieldCheck,
   ShoppingBag,
@@ -18,7 +17,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Compra Esperta Promoções | Lojas e ofertas selecionadas",
-  description: "Lojas parceiras e achados selecionados em uma vitrine simples, segura e organizada.",
+  description: "Lojas, guias de produtos e achados selecionados em uma vitrine simples, segura e organizada.",
 };
 
 const themes = [
@@ -119,7 +118,8 @@ export default async function OffersPage({
             </span>
           </Link>
           <div className="hidden items-center gap-5 text-xs font-semibold text-slate-300 sm:flex">
-            <Link href="/lojas" className="hover:text-white">Guias das lojas</Link>
+            <Link href="/produtos" className="hover:text-white">Guias de produtos</Link>
+            <Link href="/lojas" className="hover:text-white">Todas as lojas</Link>
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2">
               <ShieldCheck className="h-4 w-4 text-emerald-300" />
               Links organizados e transparentes
@@ -142,12 +142,12 @@ export default async function OffersPage({
               </span>
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-              Lojas parceiras, achados da Shopee e caminhos diretos para você comparar com calma — tudo organizado em um só lugar.
+              Lojas, guias de produtos, achados da Shopee e caminhos diretos para você comparar com calma — tudo organizado em um só lugar.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Stat icon={<Store className="h-5 w-5 text-amber-200" />} value={totalStores} label="lojas parceiras" />
+            <Stat icon={<Store className="h-5 w-5 text-amber-200" />} value={totalStores} label="lojas disponíveis" />
             <Stat icon={<Tag className="h-5 w-5 text-emerald-200" />} value={totalProducts} label="achados publicados" />
           </div>
         </div>
@@ -175,7 +175,7 @@ export default async function OffersPage({
         <div>
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-amber-200">Escolha por loja</div>
           <h2 className="mt-2 text-3xl font-black tracking-tight text-white">Lojas que valem conhecer</h2>
-          <p className="mt-2 text-sm text-slate-400">Cards claros, chamadas responsáveis e acesso direto à loja parceira.</p>
+          <p className="mt-2 text-sm text-slate-400">Cards claros, guias de apoio e acesso direto a cada loja.</p>
         </div>
 
         {stores.length ? (
@@ -189,7 +189,7 @@ export default async function OffersPage({
                     <div className={`grid h-14 w-14 place-items-center rounded-2xl text-base font-black text-slate-950 shadow-lg ${color}`}>{initials(store.name)}</div>
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-300">
                       <BadgeCheck className="h-3.5 w-3.5 text-emerald-300" />
-                      Loja parceira
+                      Loja verificada
                     </span>
                   </div>
                   <div className="mt-7 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{store.category}</div>
@@ -257,7 +257,7 @@ export default async function OffersPage({
       <section className="relative mx-auto max-w-7xl px-5 py-12 sm:px-8">
         <div className="grid gap-4 sm:grid-cols-3">
           <TrustItem icon={<ShieldCheck />} title="Compra consciente">Confira preço, frete, disponibilidade e regras diretamente na loja antes de finalizar.</TrustItem>
-          <TrustItem icon={<HeartHandshake />} title="Transparência">Alguns links são de afiliado e podem gerar comissão, sem custo adicional para você.</TrustItem>
+          <TrustItem icon={<BadgeCheck />} title="Pesquisa útil">Guias organizados para responder dúvidas de uso e comparação antes da compra.</TrustItem>
           <TrustItem icon={<Sparkles />} title="Seleção em evolução">A vitrine recebe novas lojas e produtos conforme eles entram no nosso fluxo editorial.</TrustItem>
         </div>
         <footer className="mt-12 flex flex-col justify-between gap-3 border-t border-white/10 pt-7 text-xs text-slate-500 sm:flex-row">

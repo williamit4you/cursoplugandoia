@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, BookOpen, ExternalLink, ShoppingBag } from "luci
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { buildStoreHubDescription, STORE_ARTICLE_TOPICS } from "@/lib/affiliateSeoContent";
+import { productsForStore } from "@/lib/productSeoArticles";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function StoreHubPage({ params }: { params: { slug: string } }) {
   const store = await getStore(params.slug);
   if (!store) notFound();
+  const productArticles = productsForStore(store.slug);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://plugandoia.cloud";
   const schema = {
     "@context": "https://schema.org",
@@ -60,15 +62,32 @@ export default async function StoreHubPage({ params }: { params: { slug: string 
           <h1 className="mt-3 text-5xl font-black tracking-tight text-white sm:text-7xl">{store.name}</h1>
           <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-300">{store.defaultCopy}</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a href={`/go/loja/${store.slug}?source=seo_store_hub&medium=affiliate&campaign=compra_esperta_promocoes`} rel="sponsored" className="inline-flex items-center gap-2 rounded-2xl bg-emerald-300 px-5 py-4 text-sm font-black text-slate-950 hover:bg-emerald-200">
+            <a href={`/go/loja/${store.slug}?source=seo_store_hub&medium=content&campaign=compra_esperta_promocoes`} rel="sponsored" className="inline-flex items-center gap-2 rounded-2xl bg-emerald-300 px-5 py-4 text-sm font-black text-slate-950 hover:bg-emerald-200">
               Acessar {store.name} <ExternalLink className="h-4 w-4" />
             </a>
-            <span className="rounded-2xl border border-white/10 px-5 py-4 text-xs text-slate-400">Link de afiliado • sem custo adicional</span>
           </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-5 py-14">
+        {productArticles.length ? (
+          <div className="mb-16">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-amber-200"><ShoppingBag className="h-4 w-4" /> Produtos pesquisados</div>
+            <h2 className="mt-3 text-3xl font-black text-white">Análises específicas de produtos</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Guias para responder dúvidas sobre uso, especificações, limitações e perfil de compra.</p>
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              {productArticles.map((article) => (
+                <Link key={article.slug} href={`/lojas/${store.slug}/produtos/${article.slug}`} className="group rounded-3xl border border-amber-300/15 bg-amber-300/[0.05] p-6 transition hover:-translate-y-1 hover:border-amber-300/35">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200">{article.category}</div>
+                  <h3 className="mt-3 text-xl font-black leading-7 text-white">{article.title}</h3>
+                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-400">{article.description}</p>
+                  <div className="mt-5 flex items-center gap-2 text-sm font-bold text-slate-200">Ler análise <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-emerald-200"><BookOpen className="h-4 w-4" /> Conteúdo de apoio</div>
         <h2 className="mt-3 text-3xl font-black text-white">Cinco leituras para decidir melhor</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Cada página responde a uma intenção diferente: planejar, comparar, encontrar ideias, revisar a compra e acompanhar condições.</p>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, ExternalLink, Info, ShoppingBag } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ExternalLink, ShoppingBag } from "lucide-react";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { buildStoreArticle, buildStoreCtaLabel, findStoreArticleTopic, STORE_ARTICLE_TOPICS } from "@/lib/affiliateSeoContent";
@@ -72,7 +72,6 @@ export default async function StoreArticlePage({ params }: { params: { slug: str
             <div className="mt-10 text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">{article.topic.shortLabel} • {store.category}</div>
             <h1 className="mt-4 text-4xl font-black leading-[1.08] tracking-tight text-white sm:text-6xl">{article.title}</h1>
             <p className="mt-6 text-lg leading-8 text-slate-300">{article.description}</p>
-            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-slate-400"><Info className="h-4 w-4 text-amber-200" /> Conteúdo editorial com link de afiliado identificado</div>
           </div>
         </div>
 
@@ -97,8 +96,8 @@ export default async function StoreArticlePage({ params }: { params: { slug: str
           <aside className="mt-14 rounded-[30px] border border-emerald-300/20 bg-gradient-to-br from-emerald-300/15 to-amber-300/5 p-7 sm:p-9">
             <div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-200">Próximo passo</div>
             <h2 className="mt-3 text-2xl font-black text-white">Confira as condições diretamente na loja</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Preço, estoque, frete e eventuais cupons podem mudar. O botão abaixo usa seu link de afiliado e registra apenas o clique necessário para medir a campanha.</p>
-            <a href={`/go/loja/${store.slug}?source=seo_article&medium=affiliate&campaign=${article.topic.slug}`} rel="sponsored" className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-emerald-300 px-5 py-4 text-sm font-black text-slate-950 hover:bg-emerald-200">{buildStoreCtaLabel(store)} <ExternalLink className="h-4 w-4" /></a>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Preço, estoque, frete e eventuais cupons podem mudar. Confirme as condições atuais diretamente na loja antes de decidir.</p>
+            <a href={`/go/loja/${store.slug}?source=seo_article&medium=content&campaign=${article.topic.slug}`} rel="sponsored" className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-emerald-300 px-5 py-4 text-sm font-black text-slate-950 hover:bg-emerald-200">{buildStoreCtaLabel(store)} <ExternalLink className="h-4 w-4" /></a>
           </aside>
 
           <section className="mt-14">

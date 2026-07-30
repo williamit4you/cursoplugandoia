@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Comparativos de produtos | Portal IA",
-  description: "Guias comparativos com foco em SEO e links afiliados para conferir os produtos analisados.",
+  description: "Guias comparativos com informações práticas para conferir e comparar os produtos analisados.",
 };
 
 export default async function ComparisonListPage() {

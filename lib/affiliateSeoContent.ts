@@ -161,12 +161,12 @@ export function buildStoreArticle(store: AffiliateStoreSeoInput, topicSlug: stri
 
   const commonFaq = [
     {
-      question: `O link da ${store.name} é de afiliado?`,
-      answer: `Sim. O acesso disponibilizado nesta página pode gerar comissão para o Compra Esperta, sem custo adicional para você. A compra e o atendimento acontecem no ambiente da ${store.name}.`,
+      question: `Como conferir as condições atuais da ${store.name}?`,
+      answer: `Use o botão de acesso à loja e confirme preço, estoque, frete, cupons, prazo e política de troca diretamente no ambiente da ${store.name}.`,
     },
     {
-      question: "Os preços exibidos aqui são garantidos?",
-      answer: "Não publicamos preço sem verificação. Preço, estoque, frete, cupons e condições devem ser confirmados diretamente na loja no momento da compra.",
+      question: "Como comparar opções sem depender apenas do preço?",
+      answer: `Defina primeiro os recursos obrigatórios, compare produtos equivalentes e considere custo total, durabilidade, garantia e adequação ao uso.`,
     },
   ];
 
@@ -375,7 +375,7 @@ export function buildStoreArticle(store: AffiliateStoreSeoInput, topicSlug: stri
 }
 
 export function buildStoreHubDescription(store: AffiliateStoreSeoInput) {
-  return `Conheça a ${store.name}, explore conteúdos sobre ${store.category.toLowerCase()} e acesse a loja por um link de afiliado transparente.`;
+  return `Conheça a ${store.name}, explore guias sobre ${store.category.toLowerCase()} e encontre informações para comparar produtos e decidir melhor.`;
 }
 
 export function buildStoreCtaLabel(store: AffiliateStoreSeoInput) {

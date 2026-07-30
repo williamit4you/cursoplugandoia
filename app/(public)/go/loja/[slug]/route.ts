@@ -9,6 +9,26 @@ function clean(value: unknown, max: number) {
   return String(value || "").trim().slice(0, max) || null;
 }
 
+function normalizedHost(value: string) {
+  return value.toLowerCase().replace(/^www\./, "");
+}
+
+function resolveDestination(affiliateUrl: string, requestedDestination: string | null) {
+  const tracked = new URL(affiliateUrl);
+  if (!requestedDestination) return tracked;
+
+  try {
+    const destination = new URL(requestedDestination);
+    if (destination.protocol !== "https:" || normalizedHost(destination.hostname) !== normalizedHost(tracked.hostname)) {
+      return tracked;
+    }
+    tracked.searchParams.forEach((value, key) => destination.searchParams.set(key, value));
+    return destination;
+  } catch {
+    return tracked;
+  }
+}
+
 export async function GET(req: NextRequest, { params }: { params: { slug: string } }) {
   const slug = String(params.slug || "").trim();
   if (!slug) return NextResponse.redirect(new URL("/ofertas", req.url), 302);
@@ -38,7 +58,8 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
     .catch((error) => console.error("[AFFILIATE_STORE_CLICK]", error));
 
   try {
-    return NextResponse.redirect(new URL(store.affiliateUrl), 302);
+    const destination = clean(req.nextUrl.searchParams.get("destination"), 2_000);
+    return NextResponse.redirect(resolveDestination(store.affiliateUrl, destination), 302);
   } catch {
     return NextResponse.redirect(new URL("/ofertas?aviso=link-indisponivel", req.url), 302);
   }

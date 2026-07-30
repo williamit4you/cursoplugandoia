@@ -31,7 +31,7 @@ export default function TermsPage() {
         <h2 className="pt-4 text-xl font-black tracking-tight text-slate-100">1. O que a Plataforma faz</h2>
         <p>
           A Plataforma auxilia na organização, criação e publicação de conteúdo de vídeo para redes sociais, incluindo
-          automações relacionadas a produtos e links externos (por exemplo, links de afiliado). A Plataforma pode integrar
+          automações relacionadas a produtos e links externos. A Plataforma pode integrar
           com serviços de terceiros (ex.: Meta/Instagram, YouTube, TikTok) para permitir postagem e agendamento.
         </p>
 
@@ -48,11 +48,10 @@ export default function TermsPage() {
           terceiros ou as políticas das plataformas integradas.
         </p>
 
-        <h2 className="pt-4 text-xl font-black tracking-tight text-slate-100">4. Links externos e afiliados</h2>
+        <h2 className="pt-4 text-xl font-black tracking-tight text-slate-100">4. Links externos</h2>
         <p>
-          A Plataforma pode exibir links externos (incluindo links de afiliado) que direcionam para sites de terceiros.
-          Não controlamos e não nos responsabilizamos por conteúdo, políticas, preços, entregas ou quaisquer práticas
-          desses terceiros.
+          A Plataforma pode exibir links que direcionam para sites de terceiros. Não controlamos e não nos
+          responsabilizamos por conteúdo, políticas, preços, entregas ou quaisquer práticas desses terceiros.
         </p>
 
         <h2 className="pt-4 text-xl font-black tracking-tight text-slate-100">5. Integrações de terceiros</h2>

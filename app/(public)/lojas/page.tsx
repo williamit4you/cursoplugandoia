@@ -6,8 +6,8 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Lojas parceiras | Compra Esperta Promoções",
-  description: "Explore lojas parceiras por categoria e encontre guias de compra, checklists e conteúdos para decidir melhor.",
+  title: "Lojas e guias de compra | Compra Esperta Promoções",
+  description: "Explore lojas por categoria e encontre guias de compra, checklists e conteúdos para decidir melhor.",
   alternates: { canonical: "/lojas" },
 };
 
@@ -55,7 +55,7 @@ export default async function StoresPage({ searchParams }: { searchParams?: Reco
         <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">Diretório editorial</div>
           <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight text-white sm:text-6xl">Lojas, categorias e decisões mais inteligentes.</h1>
-          <p className="mt-5 max-w-2xl leading-7 text-slate-300">Encontre uma loja e acesse guias de compra, critérios de comparação, inspirações e checklists antes de seguir para o site parceiro.</p>
+          <p className="mt-5 max-w-2xl leading-7 text-slate-300">Encontre uma loja e acesse guias de compra, critérios de comparação, inspirações e checklists antes de seguir para o site oficial.</p>
 
           <form action="/lojas" className="mt-8 flex max-w-3xl gap-3 rounded-3xl border border-white/10 bg-white/[0.05] p-3">
             <label className="flex flex-1 items-center gap-3 rounded-2xl bg-black/20 px-4">

@@ -1,6 +1,7 @@
 import { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { STORE_ARTICLE_TOPICS } from "@/lib/affiliateSeoContent";
+import { PRODUCT_SEO_ARTICLES } from "@/lib/productSeoArticles";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${siteUrl}/noticias`, changeFrequency: "daily", priority: 0.9 },
     { url: `${siteUrl}/ofertas`, changeFrequency: "daily", priority: 0.9 },
     { url: `${siteUrl}/lojas`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${siteUrl}/produtos`, changeFrequency: "weekly", priority: 0.9 },
   ];
 
   try {
@@ -26,6 +28,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }),
     ]);
 
+    const activeStoreSlugs = new Set(stores.map((store) => store.slug));
     return [
       ...staticPages,
       ...posts.map((post) => ({
@@ -48,6 +51,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           priority: 0.65,
         })),
       ]),
+      ...PRODUCT_SEO_ARTICLES.filter((article) => activeStoreSlugs.has(article.storeSlug)).map((article) => ({
+        url: `${siteUrl}/lojas/${article.storeSlug}/produtos/${article.slug}`,
+        lastModified: new Date(article.updatedAt),
+        changeFrequency: "monthly" as const,
+        priority: 0.85,
+      })),
     ];
   } catch (error) {
     console.warn("sitemap fallback: unable to load dynamic content", error);
