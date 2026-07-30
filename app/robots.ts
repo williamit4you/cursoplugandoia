@@ -1,14 +1,23 @@
 import { MetadataRoute } from "next";
+import { headers } from "next/headers";
+import { getCommerceSiteUrl, getPortalSiteUrl, isCommerceHostname } from "@/lib/siteUrls";
+
+export const dynamic = "force-dynamic";
 
 export default function robots(): MetadataRoute.Robots {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://plugandoia.cloud";
+  const requestHost = headers().get("x-forwarded-host") || headers().get("host");
+  const commerceRequest = isCommerceHostname(requestHost);
+  const siteUrl = commerceRequest ? getCommerceSiteUrl() : getPortalSiteUrl();
 
   return {
     rules: {
       userAgent: "*",
-      allow: ["/noticias", "/noticias/"],
-      disallow: ["/admin", "/api", "/_next"],
+      allow: "/",
+      disallow: commerceRequest
+        ? ["/admin", "/api", "/crm", "/limpezavideo", "/noticias", "/curso-saas", "/curso-fundamentos-ia"]
+        : ["/admin", "/api", "/crm", "/limpezavideo"],
     },
     sitemap: `${siteUrl}/sitemap.xml`,
+    host: siteUrl,
   };
 }

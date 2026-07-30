@@ -12,12 +12,20 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import BioProductLink from "../bio/BioProductLink";
+import { getCommerceSiteUrl } from "@/lib/siteUrls";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Compra Esperta Promoções | Lojas e ofertas selecionadas",
   description: "Lojas, guias de produtos e achados selecionados em uma vitrine simples, segura e organizada.",
+  alternates: { canonical: getCommerceSiteUrl() },
+  openGraph: {
+    title: "Compra Esperta Promoções | Lojas e ofertas selecionadas",
+    description: "Lojas, guias de produtos e achados selecionados em uma vitrine simples, segura e organizada.",
+    url: getCommerceSiteUrl(),
+    type: "website",
+  },
 };
 
 const themes = [

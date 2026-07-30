@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Check, ExternalLink, ShoppingBag } from "lucide-
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { findProductSeoArticle, PRODUCT_SEO_ARTICLES } from "@/lib/productSeoArticles";
+import { getCommerceSiteUrl } from "@/lib/siteUrls";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ async function getPageData(storeSlug: string, productSlug: string) {
 export async function generateMetadata({ params }: { params: { slug: string; produto: string } }): Promise<Metadata> {
   const { store, article } = await getPageData(params.slug, params.produto);
   if (!store || !article) return { title: "Produto não encontrado", robots: { index: false, follow: false } };
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://plugandoia.cloud";
+  const siteUrl = getCommerceSiteUrl();
   const canonical = `${siteUrl}/lojas/${store.slug}/produtos/${article.slug}`;
   return {
     title: article.title,
@@ -33,7 +34,7 @@ export async function generateMetadata({ params }: { params: { slug: string; pro
 export default async function ProductSeoPage({ params }: { params: { slug: string; produto: string } }) {
   const { store, article } = await getPageData(params.slug, params.produto);
   if (!store || !article) notFound();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://plugandoia.cloud";
+  const siteUrl = getCommerceSiteUrl();
   const canonical = `${siteUrl}/lojas/${store.slug}/produtos/${article.slug}`;
   const related = PRODUCT_SEO_ARTICLES.filter((item) => item.slug !== article.slug).slice(0, 3);
   const outbound = `/go/loja/${store.slug}?source=product_article&medium=content&campaign=${encodeURIComponent(article.slug)}&destination=${encodeURIComponent(article.productUrl)}`;

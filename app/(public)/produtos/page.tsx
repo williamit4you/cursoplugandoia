@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Search, ShoppingBag } from "lucide-react";
 import { PRODUCT_SEO_ARTICLES } from "@/lib/productSeoArticles";
+import { getCommerceSiteUrl } from "@/lib/siteUrls";
 
 export const metadata: Metadata = {
   title: "Guias de produtos: análises para comprar melhor | Compra Esperta",
   description: "Guias de produtos com especificações, indicação de uso, limitações e respostas para dúvidas comuns antes da compra.",
-  alternates: { canonical: "/produtos" },
+  alternates: { canonical: `${getCommerceSiteUrl()}/produtos` },
 };
 
 function clean(value: unknown) {

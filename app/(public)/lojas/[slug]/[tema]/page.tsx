@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Check, ExternalLink, ShoppingBag } from "lucide-
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { buildStoreArticle, buildStoreCtaLabel, findStoreArticleTopic, STORE_ARTICLE_TOPICS } from "@/lib/affiliateSeoContent";
+import { getCommerceSiteUrl } from "@/lib/siteUrls";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export async function generateMetadata({ params }: { params: { slug: string; tem
   const [store, topic] = await Promise.all([getStore(params.slug), Promise.resolve(findStoreArticleTopic(params.tema))]);
   if (!store || !topic) return { title: "Conteúdo não encontrado", robots: { index: false, follow: false } };
   const article = buildStoreArticle(store, topic.slug)!;
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://plugandoia.cloud";
+  const siteUrl = getCommerceSiteUrl();
   const canonical = `${siteUrl}/lojas/${store.slug}/${topic.slug}`;
   return {
     title: `${article.title} | Compra Esperta`,
@@ -30,7 +31,7 @@ export default async function StoreArticlePage({ params }: { params: { slug: str
   if (!store) notFound();
   const article = buildStoreArticle(store, params.tema);
   if (!article) notFound();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://plugandoia.cloud";
+  const siteUrl = getCommerceSiteUrl();
   const canonical = `${siteUrl}/lojas/${store.slug}/${article.topic.slug}`;
   const schema = {
     "@context": "https://schema.org",

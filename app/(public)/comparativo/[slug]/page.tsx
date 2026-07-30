@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import PublicComparisonArticle from "@/components/comparisons/PublicComparisonArticle";
+import { getCommerceSiteUrl } from "@/lib/siteUrls";
 
 export const dynamic = "force-dynamic";
 
@@ -13,16 +14,17 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!item || item.status !== "PUBLISHED") {
     return { title: "Comparativo nao encontrado" };
   }
+  const canonical = `${getCommerceSiteUrl()}/comparativo/${item.slug}`;
 
   return {
-    title: item.seoTitle || `${item.title} | Portal IA`,
+    title: item.seoTitle || `${item.title} | Compra Esperta`,
     description: item.metaDescription || item.introSummary || undefined,
-    alternates: { canonical: `/comparativo/${item.slug}` },
+    alternates: { canonical },
     openGraph: {
       title: item.seoTitle || item.title,
       description: item.metaDescription || item.introSummary || undefined,
       type: "article",
-      url: `/comparativo/${item.slug}`,
+      url: canonical,
     },
   };
 }

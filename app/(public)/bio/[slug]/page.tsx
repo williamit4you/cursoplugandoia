@@ -1,9 +1,26 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import BioCtaButton from "./BioCtaButton";
+import { getCommerceSiteUrl } from "@/lib/siteUrls";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const product = await prisma.bioProduct.findUnique({
+    where: { slug: String(params.slug || "").trim() },
+    select: { slug: true, title: true, description: true, active: true },
+  });
+  if (!product?.active) return { title: "Produto não encontrado", robots: { index: false, follow: false } };
+  const canonical = `${getCommerceSiteUrl()}/bio/${product.slug}`;
+  return {
+    title: `${product.title} | Compra Esperta`,
+    description: product.description || undefined,
+    alternates: { canonical },
+    openGraph: { title: product.title, description: product.description || undefined, url: canonical, type: "website" },
+  };
+}
 
 export default async function BioProductPage({ params }: { params: { slug: string } }) {
   const slug = String(params.slug || "").trim();
@@ -41,7 +58,7 @@ export default async function BioProductPage({ params }: { params: { slug: strin
         </div>
       </div>
       <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-slate-400">
-        <div>© {new Date().getFullYear()} PlugandoIA</div>
+        <div>© {new Date().getFullYear()} Compra Esperta Promoções</div>
         <div className="flex items-center gap-4">
           <Link href="/terms" className="hover:text-slate-200">
             Termos

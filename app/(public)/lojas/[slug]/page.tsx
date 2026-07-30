@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { buildStoreHubDescription, STORE_ARTICLE_TOPICS } from "@/lib/affiliateSeoContent";
 import { productsForStore } from "@/lib/productSeoArticles";
+import { getCommerceSiteUrl } from "@/lib/siteUrls";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ async function getStore(slug: string) {
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const store = await getStore(params.slug);
   if (!store) return { title: "Loja não encontrada", robots: { index: false, follow: false } };
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://plugandoia.cloud";
+  const siteUrl = getCommerceSiteUrl();
   const description = buildStoreHubDescription(store);
   return {
     title: `${store.name}: guias, dicas e acesso à loja | Compra Esperta`,
@@ -29,7 +30,7 @@ export default async function StoreHubPage({ params }: { params: { slug: string 
   const store = await getStore(params.slug);
   if (!store) notFound();
   const productArticles = productsForStore(store.slug);
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://plugandoia.cloud";
+  const siteUrl = getCommerceSiteUrl();
   const schema = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",

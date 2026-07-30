@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Search, ShoppingBag, Store } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getCommerceSiteUrl } from "@/lib/siteUrls";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Lojas e guias de compra | Compra Esperta Promoções",
   description: "Explore lojas por categoria e encontre guias de compra, checklists e conteúdos para decidir melhor.",
-  alternates: { canonical: "/lojas" },
+  alternates: { canonical: `${getCommerceSiteUrl()}/lojas` },
 };
 
 function value(input: unknown) {
