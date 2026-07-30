@@ -43,7 +43,7 @@ export async function middleware(req: NextRequest) {
       return redirectKeepingRequest(req, commerceSiteUrl, "/");
     }
 
-    if (pathname === "/api/bio/click") {
+    if (pathname === "/api/bio/click" || pathname === "/api/sales/events") {
       return NextResponse.next();
     }
 

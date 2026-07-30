@@ -19,5 +19,5 @@ export default function BioProductLink({ slug, href, children, className }: { sl
     }
   };
 
-  return <button type="button" onClick={open} disabled={opening} className={className}>{opening ? "Abrindo..." : children}</button>;
+  return <button type="button" onClick={open} disabled={opening} className={className} data-commerce-outbound-url={href} data-commerce-product-slug={slug}>{opening ? "Abrindo..." : children}</button>;
 }

@@ -25,9 +25,10 @@ export default function BioCtaButton(params: { slug: string; href: string }) {
       onClick={onClick}
       className="w-full rounded-2xl bg-emerald-500 px-5 py-4 text-base font-bold text-black hover:bg-emerald-400 transition disabled:opacity-60"
       disabled={loading}
+      data-commerce-outbound-url={href}
+      data-commerce-product-slug={slug}
     >
       {loading ? "Abrindo..." : "Comprar agora"}
     </button>
   );
 }
-

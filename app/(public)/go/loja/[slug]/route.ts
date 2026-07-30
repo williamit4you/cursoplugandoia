@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { SalesPageEventType } from "@prisma/client";
+import { normalizeSalesEventPayload, upsertSalesSessionFromEvent } from "@/lib/salesAnalyticsServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +28,16 @@ function resolveDestination(affiliateUrl: string, requestedDestination: string |
     return destination;
   } catch {
     return tracked;
+  }
+}
+
+function referrerPath(req: NextRequest) {
+  const fallback = "/";
+  try {
+    const value = req.headers.get("referer");
+    return value ? new URL(value).pathname || fallback : fallback;
+  } catch {
+    return fallback;
   }
 }
 
@@ -59,7 +71,50 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
 
   try {
     const destination = clean(req.nextUrl.searchParams.get("destination"), 2_000);
-    return NextResponse.redirect(resolveDestination(store.affiliateUrl, destination), 302);
+    const resolvedDestination = resolveDestination(store.affiliateUrl, destination);
+    const pagePath = referrerPath(req);
+    const payload = normalizeSalesEventPayload(req, {
+      pageKey: `commerce:${pagePath}`,
+      pagePath,
+      eventType: SalesPageEventType.OUTBOUND_CLICK,
+      sessionId: req.cookies.get("commerce_session_id")?.value || `server_click_${crypto.randomUUID()}`,
+      visitorId: req.cookies.get("commerce_visitor_id")?.value || null,
+      source: "compra_esperta",
+      checkoutUrl: `${resolvedDestination.origin}${resolvedDestination.pathname}`,
+      utmSource: req.nextUrl.searchParams.get("source"),
+      utmMedium: req.nextUrl.searchParams.get("medium"),
+      utmCampaign: req.nextUrl.searchParams.get("campaign"),
+      metadata: {
+        site: "compra_esperta",
+        storeSlug: slug,
+        destinationHost: resolvedDestination.hostname,
+        destinationPath: resolvedDestination.pathname,
+      },
+    });
+    const event = await prisma.salesPageEvent.create({ data: payload as any }).catch((error) => {
+      console.error("[COMMERCE_OUTBOUND_CLICK]", error);
+      return null;
+    });
+    if (event) {
+      await upsertSalesSessionFromEvent({
+        pageKey: payload.pageKey,
+        pagePath: payload.pagePath,
+        sessionId: payload.sessionId!,
+        referrer: payload.referrer,
+        utmSource: payload.utmSource,
+        utmMedium: payload.utmMedium,
+        utmCampaign: payload.utmCampaign,
+        utmTerm: payload.utmTerm,
+        utmContent: payload.utmContent,
+        fbclid: payload.fbclid,
+        deviceType: payload.deviceType,
+        userAgent: payload.userAgent,
+        visitorId: payload.visitorId,
+        eventType: payload.eventType,
+        value: payload.value,
+      }).catch((error) => console.error("[COMMERCE_OUTBOUND_SESSION]", error));
+    }
+    return NextResponse.redirect(resolvedDestination, 302);
   } catch {
     return NextResponse.redirect(new URL("/ofertas?aviso=link-indisponivel", req.url), 302);
   }

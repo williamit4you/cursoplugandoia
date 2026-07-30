@@ -191,6 +191,7 @@ enum SalesPageEventType {
   PAGE_VIEW
   VIEW_CONTENT
   INITIATE_CHECKOUT
+  OUTBOUND_CLICK
   LEAD
   PURCHASE
 }
@@ -459,6 +460,7 @@ model SalesPageSession {
   pageViewCount         Int                 @default(0)
   viewContentCount      Int                 @default(0)
   initiateCheckoutCount Int                 @default(0)
+  outboundClickCount    Int                 @default(0)
   leadCount             Int                 @default(0)
   purchaseCount         Int                 @default(0)
   revenueTotal          Float               @default(0)

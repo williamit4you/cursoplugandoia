@@ -87,9 +87,10 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Agendamentos", icon: <EventIcon />, path: "/admin/schedules" },
     { text: "Comparativos", icon: <CompareArrowsIcon />, path: "/admin/comparativos" },
     { text: "Sales Analytics", icon: <InsightsIcon className="text-cyan-500" />, path: "/admin/sales-analytics" },
+    { text: "Compra Esperta", icon: <InsightsIcon className="text-emerald-500" />, path: "/admin/compra-esperta" },
   ];
 
-  const growthPaths = new Set(["/admin/youtube-analytics", "/admin/bio-analytics", "/admin/sales-analytics", "/admin/comparativos", "/admin/propagandas"]);
+  const growthPaths = new Set(["/admin/youtube-analytics", "/admin/bio-analytics", "/admin/sales-analytics", "/admin/compra-esperta", "/admin/comparativos", "/admin/propagandas"]);
   const systemPaths = new Set(["/admin/integrations", "/admin/scraper-config", "/admin/video-questions-config", "/admin/tasks", "/admin/task-runs", "/admin/schedules"]);
   const menuGroups = [
     { label: "Operacao", items: menuItems.filter((item) => !growthPaths.has(item.path) && !systemPaths.has(item.path)) },

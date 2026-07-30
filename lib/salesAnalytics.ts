@@ -2,6 +2,7 @@ export const SALES_PAGE_EVENT_TYPES = {
   PAGE_VIEW: "PAGE_VIEW",
   VIEW_CONTENT: "VIEW_CONTENT",
   INITIATE_CHECKOUT: "INITIATE_CHECKOUT",
+  OUTBOUND_CLICK: "OUTBOUND_CLICK",
   LEAD: "LEAD",
   PURCHASE: "PURCHASE",
 } as const;
@@ -23,6 +24,10 @@ export type SalesPageTrackPayload = {
 };
 
 const SESSION_STORAGE_KEY = "sales_page_session_id";
+const COMMERCE_SESSION_STORAGE_KEY = "commerce_analytics_session_id";
+const COMMERCE_VISITOR_STORAGE_KEY = "commerce_analytics_visitor_id";
+const COMMERCE_SESSION_COOKIE = "commerce_session_id";
+const COMMERCE_VISITOR_COOKIE = "commerce_visitor_id";
 
 function safeWindow() {
   if (typeof window === "undefined") {
@@ -49,6 +54,45 @@ export function getSalesSessionId() {
     return created;
   } catch {
     return null;
+  }
+}
+
+function randomId(prefix: string) {
+  const win = safeWindow();
+  const value = win?.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}_${value}`;
+}
+
+function persistCommerceCookie(name: string, value: string) {
+  try {
+    document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=15552000; SameSite=Lax; Secure`;
+  } catch {
+    // O cookie serve apenas como fallback para cliques processados no servidor.
+  }
+}
+
+export function getCommerceAnalyticsIds() {
+  const win = safeWindow();
+  if (!win) return { sessionId: null, visitorId: null };
+
+  try {
+    let sessionId = win.sessionStorage.getItem(COMMERCE_SESSION_STORAGE_KEY);
+    if (!sessionId) {
+      sessionId = randomId("cas");
+      win.sessionStorage.setItem(COMMERCE_SESSION_STORAGE_KEY, sessionId);
+    }
+
+    let visitorId = win.localStorage.getItem(COMMERCE_VISITOR_STORAGE_KEY);
+    if (!visitorId) {
+      visitorId = randomId("cav");
+      win.localStorage.setItem(COMMERCE_VISITOR_STORAGE_KEY, visitorId);
+    }
+
+    persistCommerceCookie(COMMERCE_SESSION_COOKIE, sessionId);
+    persistCommerceCookie(COMMERCE_VISITOR_COOKIE, visitorId);
+    return { sessionId, visitorId };
+  } catch {
+    return { sessionId: randomId("cas"), visitorId: null };
   }
 }
 
