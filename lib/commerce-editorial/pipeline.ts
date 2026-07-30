@@ -3,6 +3,7 @@ import "server-only";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { calculateTextSimilarity } from "@/lib/seoGovernance";
+import { resolveAffiliateStoreDestination } from "@/lib/affiliateStores";
 import { discoverStoreProduct } from "./scraper";
 import { runCommerceEditorialAgents } from "./agents";
 import { editorialArticleHasPublicUrl } from "./sanitize";
@@ -76,17 +77,18 @@ export async function runCommerceEditorialOnce(options: { force?: boolean } = {}
       }),
     ]);
     const product = await discoverStoreProduct(store.baseUrl, store.products.map((item) => item.productUrl).filter(Boolean) as string[]);
+    const resolvedAffiliateUrl = resolveAffiliateStoreDestination(store.affiliateUrl, product.url).toString();
     const externalRef = `commerce:${crypto.createHash("sha256").update(product.url).digest("hex")}`;
     const catalog = await prisma.productCatalog.upsert({
       where: { externalRef },
       update: {
-        name: product.name, description: product.description, productUrl: product.url, affiliateUrl: store.affiliateUrl,
+        name: product.name, description: product.description, productUrl: product.url, affiliateUrl: resolvedAffiliateUrl,
         imageUrl: product.imageUrl, price: product.price, currency: product.currency || "BRL", category: store.category,
         affiliateStoreId: store.id, metadataJson: json({ brand: product.brand, evidence: product.evidence }),
       },
       create: {
         externalRef, name: product.name, slug: `${slugify(product.name)}-${externalRef.slice(-7)}`, description: product.description,
-        productUrl: product.url, affiliateUrl: store.affiliateUrl, imageUrl: product.imageUrl, price: product.price,
+        productUrl: product.url, affiliateUrl: resolvedAffiliateUrl, imageUrl: product.imageUrl, price: product.price,
         currency: product.currency || "BRL", category: store.category, affiliateStoreId: store.id,
         metadataJson: json({ brand: product.brand, evidence: product.evidence }),
       },

@@ -71,6 +71,25 @@ function meta(html: string, key: string) {
   return "";
 }
 
+function samePagePath(left: string, right: string) {
+  try {
+    const a = new URL(left);
+    const b = new URL(right);
+    return a.origin === b.origin && (a.pathname || "/") === (b.pathname || "/");
+  } catch {
+    return left === right;
+  }
+}
+
+function looksLikeProductPage(url: string) {
+  try {
+    const parsed = new URL(url);
+    return PRODUCT_PATH.test(parsed.pathname) || /-\d{4,}|\/[a-z0-9-]{20,}/i.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
 function jsonLdObjects(html: string) {
   const values: any[] = [];
   for (const match of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
@@ -156,7 +175,13 @@ async function inspectProductPage(url: string, fallbackName?: string) {
 export async function discoverStoreProduct(storeUrl: string, excludedUrls: string[] = []) {
   const root = await download(storeUrl);
   const rootProduct = productFromJsonLd(jsonLdObjects(root.html), root.finalUrl);
-  if (rootProduct && !excludedUrls.includes(rootProduct.url)) return rootProduct;
+  if (
+    rootProduct &&
+    !excludedUrls.includes(rootProduct.url) &&
+    (!samePagePath(rootProduct.url, root.finalUrl) || looksLikeProductPage(rootProduct.url))
+  ) {
+    return rootProduct;
+  }
 
   const excluded = new Set(excludedUrls);
   const candidates = candidateLinks(root.html, root.finalUrl).filter((item) => !excluded.has(item.url));

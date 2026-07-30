@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { resolveAffiliateStoreDestination } from "@/lib/affiliateStores";
 import { SalesPageEventType } from "@prisma/client";
 import { normalizeSalesEventPayload, upsertSalesSessionFromEvent } from "@/lib/salesAnalyticsServer";
 
@@ -9,26 +10,6 @@ export const dynamic = "force-dynamic";
 
 function clean(value: unknown, max: number) {
   return String(value || "").trim().slice(0, max) || null;
-}
-
-function normalizedHost(value: string) {
-  return value.toLowerCase().replace(/^www\./, "");
-}
-
-function resolveDestination(affiliateUrl: string, requestedDestination: string | null) {
-  const tracked = new URL(affiliateUrl);
-  if (!requestedDestination) return tracked;
-
-  try {
-    const destination = new URL(requestedDestination);
-    if (destination.protocol !== "https:" || normalizedHost(destination.hostname) !== normalizedHost(tracked.hostname)) {
-      return tracked;
-    }
-    tracked.searchParams.forEach((value, key) => destination.searchParams.set(key, value));
-    return destination;
-  } catch {
-    return tracked;
-  }
 }
 
 function referrerPath(req: NextRequest) {
@@ -71,7 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
 
   try {
     const destination = clean(req.nextUrl.searchParams.get("destination"), 2_000);
-    const resolvedDestination = resolveDestination(store.affiliateUrl, destination);
+    const resolvedDestination = resolveAffiliateStoreDestination(store.affiliateUrl, destination);
     const pagePath = referrerPath(req);
     const payload = normalizeSalesEventPayload(req, {
       pageKey: `commerce:${pagePath}`,
