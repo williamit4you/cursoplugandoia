@@ -19,7 +19,7 @@ function enabled() {
 
 export function startInternalCronSchedulerCommerceEditorial() {
   if (!enabled() || globalState.__commerceEditorialTimer) return;
-  const tickMs = Math.max(60_000, Number(process.env.COMMERCE_EDITORIAL_CRON_TICK_MS || 300_000));
+  const tickMs = Math.max(60_000, Number(process.env.COMMERCE_EDITORIAL_CRON_TICK_MS || 60_000));
   const state: SchedulerState = { startedAt: new Date().toISOString(), tickMs, running: false, lastTickAt: null, lastResult: null };
   globalState.__commerceEditorialScheduler = state;
   const tick = async () => {

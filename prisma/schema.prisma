@@ -1082,9 +1082,10 @@ model CommerceEditorialConfig {
   id              String   @id @default("default")
   enabled         Boolean  @default(true)
   autoPublish     Boolean  @default(true)
-  runEveryHours   Int      @default(24)
+  runEveryHours   Int      @default(2)
   maxItemsPerRun  Int      @default(1)
   minimumWords    Int      @default(900)
+  storeCursor     Int      @default(0)
   lastRunAt       DateTime?
   nextRunAt       DateTime?
   lockedAt        DateTime?

@@ -10,32 +10,28 @@ function slugify(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 150);
 }
 
-function nextDate(hours: number) {
-  return new Date(Date.now() + Math.max(1, hours) * 60 * 60 * 1_000);
+function nextDate(hours: number, from: Date = new Date()) {
+  return new Date(from.getTime() + Math.max(1, hours) * 60 * 60 * 1_000);
 }
 
 function json(value: unknown) {
   try { return JSON.stringify(value); } catch { return null; }
 }
 
-async function selectStore() {
+async function selectStore(cursor: number) {
   const stores = await prisma.affiliateStore.findMany({
     where: { status: "ACTIVE" },
     include: { products: { select: { productUrl: true }, orderBy: { createdAt: "desc" }, take: 200 } },
-    orderBy: [{ featured: "desc" }, { updatedAt: "asc" }],
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }, { id: "asc" }],
   });
   if (!stores.length) throw new Error("Nenhuma loja ativa está cadastrada");
-  const recent = await prisma.commerceEditorialRun.findMany({
-    where: { storeId: { in: stores.map((store) => store.id) }, status: { in: ["PUBLISHED", "REVIEW"] } },
-    select: { storeId: true, startedAt: true },
-    orderBy: { startedAt: "desc" },
-    take: stores.length * 2,
-  });
-  const lastByStore = new Map<string, number>();
-  recent.forEach((run) => {
-    if (run.storeId && !lastByStore.has(run.storeId)) lastByStore.set(run.storeId, run.startedAt.getTime());
-  });
-  return stores.sort((a, b) => (lastByStore.get(a.id) || 0) - (lastByStore.get(b.id) || 0))[0];
+  const position = Math.abs(Math.trunc(cursor || 0)) % stores.length;
+  return {
+    store: stores[position],
+    position,
+    total: stores.length,
+    nextCursor: (position + 1) % stores.length,
+  };
 }
 
 export async function runCommerceEditorialOnce(options: { force?: boolean } = {}) {
@@ -61,8 +57,23 @@ export async function runCommerceEditorialOnce(options: { force?: boolean } = {}
 
   const run = await prisma.commerceEditorialRun.create({ data: { status: "RUNNING", step: "SELECT_STORE" } });
   try {
-    const store = await selectStore();
-    await prisma.commerceEditorialRun.update({ where: { id: run.id }, data: { storeId: store.id, step: "DISCOVER_PRODUCT", message: `Pesquisando um produto em ${store.name}` } });
+    const rotation = await selectStore(config.storeCursor);
+    const store = rotation.store;
+    await Promise.all([
+      prisma.commerceEditorialConfig.update({
+        where: { id: "default" },
+        data: { storeCursor: rotation.nextCursor },
+      }),
+      prisma.commerceEditorialRun.update({
+        where: { id: run.id },
+        data: {
+          storeId: store.id,
+          step: "DISCOVER_PRODUCT",
+          message: `Loja ${rotation.position + 1} de ${rotation.total}: pesquisando um produto em ${store.name}`,
+          detailsJson: json({ storePosition: rotation.position + 1, totalStores: rotation.total, nextStorePosition: rotation.nextCursor + 1 }),
+        },
+      }),
+    ]);
     const product = await discoverStoreProduct(store.baseUrl, store.products.map((item) => item.productUrl).filter(Boolean) as string[]);
     const externalRef = `commerce:${crypto.createHash("sha256").update(product.url).digest("hex")}`;
     const catalog = await prisma.productCatalog.upsert({
@@ -121,20 +132,28 @@ export async function runCommerceEditorialOnce(options: { force?: boolean } = {}
       data: {
         briefId: brief.id, status, step: status === "PUBLISHED" ? "SITEMAP_READY" : "EDITORIAL_REVIEW",
         message: status === "PUBLISHED" ? "Artigo aprovado, publicado e liberado para o sitemap." : "Artigo criado, mas retido para revisão.",
-        detailsJson: json({ wordCount: agents.wordCount, reviewer: agents.review, duplicate, mostSimilar }),
+        detailsJson: json({
+          storePosition: rotation.position + 1,
+          totalStores: rotation.total,
+          nextStorePosition: rotation.nextCursor + 1,
+          wordCount: agents.wordCount,
+          reviewer: agents.review,
+          duplicate,
+          mostSimilar,
+        }),
         completedAt: new Date(),
       },
     });
     const result = { ok: true, runId: run.id, status, store: store.name, product: product.name, briefId: brief.id, wordCount: agents.wordCount, review: agents.review };
     await prisma.commerceEditorialConfig.update({
       where: { id: "default" },
-      data: { lockedAt: null, lastRunAt: new Date(), nextRunAt: nextDate(config.runEveryHours), lastResultJson: json(result) },
+      data: { lockedAt: null, lastRunAt: new Date(), nextRunAt: nextDate(config.runEveryHours, run.startedAt), lastResultJson: json(result) },
     });
     return result;
   } catch (error: any) {
     const message = error?.message || "Falha desconhecida no fluxo editorial";
     await prisma.commerceEditorialRun.update({ where: { id: run.id }, data: { status: "FAILED", message, completedAt: new Date() } }).catch(() => null);
-    await prisma.commerceEditorialConfig.update({ where: { id: "default" }, data: { lockedAt: null, lastRunAt: new Date(), nextRunAt: nextDate(config.runEveryHours), lastResultJson: json({ ok: false, runId: run.id, error: message }) } }).catch(() => null);
+    await prisma.commerceEditorialConfig.update({ where: { id: "default" }, data: { lockedAt: null, lastRunAt: new Date(), nextRunAt: nextDate(config.runEveryHours, run.startedAt), lastResultJson: json({ ok: false, runId: run.id, error: message }) } }).catch(() => null);
     throw error;
   }
 }

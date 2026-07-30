@@ -1,27 +1,9 @@
 import Link from "next/link";
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { runCommerceEditorialOnce } from "@/lib/commerce-editorial/pipeline";
 import { getCommerceSiteUrl } from "@/lib/siteUrls";
+import { publishEditorialArticle, runEditorialNow, toggleEditorialAutomation } from "./actions";
 
 export const dynamic = "force-dynamic";
-
-async function runNow() {
-  "use server";
-  await runCommerceEditorialOnce({ force: true }).catch(() => null);
-  revalidatePath("/admin/editorial-commerce");
-}
-
-async function toggleAutomation() {
-  "use server";
-  const config = await prisma.commerceEditorialConfig.findUnique({ where: { id: "default" } });
-  await prisma.commerceEditorialConfig.upsert({
-    where: { id: "default" },
-    update: { enabled: !config?.enabled },
-    create: { id: "default", enabled: true },
-  });
-  revalidatePath("/admin/editorial-commerce");
-}
 
 function date(value: Date | null | undefined) {
   return value ? value.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "—";
@@ -57,15 +39,15 @@ export default async function EditorialCommerceAdminPage() {
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Pesquisa de produto, estratégia, copywriting, revisão SEO e publicação controlada. Textos reprovados não entram no sitemap.</p>
         </div>
         <div className="flex gap-2">
-          <form action={toggleAutomation}><button className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-800">{config?.enabled ? "Pausar cron" : "Ativar cron"}</button></form>
-          <form action={runNow}><button className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white">Rodar agora</button></form>
+          <form action={toggleEditorialAutomation}><button className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-800">{config?.enabled ? "Pausar cron" : "Ativar cron"}</button></form>
+          <form action={runEditorialNow}><button className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white">Rodar agora</button></form>
         </div>
       </div>
 
       <section className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
           ["Automação", config?.enabled ? "Ativa" : "Pausada"],
-          ["Frequência", `A cada ${config?.runEveryHours || 24}h`],
+          ["Frequência", `A cada ${config?.runEveryHours || 2}h`],
           ["Próxima execução", date(config?.nextRunAt)],
           ["Publicados no sitemap", String(published.length)],
         ].map(([label, value]) => <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</div><div className="mt-2 text-xl font-black text-slate-950">{value}</div></div>)}
@@ -76,7 +58,7 @@ export default async function EditorialCommerceAdminPage() {
         <div className="mt-4 grid gap-3 md:grid-cols-5">
           {["1. Visitar loja", "2. Identificar produto", "3. Pesquisar e escrever", "4. Revisar SEO e fatos", "5. Publicar e indexar"].map((item) => <div key={item} className="rounded-xl bg-slate-50 px-4 py-4 text-sm font-bold text-slate-700">{item}</div>)}
         </div>
-        <p className="mt-4 text-xs leading-5 text-slate-500">Exigências atuais: fonte do produto registrada, mínimo de {config?.minimumWords || 900} palavras, nota do revisor a partir de 75, sem duplicidade relevante e aprovação explícita do agente revisor.</p>
+        <p className="mt-4 text-xs leading-5 text-slate-500">Exigências atuais: fonte registrada, mínimo de {config?.minimumWords || 900} palavras, nota do revisor a partir de 75, sem duplicidade relevante e aprovação explícita. A rotação está na loja {(config?.storeCursor || 0) + 1}; depois da última loja ativa, volta automaticamente para a primeira.</p>
       </section>
 
       <section className="mt-7 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -98,7 +80,26 @@ export default async function EditorialCommerceAdminPage() {
           {publications.map((article) => {
             const store = article.product.affiliateStore;
             const publicUrl = store && article.status === "PUBLISHED" && article.indexable ? `${siteUrl}/lojas/${store.slug}/artigos/${article.slug}` : null;
-            return <div key={article.id} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4"><div><div className="font-black text-slate-900">{article.title}</div><div className="mt-1 text-xs text-slate-500">{store?.name || "Loja não vinculada"} • nota {article.qualityScore ?? "—"} • {date(article.updatedAt)}</div></div><div className="flex items-center gap-3"><span className={`rounded-full px-2.5 py-1 text-xs font-black ${statusClass(article.status)}`}>{article.status}{article.indexable ? " • INDEXADO" : ""}</span>{publicUrl ? <Link href={publicUrl} target="_blank" className="text-sm font-black text-emerald-700">Abrir artigo</Link> : null}</div></div>;
+            return (
+              <div key={article.id} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
+                <div>
+                  <div className="font-black text-slate-900">{article.title}</div>
+                  <div className="mt-1 text-xs text-slate-500">{store?.name || "Loja não vinculada"} • nota {article.qualityScore ?? "—"} • {date(article.updatedAt)}</div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-black ${statusClass(article.status)}`}>{article.status}{article.indexable ? " • SITEMAP" : ""}</span>
+                  <Link href={`/admin/editorial-commerce/${article.id}`} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-black text-slate-700">Ler artigo</Link>
+                  {article.product.productUrl ? <a href={article.product.productUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-black text-blue-700">Ver produto</a> : null}
+                  {!article.indexable ? (
+                    <form action={publishEditorialArticle}>
+                      <input type="hidden" name="briefId" value={article.id} />
+                      <button className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-black text-white">Publicar</button>
+                    </form>
+                  ) : null}
+                  {publicUrl ? <Link href={publicUrl} target="_blank" className="rounded-lg bg-slate-950 px-3 py-2 text-sm font-black text-white">Abrir página</Link> : null}
+                </div>
+              </div>
+            );
           })}
           {!publications.length ? <div className="px-5 py-10 text-center text-sm text-slate-500">Nenhuma publicação gerada.</div> : null}
         </div>
