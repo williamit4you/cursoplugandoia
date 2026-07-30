@@ -119,7 +119,6 @@ function buildSocialLinksSection(params: {
     .join("");
 
   const ctas = [
-    params.productUrl ? `<li><a href="${params.productUrl}" target="_blank" rel="noreferrer noopener">Ver a pagina do produto</a></li>` : "",
     params.affiliateUrl ? `<li><a href="${params.affiliateUrl}" target="_blank" rel="sponsored noreferrer noopener">Conferir a oferta com nosso link de afiliado</a></li>` : "",
   ]
     .filter(Boolean)
@@ -188,7 +187,7 @@ function buildFallbackArticle(params: {
         : `<h2>Quando faz sentido comprar</h2><p>Se ${productName} ataca uma dor que aparece toda semana, a compra tende a fazer mais sentido. O ideal é comparar o custo com o ganho de tempo, conforto ou praticidade. Quando o benefício é recorrente, a decisão costuma ser mais fácil.</p>`,
     salesCopy ? `<h2>Pontos de destaque</h2><p>${salesCopy}</p>` : "",
     `<h2>Conclusao</h2><p>${productName} pode fazer sentido para quem busca uma solução objetiva, sem complicação e com foco em resultado prático. O importante é alinhar expectativa, necessidade e contexto de uso antes da compra.</p>`,
-    `<h2>Onde conferir mais detalhes</h2><ul>${productUrl ? `<li><a href="${productUrl}" target="_blank" rel="noreferrer noopener">Pagina original do produto</a></li>` : ""}${affiliateUrl ? `<li><a href="${affiliateUrl}" target="_blank" rel="sponsored noreferrer noopener">Oferta com link de afiliado</a></li>` : ""}</ul>`,
+    affiliateUrl ? `<h2>Onde conferir mais detalhes</h2><ul><li><a href="${affiliateUrl}" target="_blank" rel="sponsored noreferrer noopener">Ver a oferta</a></li></ul>` : "",
   ]
     .filter(Boolean)
     .join("");

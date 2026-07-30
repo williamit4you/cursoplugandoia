@@ -23,6 +23,7 @@ export default async function EditorialArticleReviewPage({ params }: { params: {
   const sources = parseJson<any[]>(article.sourcesJson, []);
   const store = article.product.affiliateStore;
   const publicUrl = `${getCommerceSiteUrl()}/lojas/${store.slug}/artigos/${article.slug}`;
+  const affiliateProductUrl = `/go/loja/${store.slug}?source=admin_editorial_detail&medium=review&campaign=${encodeURIComponent(article.slug)}&destination=${encodeURIComponent(article.product.productUrl || "")}`;
 
   return (
     <main className="p-5 sm:p-8">
@@ -36,7 +37,7 @@ export default async function EditorialArticleReviewPage({ params }: { params: {
             <div className="mt-3 text-xs text-slate-500">Nota: {article.qualityScore ?? "—"} • Palavra-chave: {article.primaryKeyword}</div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {article.product.productUrl ? <a href={article.product.productUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-blue-200 px-4 py-3 text-sm font-black text-blue-700">Abrir produto</a> : null}
+            <a href={affiliateProductUrl} target="_blank" rel="sponsored noreferrer" className="rounded-xl border border-blue-200 px-4 py-3 text-sm font-black text-blue-700">Abrir com link afiliado</a>
             {!article.indexable ? (
               <form action={publishEditorialArticle}>
                 <input type="hidden" name="briefId" value={article.id} />

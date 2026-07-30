@@ -80,6 +80,7 @@ export default async function EditorialCommerceAdminPage() {
           {publications.map((article) => {
             const store = article.product.affiliateStore;
             const publicUrl = store && article.status === "PUBLISHED" && article.indexable ? `${siteUrl}/lojas/${store.slug}/artigos/${article.slug}` : null;
+            const affiliateProductUrl = store ? `/go/loja/${store.slug}?source=admin_editorial&medium=review&campaign=${encodeURIComponent(article.slug)}&destination=${encodeURIComponent(article.product.productUrl || "")}` : null;
             return (
               <div key={article.id} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
                 <div>
@@ -89,7 +90,7 @@ export default async function EditorialCommerceAdminPage() {
                 <div className="flex flex-wrap items-center gap-3">
                   <span className={`rounded-full px-2.5 py-1 text-xs font-black ${statusClass(article.status)}`}>{article.status}{article.indexable ? " • SITEMAP" : ""}</span>
                   <Link href={`/admin/editorial-commerce/${article.id}`} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-black text-slate-700">Ler artigo</Link>
-                  {article.product.productUrl ? <a href={article.product.productUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-black text-blue-700">Ver produto</a> : null}
+                  {affiliateProductUrl ? <a href={affiliateProductUrl} target="_blank" rel="sponsored noreferrer" className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-black text-blue-700">Ver produto com link afiliado</a> : null}
                   {!article.indexable ? (
                     <form action={publishEditorialArticle}>
                       <input type="hidden" name="briefId" value={article.id} />

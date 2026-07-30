@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { calculateTextSimilarity } from "@/lib/seoGovernance";
 import { discoverStoreProduct } from "./scraper";
 import { runCommerceEditorialAgents } from "./agents";
+import { editorialArticleHasPublicUrl } from "./sanitize";
 
 function slugify(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 150);
@@ -103,7 +104,8 @@ export async function runCommerceEditorialOnce(options: { force?: boolean } = {}
     const duplicate = Number(mostSimilar?.score || 0) >= 0.75;
     const hasSource = product.evidence.length > 0 && Boolean(product.url);
     const approvedByAgent = agents.review?.approved === true && Number(agents.review?.score || 0) >= 75;
-    const qualityPassed = approvedByAgent && hasSource && !duplicate && agents.wordCount >= config.minimumWords;
+    const containsPublicUrl = editorialArticleHasPublicUrl(agents.article);
+    const qualityPassed = approvedByAgent && hasSource && !duplicate && !containsPublicUrl && agents.wordCount >= config.minimumWords;
     const status = qualityPassed && config.autoPublish ? "PUBLISHED" : "REVIEW";
     const uniqueSlug = `${slugify(agents.article.title || product.name)}-${catalog.id.slice(-6)}`;
     const brief = await prisma.seoBrief.upsert({
@@ -139,6 +141,7 @@ export async function runCommerceEditorialOnce(options: { force?: boolean } = {}
           wordCount: agents.wordCount,
           reviewer: agents.review,
           duplicate,
+          containsPublicUrl,
           mostSimilar,
         }),
         completedAt: new Date(),

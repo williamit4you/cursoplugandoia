@@ -102,8 +102,17 @@ export default function ClientSinglePost({ post }: { post: any }) {
             <Box sx={{ mt: 5, p: 3, border: "1px solid #e2e8f0", borderRadius: 2, bgcolor: "#f8fafc" }}>
               <Typography variant="h6" sx={{ color: "#111", fontWeight: 800 }}>Produto relacionado: {post.seoBrief.product.name}</Typography>
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mt: 2 }}>
-                {post.seoBrief.product.productUrl && <MuiLink href={post.seoBrief.product.productUrl} target="_blank" rel="noreferrer">Ver produto</MuiLink>}
-                {post.seoBrief.product.affiliateUrl && <MuiLink href={post.seoBrief.product.affiliateUrl} target="_blank" rel="sponsored noreferrer">Ver oferta</MuiLink>}
+                {(post.seoBrief.product.affiliateStore?.slug || post.seoBrief.product.affiliateUrl) && (
+                  <MuiLink
+                    href={post.seoBrief.product.affiliateStore?.slug
+                      ? `/go/loja/${post.seoBrief.product.affiliateStore.slug}?source=news_product&medium=content&campaign=${encodeURIComponent(post.slug)}&destination=${encodeURIComponent(post.seoBrief.product.productUrl || "")}`
+                      : post.seoBrief.product.affiliateUrl}
+                    target="_blank"
+                    rel="sponsored noreferrer"
+                  >
+                    Ver produto com link da oferta
+                  </MuiLink>
+                )}
                 <MuiLink component={Link} href="/comparativo">Ver comparativos</MuiLink>
               </Box>
             </Box>

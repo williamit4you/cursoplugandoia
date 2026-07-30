@@ -1,6 +1,7 @@
 import "server-only";
 
 import { recordCost } from "@/lib/operationsControl";
+import { sanitizeEditorialArticleLinks } from "./sanitize";
 
 export type EditorialArticle = {
   title: string;
@@ -29,7 +30,7 @@ async function callAgent(agent: string, instruction: string, context: unknown) {
       messages: [
         {
           role: "system",
-          content: `${instruction}\nResponda somente JSON válido. Escreva em português do Brasil. Nunca invente preço, avaliação, benefício, especificação ou experiência de uso.`,
+          content: `${instruction}\nResponda somente JSON válido. Escreva em português do Brasil. Nunca invente preço, avaliação, benefício, especificação ou experiência de uso. Nunca coloque URL, link em Markdown, HTML <a>, domínio da loja ou chamada para o site oficial dentro do texto. O sistema adicionará separadamente o único botão de compra com rastreamento e link de afiliado.`,
         },
         { role: "user", content: JSON.stringify(context) },
       ],
@@ -84,6 +85,7 @@ export async function runCommerceEditorialAgents(input: {
     `Você é copywriter editorial. Crie uma análise explicativa e comercial equilibrada com no mínimo ${input.minimumWords} palavras. Use somente os fatos disponíveis; quando algo não estiver confirmado, ensine o leitor a conferir na loja. Não escreva depoimento pessoal. Retorne {title,metaDescription,primaryKeyword,secondaryKeywords,eyebrow,intro,specs:[{label,value}],sections:[{title,paragraphs:[...],bullets?:[...]}],faq:[{question,answer}],sourceNotes:[...]}.`,
     { ...input, research, strategy },
   )) as EditorialArticle;
+  article = sanitizeEditorialArticleLinks(article, input.store.name);
   const initialReview = await callAgent(
     "SEO_REVIEWER",
     "Você é revisor factual, SEO e publicidade responsável. Reprove se houver fatos sem fonte, promessa, falsa urgência, conteúdo repetitivo, título enganoso ou baixa utilidade. Avalie title, meta description, H2, intenção, naturalidade e originalidade. Retorne {approved:boolean, score:number, factualIssues:string[], seoIssues:string[], complianceIssues:string[], requiredChanges:string[]}.",
@@ -104,6 +106,7 @@ export async function runCommerceEditorialAgents(input: {
         reviewer: initialReview,
       },
     )) as EditorialArticle;
+    article = sanitizeEditorialArticleLinks(article, input.store.name);
     revised = true;
     review = await callAgent(
       "SEO_REVIEWER_FINAL",
