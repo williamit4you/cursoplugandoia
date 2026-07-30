@@ -529,6 +529,11 @@ model SocialPost {
   postType    String   @default("REEL") // REEL | STORY
   log         String?
   thumbUrl    String?  // URL de thumbnail (MinIO)
+  publicationKey String? @unique
+  metaContainerAttemptedAt DateTime?
+  metaInstagramPublishAttemptedAt DateTime?
+  metaFacebookPublishAttemptedAt DateTime?
+  tiktokPublishAttemptedAt DateTime?
   metaContainerId String? // ID do container criado na Meta (para publicação async)
   postUrl     String?  // URL pública da postagem
   youtubePostUrl    String?

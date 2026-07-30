@@ -49,7 +49,12 @@ export async function runSocialCron(params: { baseUrl: string; limit?: number })
     take: limit,
   });
   const processingPosts = await prisma.socialPost.findMany({
-    where: { status: { in: ["PROCESSING_MEDIA", "PUBLISHING"] } },
+    where: {
+      status: "PROCESSING_MEDIA",
+      platform: "META",
+      metaContainerId: { not: null },
+      metaInstagramPublishAttemptedAt: null,
+    },
     orderBy: [{ updatedAt: "asc" }, { createdAt: "asc" }],
     take: limit,
   });
@@ -70,17 +75,6 @@ export async function runSocialCron(params: { baseUrl: string; limit?: number })
         },
       });
       results.push({ id: post.id, platform: post.platform, skipped: true, reason: "TikTok inativo" });
-      continue;
-    }
-
-    // Reserve the item before calling an external provider. This prevents two
-    // schedulers from publishing the same post at the same time.
-    const claimed = await prisma.socialPost.updateMany({
-      where: { id: post.id, status: post.status },
-      data: { status: "PUBLISHING", log: post.log ? `${post.log}\n${appendTimestamp("Reservado pelo cron social.")}` : appendTimestamp("Reservado pelo cron social.") },
-    });
-    if (claimed.count !== 1) {
-      results.push({ id: post.id, platform: post.platform, skipped: true, reason: "already_claimed" });
       continue;
     }
 

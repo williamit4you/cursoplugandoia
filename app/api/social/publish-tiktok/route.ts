@@ -3,6 +3,11 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { publishTikTokVideo } from "@/lib/tiktokApi";
+import {
+  appendSocialPostLog,
+  markSingleAttempt,
+  reservePublicationIdentity,
+} from "@/lib/socialPublicationGuard";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -91,6 +96,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (socialPost.tiktokPostedAt) {
+      await appendSocialPostLog(prisma, targetSocialPostId!, "IGNORADO_IDEMPOTENCIA: TikTok ja publicado anteriormente.");
+      return NextResponse.json({ success: true, skipped: true, reason: "already_posted" });
+    }
+
+    const identity = await reservePublicationIdentity(prisma, socialPost);
+    if (!identity.allowed) {
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        reason: "duplicate_video",
+        originalSocialPostId: identity.original?.id || null,
+      });
+    }
+
     const settings = await prisma.integrationSettings.findUnique({
       where: { platform: "TIKTOK" },
     });
@@ -103,12 +123,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await prisma.socialPost.update({
-      where: { id: targetSocialPostId },
-      data: {
-        status: "PUBLISHING",
-      },
+    const claimed = await markSingleAttempt(prisma, {
+      id: targetSocialPostId!,
+      attemptField: "tiktokPublishAttemptedAt",
+      postedField: "tiktokPostedAt",
+      message: "TIKTOK_PUBLISH_ATTEMPT: upload final reservado uma unica vez.",
     });
+    if (!claimed) {
+      const current = await prisma.socialPost.findUnique({ where: { id: targetSocialPostId! } });
+      if (current?.tiktokPostedAt) {
+        return NextResponse.json({ success: true, skipped: true, reason: "already_posted" });
+      }
+      await prisma.socialPost.update({ where: { id: targetSocialPostId! }, data: { status: "FAILED" } });
+      await appendSocialPostLog(
+        prisma,
+        targetSocialPostId!,
+        "BLOQUEADO_RESULTADO_INCERTO: o TikTok ja recebeu uma tentativa; nao sera enviado novamente."
+      );
+      return NextResponse.json({ success: false, skipped: true, reason: "publish_already_attempted" });
+    }
     await appendPostLog(targetSocialPostId!, "Iniciando publicacao no TikTok...");
 
     const title = socialPost.title || socialPost.post?.title || socialPost.summary?.slice(0, 150) || "Nova noticia";

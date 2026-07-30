@@ -116,11 +116,10 @@ export async function createInstagramContainer(
 
 // ─── FASE 2: Checa o status e publica quando a Meta terminar de processar ────
 // Retorna: { status: "FINISHED" | "IN_PROGRESS" | "ERROR", igPostId?: string }
-export async function checkAndPublishInstagramContainer(
+export async function checkInstagramContainerStatus(
   creationId: string,
-  instagramId: string,
   accessToken: string
-): Promise<{ status: string; igPostId?: string }> {
+): Promise<string> {
   // Checa o status atual
   const statusRes = await fetch(
     `https://graph.facebook.com/v19.0/${creationId}?fields=status_code&access_token=${accessToken}`
@@ -141,10 +140,17 @@ export async function checkAndPublishInstagramContainer(
 
   if (statusCode !== "FINISHED") {
     // Ainda processando — a UI vai tentar de novo
-    return { status: statusCode };
+    return statusCode;
   }
 
-  // FINISHED → publicar agora
+  return "FINISHED";
+}
+
+export async function publishInstagramContainer(
+  creationId: string,
+  instagramId: string,
+  accessToken: string
+): Promise<string> {
   const publishRes = await fetch(`https://graph.facebook.com/v19.0/${instagramId}/media_publish`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -153,7 +159,18 @@ export async function checkAndPublishInstagramContainer(
   const publishData = await publishRes.json();
   if (publishData.error) throw new Error(publishData.error.message || "Erro publicando IG Story");
 
-  return { status: "FINISHED", igPostId: publishData.id };
+  return publishData.id;
+}
+
+export async function checkAndPublishInstagramContainer(
+  creationId: string,
+  instagramId: string,
+  accessToken: string
+): Promise<{ status: string; igPostId?: string }> {
+  const status = await checkInstagramContainerStatus(creationId, accessToken);
+  if (status !== "FINISHED") return { status };
+  const igPostId = await publishInstagramContainer(creationId, instagramId, accessToken);
+  return { status: "FINISHED", igPostId };
 }
 
 // Mantido por compatibilidade — uso interno apenas

@@ -4,9 +4,15 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import {
   createInstagramStoryContainer,
-  checkAndPublishInstagramContainer,
+  checkInstagramContainerStatus,
+  publishInstagramContainer,
   publishFacebookStory24h,
 } from "@/lib/metaGraph";
+import {
+  appendSocialPostLog,
+  markSingleAttempt,
+  reservePublicationIdentity,
+} from "@/lib/socialPublicationGuard";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +56,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (socialPost.metaStoryPostedAt) {
+      await appendSocialPostLog(prisma, targetSocialPostId!, "IGNORADO_IDEMPOTENCIA: Story ja publicado anteriormente.");
+      return NextResponse.json({ success: true, skipped: true, reason: "already_posted" });
+    }
+    const identity = await reservePublicationIdentity(prisma, socialPost);
+    if (!identity.allowed) {
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        reason: "duplicate_video",
+        originalSocialPostId: identity.original?.id || null,
+      });
+    }
+
     const settings = await prisma.integrationSettings.findUnique({ where: { platform: "META" } });
     if (!settings?.accessToken || !settings?.instagramId || !settings?.pageId) {
       return NextResponse.json({ error: "Configurações Meta ausentes." }, { status: 400 });
@@ -67,6 +87,18 @@ export async function POST(req: NextRequest) {
 
     // ─── FASE 1: Criar container Story ───────────────────────────────────────
     if (!socialPost.metaContainerId) {
+      const claimed = await markSingleAttempt(prisma, {
+        id: targetSocialPostId!,
+        attemptField: "metaContainerAttemptedAt",
+        message: "META_STORY_CONTAINER_ATTEMPT: criacao reservada uma unica vez.",
+      });
+      if (!claimed) {
+        return NextResponse.json({
+          success: false,
+          stillProcessing: true,
+          reason: "container_attempt_already_started",
+        });
+      }
       await appendLog("📸 Criando container de Story 24h na Meta...");
 
       const creationId = await createInstagramStoryContainer(
@@ -103,23 +135,42 @@ export async function POST(req: NextRequest) {
 
     // Instagram
     try {
-      const result = await checkAndPublishInstagramContainer(
-        metaContainerId,
-        settings.instagramId,
-        settings.accessToken
-      );
+      const containerStatus = await checkInstagramContainerStatus(metaContainerId, settings.accessToken);
 
-      if (result.status !== "FINISHED") {
-        await appendLog(`⏳ Status: ${result.status}. Continue aguardando...`);
+      if (containerStatus !== "FINISHED") {
+        await appendLog(`⏳ Status: ${containerStatus}. Continue aguardando...`);
         return NextResponse.json({
           phase: 2,
-          status: result.status,
+          status: containerStatus,
           stillProcessing: true,
-          message: `Meta ainda processando (${result.status}).`,
+          message: `Meta ainda processando (${containerStatus}).`,
         });
       }
 
-      igId = result.igPostId || null;
+      const igClaimed = await markSingleAttempt(prisma, {
+        id: targetSocialPostId!,
+        attemptField: "metaInstagramPublishAttemptedAt",
+        postedField: "metaStoryPostedAt",
+        message: `META_INSTAGRAM_STORY_PUBLISH_ATTEMPT: container ${metaContainerId}; chamada final unica.`,
+      });
+      if (!igClaimed) {
+        const current = await prisma.socialPost.findUnique({ where: { id: targetSocialPostId! } });
+        if (current?.metaStoryPostedAt) {
+          return NextResponse.json({ success: true, skipped: true, reason: "already_posted" });
+        }
+        await prisma.socialPost.update({ where: { id: targetSocialPostId! }, data: { status: "FAILED" } });
+        return NextResponse.json({ success: false, skipped: true, reason: "publish_already_attempted" });
+      }
+      igId = await publishInstagramContainer(metaContainerId, settings.instagramId, settings.accessToken);
+      const instagramPostedAt = new Date();
+      await prisma.socialPost.update({
+        where: { id: targetSocialPostId! },
+        data: {
+          postedAt: instagramPostedAt,
+          metaStoryPostedAt: instagramPostedAt,
+          metaStoryPostUrl: `https://www.instagram.com/stories/${igId}`,
+        },
+      });
       await appendLog(`✅ Story publicado no Instagram! ID: ${igId}`);
     } catch (e: any) {
       errors.push(`IG Story: ${e.message}`);
@@ -128,6 +179,12 @@ export async function POST(req: NextRequest) {
 
     // Facebook
     try {
+      const fbClaimed = await markSingleAttempt(prisma, {
+        id: targetSocialPostId!,
+        attemptField: "metaFacebookPublishAttemptedAt",
+        message: "META_FACEBOOK_STORY_PUBLISH_ATTEMPT: chamada final unica.",
+      });
+      if (!fbClaimed) throw new Error("Envio ao Facebook ja foi tentado; bloqueado para evitar duplicacao.");
       await appendLog("📸 Publicando Story no Facebook...");
       fbId = await publishFacebookStory24h(
         socialPost.videoUrl,
@@ -149,7 +206,7 @@ export async function POST(req: NextRequest) {
         postedAt: finalStatus === "POSTED" ? new Date() : undefined,
         metaStoryPostedAt: finalStatus === "POSTED" ? new Date() : undefined,
         metaStoryPostUrl: igId ? `https://www.instagram.com/stories/${igId}` : undefined,
-        metaContainerId: null,
+        metaContainerId,
       },
     });
 
