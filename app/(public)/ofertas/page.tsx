@@ -118,9 +118,12 @@ export default async function OffersPage({
               <span className="block text-lg font-black tracking-tight">Promoções</span>
             </span>
           </Link>
-          <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-300 sm:flex">
-            <ShieldCheck className="h-4 w-4 text-emerald-300" />
-            Links organizados e transparentes
+          <div className="hidden items-center gap-5 text-xs font-semibold text-slate-300 sm:flex">
+            <Link href="/lojas" className="hover:text-white">Guias das lojas</Link>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-300" />
+              Links organizados e transparentes
+            </span>
           </div>
         </div>
       </header>
@@ -192,10 +195,15 @@ export default async function OffersPage({
                   <div className="mt-7 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{store.category}</div>
                   <h3 className="mt-2 text-2xl font-black tracking-tight text-white">{store.name}</h3>
                   <p className="mt-3 min-h-[72px] text-sm leading-6 text-slate-300">{store.defaultCopy}</p>
-                  <a href={`/go/loja/${store.slug}?source=bio&medium=store_card&campaign=compra_esperta_promocoes`} rel="sponsored" className={`mt-6 flex w-full items-center justify-between rounded-2xl px-4 py-3.5 text-sm font-black text-slate-950 transition ${color} ${hover}`}>
-                    Ver destaques da loja
-                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                  </a>
+                  <div className="mt-6 grid grid-cols-[1fr_auto] gap-2">
+                    <Link href={`/lojas/${store.slug}`} className={`flex items-center justify-between rounded-2xl px-4 py-3.5 text-sm font-black text-slate-950 transition ${color} ${hover}`}>
+                      Conhecer a loja
+                      <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                    </Link>
+                    <a href={`/go/loja/${store.slug}?source=bio&medium=store_card&campaign=compra_esperta_promocoes`} rel="sponsored" aria-label={`Ir diretamente para ${store.name}`} className="grid w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.05] text-slate-200 hover:bg-white/10">
+                      <ShoppingBag className="h-4 w-4" />
+                    </a>
+                  </div>
                 </article>
               );
             })}
