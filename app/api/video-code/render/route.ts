@@ -231,6 +231,20 @@ async function renderWithExternalService(params: {
   return data;
 }
 
+function fallbackVisualCopy(text: string) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  const sentences = clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((item) => item.trim()) || [];
+  const shorten = (value: string, max: number) => {
+    if (value.length <= max) return value.replace(/[.!?]+$/, "");
+    const clipped = value.slice(0, max + 1);
+    const lastSpace = clipped.lastIndexOf(" ");
+    return `${clipped.slice(0, lastSpace > max * 0.65 ? lastSpace : max).trim()}…`;
+  };
+  const title = shorten(sentences[0] || clean, 72);
+  const items = sentences.map((item) => shorten(item, 96)).filter(Boolean).slice(0, 3);
+  return { title, items: items.length >= 2 ? items : [shorten(clean, 96)] };
+}
+
 function buildLongFormSegments(videoSpec: any, narrationText: string) {
   const scenes = Array.isArray(videoSpec?.scenes) ? videoSpec.scenes : [];
   const palettes = [
@@ -310,12 +324,16 @@ function buildLongFormSegments(videoSpec: any, narrationText: string) {
           const palette =
             palettes[(index * Math.max(1, group.length) + sceneIndex) % palettes.length];
           const sourceProps = scene?.props || {};
+          const segmentWords = segmentNarration.split(/\s+/).filter(Boolean);
+          const copyStart = Math.floor((sceneIndex * segmentWords.length) / Math.max(1, group.length));
+          const copyEnd = Math.floor(((sceneIndex + 1) * segmentWords.length) / Math.max(1, group.length));
+          const fallbackCopy = fallbackVisualCopy(segmentWords.slice(copyStart, copyEnd).join(" "));
           const title =
             String(
               sourceProps.title ||
                 sourceProps.subtitle ||
-                `Ponto importante ${index + 1}.${sceneIndex + 1}`,
-            ).trim() || `Ponto importante ${index + 1}.${sceneIndex + 1}`;
+                fallbackCopy.title,
+            ).trim() || fallbackCopy.title;
           const props: any = {
             ...sourceProps,
             ...palette,
@@ -324,47 +342,52 @@ function buildLongFormSegments(videoSpec: any, narrationText: string) {
             highlightColor: palette.accentColor,
             circleColor: palette.accentColor,
           };
+          let sceneTemplate = scene?.sceneTemplate;
           if (
             scene?.sceneTemplate === "BulletListScene" &&
             !Array.isArray(props.items)
           ) {
-            props.items = [title, "Exemplo pratico", "Aplicacao imediata"];
+            props.items = fallbackCopy.items;
           }
           if (
             scene?.sceneTemplate === "TimelineScene" &&
             !Array.isArray(props.items)
           ) {
             props.items = [
-              { label: "Contexto", text: title },
-              { label: "Acao", text: "Coloque este ponto em pratica" },
+              { label: "Ideia", text: fallbackCopy.items[0] || title },
+              { label: "Desdobramento", text: fallbackCopy.items[1] || fallbackCopy.title },
             ];
           }
           if (scene?.sceneTemplate === "CodeTypingScene" && !props.code) {
-            props.code = `${title}\n\nEntenda\nVeja um exemplo\nAplique`;
+            props.code = [title, ...fallbackCopy.items].join("\n");
           }
           if (
             scene?.sceneTemplate === "ChartScene" &&
             !Array.isArray(props.dataPoints)
           ) {
-            props.dataPoints = [
-              { label: "Inicio", value: 25 },
-              { label: "Pratica", value: 70 },
-              { label: "Evolucao", value: 100 },
-            ];
+            sceneTemplate = "BulletListScene";
+            props.items = fallbackCopy.items;
           }
           if (scene?.sceneTemplate === "BigNumberScene") {
-            props.number = props.number || `${index + 1}`;
-            props.subtitle = props.subtitle || title;
+            const realNumber = segmentWords.join(" ").match(/\b(?:R\$\s*)?\d+(?:[.,]\d+)?(?:%|x| vezes)?\b/i)?.[0];
+            if (props.number || realNumber) {
+              props.number = props.number || realNumber;
+              props.subtitle = props.subtitle || title;
+            } else {
+              sceneTemplate = "BulletListScene";
+              props.items = fallbackCopy.items;
+            }
           }
           if (scene?.sceneTemplate === "CircleHighlightScene") {
             props.centerText = props.centerText || title.slice(0, 24);
             props.surroundingTexts = Array.isArray(props.surroundingTexts)
               ? props.surroundingTexts
-              : ["Contexto", "Exemplo", "Acao"];
+              : fallbackCopy.items.map((item) => item.slice(0, 28));
           }
           return {
             ...scene,
             id: `segment-${index + 1}-scene-${sceneIndex + 1}`,
+            sceneTemplate,
             props,
           };
         }),
@@ -402,7 +425,7 @@ async function renderLongFormInSegments(params: {
 
   const originalMetadata = safeJsonParse(params.project.metadataJson || "") || {};
   const previousSegments =
-    Number(originalMetadata.segmentPipelineVersion) === 2 &&
+    Number(originalMetadata.segmentPipelineVersion) === 3 &&
     Array.isArray(originalMetadata.renderSegments)
     ? originalMetadata.renderSegments
     : [];
@@ -433,7 +456,7 @@ async function renderLongFormInSegments(params: {
       data: {
         metadataJson: JSON.stringify({
           ...originalMetadata,
-          segmentPipelineVersion: 2,
+          segmentPipelineVersion: 3,
           renderSegments: segmentState,
           mergeStatus,
         }),

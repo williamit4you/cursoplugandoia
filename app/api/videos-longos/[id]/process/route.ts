@@ -47,8 +47,12 @@ export async function POST(
     .trim()
     .split(/\s+/)
     .filter(Boolean).length;
+  const hasReusableNarration = existingNarrationWords >= 1_550;
+  const hasCurrentVisualPlan =
+    Number(existingSpec?.meta?.visualPlanVersion || 0) >= 3;
   const canReusePlan =
-    existingNarrationWords >= 500 &&
+    hasReusableNarration &&
+    hasCurrentVisualPlan &&
     Array.isArray(existingSpec?.scenes) &&
     existingSpec.scenes.length > 0;
 
@@ -59,7 +63,10 @@ export async function POST(
         status: "GENERATING",
         errorMessage: null,
         ...(!canReusePlan
-          ? { videoSpecJson: "{}", narrationText: null }
+          ? {
+              videoSpecJson: "{}",
+              ...(hasReusableNarration ? {} : { narrationText: null }),
+            }
           : {}),
         videoUrl: null,
         audioUrl: null,
