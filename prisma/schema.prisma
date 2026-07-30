@@ -1786,6 +1786,46 @@ model BioClick {
   @@index([createdAt])
 }
 
+model AffiliateStore {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  category        String
+  defaultCopy     String
+  baseUrl         String
+  affiliateUrl    String
+  domain          String
+  status          String   @default("ACTIVE") // ACTIVE | NEEDS_FIX | PAUSED | BLOCKED
+  complianceClass String   @default("STANDARD")
+  logoUrl         String?
+  featured        Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  verifiedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  clicks AffiliateStoreClick[]
+
+  @@index([status, featured, sortOrder])
+  @@index([category, status])
+}
+
+model AffiliateStoreClick {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     AffiliateStore @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  source    String?
+  medium    String?
+  campaign  String?
+  referrer  String?
+  userAgent String?
+  ipHash    String?
+  createdAt DateTime @default(now())
+
+  @@index([storeId, createdAt])
+  @@index([createdAt])
+}
+
 model SimpleCreatorVideo {
   id              String   @id @default(cuid())
   narrationText   String
