@@ -1,8 +1,6 @@
 import { MetadataRoute } from "next";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { STORE_ARTICLE_TOPICS } from "@/lib/affiliateSeoContent";
-import { PRODUCT_SEO_ARTICLES } from "@/lib/productSeoArticles";
 import { getCommerceSiteUrl, getPortalSiteUrl, isCommerceHostname } from "@/lib/siteUrls";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +13,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ? [
         { url: siteUrl, changeFrequency: "daily", priority: 1 },
         { url: `${siteUrl}/lojas`, changeFrequency: "weekly", priority: 0.9 },
-        { url: `${siteUrl}/produtos`, changeFrequency: "weekly", priority: 0.95 },
         { url: `${siteUrl}/comparativo`, changeFrequency: "weekly", priority: 0.8 },
       ]
     : [
@@ -43,7 +40,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ];
     }
 
-    const [stores, comparisons] = await Promise.all([
+    const [stores, comparisons, editorialArticles] = await Promise.all([
       prisma.affiliateStore.findMany({
         where: { status: "ACTIVE" },
         select: { slug: true, updatedAt: true },
@@ -54,31 +51,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         select: { slug: true, updatedAt: true },
         orderBy: { updatedAt: "desc" },
       }),
+      prisma.seoBrief.findMany({
+        where: {
+          status: "PUBLISHED",
+          indexable: true,
+          publishedAt: { not: null },
+          contentJson: { not: null },
+          product: { affiliateStore: { status: "ACTIVE" } },
+        },
+        select: {
+          slug: true,
+          updatedAt: true,
+          product: { select: { affiliateStore: { select: { slug: true } } } },
+        },
+        orderBy: { publishedAt: "desc" },
+      }),
     ]);
 
-    const activeStoreSlugs = new Set(stores.map((store) => store.slug));
     return [
       ...staticPages,
-      ...stores.flatMap((store) => [
-        {
-          url: `${siteUrl}/lojas/${store.slug}`,
-          lastModified: store.updatedAt,
-          changeFrequency: "weekly" as const,
-          priority: 0.75,
-        },
-        ...STORE_ARTICLE_TOPICS.map((topic) => ({
-          url: `${siteUrl}/lojas/${store.slug}/${topic.slug}`,
-          lastModified: store.updatedAt,
-          changeFrequency: "monthly" as const,
-          priority: 0.65,
-        })),
-      ]),
-      ...PRODUCT_SEO_ARTICLES.filter((article) => activeStoreSlugs.has(article.storeSlug)).map((article) => ({
-        url: `${siteUrl}/lojas/${article.storeSlug}/produtos/${article.slug}`,
-        lastModified: new Date(article.updatedAt),
-        changeFrequency: "monthly" as const,
-        priority: 0.85,
+      ...stores.map((store) => ({
+        url: `${siteUrl}/lojas/${store.slug}`,
+        lastModified: store.updatedAt,
+        changeFrequency: "weekly" as const,
+        priority: 0.8,
       })),
+      ...editorialArticles.flatMap((article) => article.product.affiliateStore ? [{
+        url: `${siteUrl}/lojas/${article.product.affiliateStore.slug}/artigos/${article.slug}`,
+        lastModified: article.updatedAt,
+        changeFrequency: "weekly" as const,
+        priority: 0.85,
+      }] : []),
       ...comparisons.map((comparison) => ({
         url: `${siteUrl}/comparativo/${comparison.slug}`,
         lastModified: comparison.updatedAt,

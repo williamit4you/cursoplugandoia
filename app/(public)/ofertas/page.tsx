@@ -197,7 +197,7 @@ export default async function OffersPage({
                     <div className={`grid h-14 w-14 place-items-center rounded-2xl text-base font-black text-slate-950 shadow-lg ${color}`}>{initials(store.name)}</div>
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-300">
                       <BadgeCheck className="h-3.5 w-3.5 text-emerald-300" />
-                      Loja verificada
+                      Link conferido
                     </span>
                   </div>
                   <div className="mt-7 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{store.category}</div>

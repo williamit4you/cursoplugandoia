@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, BookOpen, ExternalLink, ShoppingBag } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink, ShoppingBag, Store } from "lucide-react";
 import { notFound } from "next/navigation";
+import CommercialDisclosure from "@/components/commerce/CommercialDisclosure";
 import { prisma } from "@/lib/prisma";
-import { buildStoreHubDescription, STORE_ARTICLE_TOPICS } from "@/lib/affiliateSeoContent";
-import { productsForStore } from "@/lib/productSeoArticles";
 import { getCommerceSiteUrl } from "@/lib/siteUrls";
 
 export const dynamic = "force-dynamic";
@@ -13,29 +12,39 @@ async function getStore(slug: string) {
   return prisma.affiliateStore.findFirst({ where: { slug, status: "ACTIVE" } });
 }
 
+function descriptionFor(store: { name: string; category: string; defaultCopy: string }) {
+  return `Conheça a ${store.name}, veja informações sobre ${store.category.toLowerCase()} e acesse conteúdos específicos publicados pela Compra Esperta. ${store.defaultCopy}`.slice(0, 300);
+}
+
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const store = await getStore(params.slug);
   if (!store) return { title: "Loja não encontrada", robots: { index: false, follow: false } };
-  const siteUrl = getCommerceSiteUrl();
-  const description = buildStoreHubDescription(store);
+  const description = descriptionFor(store);
+  const canonical = `${getCommerceSiteUrl()}/lojas/${store.slug}`;
   return {
-    title: `${store.name}: guias, dicas e acesso à loja | Compra Esperta`,
+    title: `${store.name}: conheça a loja | Compra Esperta`,
     description,
-    alternates: { canonical: `${siteUrl}/lojas/${store.slug}` },
-    openGraph: { title: `${store.name} no Compra Esperta`, description, type: "website", url: `${siteUrl}/lojas/${store.slug}` },
+    alternates: { canonical },
+    openGraph: { title: `${store.name} no Compra Esperta`, description, type: "website", url: canonical },
   };
 }
 
 export default async function StoreHubPage({ params }: { params: { slug: string } }) {
   const store = await getStore(params.slug);
   if (!store) notFound();
-  const productArticles = productsForStore(store.slug);
+  const editorialArticles = await prisma.seoBrief.findMany({
+    where: { status: "PUBLISHED", indexable: true, contentJson: { not: null }, product: { affiliateStoreId: store.id } },
+    select: { slug: true, title: true, metaDescription: true, primaryKeyword: true },
+    orderBy: { publishedAt: "desc" },
+    take: 24,
+  });
   const siteUrl = getCommerceSiteUrl();
+  const description = descriptionFor(store);
   const schema = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: `${store.name}: guias de compra`,
-    description: buildStoreHubDescription(store),
+    name: `${store.name}: perfil e conteúdos`,
+    description,
     url: `${siteUrl}/lojas/${store.slug}`,
     breadcrumb: {
       "@type": "BreadcrumbList",
@@ -62,46 +71,44 @@ export default async function StoreHubPage({ params }: { params: { slug: string 
           <div className="mt-10 text-xs font-bold uppercase tracking-[0.2em] text-amber-200">{store.category}</div>
           <h1 className="mt-3 text-5xl font-black tracking-tight text-white sm:text-7xl">{store.name}</h1>
           <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-300">{store.defaultCopy}</p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <a href={`/go/loja/${store.slug}?source=seo_store_hub&medium=content&campaign=compra_esperta_promocoes`} rel="sponsored" className="inline-flex items-center gap-2 rounded-2xl bg-emerald-300 px-5 py-4 text-sm font-black text-slate-950 hover:bg-emerald-200">
-              Acessar {store.name} <ExternalLink className="h-4 w-4" />
-            </a>
-          </div>
+          <div className="mt-8 max-w-3xl"><CommercialDisclosure /></div>
+          <a href={`/go/loja/${store.slug}?source=store_profile&medium=content&campaign=compra_esperta`} rel="sponsored" className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-emerald-300 px-5 py-4 text-sm font-black text-slate-950 hover:bg-emerald-200">
+            Acessar {store.name} <ExternalLink className="h-4 w-4" />
+          </a>
         </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-5 py-14">
-        {productArticles.length ? (
-          <div className="mb-16">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-amber-200"><ShoppingBag className="h-4 w-4" /> Produtos pesquisados</div>
-            <h2 className="mt-3 text-3xl font-black text-white">Análises específicas de produtos</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Guias para responder dúvidas sobre uso, especificações, limitações e perfil de compra.</p>
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-emerald-200"><Store className="h-4 w-4" /> Perfil da loja</div>
+        <h2 className="mt-3 text-3xl font-black text-white">Informações antes de acessar</h2>
+        <div className="mt-7 grid gap-4 md:grid-cols-3">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-6"><div className="text-xs font-bold text-slate-500">Categoria</div><div className="mt-2 font-black text-white">{store.category}</div></div>
+          <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-6"><div className="text-xs font-bold text-slate-500">Domínio informado</div><div className="mt-2 break-all font-black text-white">{store.domain}</div></div>
+          <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-6"><div className="text-xs font-bold text-slate-500">Última conferência</div><div className="mt-2 font-black text-white">{store.verifiedAt ? store.verifiedAt.toLocaleDateString("pt-BR") : "Ainda não registrada"}</div></div>
+        </div>
+
+        {!editorialArticles.length ? (
+          <div className="mt-12 rounded-3xl border border-white/10 bg-white/[0.035] p-7 text-sm leading-6 text-slate-400">
+            Ainda não há uma análise específica de produto publicada para esta loja. Conteúdos genéricos foram retirados.
+          </div>
+        ) : null}
+
+        {editorialArticles.length ? (
+          <div className="mt-16">
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">Publicações editoriais</div>
+            <h2 className="mt-3 text-3xl font-black text-white">Análises criadas a partir de produtos encontrados</h2>
             <div className="mt-8 grid gap-4 md:grid-cols-2">
-              {productArticles.map((article) => (
-                <Link key={article.slug} href={`/lojas/${store.slug}/produtos/${article.slug}`} className="group rounded-3xl border border-amber-300/15 bg-amber-300/[0.05] p-6 transition hover:-translate-y-1 hover:border-amber-300/35">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200">{article.category}</div>
+              {editorialArticles.map((article) => (
+                <Link key={article.slug} href={`/lojas/${store.slug}/artigos/${article.slug}`} className="group rounded-3xl border border-white/10 bg-white/[0.035] p-6 transition hover:-translate-y-1 hover:border-emerald-300/30">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-200">{article.primaryKeyword}</div>
                   <h3 className="mt-3 text-xl font-black leading-7 text-white">{article.title}</h3>
-                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-400">{article.description}</p>
-                  <div className="mt-5 flex items-center gap-2 text-sm font-bold text-slate-200">Ler análise <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></div>
+                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-400">{article.metaDescription}</p>
+                  <div className="mt-5 flex items-center gap-2 text-sm font-bold text-slate-200">Ler artigo <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></div>
                 </Link>
               ))}
             </div>
           </div>
         ) : null}
-
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-emerald-200"><BookOpen className="h-4 w-4" /> Conteúdo de apoio</div>
-        <h2 className="mt-3 text-3xl font-black text-white">Cinco leituras para decidir melhor</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Cada página responde a uma intenção diferente: planejar, comparar, encontrar ideias, revisar a compra e acompanhar condições.</p>
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          {STORE_ARTICLE_TOPICS.map((topic, index) => (
-            <Link key={topic.slug} href={`/lojas/${store.slug}/${topic.slug}`} className="group rounded-3xl border border-white/10 bg-white/[0.035] p-6 transition hover:-translate-y-1 hover:border-emerald-300/30">
-              <div className="text-xs font-black text-emerald-200">0{index + 1}</div>
-              <h3 className="mt-4 text-xl font-black text-white">{topic.shortLabel}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-400">{topic.intent}.</p>
-              <div className="mt-5 flex items-center gap-2 text-sm font-bold text-slate-200">Ler conteúdo <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></div>
-            </Link>
-          ))}
-        </div>
       </section>
     </main>
   );

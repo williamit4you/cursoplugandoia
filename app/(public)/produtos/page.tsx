@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "Guias de produtos: análises para comprar melhor | Compra Esperta",
   description: "Guias de produtos com especificações, indicação de uso, limitações e respostas para dúvidas comuns antes da compra.",
   alternates: { canonical: `${getCommerceSiteUrl()}/produtos` },
+  robots: { index: false, follow: true },
 };
 
 function clean(value: unknown) {

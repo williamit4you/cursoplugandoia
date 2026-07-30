@@ -1,8 +1,6 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { STORE_ARTICLE_TOPICS, buildStoreArticle } from "@/lib/affiliateSeoContent";
-import { PRODUCT_SEO_ARTICLES } from "@/lib/productSeoArticles";
 import { getCommerceSiteUrl } from "@/lib/siteUrls";
 
 export type CommercePageInventoryItem = {
@@ -41,6 +39,7 @@ export function commercePageTypeLabel(type: string) {
 export function inferCommercePageType(path: string) {
   if (path === "/" || path === "/ofertas") return "HOME";
   if (path === "/lojas") return "STORES";
+  if (/^\/lojas\/[^/]+\/artigos\/[^/]+$/.test(path)) return "PRODUCT_ARTICLE";
   if (/^\/lojas\/[^/]+\/produtos\/[^/]+$/.test(path)) return "PRODUCT_ARTICLE";
   if (/^\/lojas\/[^/]+\/[^/]+$/.test(path)) return "STORE_ARTICLE";
   if (/^\/lojas\/[^/]+$/.test(path)) return "STORE";
@@ -66,7 +65,7 @@ function item(
 
 export async function buildCommercePageInventory() {
   const siteUrl = getCommerceSiteUrl();
-  const [stores, bioCategories, bioProducts, comparisons] = await Promise.all([
+  const [stores, bioCategories, bioProducts, comparisons, editorialArticles] = await Promise.all([
     prisma.affiliateStore.findMany({
       where: { status: "ACTIVE" },
       orderBy: [{ category: "asc" }, { name: "asc" }],
@@ -82,6 +81,16 @@ export async function buildCommercePageInventory() {
     }),
     prisma.affiliateComparison.findMany({
       where: { status: "PUBLISHED" },
+      orderBy: { publishedAt: "desc" },
+    }),
+    prisma.seoBrief.findMany({
+      where: {
+        status: "PUBLISHED",
+        indexable: true,
+        contentJson: { not: null },
+        product: { affiliateStore: { status: "ACTIVE" } },
+      },
+      include: { product: { include: { affiliateStore: true } } },
       orderBy: { publishedAt: "desc" },
     }),
   ]);
@@ -146,37 +155,26 @@ export async function buildCommercePageInventory() {
       updatedAt: store.updatedAt.toISOString(),
     }));
 
-    for (const topic of STORE_ARTICLE_TOPICS) {
-      const article = buildStoreArticle(store, topic.slug);
-      if (!article) continue;
-      pages.push(item(siteUrl, {
-        path: `/lojas/${store.slug}/${topic.slug}`,
-        title: article.title,
-        pageType: "STORE_ARTICLE",
-        storeSlug: store.slug,
-        storeName: store.name,
-        category: store.category,
-        primaryKeyword: `${topic.shortLabel} ${store.name}`.toLowerCase(),
-        secondaryKeywords: [topic.intent, `${store.category} ${store.name}`],
-        updatedAt: store.updatedAt.toISOString(),
-      }));
-    }
   }
 
-  const activeStoreSlugs = new Set(stores.map((store) => store.slug));
-  for (const article of PRODUCT_SEO_ARTICLES) {
-    if (!activeStoreSlugs.has(article.storeSlug)) continue;
-    const store = stores.find((entry) => entry.slug === article.storeSlug);
+  for (const article of editorialArticles) {
+    const store = article.product.affiliateStore;
+    if (!store) continue;
+    let secondaryKeywords: string[] = [];
+    try {
+      const content = JSON.parse(article.contentJson || "{}");
+      secondaryKeywords = Array.isArray(content.secondaryKeywords) ? content.secondaryKeywords : [];
+    } catch {}
     pages.push(item(siteUrl, {
-      path: `/lojas/${article.storeSlug}/produtos/${article.slug}`,
+      path: `/lojas/${store.slug}/artigos/${article.slug}`,
       title: article.title,
       pageType: "PRODUCT_ARTICLE",
-      storeSlug: article.storeSlug,
-      storeName: store?.name || article.storeName,
-      category: store?.category || article.category,
+      storeSlug: store.slug,
+      storeName: store.name,
+      category: store.category,
       primaryKeyword: article.primaryKeyword,
-      secondaryKeywords: article.secondaryKeywords,
-      updatedAt: article.updatedAt,
+      secondaryKeywords,
+      updatedAt: article.updatedAt.toISOString(),
     }));
   }
 

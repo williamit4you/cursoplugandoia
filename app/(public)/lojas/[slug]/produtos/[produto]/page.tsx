@@ -24,6 +24,7 @@ export async function generateMetadata({ params }: { params: { slug: string; pro
   return {
     title: article.title,
     description: article.description,
+    robots: { index: false, follow: true },
     keywords: [article.primaryKeyword, ...article.secondaryKeywords, article.productName, article.brand],
     alternates: { canonical },
     openGraph: { type: "article", title: article.title, description: article.description, url: canonical, siteName: "Compra Esperta Promoções", modifiedTime: article.updatedAt },

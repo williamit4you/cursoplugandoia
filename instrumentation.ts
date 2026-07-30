@@ -11,5 +11,8 @@ export async function register() {
 
     const { startInternalCronSchedulerVideoEngagement } = await import("./lib/internalCronSchedulerVideoEngagement");
     startInternalCronSchedulerVideoEngagement();
+
+    const { startInternalCronSchedulerCommerceEditorial } = await import("./lib/internalCronSchedulerCommerceEditorial");
+    startInternalCronSchedulerCommerceEditorial();
   }
 }

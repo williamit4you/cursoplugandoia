@@ -7,8 +7,8 @@ import { getCommerceSiteUrl } from "@/lib/siteUrls";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Lojas e guias de compra | Compra Esperta Promoções",
-  description: "Explore lojas por categoria e encontre guias de compra, checklists e conteúdos para decidir melhor.",
+  title: "Lojas e categorias | Compra Esperta Promoções",
+  description: "Consulte lojas por categoria e acesse perfis e conteúdos específicos publicados pela Compra Esperta.",
   alternates: { canonical: `${getCommerceSiteUrl()}/lojas` },
 };
 
@@ -54,9 +54,9 @@ export default async function StoresPage({ searchParams }: { searchParams?: Reco
 
       <section className="border-b border-white/10 bg-[radial-gradient(circle_at_20%_0%,rgba(52,211,153,0.16),transparent_35%)]">
         <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
-          <div className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">Diretório editorial</div>
-          <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight text-white sm:text-6xl">Lojas, categorias e decisões mais inteligentes.</h1>
-          <p className="mt-5 max-w-2xl leading-7 text-slate-300">Encontre uma loja e acesse guias de compra, critérios de comparação, inspirações e checklists antes de seguir para o site oficial.</p>
+          <div className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">Diretório de lojas</div>
+          <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight text-white sm:text-6xl">Lojas e categorias em um só lugar.</h1>
+          <p className="mt-5 max-w-2xl leading-7 text-slate-300">Encontre uma loja, consulte as informações disponíveis e acesse apenas análises específicas já publicadas.</p>
 
           <form action="/lojas" className="mt-8 flex max-w-3xl gap-3 rounded-3xl border border-white/10 bg-white/[0.05] p-3">
             <label className="flex flex-1 items-center gap-3 rounded-2xl bg-black/20 px-4">
@@ -90,7 +90,7 @@ export default async function StoresPage({ searchParams }: { searchParams?: Reco
               <div className="mt-6 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-200">{store.category}</div>
               <h2 className="mt-2 text-xl font-black text-white">{store.name}</h2>
               <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-400">{store.defaultCopy}</p>
-              <div className="mt-5 text-xs font-bold text-slate-300">5 guias disponíveis</div>
+              <div className="mt-5 text-xs font-bold text-slate-300">Ver perfil da loja</div>
             </Link>
           ))}
         </div>

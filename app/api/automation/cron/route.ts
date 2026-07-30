@@ -63,6 +63,11 @@ export async function GET(req: NextRequest) {
     // Processa cron de perguntas para vídeos
     const videoQuestions = await callJson(`${origin}/api/video-questions/cron${encodedSecret}`);
 
+    // Pesquisa um produto, redige, revisa e publica no máximo uma vez por dia.
+    const commerceEditorial = internalOwnsPipelines
+      ? { ok: true, status: 200, data: { skipped: true, owner: "internal_scheduler" } }
+      : await callJson(`${origin}/api/commerce-editorial/cron${encodedSecret}`);
+
     const allOk =
       taskRuns.ok &&
       mercadoLivre.ok &&
@@ -71,7 +76,8 @@ export async function GET(req: NextRequest) {
       shopeePublisher.ok &&
       engajamentoPipeline.ok &&
       engajamentoPublisher.ok &&
-      videoQuestions.ok;
+      videoQuestions.ok &&
+      commerceEditorial.ok;
 
     console.log("[api/automation/cron] Results:", {
       taskRuns: { ok: taskRuns.ok, status: taskRuns.status },
@@ -82,6 +88,7 @@ export async function GET(req: NextRequest) {
       engajamentoPipeline: { ok: engajamentoPipeline.ok, status: engajamentoPipeline.status },
       engajamentoPublisher: { ok: engajamentoPublisher.ok, status: engajamentoPublisher.status },
       videoQuestions: { ok: videoQuestions.ok, status: videoQuestions.status },
+      commerceEditorial: { ok: commerceEditorial.ok, status: commerceEditorial.status },
     });
 
     return NextResponse.json({
@@ -94,6 +101,7 @@ export async function GET(req: NextRequest) {
       engajamentoPipeline,
       engajamentoPublisher,
       videoQuestions,
+      commerceEditorial,
     });
   } catch (error: any) {
     console.error("[api/automation/cron GET]", error);

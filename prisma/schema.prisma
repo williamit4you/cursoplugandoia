@@ -1009,13 +1009,16 @@ model ProductCatalog {
   category      String?
   status        String    @default("ACTIVE") // ACTIVE | PAUSED | ARCHIVED
   metadataJson  String?
+  affiliateStoreId String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  affiliateStore AffiliateStore? @relation(fields: [affiliateStoreId], references: [id], onDelete: SetNull)
   opportunities SeoOpportunity[]
   briefs        SeoBrief[]
 
   @@index([status, updatedAt])
+  @@index([affiliateStoreId, status])
 }
 
 model SeoOpportunity {
@@ -1058,6 +1061,11 @@ model SeoBrief {
   internalLinksJson String?
   sourcesJson   String?
   reviewNotes   String?
+  metaDescription String?
+  contentJson   String?
+  qualityScore  Float?
+  indexable     Boolean   @default(false)
+  publishedAt   DateTime?
   postId        String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -1067,6 +1075,41 @@ model SeoBrief {
 
   @@unique([productId, angle])
   @@index([status, updatedAt])
+  @@index([status, indexable, publishedAt])
+}
+
+model CommerceEditorialConfig {
+  id              String   @id @default("default")
+  enabled         Boolean  @default(true)
+  autoPublish     Boolean  @default(true)
+  runEveryHours   Int      @default(24)
+  maxItemsPerRun  Int      @default(1)
+  minimumWords    Int      @default(900)
+  lastRunAt       DateTime?
+  nextRunAt       DateTime?
+  lockedAt        DateTime?
+  lastResultJson  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model CommerceEditorialRun {
+  id            String   @id @default(cuid())
+  status        String   @default("RUNNING") // RUNNING | PUBLISHED | REVIEW | FAILED | SKIPPED
+  step          String   @default("SELECT_STORE")
+  storeId       String?
+  productId     String?
+  briefId       String?
+  sourceUrl     String?
+  message       String?
+  detailsJson   String?
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status, startedAt])
+  @@index([storeId, startedAt])
 }
 
 model CostLedger {
@@ -1807,6 +1850,7 @@ model AffiliateStore {
   updatedAt       DateTime @updatedAt
 
   clicks AffiliateStoreClick[]
+  products ProductCatalog[]
 
   @@index([status, featured, sortOrder])
   @@index([category, status])
