@@ -129,7 +129,9 @@ export function isCatalogItemReady(item: {
   currentPrice?: number | null;
   active?: boolean | null;
 }) {
-  return Boolean(item.active !== false && normalizeText(item.category) && normalizeText(item.affiliateUrl) && item.currentPrice != null);
+  // Categoria ajuda na organização do catálogo, mas não deve bloquear uma oferta
+  // legítima de ser publicada.
+  return Boolean(item.active !== false && normalizeText(item.affiliateUrl) && item.currentPrice != null);
 }
 
 export function parseCsvRows(content: string) {

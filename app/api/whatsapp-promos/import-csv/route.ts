@@ -30,10 +30,12 @@ export async function POST(req: NextRequest) {
     if (!rows.length) return NextResponse.json({ error: "CSV vazio ou invalido." }, { status: 400 });
 
     const created: string[] = [];
-    for (const row of rows) {
+    const skipped: Array<{ row: number; reason: string }> = [];
+    for (const [index, row] of rows.entries()) {
       const title =
         normalizeText(row["Title"]) ||
         normalizeText(row["Product Title"]) ||
+        normalizeText(row["Item Name"]) ||
         normalizeText(row["Offer Name"]) ||
         normalizeText(row["Nome"]);
       const affiliateUrl =
@@ -42,7 +44,10 @@ export async function POST(req: NextRequest) {
         normalizeText(row["Link Afiliado"]) ||
         normalizeText(row["URL"]);
 
-      if (!title || !affiliateUrl) continue;
+      if (!title || !affiliateUrl) {
+        skipped.push({ row: index + 2, reason: !title ? "Titulo ausente" : "Link de oferta/afiliado ausente" });
+        continue;
+      }
       const slug = await ensureUniqueWhatsappPromoSlug(title);
       const category = normalizeText(row["Category"]) || null;
       const currentPrice =
@@ -64,7 +69,7 @@ export async function POST(req: NextRequest) {
           sourceUrl: affiliateUrl,
           category,
           imageUrl: normalizeText(row["Image URL"]) || null,
-          productUrl: normalizeText(row["Product URL"]) || null,
+          productUrl: normalizeText(row["Product URL"]) || normalizeText(row["Product Link"]) || null,
           description: normalizeText(row["Description"]) || null,
           currentPrice,
           active: true,
@@ -74,7 +79,7 @@ export async function POST(req: NextRequest) {
       created.push(slug);
     }
 
-    return NextResponse.json({ ok: true, batchKey, createdCount: created.length });
+    return NextResponse.json({ ok: true, batchKey, createdCount: created.length, skippedCount: skipped.length, skipped: skipped.slice(0, 20) });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Falha ao importar CSV" }, { status: 500 });
   }

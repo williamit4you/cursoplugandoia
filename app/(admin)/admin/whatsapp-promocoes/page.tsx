@@ -214,7 +214,8 @@ export default function WhatsappPromocoesPage() {
       if (!res.ok) throw new Error(data?.error || "Falha ao importar CSV");
       setCsvFile(null);
       setBatchKey("");
-      setMessage(`CSV importado. ${data.createdCount || 0} item(ns) criado(s).`);
+      const skippedInfo = Number(data.skippedCount || 0) > 0 ? ` ${data.skippedCount} linha(s) ignorada(s).` : "";
+      setMessage(`CSV importado. ${data.createdCount || 0} item(ns) criado(s).${skippedInfo}`);
       await load();
     } catch (err: any) {
       setError(err?.message || "Falha ao importar CSV");
