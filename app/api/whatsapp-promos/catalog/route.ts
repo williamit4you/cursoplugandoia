@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
 
   const q = normalizeText(req.nextUrl.searchParams.get("q"));
   const status = normalizeText(req.nextUrl.searchParams.get("status") || "ALL");
+  const workflow = normalizeText(req.nextUrl.searchParams.get("workflow") || "ALL");
 
   const where: any = {};
   if (q) {
@@ -33,14 +34,26 @@ export async function GET(req: NextRequest) {
   if (status === "PENDING") where.readyForPublish = false;
   if (status === "ACTIVE") where.active = true;
   if (status === "INACTIVE") where.active = false;
+  if (workflow === "NEEDS_SCHEDULE") {
+    where.readyForPublish = true;
+    where.posts = { none: { status: { in: ["SCHEDULED", "SENT"] } } };
+  }
+  if (workflow === "SCHEDULED") where.posts = { some: { status: "SCHEDULED" } };
+  if (workflow === "SENT") where.posts = { some: { status: "SENT" } };
+  if (workflow === "FAILED") where.posts = { some: { status: "FAILED" } };
 
   const items = await prisma.whatsappPromoCatalogItem.findMany({
     where,
     orderBy: [{ updatedAt: "desc" }],
-    take: 500,
+    take: 1000,
     include: {
       productCatalog: {
         select: { id: true, name: true, slug: true },
+      },
+      posts: {
+        select: { id: true, status: true, scheduledTo: true, sentAt: true, createdAt: true },
+        orderBy: [{ createdAt: "desc" }],
+        take: 10,
       },
       _count: {
         select: { posts: true },

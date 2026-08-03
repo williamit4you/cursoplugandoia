@@ -17,14 +17,46 @@ export async function GET(req: NextRequest) {
 
   const status = normalizeText(req.nextUrl.searchParams.get("status") || "ALL");
   const catalogItemId = normalizeText(req.nextUrl.searchParams.get("catalogItemId"));
+  const q = normalizeText(req.nextUrl.searchParams.get("q"));
+  const dateFrom = normalizeText(req.nextUrl.searchParams.get("dateFrom"));
+  const dateTo = normalizeText(req.nextUrl.searchParams.get("dateTo"));
   const where: any = {};
   if (status !== "ALL") where.status = status;
   if (catalogItemId) where.catalogItemId = catalogItemId;
+  if (q) {
+    where.OR = [
+      { headline: { contains: q, mode: "insensitive" } },
+      { bodyText: { contains: q, mode: "insensitive" } },
+      { catalogItem: { title: { contains: q, mode: "insensitive" } } },
+    ];
+  }
+  if (dateFrom || dateTo) {
+    where.OR = [
+      {
+        createdAt: {
+          ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+          ...(dateTo ? { lte: new Date(`${dateTo}T23:59:59.999`) } : {}),
+        },
+      },
+      {
+        scheduledTo: {
+          ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+          ...(dateTo ? { lte: new Date(`${dateTo}T23:59:59.999`) } : {}),
+        },
+      },
+      {
+        sentAt: {
+          ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+          ...(dateTo ? { lte: new Date(`${dateTo}T23:59:59.999`) } : {}),
+        },
+      },
+    ];
+  }
 
   const items = await prisma.whatsappPromoPost.findMany({
     where,
     orderBy: [{ createdAt: "desc" }, { scheduledTo: "asc" }],
-    take: catalogItemId ? 50 : 300,
+    take: catalogItemId ? 100 : 1000,
     include: {
       catalogItem: {
         select: {
@@ -51,6 +83,45 @@ export async function POST(req: NextRequest) {
   try {
     const settings = await getOrCreateCrmSettings();
     const body = await req.json().catch(() => ({}));
+    const itemIds = Array.isArray(body.itemIds) ? body.itemIds.map((item: unknown) => normalizeText(item)).filter(Boolean) : [];
+
+    if (itemIds.length > 0) {
+      const items = await prisma.whatsappPromoCatalogItem.findMany({
+        where: { id: { in: itemIds } },
+        orderBy: [{ updatedAt: "desc" }],
+      });
+      const status = normalizeText(body.status) || "SCHEDULED";
+      const scheduledTo = body.scheduledTo ? new Date(String(body.scheduledTo)) : null;
+      const targetId = normalizeText(body.targetId) || settings.offersGroupTargetId || null;
+
+      const created = await prisma.$transaction(
+        items.map((catalogItem) =>
+          prisma.whatsappPromoPost.create({
+            data: {
+              catalogItemId: catalogItem.id,
+              status,
+              headline: buildPromoHeadline(catalogItem.title, catalogItem.discountPercent),
+              bodyText: buildPromoBody({
+                title: catalogItem.title,
+                shortPhrase: catalogItem.description,
+                oldPrice: catalogItem.oldPrice,
+                currentPrice: catalogItem.currentPrice,
+                discountPercent: catalogItem.discountPercent,
+                savingsAmount: catalogItem.savingsAmount,
+                linkUrl: catalogItem.affiliateUrl,
+              }),
+              linkUrl: catalogItem.affiliateUrl,
+              mediaUrl: catalogItem.imageUrl || null,
+              scheduledTo,
+              targetId,
+            },
+          }),
+        ),
+      );
+
+      return NextResponse.json({ createdCount: created.length, posts: created });
+    }
+
     const catalogItemId = normalizeText(body.catalogItemId);
     if (!catalogItemId) return NextResponse.json({ error: "Item do catalogo nao informado." }, { status: 400 });
 
