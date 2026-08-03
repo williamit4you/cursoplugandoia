@@ -44,6 +44,14 @@ export function formatPrice(value: number | null | undefined) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+export function inferOldPrice(currentPrice: number | null | undefined, oldPrice: number | null | undefined) {
+  if (oldPrice != null && Number.isFinite(oldPrice) && oldPrice > 0) return Number(oldPrice.toFixed(2));
+  if (currentPrice != null && Number.isFinite(currentPrice) && currentPrice > 0) {
+    return Number((currentPrice * 1.42).toFixed(2));
+  }
+  return null;
+}
+
 export function computePromoFields(oldPrice: number | null, currentPrice: number | null) {
   if (oldPrice == null || currentPrice == null || oldPrice <= 0 || currentPrice <= 0 || oldPrice <= currentPrice) {
     return { discountPercent: null as number | null, savingsAmount: null as number | null };
@@ -54,13 +62,30 @@ export function computePromoFields(oldPrice: number | null, currentPrice: number
 }
 
 export function buildPromoHeadline(title: string, discountPercent: number | null) {
-  if (discountPercent && discountPercent >= 20) return `${discountPercent}% OFF em ${title}`;
-  if (discountPercent && discountPercent >= 10) return `Oferta de hoje: ${title}`;
-  return `Achado no WhatsApp: ${title}`;
+  return normalizeText(title);
+}
+
+export function buildPromoShortPhrase(description: string | null | undefined, title?: string | null) {
+  const text = normalizeText(description);
+  if (text) {
+    const sentence = text.split(/(?<=[.!?])\s+/).map(normalizeText).find(Boolean) || text;
+    return sentence.slice(0, 90);
+  }
+  const titleText = normalizeText(title);
+  if (!titleText) return "Oferta selecionada para o grupo de promocoes.";
+  return `Confira essa oferta em ${titleText.slice(0, 55).toLowerCase()}.`;
+}
+
+export function buildInstallmentLine(currentPrice: number | null | undefined) {
+  if (currentPrice == null || !Number.isFinite(currentPrice) || currentPrice < 200) return null;
+  const installment = Number((currentPrice / 12).toFixed(2));
+  const formatted = formatPrice(installment);
+  return formatted ? `Em ate 12x ${formatted}` : null;
 }
 
 export function buildPromoBody(params: {
   title: string;
+  shortPhrase?: string | null;
   oldPrice?: number | null;
   currentPrice?: number | null;
   discountPercent?: number | null;
@@ -69,25 +94,26 @@ export function buildPromoBody(params: {
   template?: PromoMessageTemplate;
 }) {
   const title = normalizeText(params.title);
-  const oldPrice = formatPrice(params.oldPrice ?? null);
+  const safeOldPriceValue = inferOldPrice(params.currentPrice ?? null, params.oldPrice ?? null);
+  const oldPrice = formatPrice(safeOldPriceValue);
   const currentPrice = formatPrice(params.currentPrice ?? null);
-  const savings = formatPrice(params.savingsAmount ?? null);
-  const discountPercent = params.discountPercent ?? null;
-  const template = params.template || "discount";
+  const shortPhrase = buildPromoShortPhrase(params.shortPhrase || null, title);
+  const installmentLine = buildInstallmentLine(params.currentPrice ?? null);
 
-  if (template === "savings" && oldPrice && currentPrice && savings) {
-    return `💸 ECONOMIZE\n\n${title}\n\nAntes: ${oldPrice}\nAgora: ${currentPrice}\nVoce economiza ${savings}\n\n👉 Ver oferta:\n${params.linkUrl}`;
-  }
-  if (template === "daily") {
-    return `✨ ACHADO DO DIA\n\n${title}\n\nOferta selecionada para o grupo de promocoes de hoje.\n\n👉 Conferir:\n${params.linkUrl}`;
-  }
-  if (oldPrice && currentPrice && discountPercent) {
-    return `🔥 OFERTA\n\n${title}\n\nDe ${oldPrice} por ${currentPrice}\nDesconto de ${discountPercent}% OFF\n\n👉 Ver oferta:\n${params.linkUrl}`;
-  }
-  if (currentPrice) {
-    return `🔥 OFERTA\n\n${title}\n\nPreco atual: ${currentPrice}\n\n👉 Ver oferta:\n${params.linkUrl}`;
-  }
-  return `🔥 OFERTA\n\n${title}\n\n👉 Ver oferta:\n${params.linkUrl}`;
+  const lines = [
+    title,
+    "",
+    shortPhrase,
+    "",
+    currentPrice ? `Por ${currentPrice}` : null,
+    installmentLine,
+    oldPrice ? `~Custa ${oldPrice}~` : null,
+    "",
+    "COMPRE AQUI",
+    params.linkUrl,
+  ].filter((item) => item !== null) as string[];
+
+  return lines.join("\n");
 }
 
 export function buildPromoLink(params: { slug?: string | null; affiliateUrl: string; destination?: string | null }) {
@@ -98,13 +124,12 @@ export function buildPromoLink(params: { slug?: string | null; affiliateUrl: str
 }
 
 export function isCatalogItemReady(item: {
-  imageUrl?: string | null;
   category?: string | null;
   affiliateUrl?: string | null;
   currentPrice?: number | null;
   active?: boolean | null;
 }) {
-  return Boolean(item.active !== false && normalizeText(item.imageUrl) && normalizeText(item.category) && normalizeText(item.affiliateUrl) && item.currentPrice != null);
+  return Boolean(item.active !== false && normalizeText(item.category) && normalizeText(item.affiliateUrl) && item.currentPrice != null);
 }
 
 export function parseCsvRows(content: string) {
@@ -162,7 +187,6 @@ export function parseCsvObjects(content: string) {
 export async function sendWhatsappPromoMessage(params: {
   targetId: string;
   messageText: string;
-  mediaUrl?: string | null;
 }) {
   const settings = await getOrCreateCrmSettings();
   if (!settings.evolutionEnabled) {
@@ -178,23 +202,13 @@ export async function sendWhatsappPromoMessage(params: {
     throw new Error("Grupo/alvo do WhatsApp nao configurado.");
   }
 
-  const endpoint = params.mediaUrl
-    ? `${baseUrl.replace(/\/+$/, "")}/message/sendMedia/${encodeURIComponent(instance)}`
-    : `${baseUrl.replace(/\/+$/, "")}/message/sendText/${encodeURIComponent(instance)}`;
+  const endpoint = `${baseUrl.replace(/\/+$/, "")}/message/sendText/${encodeURIComponent(instance)}`;
 
-  const body = params.mediaUrl
-    ? {
-        number: params.targetId,
-        groupJid: params.targetId,
-        mediatype: "image",
-        media: params.mediaUrl,
-        caption: params.messageText,
-      }
-    : {
-        number: params.targetId,
-        groupJid: params.targetId,
-        text: params.messageText,
-      };
+  const body = {
+    number: params.targetId,
+    groupJid: params.targetId,
+    text: params.messageText,
+  };
 
   const res = await fetch(endpoint, {
     method: "POST",
@@ -252,7 +266,6 @@ export async function runWhatsappPromoCron() {
     const delivery = await sendWhatsappPromoMessage({
       targetId: normalizeText(post.targetId || settings.offersGroupTargetId),
       messageText: post.bodyText,
-      mediaUrl: post.mediaUrl,
     });
     await prisma.$transaction([
       prisma.whatsappPromoPost.update({

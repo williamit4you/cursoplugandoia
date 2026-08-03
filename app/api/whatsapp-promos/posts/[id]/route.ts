@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         headline: body.headline ?? undefined,
         bodyText: body.bodyText ?? undefined,
         linkUrl: body.linkUrl ?? undefined,
-        mediaUrl: body.mediaUrl !== undefined ? normalizeText(body.mediaUrl) || null : undefined,
+        mediaUrl: null,
         targetId: body.targetId !== undefined ? normalizeText(body.targetId) || null : undefined,
         scheduledTo: body.scheduledTo !== undefined ? (body.scheduledTo ? new Date(String(body.scheduledTo)) : null) : undefined,
         errorMessage: body.errorMessage ?? undefined,

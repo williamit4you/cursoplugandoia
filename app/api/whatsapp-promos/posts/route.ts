@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       normalizeText(body.bodyText) ||
       buildPromoBody({
         title: catalogItem.title,
+        shortPhrase: catalogItem.description,
         oldPrice: catalogItem.oldPrice,
         currentPrice: catalogItem.currentPrice,
         discountPercent: catalogItem.discountPercent,
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
         headline,
         bodyText,
         linkUrl,
-        mediaUrl: normalizeText(body.mediaUrl) || catalogItem.imageUrl || null,
+        mediaUrl: null,
         scheduledTo: body.scheduledTo ? new Date(String(body.scheduledTo)) : null,
         targetId: normalizeText(body.targetId) || settings.offersGroupTargetId || null,
       },

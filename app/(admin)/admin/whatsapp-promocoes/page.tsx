@@ -21,7 +21,6 @@ type CatalogItem = {
   title: string;
   slug: string;
   description: string | null;
-  imageUrl: string | null;
   category: string | null;
   affiliateUrl: string;
   productUrl: string | null;
@@ -41,7 +40,6 @@ type PromoPost = {
   headline: string;
   bodyText: string;
   linkUrl: string;
-  mediaUrl: string | null;
   scheduledTo: string | null;
   sentAt: string | null;
   targetId: string | null;
@@ -59,7 +57,6 @@ const emptyManual = {
   category: "",
   affiliateUrl: "",
   productUrl: "",
-  imageUrl: "",
   oldPrice: "",
   currentPrice: "",
 };
@@ -113,7 +110,6 @@ export default function WhatsappPromocoesPage() {
             {
               title: item.title,
               category: item.category || "",
-              imageUrl: item.imageUrl || "",
               affiliateUrl: item.affiliateUrl,
               productUrl: item.productUrl || "",
               oldPrice: item.oldPrice,
@@ -372,7 +368,6 @@ export default function WhatsappPromocoesPage() {
               ["category", "Categoria", 6],
               ["affiliateUrl", "Link afiliado", 6],
               ["productUrl", "URL do produto", 6],
-              ["imageUrl", "URL da imagem", 6],
               ["oldPrice", "Preco antigo", 3],
               ["currentPrice", "Preco atual", 3],
             ].map(([key, label, span]) => (
@@ -393,7 +388,7 @@ export default function WhatsappPromocoesPage() {
             Importacao em massa
           </Typography>
           <Typography sx={{ mt: 1, fontSize: 13, opacity: 0.8 }}>
-            Suba um CSV para alimentar o catalogo. Depois voce completa preco, imagem e categoria dos melhores itens.
+            Suba um CSV para alimentar o catalogo. Depois voce completa preco e categoria dos melhores itens.
           </Typography>
           <Box sx={{ mt: 2, display: "grid", gap: 2 }}>
             <TextField fullWidth label="Chave do lote" value={batchKey} onChange={(e) => setBatchKey(e.target.value)} placeholder="lote-shopee-agosto" />
@@ -446,9 +441,9 @@ export default function WhatsappPromocoesPage() {
                   <TextField
                     size="small"
                     fullWidth
-                    label="Imagem"
-                    value={String(catalogDrafts[item.id]?.imageUrl ?? "")}
-                    onChange={(e) => setCatalogDrafts((current) => ({ ...current, [item.id]: { ...current[item.id], imageUrl: e.target.value } }))}
+                    label="Link afiliado"
+                    value={String(catalogDrafts[item.id]?.affiliateUrl ?? "")}
+                    onChange={(e) => setCatalogDrafts((current) => ({ ...current, [item.id]: { ...current[item.id], affiliateUrl: e.target.value } }))}
                   />
                 </Box>
                 <Box sx={{ gridColumn: { md: "span 2" } }}>

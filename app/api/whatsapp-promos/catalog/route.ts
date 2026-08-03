@@ -4,6 +4,7 @@ import { requireServerSession } from "@/lib/serverAuth";
 import {
   computePromoFields,
   ensureUniqueWhatsappPromoSlug,
+  inferOldPrice,
   isCatalogItemReady,
   normalizeText,
   parsePrice,
@@ -63,11 +64,11 @@ export async function POST(req: NextRequest) {
     }
 
     const description = normalizeText(body.description) || null;
-    const imageUrl = normalizeText(body.imageUrl) || null;
     const category = normalizeText(body.category) || null;
     const productUrl = normalizeText(body.productUrl) || null;
-    const oldPrice = parsePrice(body.oldPrice);
+    const rawOldPrice = parsePrice(body.oldPrice);
     const currentPrice = parsePrice(body.currentPrice);
+    const oldPrice = inferOldPrice(currentPrice, rawOldPrice);
     const slug = await ensureUniqueWhatsappPromoSlug(body.slug || title);
     const { discountPercent, savingsAmount } = computePromoFields(oldPrice, currentPrice);
 
@@ -78,7 +79,6 @@ export async function POST(req: NextRequest) {
         description,
         productUrl,
         affiliateUrl,
-        imageUrl,
         price: currentPrice,
         category,
         status: "ACTIVE",
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
         title,
         slug,
         description,
-        imageUrl,
+        imageUrl: null,
         category,
         affiliateUrl,
         productUrl,
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
         savingsAmount,
         sourceType: "MANUAL",
         active: true,
-        readyForPublish: isCatalogItemReady({ imageUrl, category, affiliateUrl, currentPrice, active: true }),
+        readyForPublish: isCatalogItemReady({ category, affiliateUrl, currentPrice, active: true }),
       },
       include: { productCatalog: { select: { id: true, name: true, slug: true } }, _count: { select: { posts: true } } },
     });

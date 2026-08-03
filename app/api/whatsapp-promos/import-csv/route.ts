@@ -3,7 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { requireServerSession } from "@/lib/serverAuth";
 import {
   ensureUniqueWhatsappPromoSlug,
+  isCatalogItemReady,
   normalizeText,
+  parsePrice,
   parseCsvObjects,
 } from "@/lib/whatsappPromos";
 
@@ -42,6 +44,13 @@ export async function POST(req: NextRequest) {
 
       if (!title || !affiliateUrl) continue;
       const slug = await ensureUniqueWhatsappPromoSlug(title);
+      const category = normalizeText(row["Category"]) || null;
+      const currentPrice =
+        parsePrice(row["Sale Price"]) ??
+        parsePrice(row["Current Price"]) ??
+        parsePrice(row["Price"]) ??
+        parsePrice(row["Preco Atual"]) ??
+        null;
       await prisma.whatsappPromoCatalogItem.create({
         data: {
           title,
@@ -53,12 +62,13 @@ export async function POST(req: NextRequest) {
           sourceOfferType: normalizeText(row["Offer Type"]) || null,
           sourceOfferPeriod: normalizeText(row["Offer Period"]) || null,
           sourceUrl: affiliateUrl,
-          category: normalizeText(row["Category"]) || null,
+          category,
           imageUrl: normalizeText(row["Image URL"]) || null,
           productUrl: normalizeText(row["Product URL"]) || null,
           description: normalizeText(row["Description"]) || null,
+          currentPrice,
           active: true,
-          readyForPublish: false,
+          readyForPublish: isCatalogItemReady({ category, affiliateUrl, currentPrice, active: true }),
         },
       });
       created.push(slug);
