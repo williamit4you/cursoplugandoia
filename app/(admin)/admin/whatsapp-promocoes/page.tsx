@@ -1,7 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  MenuItem,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
+  TextField,
+  Typography,
+} from "@mui/material";
 
 type ConfigState = {
   offersCronEnabled: boolean;
@@ -74,6 +94,16 @@ function toLocalDateTime(value?: string | null) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return "sem agenda";
+  return new Date(value).toLocaleString("pt-BR");
+}
+
+function formatMoney(value?: number | null) {
+  if (value == null) return "R$ 0,00";
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
 export default function WhatsappPromocoesPage() {
   const [config, setConfig] = useState<ConfigState | null>(null);
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
@@ -91,7 +121,6 @@ export default function WhatsappPromocoesPage() {
   const [scheduleDrafts, setScheduleDrafts] = useState<Record<string, string>>({});
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
   const [editDraft, setEditDraft] = useState<Partial<CatalogItem>>({});
-  const [catalogDrafts, setCatalogDrafts] = useState<Record<string, Partial<CatalogItem>>>({});
   const [catalogPage, setCatalogPage] = useState(0);
   const [catalogRowsPerPage, setCatalogRowsPerPage] = useState(10);
   const [postPage, setPostPage] = useState(0);
@@ -135,10 +164,15 @@ export default function WhatsappPromocoesPage() {
   }, [statusFilter]);
 
   const readyCount = useMemo(() => catalog.filter((item) => item.readyForPublish).length, [catalog]);
+  const scheduledCount = useMemo(() => posts.filter((item) => item.status === "SCHEDULED").length, [posts]);
+  const sentCount = useMemo(() => posts.filter((item) => item.status === "SENT").length, [posts]);
+  const failedCount = useMemo(() => posts.filter((item) => item.status === "FAILED").length, [posts]);
+
   const catalogPageItems = useMemo(
     () => catalog.slice(catalogPage * catalogRowsPerPage, catalogPage * catalogRowsPerPage + catalogRowsPerPage),
     [catalog, catalogPage, catalogRowsPerPage],
   );
+
   const postPageItems = useMemo(
     () => posts.slice(postPage * postRowsPerPage, postPage * postRowsPerPage + postRowsPerPage),
     [posts, postPage, postRowsPerPage],
@@ -198,8 +232,8 @@ export default function WhatsappPromocoesPage() {
   };
 
   const uploadProductImage = async (file: File) => {
-    if (!file.type.startsWith("image/")) throw new Error("Selecione um arquivo de imagem válido.");
-    if (file.size > 10 * 1024 * 1024) throw new Error("A imagem deve ter no máximo 10 MB.");
+    if (!file.type.startsWith("image/")) throw new Error("Selecione um arquivo de imagem valido.");
+    if (file.size > 10 * 1024 * 1024) throw new Error("A imagem deve ter no maximo 10 MB.");
     const formData = new FormData();
     formData.set("file", file);
     const response = await fetch("/api/upload", { method: "POST", body: formData });
@@ -280,7 +314,12 @@ export default function WhatsappPromocoesPage() {
 
   const openEditor = (item: CatalogItem) => {
     setEditingItem(item);
-    setEditDraft({ ...item, imageUrl: item.imageUrl || "", category: item.category || "", productUrl: item.productUrl || "" });
+    setEditDraft({
+      ...item,
+      imageUrl: item.imageUrl || "",
+      category: item.category || "",
+      productUrl: item.productUrl || "",
+    });
   };
 
   const selectEditImage = async (file: File | null) => {
@@ -297,10 +336,9 @@ export default function WhatsappPromocoesPage() {
     }
   };
 
-  const saveCatalogItem = async (legacyItemId?: string) => {
-    const itemId = legacyItemId || editingItem?.id;
-    const draft = legacyItemId ? catalogDrafts[legacyItemId] : editDraft;
-    if (!itemId || !draft) return;
+  const saveCatalogItem = async () => {
+    const itemId = editingItem?.id;
+    if (!itemId) return;
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -308,7 +346,7 @@ export default function WhatsappPromocoesPage() {
       const res = await fetch(`/api/whatsapp-promos/catalog/${encodeURIComponent(itemId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
+        body: JSON.stringify(editDraft),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Falha ao salvar item");
@@ -380,128 +418,270 @@ export default function WhatsappPromocoesPage() {
     }
   };
 
-  const historyStatusColor = (status: string) =>
+  const statusColor = (status: string) =>
     status === "SENT" ? "success" : status === "FAILED" ? "error" : status === "SCHEDULED" ? "info" : "default";
 
+  const surfaceSx = {
+    p: { xs: 2, md: 3 },
+    borderRadius: 4,
+    border: "1px solid",
+    borderColor: "rgba(148, 163, 184, 0.18)",
+    boxShadow: "0 22px 70px rgba(15, 23, 42, 0.08)",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.98) 100%)",
+  } as const;
+
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <Box>
-        <Typography variant="h4" sx={{ fontWeight: 900 }}>
-          WhatsApp Promocoes
-        </Typography>
-        <Typography sx={{ opacity: 0.8, mt: 1 }}>
-          Cadastre ofertas em massa, poste a qualquer momento e deixe o cron cuidar dos agendamentos futuros.
-        </Typography>
-      </Box>
-
-      {message ? <Alert severity="success">{message}</Alert> : null}
-      {error ? <Alert severity="error">{error}</Alert> : null}
-
-      <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 800 }}>
-          Configuracao do cron
-        </Typography>
-        {config ? (
-          <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
-            <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
-              <TextField select fullWidth label="Cron" value={config.offersCronEnabled ? "true" : "false"} onChange={(e) => setConfig({ ...config, offersCronEnabled: e.target.value === "true" })}>
-                <MenuItem value="true">Ligado</MenuItem>
-                <MenuItem value="false">Desligado</MenuItem>
-              </TextField>
-            </Box>
-            <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
-              <TextField fullWidth label="ID do grupo" value={config.offersGroupTargetId} onChange={(e) => setConfig({ ...config, offersGroupTargetId: e.target.value })} />
-            </Box>
-            <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
-              <TextField fullWidth label="Nome do grupo" value={config.offersGroupLabel} onChange={(e) => setConfig({ ...config, offersGroupLabel: e.target.value })} />
-            </Box>
-            <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
-              <TextField fullWidth type="number" label="Intervalo (min)" value={config.offersPublishIntervalMin} onChange={(e) => setConfig({ ...config, offersPublishIntervalMin: Number(e.target.value || 60) })} />
-            </Box>
-            <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
-              <TextField fullWidth type="number" label="Hora inicial" value={config.offersDailyStartHour} onChange={(e) => setConfig({ ...config, offersDailyStartHour: Number(e.target.value || 8) })} />
-            </Box>
-            <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
-              <TextField fullWidth type="number" label="Hora final" value={config.offersDailyEndHour} onChange={(e) => setConfig({ ...config, offersDailyEndHour: Number(e.target.value || 22) })} />
-            </Box>
-            <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
-              <TextField select fullWidth label="Aprovacao" value={config.offersRequireApproval ? "true" : "false"} onChange={(e) => setConfig({ ...config, offersRequireApproval: e.target.value === "true" })}>
-                <MenuItem value="true">Exigir aprovacao</MenuItem>
-                <MenuItem value="false">Nao exigir</MenuItem>
-              </TextField>
-            </Box>
-            <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" }, display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-              <Chip label={config.evolutionEnabled ? "Evolution pronta" : "Evolution desligada"} color={config.evolutionEnabled ? "success" : "warning"} />
-              <Chip label={`Proxima: ${config.offersNextRunAt ? new Date(config.offersNextRunAt).toLocaleString("pt-BR") : "sem agenda"}`} />
-            </Box>
-            <Box sx={{ gridColumn: "span 12" }}>
-              <button onClick={saveConfig} disabled={saving} style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 800, background: "#111827", color: "white" }}>
-                Salvar configuracao
-              </button>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <Box
+        sx={{
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: 5,
+          px: { xs: 2.5, md: 3.5 },
+          py: { xs: 2.5, md: 3.25 },
+          color: "common.white",
+          background: "linear-gradient(135deg, #0f172a 0%, #1e293b 58%, #0f766e 100%)",
+          boxShadow: "0 28px 80px rgba(15, 23, 42, 0.16)",
+        }}
+      >
+        <Box sx={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.18), transparent 28%)" }} />
+        <Box sx={{ position: "absolute", right: -40, bottom: -56, width: 220, height: 220, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+        <Box sx={{ position: "relative", display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1.45fr) minmax(320px, 0.95fr)" }, gap: 3 }}>
+          <Box>
+            <Typography variant="overline" sx={{ letterSpacing: 1.4, opacity: 0.72 }}>
+              Operacao WhatsApp
+            </Typography>
+            <Typography variant="h3" sx={{ mt: 0.75, fontWeight: 900, lineHeight: 1.05, fontSize: { xs: "2rem", md: "3rem" } }}>
+              WhatsApp Promocoes
+            </Typography>
+            <Typography sx={{ mt: 1.25, maxWidth: 760, color: "rgba(255,255,255,0.82)", fontSize: { xs: 14, md: 16 } }}>
+              Organize o catalogo, publique com contexto e acompanhe o que foi enviado sem depender de blocos soltos ou formularios crus.
+            </Typography>
+            <Box sx={{ mt: 2, display: "flex", gap: 1, flexWrap: "wrap" }}>
+              <Chip label={`Catalogo: ${catalog.length}`} sx={{ bgcolor: "rgba(255,255,255,0.14)", color: "white", fontWeight: 700 }} />
+              <Chip label={`Prontos: ${readyCount}`} sx={{ bgcolor: "rgba(34,197,94,0.22)", color: "white", fontWeight: 700 }} />
+              <Chip label={`Agendados: ${scheduledCount}`} sx={{ bgcolor: "rgba(59,130,246,0.22)", color: "white", fontWeight: 700 }} />
+              <Chip label={`Enviados: ${sentCount}`} sx={{ bgcolor: "rgba(250,204,21,0.22)", color: "white", fontWeight: 700 }} />
+              {failedCount ? <Chip label={`Falhas: ${failedCount}`} sx={{ bgcolor: "rgba(248,113,113,0.24)", color: "white", fontWeight: 700 }} /> : null}
+              {loading ? <Chip label="Atualizando..." sx={{ bgcolor: "rgba(255,255,255,0.14)", color: "white", fontWeight: 700 }} /> : null}
             </Box>
           </Box>
-        ) : null}
+          <Box
+            sx={{
+              display: "grid",
+              gap: 1.5,
+              p: 2,
+              borderRadius: 4,
+              border: "1px solid rgba(255,255,255,0.12)",
+              bgcolor: "rgba(255,255,255,0.08)",
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            <Typography sx={{ fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.72)", textTransform: "uppercase", letterSpacing: 1.1 }}>
+              Resumo operacional
+            </Typography>
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1.25 }}>
+              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: "rgba(15,23,42,0.28)" }}>
+                <Typography sx={{ fontSize: 12, opacity: 0.72 }}>Canal</Typography>
+                <Typography sx={{ fontWeight: 800 }}>{config?.evolutionEnabled ? "Evolution pronta" : "Evolution desligada"}</Typography>
+              </Box>
+              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: "rgba(15,23,42,0.28)" }}>
+                <Typography sx={{ fontSize: 12, opacity: 0.72 }}>Cron</Typography>
+                <Typography sx={{ fontWeight: 800 }}>{config?.offersCronEnabled ? "Ligado" : "Desligado"}</Typography>
+              </Box>
+              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: "rgba(15,23,42,0.28)" }}>
+                <Typography sx={{ fontSize: 12, opacity: 0.72 }}>Proxima janela</Typography>
+                <Typography sx={{ fontWeight: 800, fontSize: 13 }}>{formatDateTime(config?.offersNextRunAt)}</Typography>
+              </Box>
+              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: "rgba(15,23,42,0.28)" }}>
+                <Typography sx={{ fontSize: 12, opacity: 0.72 }}>Aprovacao</Typography>
+                <Typography sx={{ fontWeight: 800 }}>{config?.offersRequireApproval ? "Manual" : "Automatica"}</Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+
+      {message ? <Alert severity="success" sx={{ borderRadius: 3 }}>{message}</Alert> : null}
+      {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
+
+      <Paper sx={surfaceSx}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1.5fr) minmax(280px, 0.85fr)" }, gap: 3 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 900 }}>
+              Centro de distribuicao
+            </Typography>
+            <Typography sx={{ mt: 0.75, color: "text.secondary" }}>
+              Configure o grupo, a janela de envio e a cadencia de publicacao em um unico bloco.
+            </Typography>
+            {config ? (
+              <Box sx={{ mt: 2.5, display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 1.5 }}>
+                <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
+                  <TextField select fullWidth label="Cron" value={config.offersCronEnabled ? "true" : "false"} onChange={(e) => setConfig({ ...config, offersCronEnabled: e.target.value === "true" })}>
+                    <MenuItem value="true">Ligado</MenuItem>
+                    <MenuItem value="false">Desligado</MenuItem>
+                  </TextField>
+                </Box>
+                <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
+                  <TextField fullWidth label="ID do grupo" value={config.offersGroupTargetId} onChange={(e) => setConfig({ ...config, offersGroupTargetId: e.target.value })} />
+                </Box>
+                <Box sx={{ gridColumn: { xs: "span 12", md: "span 5" } }}>
+                  <TextField fullWidth label="Nome do grupo" value={config.offersGroupLabel} onChange={(e) => setConfig({ ...config, offersGroupLabel: e.target.value })} />
+                </Box>
+                <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
+                  <TextField fullWidth type="number" label="Intervalo (min)" value={config.offersPublishIntervalMin} onChange={(e) => setConfig({ ...config, offersPublishIntervalMin: Number(e.target.value || 60) })} />
+                </Box>
+                <Box sx={{ gridColumn: { xs: "span 6", md: "span 3" } }}>
+                  <TextField fullWidth type="number" label="Hora inicial" value={config.offersDailyStartHour} onChange={(e) => setConfig({ ...config, offersDailyStartHour: Number(e.target.value || 8) })} />
+                </Box>
+                <Box sx={{ gridColumn: { xs: "span 6", md: "span 3" } }}>
+                  <TextField fullWidth type="number" label="Hora final" value={config.offersDailyEndHour} onChange={(e) => setConfig({ ...config, offersDailyEndHour: Number(e.target.value || 22) })} />
+                </Box>
+                <Box sx={{ gridColumn: { xs: "span 12", md: "span 3" } }}>
+                  <TextField select fullWidth label="Aprovacao" value={config.offersRequireApproval ? "true" : "false"} onChange={(e) => setConfig({ ...config, offersRequireApproval: e.target.value === "true" })}>
+                    <MenuItem value="true">Exigir aprovacao</MenuItem>
+                    <MenuItem value="false">Publicar direto</MenuItem>
+                  </TextField>
+                </Box>
+              </Box>
+            ) : null}
+          </Box>
+          <Box sx={{ display: "grid", gap: 1.25, alignContent: "start" }}>
+            <Box sx={{ p: 1.75, borderRadius: 3, bgcolor: "#f8fafc", border: "1px solid", borderColor: "rgba(148,163,184,0.18)" }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, color: "text.secondary" }}>
+                Estado da fila
+              </Typography>
+              <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <Chip label={config?.evolutionEnabled ? "Canal pronto" : "Canal pendente"} color={config?.evolutionEnabled ? "success" : "warning"} />
+                <Chip label={`Proxima execucao: ${formatDateTime(config?.offersNextRunAt)}`} />
+              </Box>
+            </Box>
+            <Box sx={{ p: 1.75, borderRadius: 3, bgcolor: "#f8fafc", border: "1px solid", borderColor: "rgba(148,163,184,0.18)" }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, color: "text.secondary" }}>
+                Janela do dia
+              </Typography>
+              <Typography sx={{ mt: 0.8, fontWeight: 800, fontSize: 20 }}>
+                {config ? `${config.offersDailyStartHour}:00 - ${config.offersDailyEndHour}:00` : "--"}
+              </Typography>
+              <Typography sx={{ mt: 0.4, fontSize: 13, color: "text.secondary" }}>
+                Intervalo atual de {config?.offersPublishIntervalMin || 0} minutos entre disparos.
+              </Typography>
+            </Box>
+            <Button variant="contained" onClick={saveConfig} disabled={saving} sx={{ justifySelf: "start", px: 2.5, py: 1.2, borderRadius: 3, fontWeight: 800, bgcolor: "#111827" }}>
+              Salvar configuracao
+            </Button>
+          </Box>
+        </Box>
       </Paper>
 
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", xl: "1fr 1fr" }, gap: 2 }}>
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800 }}>
-            Cadastro manual
-          </Typography>
-          <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
-            {[
-              ["title", "Titulo", 12],
-              ["description", "Descricao", 12],
-              ["category", "Categoria", 6],
-              ["affiliateUrl", "Link afiliado", 6],
-              ["productUrl", "URL do produto", 6],
-              ["oldPrice", "Preco antigo", 3],
-              ["currentPrice", "Preco atual", 3],
-            ].map(([key, label, span]) => (
-              <Box key={key} sx={{ gridColumn: { xs: "span 12", md: `span ${span}` } }}>
-                <TextField fullWidth label={label} value={(manual as any)[key]} onChange={(e) => setManual((current) => ({ ...current, [key]: e.target.value }))} multiline={key === "description"} minRows={key === "description" ? 3 : undefined} />
-              </Box>
-            ))}
-            <Box sx={{ gridColumn: "span 12" }}>
-              <Typography sx={{ fontSize: 13, mb: 0.5, opacity: 0.8 }}>Foto do produto (opcional)</Typography>
-              <Button component="label" variant="outlined" disabled={uploadingImage}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", xl: "1.2fr 0.8fr" }, gap: 2.5 }}>
+        <Paper sx={surfaceSx}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 900 }}>
+                Cadastro manual
+              </Typography>
+              <Typography sx={{ mt: 0.75, color: "text.secondary" }}>
+                Monte uma oferta com foto, preco e link prontos para virar postagem sem retrabalho.
+              </Typography>
+            </Box>
+            <Chip label={manual.imageUrl ? "Foto carregada" : "Sem foto"} color={manual.imageUrl ? "success" : "default"} />
+          </Box>
+          <Box sx={{ mt: 2.5, display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1.2fr) 240px" }, gap: 2 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 1.5 }}>
+              {[
+                ["title", "Titulo", 12],
+                ["description", "Descricao", 12],
+                ["category", "Categoria", 5],
+                ["affiliateUrl", "Link afiliado", 7],
+                ["productUrl", "URL do produto", 7],
+                ["oldPrice", "Preco antigo", 2.5],
+                ["currentPrice", "Preco atual", 2.5],
+              ].map(([key, label, span]) => (
+                <Box key={key} sx={{ gridColumn: { xs: "span 12", md: `span ${span}` } }}>
+                  <TextField
+                    fullWidth
+                    label={label}
+                    value={(manual as any)[key]}
+                    onChange={(e) => setManual((current) => ({ ...current, [key]: e.target.value }))}
+                    multiline={key === "description"}
+                    minRows={key === "description" ? 4 : undefined}
+                  />
+                </Box>
+              ))}
+            </Box>
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 3,
+                border: "1px dashed",
+                borderColor: manual.imageUrl ? "success.main" : "rgba(99,102,241,0.35)",
+                bgcolor: manual.imageUrl ? "rgba(240,253,244,0.85)" : "rgba(248,250,252,0.9)",
+                display: "grid",
+                alignContent: "start",
+                gap: 1.25,
+              }}
+            >
+              <Typography sx={{ fontWeight: 800 }}>Foto do produto</Typography>
+              <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+                Opcional, mas recomendada. Se a midia falhar, o erro agora aparece no historico do post.
+              </Typography>
+              <Button component="label" variant="outlined" disabled={uploadingImage} sx={{ justifySelf: "start", borderRadius: 3 }}>
                 {uploadingImage ? "Enviando foto..." : "Selecionar foto"}
                 <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => selectManualImage(e.target.files?.[0] || null)} />
               </Button>
-              {manualImageFile ? <Typography sx={{ fontSize: 12, mt: 0.5 }}>Selecionada: {manualImageFile.name}</Typography> : null}
-              {manual.imageUrl ? <Box component="img" src={manual.imageUrl} alt="Prévia da oferta" sx={{ display: "block", mt: 1, width: 120, height: 120, objectFit: "contain", borderRadius: 2, border: "1px solid", borderColor: "divider" }} /> : null}
-              <Typography sx={{ fontSize: 12, mt: 0.5, opacity: 0.65 }}>
-                A foto é opcional. Ela será enviada junto à legenda no WhatsApp; sem foto, a postagem será somente texto.
-              </Typography>
+              {manualImageFile ? <Typography sx={{ fontSize: 12 }}>Arquivo: {manualImageFile.name}</Typography> : null}
+              {manual.imageUrl ? (
+                <Box component="img" src={manual.imageUrl} alt="Previa da oferta" sx={{ width: "100%", aspectRatio: "1 / 1", objectFit: "contain", borderRadius: 3, bgcolor: "white", border: "1px solid", borderColor: "divider", p: 1 }} />
+              ) : (
+                <Box sx={{ width: "100%", aspectRatio: "1 / 1", borderRadius: 3, bgcolor: "rgba(226,232,240,0.55)", display: "grid", placeItems: "center", color: "text.secondary", fontSize: 13 }}>
+                  Sem imagem carregada
+                </Box>
+              )}
             </Box>
-            <Box sx={{ gridColumn: "span 12" }}>
-              <button onClick={createManualItem} disabled={saving} style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 800, background: "#111827", color: "white" }}>
-                Cadastrar item
-              </button>
-            </Box>
+          </Box>
+          <Box sx={{ mt: 2, display: "flex", gap: 1.25, flexWrap: "wrap", alignItems: "center" }}>
+            <Typography sx={{ fontSize: 13, color: "text.secondary", flex: 1, minWidth: 220 }}>
+              A oferta manual entra no catalogo pronta para editar, postar ou agendar.
+            </Typography>
+            <Button variant="contained" onClick={createManualItem} disabled={saving} sx={{ px: 2.5, py: 1.2, borderRadius: 3, fontWeight: 800, bgcolor: "#111827" }}>
+              Cadastrar item
+            </Button>
           </Box>
         </Paper>
 
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800 }}>
+        <Paper sx={surfaceSx}>
+          <Typography variant="h6" sx={{ fontWeight: 900 }}>
             Importacao em massa
           </Typography>
-          <Typography sx={{ mt: 1, fontSize: 13, opacity: 0.8 }}>
-            Suba um CSV para alimentar o catalogo. Depois voce completa preco e categoria dos melhores itens.
+          <Typography sx={{ mt: 0.75, color: "text.secondary" }}>
+            Importe um lote para abastecer o catalogo e refine depois so o que vale a pena publicar.
           </Typography>
-          <Box sx={{ mt: 2, display: "grid", gap: 2 }}>
+          <Box sx={{ mt: 2.5, display: "grid", gap: 1.5 }}>
             <TextField fullWidth label="Chave do lote" value={batchKey} onChange={(e) => setBatchKey(e.target.value)} placeholder="lote-shopee-agosto" />
-            <input type="file" accept=".csv,text/csv" onChange={(e) => setCsvFile(e.target.files?.[0] || null)} />
-            <button onClick={importCsv} disabled={!csvFile || saving} style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 800, background: "#111827", color: "white" }}>
+            <Box sx={{ p: 1.5, borderRadius: 3, border: "1px dashed", borderColor: "rgba(148,163,184,0.45)", bgcolor: "rgba(248,250,252,0.85)" }}>
+              <Typography sx={{ fontSize: 13, color: "text.secondary", mb: 1 }}>Arquivo CSV</Typography>
+              <input type="file" accept=".csv,text/csv" onChange={(e) => setCsvFile(e.target.files?.[0] || null)} />
+              <Typography sx={{ mt: 1, fontSize: 12, color: "text.secondary" }}>
+                {csvFile ? `Selecionado: ${csvFile.name}` : "Nenhum arquivo selecionado ainda."}
+              </Typography>
+            </Box>
+            <Box sx={{ p: 1.75, borderRadius: 3, bgcolor: "#f8fafc", border: "1px solid", borderColor: "rgba(148,163,184,0.18)" }}>
+              <Typography sx={{ fontWeight: 800, fontSize: 14 }}>Fluxo sugerido</Typography>
+              <Typography sx={{ mt: 0.75, fontSize: 13, color: "text.secondary" }}>1. Importe o CSV.</Typography>
+              <Typography sx={{ fontSize: 13, color: "text.secondary" }}>2. Revise os melhores itens no catalogo.</Typography>
+              <Typography sx={{ fontSize: 13, color: "text.secondary" }}>3. Poste ou agende direto pela tabela.</Typography>
+            </Box>
+            <Button variant="contained" onClick={importCsv} disabled={!csvFile || saving} sx={{ px: 2.5, py: 1.2, borderRadius: 3, fontWeight: 800, bgcolor: "#111827" }}>
               Importar CSV
-            </button>
+            </Button>
           </Box>
         </Paper>
       </Box>
 
-      <Paper sx={{ p: 2 }}>
+      <Paper sx={surfaceSx}>
         <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
-          <Typography variant="h6" sx={{ fontWeight: 800 }}>
+          <Typography variant="h6" sx={{ fontWeight: 900 }}>
             Catalogo promocional
           </Typography>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
@@ -509,17 +689,18 @@ export default function WhatsappPromocoesPage() {
             <Chip label={`Prontos: ${readyCount}`} color="success" />
           </Box>
         </Box>
-        <TableContainer sx={{ mt: 2, border: "1px solid", borderColor: "divider", borderRadius: 2, maxHeight: 620 }}>
+
+        <TableContainer sx={{ mt: 2, border: "1px solid", borderColor: "divider", borderRadius: 3, maxHeight: 620 }}>
           <Table stickyHeader size="small" sx={{ minWidth: 980 }}>
             <TableHead>
               <TableRow>
                 <TableCell>Produto</TableCell>
                 <TableCell>Categoria</TableCell>
-                <TableCell align="right">Preço atual</TableCell>
+                <TableCell align="right">Preco atual</TableCell>
                 <TableCell align="right">Desconto</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Imagem</TableCell>
-                <TableCell align="right">Ações</TableCell>
+                <TableCell align="right">Acoes</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -529,16 +710,22 @@ export default function WhatsappPromocoesPage() {
                     <Typography sx={{ fontWeight: 800, fontSize: 14 }} noWrap>{item.title}</Typography>
                     <Typography sx={{ fontSize: 11, opacity: 0.65 }} noWrap>{item.slug}</Typography>
                   </TableCell>
-                  <TableCell>{item.category || "—"}</TableCell>
-                  <TableCell align="right">{item.currentPrice != null ? item.currentPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—"}</TableCell>
-                  <TableCell align="right">{item.discountPercent != null ? `${item.discountPercent}%` : "—"}</TableCell>
+                  <TableCell>{item.category || "-"}</TableCell>
+                  <TableCell align="right">{item.currentPrice != null ? formatMoney(item.currentPrice) : "-"}</TableCell>
+                  <TableCell align="right">{item.discountPercent != null ? `${item.discountPercent}%` : "-"}</TableCell>
                   <TableCell>
                     <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
                       <Chip size="small" label={item.readyForPublish ? "Pronto" : "Pendente"} color={item.readyForPublish ? "success" : "warning"} />
                       <Chip size="small" label={item.active ? "Ativo" : "Inativo"} />
                     </Box>
                   </TableCell>
-                  <TableCell>{item.imageUrl ? <Box component="img" src={item.imageUrl} alt="" sx={{ width: 42, height: 42, objectFit: "contain", borderRadius: 1, border: "1px solid", borderColor: "divider" }} /> : "—"}</TableCell>
+                  <TableCell>
+                    {item.imageUrl ? (
+                      <Box component="img" src={item.imageUrl} alt="" sx={{ width: 42, height: 42, objectFit: "contain", borderRadius: 1, border: "1px solid", borderColor: "divider", bgcolor: "white" }} />
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
                   <TableCell align="right">
                     <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, whiteSpace: "nowrap" }}>
                       <Button size="small" variant="outlined" onClick={() => openEditor(item)}>Editar</Button>
@@ -549,10 +736,11 @@ export default function WhatsappPromocoesPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!catalog.length ? <TableRow><TableCell colSpan={7} align="center">Nenhum item no catálogo.</TableCell></TableRow> : null}
+              {!catalog.length ? <TableRow><TableCell colSpan={7} align="center">Nenhum item no catalogo.</TableCell></TableRow> : null}
             </TableBody>
           </Table>
         </TableContainer>
+
         <TablePagination
           component="div"
           count={catalog.length}
@@ -567,94 +755,18 @@ export default function WhatsappPromocoesPage() {
           labelRowsPerPage="Itens por pagina"
           labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
         />
-        <Box sx={{ display: "none" }} aria-hidden="true">
-          {catalog.map((item) => (
-            <Box key={item.id} sx={{ border: "1px solid #e5e7eb", borderRadius: 3, p: 2, display: "grid", gap: 1 }}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
-                <Box>
-                  <Typography sx={{ fontWeight: 900 }}>{item.title}</Typography>
-                  <Typography sx={{ fontSize: 12, opacity: 0.7 }}>{item.slug}</Typography>
-                </Box>
-                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                  <Chip size="small" label={item.readyForPublish ? "Pronto" : "Pendente"} color={item.readyForPublish ? "success" : "warning"} />
-                  <Chip size="small" label={item.active ? "Ativo" : "Inativo"} />
-                  <Chip size="small" label={`Posts: ${item._count?.posts || 0}`} />
-                </Box>
-              </Box>
-              <Typography sx={{ fontSize: 13, opacity: 0.8 }}>
-                {item.category || "Sem categoria"} • Atual: {item.currentPrice != null ? `R$ ${item.currentPrice}` : "sem preco"} • Desconto: {item.discountPercent != null ? `${item.discountPercent}%` : "-"}
-              </Typography>
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(12, minmax(0, 1fr))" }, gap: 1 }}>
-                <Box sx={{ gridColumn: { md: "span 4" } }}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    label="URL da imagem (opcional)"
-                    value={String(catalogDrafts[item.id]?.imageUrl ?? "")}
-                    onChange={(e) => setCatalogDrafts((current) => ({ ...current, [item.id]: { ...current[item.id], imageUrl: e.target.value } }))}
-                  />
-                </Box>
-                <Box sx={{ gridColumn: { md: "span 4" } }}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    label="Categoria"
-                    value={String(catalogDrafts[item.id]?.category ?? "")}
-                    onChange={(e) => setCatalogDrafts((current) => ({ ...current, [item.id]: { ...current[item.id], category: e.target.value } }))}
-                  />
-                </Box>
-                <Box sx={{ gridColumn: { md: "span 4" } }}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    label="Link afiliado"
-                    value={String(catalogDrafts[item.id]?.affiliateUrl ?? "")}
-                    onChange={(e) => setCatalogDrafts((current) => ({ ...current, [item.id]: { ...current[item.id], affiliateUrl: e.target.value } }))}
-                  />
-                </Box>
-                <Box sx={{ gridColumn: { md: "span 2" } }}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    label="Preco antigo"
-                    value={String(catalogDrafts[item.id]?.oldPrice ?? "")}
-                    onChange={(e) => setCatalogDrafts((current) => ({ ...current, [item.id]: { ...current[item.id], oldPrice: e.target.value as any } }))}
-                  />
-                </Box>
-                <Box sx={{ gridColumn: { md: "span 2" } }}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    label="Preco atual"
-                    value={String(catalogDrafts[item.id]?.currentPrice ?? "")}
-                    onChange={(e) => setCatalogDrafts((current) => ({ ...current, [item.id]: { ...current[item.id], currentPrice: e.target.value as any } }))}
-                  />
-                </Box>
-              </Box>
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <button onClick={() => saveCatalogItem(item.id)} disabled={saving} style={{ padding: "8px 12px", borderRadius: 10, fontWeight: 800, background: "#7c3aed", color: "white" }}>
-                  Salvar item
-                </button>
-                <button onClick={() => createPost(item, "draft")} disabled={saving} style={{ padding: "8px 12px", borderRadius: 10, fontWeight: 800, background: "#111827", color: "white" }}>
-                  Criar postagem
-                </button>
-                <button onClick={() => createPost(item, "schedule")} disabled={saving} style={{ padding: "8px 12px", borderRadius: 10, fontWeight: 800, background: "#2563eb", color: "white" }}>
-                  Agendar +1h
-                </button>
-                <a href={item.affiliateUrl} target="_blank" rel="noreferrer" style={{ padding: "8px 12px", borderRadius: 10, fontWeight: 800, border: "1px solid #d1d5db" }}>
-                  Abrir afiliado
-                </a>
-              </Box>
-            </Box>
-          ))}
-        </Box>
       </Paper>
 
-      <Paper sx={{ p: 2 }}>
+      <Paper sx={surfaceSx}>
         <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
-          <Typography variant="h6" sx={{ fontWeight: 800 }}>
-            Postagens do WhatsApp
-          </Typography>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 900 }}>
+              Postagens do WhatsApp
+            </Typography>
+            <Typography sx={{ mt: 0.5, fontSize: 13, color: "text.secondary" }}>
+              Veja o texto que foi gerado, reagende, aprove ou envie na hora.
+            </Typography>
+          </Box>
           <TextField select size="small" label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} sx={{ minWidth: 180 }}>
             {["ALL", "DRAFT", "APPROVED", "SCHEDULED", "SENT", "FAILED"].map((item) => (
               <MenuItem key={item} value={item}>
@@ -663,20 +775,31 @@ export default function WhatsappPromocoesPage() {
             ))}
           </TextField>
         </Box>
+
         <Box sx={{ mt: 2, display: "grid", gap: 2 }}>
           {postPageItems.map((post) => (
-            <Box key={post.id} sx={{ border: "1px solid #e5e7eb", borderRadius: 3, p: 2, display: "grid", gap: 1 }}>
+            <Box key={post.id} sx={{ border: "1px solid #e5e7eb", borderRadius: 3, p: 2, display: "grid", gap: 1.5, bgcolor: "rgba(255,255,255,0.9)" }}>
               <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
                 <Box>
                   <Typography sx={{ fontWeight: 900 }}>{post.headline}</Typography>
                   <Typography sx={{ fontSize: 12, opacity: 0.7 }}>{post.catalogItem.title}</Typography>
                 </Box>
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                  <Chip size="small" label={post.status} color={post.status === "SENT" ? "success" : post.status === "FAILED" ? "error" : "default"} />
-                  <Chip size="small" label={post.sentAt ? `Enviado: ${new Date(post.sentAt).toLocaleString("pt-BR")}` : "Nao enviado"} />
+                  <Chip size="small" label={post.status} color={statusColor(post.status)} />
+                  <Chip size="small" label={post.sentAt ? `Enviado: ${formatDateTime(post.sentAt)}` : "Nao enviado"} />
                 </Box>
               </Box>
-              <Typography sx={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{post.bodyText}</Typography>
+
+              <Box sx={{ p: 1.5, borderRadius: 2.5, bgcolor: "#f8fafc", border: "1px solid", borderColor: "rgba(148,163,184,0.12)" }}>
+                <Typography sx={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{post.bodyText}</Typography>
+              </Box>
+
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <Chip size="small" variant="outlined" label={`Criado: ${formatDateTime(post.createdAt)}`} />
+                <Chip size="small" variant="outlined" label={`Agendado: ${post.scheduledTo ? formatDateTime(post.scheduledTo) : "nao"}`} />
+                <Chip size="small" variant="outlined" label={post.mediaUrl || post.catalogItem.imageUrl ? "Com imagem" : "Texto apenas"} />
+              </Box>
+
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "220px auto" }, gap: 2, alignItems: "center" }}>
                 <TextField
                   type="datetime-local"
@@ -687,21 +810,25 @@ export default function WhatsappPromocoesPage() {
                   slotProps={{ inputLabel: { shrink: true } }}
                 />
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                  <button onClick={() => savePostSchedule(post.id, "SCHEDULED")} disabled={saving} style={{ padding: "8px 12px", borderRadius: 10, fontWeight: 800, background: "#2563eb", color: "white" }}>
+                  <Button variant="contained" onClick={() => savePostSchedule(post.id, "SCHEDULED")} disabled={saving} sx={{ bgcolor: "#2563eb" }}>
                     Salvar agendamento
-                  </button>
-                  <button onClick={() => savePostSchedule(post.id, "APPROVED")} disabled={saving} style={{ padding: "8px 12px", borderRadius: 10, fontWeight: 800, background: "#111827", color: "white" }}>
+                  </Button>
+                  <Button variant="contained" onClick={() => savePostSchedule(post.id, "APPROVED")} disabled={saving} sx={{ bgcolor: "#111827" }}>
                     Deixar pronto
-                  </button>
-                  <button onClick={() => sendNow(post.id)} disabled={saving} style={{ padding: "8px 12px", borderRadius: 10, fontWeight: 800, background: "#059669", color: "white" }}>
+                  </Button>
+                  <Button variant="contained" onClick={() => sendNow(post.id)} disabled={saving} sx={{ bgcolor: "#059669" }}>
                     Enviar agora
-                  </button>
+                  </Button>
                 </Box>
               </Box>
+
               {post.errorMessage ? <Alert severity="error">{post.errorMessage}</Alert> : null}
             </Box>
           ))}
+
+          {!postPageItems.length ? <Typography sx={{ color: "text.secondary" }}>Nenhuma postagem encontrada para esse filtro.</Typography> : null}
         </Box>
+
         <TablePagination
           component="div"
           count={posts.length}
@@ -722,22 +849,51 @@ export default function WhatsappPromocoesPage() {
         <DialogTitle>Editar oferta</DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
-            <Box sx={{ gridColumn: "span 12" }}><TextField fullWidth label="Título" value={String(editDraft.title || "")} onChange={(e) => setEditDraft((d) => ({ ...d, title: e.target.value }))} /></Box>
-            <Box sx={{ gridColumn: "span 12" }}><TextField fullWidth multiline minRows={3} label="Descrição" value={String(editDraft.description || "")} onChange={(e) => setEditDraft((d) => ({ ...d, description: e.target.value }))} /></Box>
-            <Box sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}><TextField fullWidth label="Categoria" value={String(editDraft.category || "")} onChange={(e) => setEditDraft((d) => ({ ...d, category: e.target.value }))} /></Box>
-            <Box sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}><TextField fullWidth label="Link afiliado" value={String(editDraft.affiliateUrl || "")} onChange={(e) => setEditDraft((d) => ({ ...d, affiliateUrl: e.target.value }))} /></Box>
-            <Box sx={{ gridColumn: "span 12" }}><TextField fullWidth label="URL do produto" value={String(editDraft.productUrl || "")} onChange={(e) => setEditDraft((d) => ({ ...d, productUrl: e.target.value }))} /></Box>
-            <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}><TextField fullWidth label="Preço antigo" value={String(editDraft.oldPrice ?? "")} onChange={(e) => setEditDraft((d) => ({ ...d, oldPrice: e.target.value as any }))} /></Box>
-            <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}><TextField fullWidth label="Preço atual" value={String(editDraft.currentPrice ?? "")} onChange={(e) => setEditDraft((d) => ({ ...d, currentPrice: e.target.value as any }))} /></Box>
-            <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}><TextField select fullWidth label="Status" value={editDraft.active === false ? "inactive" : "active"} onChange={(e) => setEditDraft((d) => ({ ...d, active: e.target.value === "active" }))}><MenuItem value="active">Ativo</MenuItem><MenuItem value="inactive">Inativo</MenuItem></TextField></Box>
+            <Box sx={{ gridColumn: "span 12" }}>
+              <TextField fullWidth label="Titulo" value={String(editDraft.title || "")} onChange={(e) => setEditDraft((d) => ({ ...d, title: e.target.value }))} />
+            </Box>
+            <Box sx={{ gridColumn: "span 12" }}>
+              <TextField fullWidth multiline minRows={3} label="Descricao" value={String(editDraft.description || "")} onChange={(e) => setEditDraft((d) => ({ ...d, description: e.target.value }))} />
+            </Box>
+            <Box sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}>
+              <TextField fullWidth label="Categoria" value={String(editDraft.category || "")} onChange={(e) => setEditDraft((d) => ({ ...d, category: e.target.value }))} />
+            </Box>
+            <Box sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}>
+              <TextField fullWidth label="Link afiliado" value={String(editDraft.affiliateUrl || "")} onChange={(e) => setEditDraft((d) => ({ ...d, affiliateUrl: e.target.value }))} />
+            </Box>
+            <Box sx={{ gridColumn: "span 12" }}>
+              <TextField fullWidth label="URL do produto" value={String(editDraft.productUrl || "")} onChange={(e) => setEditDraft((d) => ({ ...d, productUrl: e.target.value }))} />
+            </Box>
+            <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
+              <TextField fullWidth label="Preco antigo" value={String(editDraft.oldPrice ?? "")} onChange={(e) => setEditDraft((d) => ({ ...d, oldPrice: e.target.value as any }))} />
+            </Box>
+            <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
+              <TextField fullWidth label="Preco atual" value={String(editDraft.currentPrice ?? "")} onChange={(e) => setEditDraft((d) => ({ ...d, currentPrice: e.target.value as any }))} />
+            </Box>
+            <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
+              <TextField select fullWidth label="Status" value={editDraft.active === false ? "inactive" : "active"} onChange={(e) => setEditDraft((d) => ({ ...d, active: e.target.value === "active" }))}>
+                <MenuItem value="active">Ativo</MenuItem>
+                <MenuItem value="inactive">Inativo</MenuItem>
+              </TextField>
+            </Box>
             <Box sx={{ gridColumn: "span 12" }}>
               <Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1 }}>Imagem do produto</Typography>
-              <Button component="label" variant="outlined" disabled={uploadingImage}>{uploadingImage ? "Enviando..." : "Enviar nova imagem"}<input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => selectEditImage(e.target.files?.[0] || null)} /></Button>
-              {editDraft.imageUrl ? <Box component="img" src={String(editDraft.imageUrl)} alt="Prévia da oferta" sx={{ display: "block", mt: 1, width: 160, height: 160, objectFit: "contain", border: "1px solid", borderColor: "divider", borderRadius: 2 }} /> : <Typography sx={{ mt: 1, fontSize: 13, opacity: 0.7 }}>Sem imagem. O WhatsApp enviará apenas o texto.</Typography>}
+              <Button component="label" variant="outlined" disabled={uploadingImage}>
+                {uploadingImage ? "Enviando..." : "Enviar nova imagem"}
+                <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => selectEditImage(e.target.files?.[0] || null)} />
+              </Button>
+              {editDraft.imageUrl ? (
+                <Box component="img" src={String(editDraft.imageUrl)} alt="Previa da oferta" sx={{ display: "block", mt: 1, width: 160, height: 160, objectFit: "contain", border: "1px solid", borderColor: "divider", borderRadius: 2, bgcolor: "white" }} />
+              ) : (
+                <Typography sx={{ mt: 1, fontSize: 13, opacity: 0.7 }}>Sem imagem. O WhatsApp enviara apenas o texto.</Typography>
+              )}
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions><Button onClick={() => setEditingItem(null)} disabled={saving}>Cancelar</Button><Button variant="contained" onClick={() => saveCatalogItem()} disabled={saving || uploadingImage}>Salvar alterações</Button></DialogActions>
+        <DialogActions>
+          <Button onClick={() => setEditingItem(null)} disabled={saving}>Cancelar</Button>
+          <Button variant="contained" onClick={saveCatalogItem} disabled={saving || uploadingImage}>Salvar alteracoes</Button>
+        </DialogActions>
       </Dialog>
 
       <Dialog open={Boolean(historyItem)} onClose={() => !historyLoading && setHistoryItem(null)} fullWidth maxWidth="md">
@@ -750,12 +906,12 @@ export default function WhatsappPromocoesPage() {
               <Box key={post.id} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, p: 2, display: "grid", gap: 1.25 }}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                   <Typography sx={{ fontWeight: 800 }}>{post.headline}</Typography>
-                  <Chip size="small" label={post.status} color={historyStatusColor(post.status)} />
+                  <Chip size="small" label={post.status} color={statusColor(post.status)} />
                 </Box>
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                  <Chip size="small" variant="outlined" label={`Criado: ${post.createdAt ? new Date(post.createdAt).toLocaleString("pt-BR") : "-"}`} />
-                  <Chip size="small" variant="outlined" label={`Agendado: ${post.scheduledTo ? new Date(post.scheduledTo).toLocaleString("pt-BR") : "nao"}`} />
-                  <Chip size="small" variant="outlined" label={`Enviado: ${post.sentAt ? new Date(post.sentAt).toLocaleString("pt-BR") : "nao"}`} />
+                  <Chip size="small" variant="outlined" label={`Criado: ${formatDateTime(post.createdAt)}`} />
+                  <Chip size="small" variant="outlined" label={`Agendado: ${post.scheduledTo ? formatDateTime(post.scheduledTo) : "nao"}`} />
+                  <Chip size="small" variant="outlined" label={`Enviado: ${post.sentAt ? formatDateTime(post.sentAt) : "nao"}`} />
                 </Box>
                 <Typography sx={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{post.bodyText}</Typography>
                 <Typography sx={{ fontSize: 12, opacity: 0.72 }}>Link usado: {post.linkUrl}</Typography>
@@ -763,7 +919,7 @@ export default function WhatsappPromocoesPage() {
                 {(post.mediaUrl || post.catalogItem.imageUrl) ? (
                   <Box>
                     <Typography sx={{ fontSize: 12, opacity: 0.72, mb: 0.5 }}>Imagem usada no envio</Typography>
-                    <Box component="img" src={post.mediaUrl || post.catalogItem.imageUrl || ""} alt="" sx={{ width: 140, height: 140, objectFit: "contain", borderRadius: 2, border: "1px solid", borderColor: "divider" }} />
+                    <Box component="img" src={post.mediaUrl || post.catalogItem.imageUrl || ""} alt="" sx={{ width: 140, height: 140, objectFit: "contain", borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "white" }} />
                   </Box>
                 ) : (
                   <Typography sx={{ fontSize: 12, opacity: 0.72 }}>Esse post foi criado sem imagem.</Typography>

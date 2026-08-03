@@ -208,24 +208,48 @@ export async function sendWhatsappPromoMessage(params: {
   const mediaUrl = normalizeText(params.mediaUrl);
   const endpoint = `${baseUrl.replace(/\/+$/, "")}/message/${mediaUrl ? "sendMedia" : "sendText"}/${encodeURIComponent(instance)}`;
 
-  const body = mediaUrl
-    ? { number: params.targetId, groupJid: params.targetId, mediatype: "image", media: mediaUrl, caption: params.messageText }
-    : { number: params.targetId, groupJid: params.targetId, text: params.messageText };
+  const sendPayload = async (body: Record<string, unknown>) => {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: apiKey,
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => ({}));
+    return {
+      ok: res.ok,
+      status: res.status,
+      data,
+      message: data?.message || data?.error || `Falha ao enviar mensagem (${res.status})`,
+    };
+  };
 
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: apiKey,
-    },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data?.message || data?.error || `Falha ao enviar mensagem (${res.status})`);
+  if (!mediaUrl) {
+    const textResult = await sendPayload({ number: params.targetId, groupJid: params.targetId, text: params.messageText });
+    if (!textResult.ok) throw new Error(textResult.message);
+    return textResult.data;
   }
-  return data;
+
+  const mediaBody = { number: params.targetId, groupJid: params.targetId, mediatype: "image", media: mediaUrl, caption: params.messageText };
+  const mediaResult = await sendPayload(mediaBody);
+  if (mediaResult.ok) return mediaResult.data;
+
+  try {
+    const mediaRes = await fetch(mediaUrl, { cache: "no-store" });
+    if (!mediaRes.ok) throw new Error(`Midia indisponivel (${mediaRes.status})`);
+    const contentType = normalizeText(mediaRes.headers.get("content-type")) || "image/jpeg";
+    if (!/^image\//i.test(contentType)) throw new Error(`Conteudo da midia invalido: ${contentType}`);
+    const buffer = Buffer.from(await mediaRes.arrayBuffer());
+    const inlineMedia = `data:${contentType};base64,${buffer.toString("base64")}`;
+    const inlineResult = await sendPayload({ ...mediaBody, media: inlineMedia });
+    if (inlineResult.ok) return inlineResult.data;
+    throw new Error(inlineResult.message);
+  } catch (inlineError: any) {
+    throw new Error(`${mediaResult.message}. Fallback de midia falhou: ${inlineError?.message || "erro desconhecido"}`);
+  }
 }
 
 export async function runWhatsappPromoCron() {

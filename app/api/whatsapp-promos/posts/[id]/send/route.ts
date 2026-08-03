@@ -11,8 +11,10 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   const session = await requireServerSession();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  let postId = "";
   try {
     const id = normalizeText(params.id);
+    postId = id;
     const settings = await getOrCreateCrmSettings();
     const post = await prisma.whatsappPromoPost.findUnique({
       where: { id },
@@ -47,6 +49,15 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
 
     return NextResponse.json({ post: updated });
   } catch (error: any) {
+    if (postId) {
+      await prisma.whatsappPromoPost.updateMany({
+        where: { id: postId },
+        data: {
+          status: "FAILED",
+          errorMessage: error?.message || "Falha ao enviar promocao",
+        },
+      }).catch(() => null);
+    }
     return NextResponse.json({ error: error?.message || "Falha ao enviar promocao" }, { status: 500 });
   }
 }
