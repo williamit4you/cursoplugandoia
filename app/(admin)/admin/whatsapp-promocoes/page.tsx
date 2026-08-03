@@ -21,6 +21,7 @@ type CatalogItem = {
   title: string;
   slug: string;
   description: string | null;
+  imageUrl: string | null;
   category: string | null;
   affiliateUrl: string;
   productUrl: string | null;
@@ -54,6 +55,7 @@ type PromoPost = {
 const emptyManual = {
   title: "",
   description: "",
+  imageUrl: "",
   category: "",
   affiliateUrl: "",
   productUrl: "",
@@ -77,6 +79,7 @@ export default function WhatsappPromocoesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [manual, setManual] = useState(emptyManual);
+  const [manualImageFile, setManualImageFile] = useState<File | null>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [batchKey, setBatchKey] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -109,6 +112,7 @@ export default function WhatsappPromocoesPage() {
             item.id,
             {
               title: item.title,
+              imageUrl: item.imageUrl || "",
               category: item.category || "",
               affiliateUrl: item.affiliateUrl,
               productUrl: item.productUrl || "",
@@ -170,6 +174,7 @@ export default function WhatsappPromocoesPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Falha ao criar item");
       setManual(emptyManual);
+      setManualImageFile(null);
       setMessage("Item cadastrado no catalogo.");
       await load();
     } catch (err: any) {
@@ -177,6 +182,19 @@ export default function WhatsappPromocoesPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const selectManualImage = (file: File | null) => {
+    setManualImageFile(file);
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Selecione um arquivo de imagem válido.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setManual((current) => ({ ...current, imageUrl: String(reader.result || "") }));
+    reader.onerror = () => setError("Não foi possível ler a imagem selecionada.");
+    reader.readAsDataURL(file);
   };
 
   const importCsv = async () => {
@@ -365,6 +383,7 @@ export default function WhatsappPromocoesPage() {
             {[
               ["title", "Titulo", 12],
               ["description", "Descricao", 12],
+              ["imageUrl", "URL da imagem (opcional)", 12],
               ["category", "Categoria", 6],
               ["affiliateUrl", "Link afiliado", 6],
               ["productUrl", "URL do produto", 6],
@@ -375,6 +394,14 @@ export default function WhatsappPromocoesPage() {
                 <TextField fullWidth label={label} value={(manual as any)[key]} onChange={(e) => setManual((current) => ({ ...current, [key]: e.target.value }))} multiline={key === "description"} minRows={key === "description" ? 3 : undefined} />
               </Box>
             ))}
+            <Box sx={{ gridColumn: "span 12" }}>
+              <Typography sx={{ fontSize: 13, mb: 0.5, opacity: 0.8 }}>Foto do produto (opcional)</Typography>
+              <input type="file" accept="image/*" onChange={(e) => selectManualImage(e.target.files?.[0] || null)} />
+              {manualImageFile ? <Typography sx={{ fontSize: 12, mt: 0.5 }}>Selecionada: {manualImageFile.name}</Typography> : null}
+              <Typography sx={{ fontSize: 12, mt: 0.5, opacity: 0.65 }}>
+                Você pode selecionar uma foto do computador ou informar uma URL de imagem acima. Se não preencher, a mensagem será enviada somente como texto.
+              </Typography>
+            </Box>
             <Box sx={{ gridColumn: "span 12" }}>
               <button onClick={createManualItem} disabled={saving} style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 800, background: "#111827", color: "white" }}>
                 Cadastrar item
@@ -428,6 +455,15 @@ export default function WhatsappPromocoesPage() {
                 {item.category || "Sem categoria"} • Atual: {item.currentPrice != null ? `R$ ${item.currentPrice}` : "sem preco"} • Desconto: {item.discountPercent != null ? `${item.discountPercent}%` : "-"}
               </Typography>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(12, minmax(0, 1fr))" }, gap: 1 }}>
+                <Box sx={{ gridColumn: { md: "span 4" } }}>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    label="URL da imagem (opcional)"
+                    value={String(catalogDrafts[item.id]?.imageUrl ?? "")}
+                    onChange={(e) => setCatalogDrafts((current) => ({ ...current, [item.id]: { ...current[item.id], imageUrl: e.target.value } }))}
+                  />
+                </Box>
                 <Box sx={{ gridColumn: { md: "span 4" } }}>
                   <TextField
                     size="small"

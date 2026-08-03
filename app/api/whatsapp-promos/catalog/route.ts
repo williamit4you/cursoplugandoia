@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
     }
 
     const description = normalizeText(body.description) || null;
+    const imageUrl = normalizeText(body.imageUrl) || null;
     const category = normalizeText(body.category) || null;
     const productUrl = normalizeText(body.productUrl) || null;
     const rawOldPrice = parsePrice(body.oldPrice);
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest) {
         description,
         productUrl,
         affiliateUrl,
+        imageUrl,
         price: currentPrice,
         category,
         status: "ACTIVE",
@@ -91,7 +93,7 @@ export async function POST(req: NextRequest) {
         title,
         slug,
         description,
-        imageUrl: null,
+        imageUrl,
         category,
         affiliateUrl,
         productUrl,

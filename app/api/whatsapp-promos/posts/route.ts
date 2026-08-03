@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
         headline,
         bodyText,
         linkUrl,
-        mediaUrl: null,
+        mediaUrl: catalogItem.imageUrl || null,
         scheduledTo: body.scheduledTo ? new Date(String(body.scheduledTo)) : null,
         targetId: normalizeText(body.targetId) || settings.offersGroupTargetId || null,
       },

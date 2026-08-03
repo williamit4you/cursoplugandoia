@@ -187,6 +187,7 @@ export function parseCsvObjects(content: string) {
 export async function sendWhatsappPromoMessage(params: {
   targetId: string;
   messageText: string;
+  mediaUrl?: string | null;
 }) {
   const settings = await getOrCreateCrmSettings();
   if (!settings.evolutionEnabled) {
@@ -202,13 +203,12 @@ export async function sendWhatsappPromoMessage(params: {
     throw new Error("Grupo/alvo do WhatsApp nao configurado.");
   }
 
-  const endpoint = `${baseUrl.replace(/\/+$/, "")}/message/sendText/${encodeURIComponent(instance)}`;
+  const mediaUrl = normalizeText(params.mediaUrl);
+  const endpoint = `${baseUrl.replace(/\/+$/, "")}/message/${mediaUrl ? "sendMedia" : "sendText"}/${encodeURIComponent(instance)}`;
 
-  const body = {
-    number: params.targetId,
-    groupJid: params.targetId,
-    text: params.messageText,
-  };
+  const body = mediaUrl
+    ? { number: params.targetId, groupJid: params.targetId, mediatype: "image", media: mediaUrl, caption: params.messageText }
+    : { number: params.targetId, groupJid: params.targetId, text: params.messageText };
 
   const res = await fetch(endpoint, {
     method: "POST",
@@ -266,6 +266,7 @@ export async function runWhatsappPromoCron() {
     const delivery = await sendWhatsappPromoMessage({
       targetId: normalizeText(post.targetId || settings.offersGroupTargetId),
       messageText: post.bodyText,
+      mediaUrl: post.mediaUrl || post.catalogItem.imageUrl,
     });
     await prisma.$transaction([
       prisma.whatsappPromoPost.update({

@@ -29,6 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const title = body.title !== undefined ? normalizeText(body.title) : existing.title;
     const affiliateUrl = body.affiliateUrl !== undefined ? normalizeText(body.affiliateUrl) : existing.affiliateUrl;
     const description = body.description !== undefined ? normalizeText(body.description) || null : existing.description;
+    const imageUrl = body.imageUrl !== undefined ? normalizeText(body.imageUrl) || null : existing.imageUrl;
     const category = body.category !== undefined ? normalizeText(body.category) || null : existing.category;
     const productUrl = body.productUrl !== undefined ? normalizeText(body.productUrl) || null : existing.productUrl;
     const rawOldPrice = body.oldPrice !== undefined ? parsePrice(body.oldPrice) : existing.oldPrice;
@@ -47,7 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
             description,
             productUrl,
             affiliateUrl,
-            imageUrl: existing.imageUrl,
+            imageUrl,
             price: currentPrice,
             category,
             status: active ? "ACTIVE" : "PAUSED",
@@ -60,7 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
             description,
             productUrl,
             affiliateUrl,
-            imageUrl: existing.imageUrl,
+            imageUrl,
             price: currentPrice,
             category,
             status: active ? "ACTIVE" : "PAUSED",
@@ -74,6 +75,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         title,
         slug,
         description,
+        imageUrl,
         category,
         affiliateUrl,
         productUrl,

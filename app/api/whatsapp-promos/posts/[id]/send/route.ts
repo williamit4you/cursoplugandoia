@@ -24,6 +24,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     const delivery = await sendWhatsappPromoMessage({
       targetId,
       messageText: post.bodyText,
+      mediaUrl: post.mediaUrl || post.catalogItem.imageUrl,
     });
 
     const now = new Date();
