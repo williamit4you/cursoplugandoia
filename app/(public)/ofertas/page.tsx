@@ -1,15 +1,7 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
-import {
-  ArrowRight,
-  BadgeCheck,
-  Search,
-  ShieldCheck,
-  ShoppingBag,
-  Sparkles,
-  Store,
-  Tag,
-} from "lucide-react";
+import { ArrowRight, BadgeCheck, Search, ShoppingBag, Store } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import BioProductLink from "../bio/BioProductLink";
 import { getCommerceSiteUrl } from "@/lib/siteUrls";
@@ -17,18 +9,18 @@ import { getCommerceSiteUrl } from "@/lib/siteUrls";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Compra Esperta Promoções | Lojas e ofertas selecionadas",
-  description: "Lojas, guias de produtos e achados selecionados em uma vitrine simples, segura e organizada.",
+  title: "Compra Esperta Promocoes | Produtos e ofertas",
+  description: "Encontre produtos da Shopee com busca rapida, categorias e acesso direto para compra.",
   alternates: { canonical: getCommerceSiteUrl() },
   openGraph: {
-    title: "Compra Esperta Promoções | Lojas e ofertas selecionadas",
-    description: "Lojas, guias de produtos e achados selecionados em uma vitrine simples, segura e organizada.",
+    title: "Compra Esperta Promocoes | Produtos e ofertas",
+    description: "Encontre produtos da Shopee com busca rapida, categorias e acesso direto para compra.",
     url: getCommerceSiteUrl(),
     type: "website",
   },
 };
 
-const themes = [
+const storeThemes = [
   ["from-amber-300/25 via-orange-400/5", "bg-amber-300", "hover:bg-amber-200"],
   ["from-emerald-300/25 via-teal-400/5", "bg-emerald-300", "hover:bg-emerald-200"],
   ["from-sky-300/25 via-blue-400/5", "bg-sky-300", "hover:bg-sky-200"],
@@ -48,10 +40,11 @@ function initials(value: string) {
     .join("");
 }
 
-function filterUrl(q: string, category?: string) {
+function offersUrl(params: { q?: string; category?: string; view?: string }) {
   const query = new URLSearchParams();
-  if (q) query.set("q", q);
-  if (category) query.set("categoria", category);
+  if (params.q) query.set("q", params.q);
+  if (params.category) query.set("categoria", params.category);
+  if (params.view) query.set("view", params.view);
   const suffix = query.toString();
   return suffix ? `/ofertas?${suffix}` : "/ofertas";
 }
@@ -63,288 +56,291 @@ export default async function OffersPage({
 }) {
   const q = text(searchParams?.q).slice(0, 80);
   const category = text(searchParams?.categoria).slice(0, 80);
+  const view = text(searchParams?.view).toLowerCase();
+  const showAll = view === "all";
+  const takeProducts = showAll ? 120 : 24;
 
-  const storeWhere = {
-    status: "ACTIVE",
-    ...(category ? { category } : {}),
+  const productWhere = {
+    active: true,
+    ...(category
+      ? {
+          category: {
+            slug: category,
+          },
+        }
+      : {}),
     ...(q
       ? {
           OR: [
-            { name: { contains: q, mode: "insensitive" as const } },
-            { category: { contains: q, mode: "insensitive" as const } },
-            { defaultCopy: { contains: q, mode: "insensitive" as const } },
+            { title: { contains: q, mode: "insensitive" as const } },
+            { description: { contains: q, mode: "insensitive" as const } },
+            { slug: { contains: q, mode: "insensitive" as const } },
           ],
         }
       : {}),
   };
 
-  const [stores, categories, products, totalStores, totalProducts] = await Promise.all([
-    prisma.affiliateStore.findMany({
-      where: storeWhere,
-      orderBy: [{ featured: "desc" }, { sortOrder: "asc" }, { name: "asc" }],
-      take: 80,
-    }),
-    prisma.affiliateStore.findMany({
-      where: { status: "ACTIVE" },
-      distinct: ["category"],
-      select: { category: true },
-      orderBy: { category: "asc" },
+  const [categories, products, filteredProductsCount, totalProducts, stores] = await Promise.all([
+    prisma.bioCategory.findMany({
+      where: { active: true },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, slug: true },
     }),
     prisma.bioProduct.findMany({
-      where: {
-        active: true,
-        ...(q
-          ? {
-              OR: [
-                { title: { contains: q, mode: "insensitive" } },
-                { description: { contains: q, mode: "insensitive" } },
-              ],
-            }
-          : {}),
-      },
+      where: productWhere,
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-      take: 12,
+      take: takeProducts,
       include: { category: true },
     }),
-    prisma.affiliateStore.count({ where: { status: "ACTIVE" } }),
+    prisma.bioProduct.count({ where: productWhere }),
     prisma.bioProduct.count({ where: { active: true } }),
+    prisma.affiliateStore.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: [{ featured: "desc" }, { sortOrder: "asc" }, { name: "asc" }],
+      take: 6,
+    }),
   ]);
 
-  return (
-    <main className="min-h-screen overflow-hidden bg-[#07110f] text-slate-100">
-      <div className="pointer-events-none fixed inset-x-0 top-0 h-[620px] bg-[radial-gradient(circle_at_18%_8%,rgba(52,211,153,0.16),transparent_34%),radial-gradient(circle_at_82%_0%,rgba(251,191,36,0.14),transparent_31%)]" />
+  const hasFilters = Boolean(q || category);
+  const showingCount = products.length;
+  const canShowMore = filteredProductsCount > showingCount;
 
-      <header className="relative border-b border-white/10">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8">
+  return (
+    <main className="min-h-screen bg-[#07110f] text-slate-100">
+      <div className="pointer-events-none fixed inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_18%_8%,rgba(52,211,153,0.16),transparent_34%),radial-gradient(circle_at_82%_0%,rgba(251,191,36,0.14),transparent_31%)]" />
+
+      <header className="relative border-b border-white/10 bg-[#07110f]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-8">
           <Link href="/ofertas" className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-300 text-slate-950 shadow-lg shadow-emerald-500/20">
               <ShoppingBag className="h-5 w-5" strokeWidth={2.5} />
             </span>
             <span>
               <span className="block text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-200/70">Compra Esperta</span>
-              <span className="block text-lg font-black tracking-tight">Promoções</span>
+              <span className="block text-lg font-black tracking-tight text-white">Promocoes</span>
             </span>
           </Link>
-          <div className="hidden items-center gap-5 text-xs font-semibold text-slate-300 sm:flex">
-            <Link href="/produtos" className="hover:text-white">Guias de produtos</Link>
-            <Link href="/lojas" className="hover:text-white">Todas as lojas</Link>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2">
-              <ShieldCheck className="h-4 w-4 text-emerald-300" />
-              Links organizados e transparentes
-            </span>
-          </div>
+          <Link href="#lojas-parceiras" className="hidden rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold text-slate-200 sm:inline-flex">
+            Ver lojas
+          </Link>
         </div>
       </header>
 
-      <section className="relative mx-auto max-w-7xl px-5 pb-12 pt-14 sm:px-8 sm:pt-20">
-        <div className="grid items-end gap-10 lg:grid-cols-[1.3fr_0.7fr]">
-          <div>
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">
-              <Sparkles className="h-3.5 w-3.5" />
-              Sua vitrine de oportunidades
-            </div>
-            <h1 className="max-w-4xl text-4xl font-black leading-[1.03] tracking-[-0.045em] text-white sm:text-6xl lg:text-7xl">
-              Boas compras começam com{" "}
-              <span className="bg-gradient-to-r from-emerald-200 via-emerald-300 to-amber-200 bg-clip-text text-transparent">
-                escolhas melhores.
-              </span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-              Lojas, guias de produtos, achados da Shopee e caminhos diretos para você comparar com calma — tudo organizado em um só lugar.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <a href="#achados-shopee" className="rounded-2xl bg-orange-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-orange-200">
-                Ver produtos da Shopee
-              </a>
-              <a href="#lojas-parceiras" className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-slate-200 transition hover:bg-white/[0.07]">
-                Explorar lojas
-              </a>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Stat icon={<Store className="h-5 w-5 text-amber-200" />} value={totalStores} label="lojas disponíveis" />
-            <Stat icon={<Tag className="h-5 w-5 text-emerald-200" />} value={totalProducts} label="achados publicados" />
-          </div>
-        </div>
-
-        <form action="/ofertas" method="GET" className="mt-10 flex flex-col gap-3 rounded-3xl border border-white/10 bg-white/[0.055] p-3 shadow-2xl shadow-black/20 backdrop-blur-xl sm:flex-row">
-          <label className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-black/20 px-4">
-            <Search className="h-5 w-5 shrink-0 text-slate-500" />
-            <input name="q" defaultValue={q} placeholder="Busque uma loja, categoria ou produto" className="w-full bg-transparent py-4 text-sm text-white outline-none placeholder:text-slate-500" />
-          </label>
+      <section className="relative mx-auto max-w-7xl px-4 pb-6 pt-5 sm:px-8 sm:pt-8">
+        <form action="/ofertas" method="GET" className="rounded-[28px] border border-white/10 bg-[#0b1714]/95 p-4 shadow-2xl shadow-black/20">
           {category ? <input type="hidden" name="categoria" value={category} /> : null}
-          <button className="rounded-2xl bg-white px-6 py-4 text-sm font-black text-slate-950 transition hover:bg-emerald-100">Encontrar agora</button>
+          <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-4">
+            <Search className="h-5 w-5 shrink-0 text-emerald-200" />
+            <input
+              name="q"
+              defaultValue={q}
+              placeholder="digite o produto e clique em buscar"
+              inputMode="search"
+              className="w-full bg-transparent py-4 text-sm text-white outline-none placeholder:text-slate-500"
+            />
+          </label>
+          <button className="mt-3 w-full rounded-2xl bg-orange-300 px-6 py-3.5 text-sm font-black text-slate-950 transition hover:bg-orange-200">
+            Buscar
+          </button>
+          <div className="mt-3 text-[11px] font-medium text-slate-400">
+            {hasFilters ? `${filteredProductsCount} resultado(s) encontrado(s).` : `${totalProducts} produtos publicados para busca rapida.`}
+          </div>
         </form>
 
-        <div className="mt-5 flex gap-2 overflow-x-auto pb-2">
-          <CategoryChip active={!category} href={filterUrl(q)}>Todas</CategoryChip>
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+          <CategoryChip active={!category} href={offersUrl({ q, view: showAll ? "all" : undefined })}>
+            Todos
+          </CategoryChip>
           {categories.map((item) => (
-            <CategoryChip key={item.category} active={category === item.category} href={filterUrl(q, item.category)}>
-              {item.category}
+            <CategoryChip
+              key={item.id}
+              active={category === item.slug}
+              href={offersUrl({ q, category: item.slug, view: showAll ? "all" : undefined })}
+            >
+              {item.name}
             </CategoryChip>
           ))}
         </div>
+
+        {hasFilters ? (
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <div className="text-xs text-slate-400">
+              {category ? `Categoria ativa: ${categories.find((item) => item.slug === category)?.name || category}` : "Busca por nome do produto"}
+            </div>
+            <Link href="/ofertas" className="text-xs font-bold text-emerald-200">
+              Limpar filtros
+            </Link>
+          </div>
+        ) : null}
       </section>
 
       <section id="achados-shopee" className="relative border-y border-white/10 bg-white/[0.025]">
-        <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8">
-          <div className="flex items-end justify-between gap-6">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-10">
+          <div className="flex items-end justify-between gap-4">
             <div>
-              <div className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">Achados recentes</div>
-              <h2 className="mt-2 text-3xl font-black tracking-tight text-white">SeleÃ§Ã£o da Shopee</h2>
-              <p className="mt-2 text-sm text-slate-400">Os produtos da Shopee aparecem primeiro para quem chega da bio e quer encontrar o item mais rÃ¡pido.</p>
+              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-200">Produtos em destaque</div>
+              <h1 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">Selecao da Shopee</h1>
             </div>
-            <div className="hidden rounded-full border border-orange-300/20 bg-orange-300/10 px-4 py-2 text-xs font-black text-orange-200 sm:block">Shopee</div>
+            <div className="rounded-full border border-orange-300/20 bg-orange-300/10 px-3 py-1.5 text-[11px] font-black text-orange-200">
+              {showingCount}/{filteredProductsCount}
+            </div>
           </div>
 
           {products.length ? (
-            <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {products.map((product) => (
-                <article key={product.id} className="group overflow-hidden rounded-3xl border border-white/10 bg-[#0c1916] p-3 transition hover:-translate-y-1 hover:border-white/20">
-                  {product.imageUrl ? (
-                    <BioProductLink slug={product.slug} href={product.affiliateUrl} className="block w-full overflow-hidden rounded-2xl bg-white/5 text-left">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={product.imageUrl} alt={product.title} className="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-[1.04]" loading="lazy" />
-                    </BioProductLink>
-                  ) : (
-                    <div className="grid aspect-[4/3] place-items-center rounded-2xl border border-dashed border-orange-300/20 bg-gradient-to-br from-orange-300/15 to-emerald-300/10">
-                      <div className="text-center">
-                        <ShoppingBag className="mx-auto h-8 w-8 text-white/40" />
-                        <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/45">Imagem em atualizaÃ§Ã£o</div>
+            <>
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {products.map((product) => (
+                  <article key={product.id} className="overflow-hidden rounded-[24px] border border-white/10 bg-[#0c1916] p-2.5 transition hover:border-white/20">
+                    {product.imageUrl ? (
+                      <BioProductLink slug={product.slug} href={product.affiliateUrl} className="block overflow-hidden rounded-2xl bg-white/5">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={product.imageUrl}
+                          alt={product.title}
+                          className="aspect-square w-full object-cover transition duration-300 hover:scale-[1.03]"
+                          loading="lazy"
+                        />
+                      </BioProductLink>
+                    ) : (
+                      <div className="grid aspect-square place-items-center rounded-2xl border border-dashed border-orange-300/20 bg-gradient-to-br from-orange-300/15 to-emerald-300/10">
+                        <ShoppingBag className="h-7 w-7 text-white/35" />
+                      </div>
+                    )}
+
+                    <div className="px-1 pb-1 pt-3">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-200">
+                        {product.category?.name || "Achado Shopee"}
+                      </div>
+                      <h2 className="mt-1.5 line-clamp-2 min-h-[40px] text-[13px] font-black leading-5 text-white sm:text-sm">
+                        {product.title}
+                      </h2>
+                      <p className="mt-1 hidden line-clamp-2 min-h-[32px] text-[11px] leading-4 text-slate-400 sm:block">
+                        {product.description}
+                      </p>
+                      <div className="mt-3 grid grid-cols-[auto_1fr] gap-2">
+                        <Link
+                          href={`/bio/${product.slug}`}
+                          className="rounded-xl border border-white/10 px-2.5 py-2 text-center text-[11px] font-bold text-slate-200 hover:bg-white/5 sm:px-3"
+                        >
+                          Detalhes
+                        </Link>
+                        <BioProductLink
+                          slug={product.slug}
+                          href={product.affiliateUrl}
+                          className="rounded-xl bg-orange-300 px-2.5 py-2 text-center text-[11px] font-black text-slate-950 transition hover:bg-orange-200 sm:px-3"
+                        >
+                          Ver na Shopee
+                        </BioProductLink>
                       </div>
                     </div>
-                  )}
-                  <div className="px-2 pb-2 pt-4">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-200">{product.category?.name || "Achado Shopee"}</div>
-                    <h3 className="mt-2 line-clamp-2 min-h-[48px] text-base font-black leading-6 text-white">{product.title}</h3>
-                    <p className="mt-2 line-clamp-2 min-h-[40px] text-xs leading-5 text-slate-400">{product.description}</p>
-                    <div className="mt-4 grid grid-cols-[auto_1fr] gap-2">
-                      <Link href={`/bio/${product.slug}`} className="rounded-xl border border-white/10 px-3 py-3 text-center text-xs font-bold text-slate-200 hover:bg-white/5">Detalhes</Link>
-                      <BioProductLink slug={product.slug} href={product.affiliateUrl} className="rounded-xl bg-orange-300 px-3 py-3 text-center text-xs font-black text-slate-950 transition hover:bg-orange-200">Ver na Shopee</BioProductLink>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                {canShowMore ? (
+                  <Link
+                    href={offersUrl({ q, category, view: "all" })}
+                    className="rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-emerald-100"
+                  >
+                    Ver todos os produtos
+                  </Link>
+                ) : null}
+                {showAll && filteredProductsCount > 24 ? (
+                  <Link
+                    href={offersUrl({ q, category })}
+                    className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-slate-200 transition hover:bg-white/[0.07]"
+                  >
+                    Mostrar menos
+                  </Link>
+                ) : null}
+              </div>
+            </>
           ) : (
-            <div className="mt-7 rounded-3xl border border-white/10 bg-white/[0.035] p-8 text-center text-sm text-slate-400">
-              {q ? "Nenhum produto da Shopee corresponde Ã  sua busca." : "Os prÃ³ximos achados aparecerÃ£o aqui automaticamente."}
+            <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.035] p-8 text-center text-sm text-slate-400">
+              Nenhum produto encontrado. Tente outro nome ou escolha outra categoria.
             </div>
           )}
         </div>
       </section>
 
-      <section id="lojas-parceiras" className="relative mx-auto max-w-7xl px-5 py-10 sm:px-8">
-        <div>
-          <div className="text-xs font-bold uppercase tracking-[0.2em] text-amber-200">Escolha por loja</div>
-          <h2 className="mt-2 text-3xl font-black tracking-tight text-white">Lojas que valem conhecer</h2>
-          <p className="mt-2 text-sm text-slate-400">Cards claros, guias de apoio e acesso direto a cada loja.</p>
-        </div>
-
-        {stores.length ? (
-          <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {stores.map((store, index) => {
-              const [glow, color, hover] = themes[index % themes.length];
-              return (
-                <article key={store.id} className="group relative isolate overflow-hidden rounded-[28px] border border-white/10 bg-[#0c1916] p-6 shadow-xl shadow-black/10 transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-2xl">
-                  <div className={`pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br ${glow} to-transparent`} />
-                  <div className="flex items-start justify-between gap-4">
-                    <div className={`grid h-14 w-14 place-items-center rounded-2xl text-base font-black text-slate-950 shadow-lg ${color}`}>{initials(store.name)}</div>
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-300">
-                      <BadgeCheck className="h-3.5 w-3.5 text-emerald-300" />
-                      Link conferido
-                    </span>
-                  </div>
-                  <div className="mt-7 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{store.category}</div>
-                  <h3 className="mt-2 text-2xl font-black tracking-tight text-white">{store.name}</h3>
-                  <p className="mt-3 min-h-[72px] text-sm leading-6 text-slate-300">{store.defaultCopy}</p>
-                  <div className="mt-6 grid grid-cols-[1fr_auto] gap-2">
-                    <Link href={`/lojas/${store.slug}`} className={`flex items-center justify-between rounded-2xl px-4 py-3.5 text-sm font-black text-slate-950 transition ${color} ${hover}`}>
-                      Conhecer a loja
-                      <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                    </Link>
-                    <a href={`/go/loja/${store.slug}?source=bio&medium=store_card&campaign=compra_esperta_promocoes`} rel="sponsored" aria-label={`Ir diretamente para ${store.name}`} className="grid w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.05] text-slate-200 hover:bg-white/10">
-                      <ShoppingBag className="h-4 w-4" />
-                    </a>
-                  </div>
-                </article>
-              );
-            })}
+      <section id="lojas-parceiras" className="relative mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-200">Lojas parceiras</div>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">Explore por loja</h2>
           </div>
-        ) : <EmptySearch />}
-      </section>
+          <Link href="/lojas" className="text-sm font-bold text-emerald-200">
+            Ver todas
+          </Link>
+        </div>
 
-      <section hidden aria-hidden="true" className="hidden">
-        <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8">
-          <div className="flex items-end justify-between gap-6">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">Achados recentes</div>
-              <h2 className="mt-2 text-3xl font-black tracking-tight text-white">Seleção da Shopee</h2>
-              <p className="mt-2 text-sm text-slate-400">Produtos que já passaram pelo fluxo atual de coleta e publicação.</p>
-            </div>
-            <div className="hidden rounded-full border border-orange-300/20 bg-orange-300/10 px-4 py-2 text-xs font-black text-orange-200 sm:block">Shopee</div>
-          </div>
-
-          {products.length ? (
-            <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {products.map((product) => (
-                <article key={product.id} className="group overflow-hidden rounded-3xl border border-white/10 bg-[#0c1916] p-3 transition hover:-translate-y-1 hover:border-white/20">
-                  {product.imageUrl ? (
-                    <BioProductLink slug={product.slug} href={product.affiliateUrl} className="block w-full overflow-hidden rounded-2xl bg-white/5 text-left">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={product.imageUrl} alt={product.title} className="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-[1.04]" loading="lazy" />
-                    </BioProductLink>
-                  ) : (
-                    <div className="grid aspect-[4/3] place-items-center rounded-2xl bg-gradient-to-br from-orange-300/15 to-emerald-300/10"><ShoppingBag className="h-8 w-8 text-white/40" /></div>
-                  )}
-                  <div className="px-2 pb-2 pt-4">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-200">{product.category?.name || "Achado Shopee"}</div>
-                    <h3 className="mt-2 line-clamp-2 min-h-[48px] text-base font-black leading-6 text-white">{product.title}</h3>
-                    <p className="mt-2 line-clamp-2 min-h-[40px] text-xs leading-5 text-slate-400">{product.description}</p>
-                    <div className="mt-4 grid grid-cols-[auto_1fr] gap-2">
-                      <Link href={`/bio/${product.slug}`} className="rounded-xl border border-white/10 px-3 py-3 text-center text-xs font-bold text-slate-200 hover:bg-white/5">Detalhes</Link>
-                      <BioProductLink slug={product.slug} href={product.affiliateUrl} className="rounded-xl bg-orange-300 px-3 py-3 text-center text-xs font-black text-slate-950 transition hover:bg-orange-200">Ver na Shopee</BioProductLink>
-                    </div>
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {stores.map((store, index) => {
+            const [glow, color, hover] = storeThemes[index % storeThemes.length];
+            return (
+              <article
+                key={store.id}
+                className="group relative isolate overflow-hidden rounded-[28px] border border-white/10 bg-[#0c1916] p-5 shadow-xl shadow-black/10 transition hover:-translate-y-1 hover:border-white/20"
+              >
+                <div className={`pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br ${glow} to-transparent`} />
+                <div className="flex items-start justify-between gap-4">
+                  <div className={`grid h-12 w-12 place-items-center rounded-2xl text-base font-black text-slate-950 shadow-lg ${color}`}>
+                    {initials(store.name)}
                   </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-7 rounded-3xl border border-white/10 bg-white/[0.035] p-8 text-center text-sm text-slate-400">
-              {q ? "Nenhum produto da Shopee corresponde à sua busca." : "Os próximos achados aparecerão aqui automaticamente."}
-            </div>
-          )}
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-300">
+                    <BadgeCheck className="h-3.5 w-3.5 text-emerald-300" />
+                    Link conferido
+                  </span>
+                </div>
+                <div className="mt-6 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{store.category}</div>
+                <h3 className="mt-2 text-xl font-black tracking-tight text-white">{store.name}</h3>
+                <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-300">{store.defaultCopy}</p>
+                <div className="mt-5 grid grid-cols-[1fr_auto] gap-2">
+                  <Link
+                    href={`/lojas/${store.slug}`}
+                    className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-black text-slate-950 transition ${color} ${hover}`}
+                  >
+                    Conhecer a loja
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </Link>
+                  <a
+                    href={`/go/loja/${store.slug}?source=bio&medium=store_card&campaign=compra_esperta_promocoes`}
+                    rel="sponsored"
+                    aria-label={`Ir diretamente para ${store.name}`}
+                    className="grid w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.05] text-slate-200 hover:bg-white/10"
+                  >
+                    <Store className="h-4 w-4" />
+                  </a>
+                </div>
+              </article>
+            );
+          })}
         </div>
-      </section>
-
-      <section className="relative mx-auto max-w-7xl px-5 py-12 sm:px-8">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <TrustItem icon={<ShieldCheck />} title="Compra consciente">Confira preço, frete, disponibilidade e regras diretamente na loja antes de finalizar.</TrustItem>
-          <TrustItem icon={<BadgeCheck />} title="Pesquisa útil">Guias organizados para responder dúvidas de uso e comparação antes da compra.</TrustItem>
-          <TrustItem icon={<Sparkles />} title="Seleção em evolução">A vitrine recebe novas lojas e produtos conforme eles entram no nosso fluxo editorial.</TrustItem>
-        </div>
-        <footer className="mt-12 flex flex-col justify-between gap-3 border-t border-white/10 pt-7 text-xs text-slate-500 sm:flex-row">
-          <div>© {new Date().getFullYear()} Compra Esperta Promoções</div>
-          <div>#compraespertapromocoes</div>
-        </footer>
       </section>
     </main>
   );
 }
 
-function Stat({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
-  return <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-5 backdrop-blur">{icon}<div className="mt-5 text-3xl font-black text-white">{value}</div><div className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</div></div>;
-}
-
-function CategoryChip({ active, href, children }: { active: boolean; href: string; children: React.ReactNode }) {
-  return <Link href={href} className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-bold transition ${active ? "border-emerald-300 bg-emerald-300 text-slate-950" : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20"}`}>{children}</Link>;
-}
-
-function EmptySearch() {
-  return <div className="mt-7 rounded-3xl border border-dashed border-white/15 bg-white/[0.035] p-10 text-center"><Search className="mx-auto h-7 w-7 text-slate-500" /><h3 className="mt-4 font-black text-white">Nenhuma loja encontrada</h3><p className="mt-2 text-sm text-slate-400">Tente outro nome ou remova o filtro de categoria.</p><Link href="/ofertas" className="mt-5 inline-block text-sm font-bold text-emerald-200">Limpar filtros</Link></div>;
-}
-
-function TrustItem({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
-  return <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5"><div className="h-5 w-5 text-emerald-200 [&>svg]:h-5 [&>svg]:w-5">{icon}</div><div className="mt-4 text-sm font-black text-white">{title}</div><p className="mt-2 text-xs leading-5 text-slate-400">{children}</p></div>;
+function CategoryChip({
+  active,
+  href,
+  children,
+}: {
+  active: boolean;
+  href: string;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-bold transition ${
+        active
+          ? "border-orange-300 bg-orange-300 text-slate-950"
+          : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20"
+      }`}
+    >
+      {children}
+    </Link>
+  );
 }
