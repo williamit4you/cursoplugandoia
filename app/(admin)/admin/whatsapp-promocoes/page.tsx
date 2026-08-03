@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Box, Chip, MenuItem, Paper, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Typography } from "@mui/material";
 
 type ConfigState = {
   offersCronEnabled: boolean;
@@ -41,14 +41,18 @@ type PromoPost = {
   headline: string;
   bodyText: string;
   linkUrl: string;
+  mediaUrl?: string | null;
   scheduledTo: string | null;
   sentAt: string | null;
   targetId: string | null;
   errorMessage: string | null;
+  createdAt?: string;
+  updatedAt?: string;
   catalogItem: {
     id: string;
     title: string;
     slug: string;
+    imageUrl?: string | null;
   };
 };
 
@@ -80,11 +84,21 @@ export default function WhatsappPromocoesPage() {
   const [saving, setSaving] = useState(false);
   const [manual, setManual] = useState(emptyManual);
   const [manualImageFile, setManualImageFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [batchKey, setBatchKey] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [scheduleDrafts, setScheduleDrafts] = useState<Record<string, string>>({});
+  const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
+  const [editDraft, setEditDraft] = useState<Partial<CatalogItem>>({});
   const [catalogDrafts, setCatalogDrafts] = useState<Record<string, Partial<CatalogItem>>>({});
+  const [catalogPage, setCatalogPage] = useState(0);
+  const [catalogRowsPerPage, setCatalogRowsPerPage] = useState(10);
+  const [postPage, setPostPage] = useState(0);
+  const [postRowsPerPage, setPostRowsPerPage] = useState(10);
+  const [historyItem, setHistoryItem] = useState<CatalogItem | null>(null);
+  const [historyPosts, setHistoryPosts] = useState<PromoPost[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -106,23 +120,6 @@ export default function WhatsappPromocoesPage() {
       setConfig(configData);
       setCatalog(catalogData.items || []);
       setPosts(postsData.items || []);
-      setCatalogDrafts(
-        Object.fromEntries(
-          (catalogData.items || []).map((item: CatalogItem) => [
-            item.id,
-            {
-              title: item.title,
-              imageUrl: item.imageUrl || "",
-              category: item.category || "",
-              affiliateUrl: item.affiliateUrl,
-              productUrl: item.productUrl || "",
-              oldPrice: item.oldPrice,
-              currentPrice: item.currentPrice,
-              active: item.active,
-            },
-          ]),
-        ),
-      );
       setScheduleDrafts(
         Object.fromEntries((postsData.items || []).map((item: PromoPost) => [item.id, toLocalDateTime(item.scheduledTo)])),
       );
@@ -138,6 +135,22 @@ export default function WhatsappPromocoesPage() {
   }, [statusFilter]);
 
   const readyCount = useMemo(() => catalog.filter((item) => item.readyForPublish).length, [catalog]);
+  const catalogPageItems = useMemo(
+    () => catalog.slice(catalogPage * catalogRowsPerPage, catalogPage * catalogRowsPerPage + catalogRowsPerPage),
+    [catalog, catalogPage, catalogRowsPerPage],
+  );
+  const postPageItems = useMemo(
+    () => posts.slice(postPage * postRowsPerPage, postPage * postRowsPerPage + postRowsPerPage),
+    [posts, postPage, postRowsPerPage],
+  );
+
+  useEffect(() => {
+    setCatalogPage(0);
+  }, [catalogRowsPerPage, catalog.length]);
+
+  useEffect(() => {
+    setPostPage(0);
+  }, [postRowsPerPage, posts.length, statusFilter]);
 
   const saveConfig = async () => {
     if (!config) return;
@@ -184,17 +197,31 @@ export default function WhatsappPromocoesPage() {
     }
   };
 
-  const selectManualImage = (file: File | null) => {
+  const uploadProductImage = async (file: File) => {
+    if (!file.type.startsWith("image/")) throw new Error("Selecione um arquivo de imagem válido.");
+    if (file.size > 10 * 1024 * 1024) throw new Error("A imagem deve ter no máximo 10 MB.");
+    const formData = new FormData();
+    formData.set("file", file);
+    const response = await fetch("/api/upload", { method: "POST", body: formData });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data?.url) throw new Error(data?.error || "Falha ao enviar a imagem.");
+    return String(data.url);
+  };
+
+  const selectManualImage = async (file: File | null) => {
     setManualImageFile(file);
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Selecione um arquivo de imagem válido.");
-      return;
+    setUploadingImage(true);
+    setError(null);
+    try {
+      const imageUrl = await uploadProductImage(file);
+      setManual((current) => ({ ...current, imageUrl }));
+    } catch (err: any) {
+      setManualImageFile(null);
+      setError(err?.message || "Falha ao enviar a imagem.");
+    } finally {
+      setUploadingImage(false);
     }
-    const reader = new FileReader();
-    reader.onload = () => setManual((current) => ({ ...current, imageUrl: String(reader.result || "") }));
-    reader.onerror = () => setError("Não foi possível ler a imagem selecionada.");
-    reader.readAsDataURL(file);
   };
 
   const importCsv = async () => {
@@ -251,9 +278,29 @@ export default function WhatsappPromocoesPage() {
     }
   };
 
-  const saveCatalogItem = async (itemId: string) => {
-    const draft = catalogDrafts[itemId];
-    if (!draft) return;
+  const openEditor = (item: CatalogItem) => {
+    setEditingItem(item);
+    setEditDraft({ ...item, imageUrl: item.imageUrl || "", category: item.category || "", productUrl: item.productUrl || "" });
+  };
+
+  const selectEditImage = async (file: File | null) => {
+    if (!file) return;
+    setUploadingImage(true);
+    setError(null);
+    try {
+      const imageUrl = await uploadProductImage(file);
+      setEditDraft((current) => ({ ...current, imageUrl }));
+    } catch (err: any) {
+      setError(err?.message || "Falha ao enviar a imagem.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const saveCatalogItem = async (legacyItemId?: string) => {
+    const itemId = legacyItemId || editingItem?.id;
+    const draft = legacyItemId ? catalogDrafts[legacyItemId] : editDraft;
+    if (!itemId || !draft) return;
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -266,6 +313,7 @@ export default function WhatsappPromocoesPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Falha ao salvar item");
       setMessage("Item do catalogo atualizado.");
+      setEditingItem(null);
       await load();
     } catch (err: any) {
       setError(err?.message || "Falha ao salvar item");
@@ -314,6 +362,26 @@ export default function WhatsappPromocoesPage() {
       setSaving(false);
     }
   };
+
+  const openHistory = async (item: CatalogItem) => {
+    setHistoryItem(item);
+    setHistoryPosts([]);
+    setHistoryLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/whatsapp-promos/posts?status=ALL&catalogItemId=${encodeURIComponent(item.id)}`, { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Falha ao carregar historico");
+      setHistoryPosts(data.items || []);
+    } catch (err: any) {
+      setError(err?.message || "Falha ao carregar historico");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const historyStatusColor = (status: string) =>
+    status === "SENT" ? "success" : status === "FAILED" ? "error" : status === "SCHEDULED" ? "info" : "default";
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -384,7 +452,6 @@ export default function WhatsappPromocoesPage() {
             {[
               ["title", "Titulo", 12],
               ["description", "Descricao", 12],
-              ["imageUrl", "URL da imagem (opcional)", 12],
               ["category", "Categoria", 6],
               ["affiliateUrl", "Link afiliado", 6],
               ["productUrl", "URL do produto", 6],
@@ -397,10 +464,14 @@ export default function WhatsappPromocoesPage() {
             ))}
             <Box sx={{ gridColumn: "span 12" }}>
               <Typography sx={{ fontSize: 13, mb: 0.5, opacity: 0.8 }}>Foto do produto (opcional)</Typography>
-              <input type="file" accept="image/*" onChange={(e) => selectManualImage(e.target.files?.[0] || null)} />
+              <Button component="label" variant="outlined" disabled={uploadingImage}>
+                {uploadingImage ? "Enviando foto..." : "Selecionar foto"}
+                <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => selectManualImage(e.target.files?.[0] || null)} />
+              </Button>
               {manualImageFile ? <Typography sx={{ fontSize: 12, mt: 0.5 }}>Selecionada: {manualImageFile.name}</Typography> : null}
+              {manual.imageUrl ? <Box component="img" src={manual.imageUrl} alt="Prévia da oferta" sx={{ display: "block", mt: 1, width: 120, height: 120, objectFit: "contain", borderRadius: 2, border: "1px solid", borderColor: "divider" }} /> : null}
               <Typography sx={{ fontSize: 12, mt: 0.5, opacity: 0.65 }}>
-                Você pode selecionar uma foto do computador ou informar uma URL de imagem acima. Se não preencher, a mensagem será enviada somente como texto.
+                A foto é opcional. Ela será enviada junto à legenda no WhatsApp; sem foto, a postagem será somente texto.
               </Typography>
             </Box>
             <Box sx={{ gridColumn: "span 12" }}>
@@ -438,7 +509,65 @@ export default function WhatsappPromocoesPage() {
             <Chip label={`Prontos: ${readyCount}`} color="success" />
           </Box>
         </Box>
-        <Box sx={{ mt: 2, display: "grid", gap: 2 }}>
+        <TableContainer sx={{ mt: 2, border: "1px solid", borderColor: "divider", borderRadius: 2, maxHeight: 620 }}>
+          <Table stickyHeader size="small" sx={{ minWidth: 980 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Produto</TableCell>
+                <TableCell>Categoria</TableCell>
+                <TableCell align="right">Preço atual</TableCell>
+                <TableCell align="right">Desconto</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Imagem</TableCell>
+                <TableCell align="right">Ações</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {catalogPageItems.map((item) => (
+                <TableRow key={item.id} hover>
+                  <TableCell sx={{ maxWidth: 330 }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: 14 }} noWrap>{item.title}</Typography>
+                    <Typography sx={{ fontSize: 11, opacity: 0.65 }} noWrap>{item.slug}</Typography>
+                  </TableCell>
+                  <TableCell>{item.category || "—"}</TableCell>
+                  <TableCell align="right">{item.currentPrice != null ? item.currentPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—"}</TableCell>
+                  <TableCell align="right">{item.discountPercent != null ? `${item.discountPercent}%` : "—"}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                      <Chip size="small" label={item.readyForPublish ? "Pronto" : "Pendente"} color={item.readyForPublish ? "success" : "warning"} />
+                      <Chip size="small" label={item.active ? "Ativo" : "Inativo"} />
+                    </Box>
+                  </TableCell>
+                  <TableCell>{item.imageUrl ? <Box component="img" src={item.imageUrl} alt="" sx={{ width: 42, height: 42, objectFit: "contain", borderRadius: 1, border: "1px solid", borderColor: "divider" }} /> : "—"}</TableCell>
+                  <TableCell align="right">
+                    <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, whiteSpace: "nowrap" }}>
+                      <Button size="small" variant="outlined" onClick={() => openEditor(item)}>Editar</Button>
+                      <Button size="small" variant="outlined" onClick={() => openHistory(item)}>Posts ({item._count?.posts || 0})</Button>
+                      <Button size="small" variant="contained" onClick={() => createPost(item, "draft")} disabled={saving}>Postar</Button>
+                      <Button size="small" onClick={() => createPost(item, "schedule")} disabled={saving}>Agendar</Button>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!catalog.length ? <TableRow><TableCell colSpan={7} align="center">Nenhum item no catálogo.</TableCell></TableRow> : null}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination
+          component="div"
+          count={catalog.length}
+          page={catalogPage}
+          onPageChange={(_event, nextPage) => setCatalogPage(nextPage)}
+          rowsPerPage={catalogRowsPerPage}
+          onRowsPerPageChange={(event) => {
+            setCatalogRowsPerPage(Number(event.target.value || 10));
+            setCatalogPage(0);
+          }}
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          labelRowsPerPage="Itens por pagina"
+          labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+        />
+        <Box sx={{ display: "none" }} aria-hidden="true">
           {catalog.map((item) => (
             <Box key={item.id} sx={{ border: "1px solid #e5e7eb", borderRadius: 3, p: 2, display: "grid", gap: 1 }}>
               <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
@@ -535,7 +664,7 @@ export default function WhatsappPromocoesPage() {
           </TextField>
         </Box>
         <Box sx={{ mt: 2, display: "grid", gap: 2 }}>
-          {posts.map((post) => (
+          {postPageItems.map((post) => (
             <Box key={post.id} sx={{ border: "1px solid #e5e7eb", borderRadius: 3, p: 2, display: "grid", gap: 1 }}>
               <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
                 <Box>
@@ -555,7 +684,7 @@ export default function WhatsappPromocoesPage() {
                   label="Agendar"
                   value={scheduleDrafts[post.id] || ""}
                   onChange={(e) => setScheduleDrafts((current) => ({ ...current, [post.id]: e.target.value }))}
-                  InputLabelProps={{ shrink: true }}
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                   <button onClick={() => savePostSchedule(post.id, "SCHEDULED")} disabled={saving} style={{ padding: "8px 12px", borderRadius: 10, fontWeight: 800, background: "#2563eb", color: "white" }}>
@@ -573,7 +702,81 @@ export default function WhatsappPromocoesPage() {
             </Box>
           ))}
         </Box>
+        <TablePagination
+          component="div"
+          count={posts.length}
+          page={postPage}
+          onPageChange={(_event, nextPage) => setPostPage(nextPage)}
+          rowsPerPage={postRowsPerPage}
+          onRowsPerPageChange={(event) => {
+            setPostRowsPerPage(Number(event.target.value || 10));
+            setPostPage(0);
+          }}
+          rowsPerPageOptions={[10, 25, 50]}
+          labelRowsPerPage="Posts por pagina"
+          labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+        />
       </Paper>
+
+      <Dialog open={Boolean(editingItem)} onClose={() => !saving && setEditingItem(null)} fullWidth maxWidth="md">
+        <DialogTitle>Editar oferta</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 2 }}>
+            <Box sx={{ gridColumn: "span 12" }}><TextField fullWidth label="Título" value={String(editDraft.title || "")} onChange={(e) => setEditDraft((d) => ({ ...d, title: e.target.value }))} /></Box>
+            <Box sx={{ gridColumn: "span 12" }}><TextField fullWidth multiline minRows={3} label="Descrição" value={String(editDraft.description || "")} onChange={(e) => setEditDraft((d) => ({ ...d, description: e.target.value }))} /></Box>
+            <Box sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}><TextField fullWidth label="Categoria" value={String(editDraft.category || "")} onChange={(e) => setEditDraft((d) => ({ ...d, category: e.target.value }))} /></Box>
+            <Box sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}><TextField fullWidth label="Link afiliado" value={String(editDraft.affiliateUrl || "")} onChange={(e) => setEditDraft((d) => ({ ...d, affiliateUrl: e.target.value }))} /></Box>
+            <Box sx={{ gridColumn: "span 12" }}><TextField fullWidth label="URL do produto" value={String(editDraft.productUrl || "")} onChange={(e) => setEditDraft((d) => ({ ...d, productUrl: e.target.value }))} /></Box>
+            <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}><TextField fullWidth label="Preço antigo" value={String(editDraft.oldPrice ?? "")} onChange={(e) => setEditDraft((d) => ({ ...d, oldPrice: e.target.value as any }))} /></Box>
+            <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}><TextField fullWidth label="Preço atual" value={String(editDraft.currentPrice ?? "")} onChange={(e) => setEditDraft((d) => ({ ...d, currentPrice: e.target.value as any }))} /></Box>
+            <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}><TextField select fullWidth label="Status" value={editDraft.active === false ? "inactive" : "active"} onChange={(e) => setEditDraft((d) => ({ ...d, active: e.target.value === "active" }))}><MenuItem value="active">Ativo</MenuItem><MenuItem value="inactive">Inativo</MenuItem></TextField></Box>
+            <Box sx={{ gridColumn: "span 12" }}>
+              <Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1 }}>Imagem do produto</Typography>
+              <Button component="label" variant="outlined" disabled={uploadingImage}>{uploadingImage ? "Enviando..." : "Enviar nova imagem"}<input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => selectEditImage(e.target.files?.[0] || null)} /></Button>
+              {editDraft.imageUrl ? <Box component="img" src={String(editDraft.imageUrl)} alt="Prévia da oferta" sx={{ display: "block", mt: 1, width: 160, height: 160, objectFit: "contain", border: "1px solid", borderColor: "divider", borderRadius: 2 }} /> : <Typography sx={{ mt: 1, fontSize: 13, opacity: 0.7 }}>Sem imagem. O WhatsApp enviará apenas o texto.</Typography>}
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions><Button onClick={() => setEditingItem(null)} disabled={saving}>Cancelar</Button><Button variant="contained" onClick={() => saveCatalogItem()} disabled={saving || uploadingImage}>Salvar alterações</Button></DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(historyItem)} onClose={() => !historyLoading && setHistoryItem(null)} fullWidth maxWidth="md">
+        <DialogTitle>{historyItem ? `Historico de posts: ${historyItem.title}` : "Historico de posts"}</DialogTitle>
+        <DialogContent dividers>
+          {historyLoading ? <Typography>Carregando historico...</Typography> : null}
+          {!historyLoading && !historyPosts.length ? <Typography>Esse item ainda nao tem posts criados.</Typography> : null}
+          <Box sx={{ display: "grid", gap: 2 }}>
+            {historyPosts.map((post) => (
+              <Box key={post.id} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, p: 2, display: "grid", gap: 1.25 }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                  <Typography sx={{ fontWeight: 800 }}>{post.headline}</Typography>
+                  <Chip size="small" label={post.status} color={historyStatusColor(post.status)} />
+                </Box>
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                  <Chip size="small" variant="outlined" label={`Criado: ${post.createdAt ? new Date(post.createdAt).toLocaleString("pt-BR") : "-"}`} />
+                  <Chip size="small" variant="outlined" label={`Agendado: ${post.scheduledTo ? new Date(post.scheduledTo).toLocaleString("pt-BR") : "nao"}`} />
+                  <Chip size="small" variant="outlined" label={`Enviado: ${post.sentAt ? new Date(post.sentAt).toLocaleString("pt-BR") : "nao"}`} />
+                </Box>
+                <Typography sx={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{post.bodyText}</Typography>
+                <Typography sx={{ fontSize: 12, opacity: 0.72 }}>Link usado: {post.linkUrl}</Typography>
+                <Typography sx={{ fontSize: 12, opacity: 0.72 }}>Destino: {post.targetId || "nao definido"}</Typography>
+                {(post.mediaUrl || post.catalogItem.imageUrl) ? (
+                  <Box>
+                    <Typography sx={{ fontSize: 12, opacity: 0.72, mb: 0.5 }}>Imagem usada no envio</Typography>
+                    <Box component="img" src={post.mediaUrl || post.catalogItem.imageUrl || ""} alt="" sx={{ width: 140, height: 140, objectFit: "contain", borderRadius: 2, border: "1px solid", borderColor: "divider" }} />
+                  </Box>
+                ) : (
+                  <Typography sx={{ fontSize: 12, opacity: 0.72 }}>Esse post foi criado sem imagem.</Typography>
+                )}
+                {post.errorMessage ? <Alert severity="error">{post.errorMessage}</Alert> : null}
+              </Box>
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setHistoryItem(null)}>Fechar</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

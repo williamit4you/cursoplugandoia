@@ -16,13 +16,15 @@ export async function GET(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const status = normalizeText(req.nextUrl.searchParams.get("status") || "ALL");
+  const catalogItemId = normalizeText(req.nextUrl.searchParams.get("catalogItemId"));
   const where: any = {};
   if (status !== "ALL") where.status = status;
+  if (catalogItemId) where.catalogItemId = catalogItemId;
 
   const items = await prisma.whatsappPromoPost.findMany({
     where,
-    orderBy: [{ scheduledTo: "asc" }, { createdAt: "desc" }],
-    take: 300,
+    orderBy: [{ createdAt: "desc" }, { scheduledTo: "asc" }],
+    take: catalogItemId ? 50 : 300,
     include: {
       catalogItem: {
         select: {
