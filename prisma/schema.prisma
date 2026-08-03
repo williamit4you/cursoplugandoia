@@ -779,6 +779,15 @@ model CrmSettings {
   evolutionApiKey        String?
   evolutionInstanceName  String?
   evolutionWebhookSecret String?
+  offersCronEnabled      Boolean  @default(false)
+  offersGroupTargetId    String?
+  offersGroupLabel       String?
+  offersPublishIntervalMin Int    @default(60)
+  offersDailyStartHour   Int      @default(8)
+  offersDailyEndHour     Int      @default(22)
+  offersRequireApproval  Boolean  @default(true)
+  offersLastRunAt        DateTime?
+  offersNextRunAt        DateTime?
   openAiModel            String   @default("gpt-4o-mini")
   assistantEnabled       Boolean  @default(true)
   assistantScope         String   @default("Automação com n8n, agentes de IA, RAG, WhatsApp, Evolution API, integrações e implantação comercial.")
@@ -788,6 +797,63 @@ model CrmSettings {
   updatedAt              DateTime @updatedAt
 
   defaultAssignee        User?    @relation("CrmDefaultAssignee", fields: [defaultAssigneeUserId], references: [id])
+}
+
+model WhatsappPromoCatalogItem {
+  id                String   @id @default(cuid())
+  productCatalogId  String?
+  productCatalog    ProductCatalog? @relation(fields: [productCatalogId], references: [id], onDelete: SetNull)
+  sourceType        String   @default("MANUAL") // MANUAL | CSV_BATCH | SHOPEE_BATCH
+  sourceBatchKey    String?
+  sourceOfferName   String?
+  sourceOfferType   String?
+  sourceOfferPeriod String?
+  sourceUrl         String?
+  title             String
+  slug              String   @unique
+  description       String?
+  imageUrl          String?
+  category          String?
+  affiliateUrl      String
+  productUrl        String?
+  oldPrice          Float?
+  currentPrice      Float?
+  discountPercent   Int?
+  savingsAmount     Float?
+  active            Boolean  @default(true)
+  readyForPublish   Boolean  @default(false)
+  lastPriceCheckAt  DateTime?
+  lastPublishedAt   DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  posts             WhatsappPromoPost[]
+
+  @@index([active, readyForPublish, updatedAt])
+  @@index([sourceBatchKey])
+  @@index([productCatalogId])
+}
+
+model WhatsappPromoPost {
+  id              String   @id @default(cuid())
+  catalogItemId   String
+  catalogItem     WhatsappPromoCatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
+  status          String   @default("DRAFT") // DRAFT | APPROVED | SCHEDULED | SENT | FAILED | CANCELED
+  headline        String
+  bodyText        String
+  linkUrl         String
+  mediaUrl        String?
+  scheduledTo     DateTime?
+  sentAt          DateTime?
+  targetType      String   @default("GROUP") // GROUP
+  targetId        String?
+  deliveryPayload String   @default("{}")
+  errorMessage    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status, scheduledTo])
+  @@index([catalogItemId, createdAt])
 }
 
 model CrmContact {
@@ -1016,6 +1082,7 @@ model ProductCatalog {
   affiliateStore AffiliateStore? @relation(fields: [affiliateStoreId], references: [id], onDelete: SetNull)
   opportunities SeoOpportunity[]
   briefs        SeoBrief[]
+  whatsappPromoItems WhatsappPromoCatalogItem[]
 
   @@index([status, updatedAt])
   @@index([affiliateStoreId, status])

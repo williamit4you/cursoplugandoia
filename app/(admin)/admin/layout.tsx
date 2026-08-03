@@ -78,6 +78,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Coleta Shopee", icon: <StorefrontIcon />, path: "/admin/coleta-shopee" },
     { text: "Shopee Pipeline", icon: <StorefrontIcon />, path: "/admin/shopee-pipeline" },
     { text: "Bio Analytics", icon: <StorefrontIcon />, path: "/admin/bio-analytics" },
+    { text: "WhatsApp Promocoes", icon: <CampaignIcon className="text-green-600" />, path: "/admin/whatsapp-promocoes" },
     { text: "Texto para Video", icon: <VideoCameraBackIcon />, path: "/admin/texto-para-video" },
     { text: "Vídeos Longos", icon: <VideoCameraBackIcon className="text-red-600" />, path: "/admin/videos-longos" },
     { text: "Engajamento Shopee", icon: <VideoCameraBackIcon />, path: "/admin/engajamento-shopee" },
@@ -91,7 +92,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Agentes SEO", icon: <ArticleIcon className="text-emerald-600" />, path: "/admin/editorial-commerce" },
   ];
 
-  const growthPaths = new Set(["/admin/youtube-analytics", "/admin/bio-analytics", "/admin/sales-analytics", "/admin/compra-esperta", "/admin/editorial-commerce", "/admin/comparativos", "/admin/propagandas"]);
+  const growthPaths = new Set(["/admin/youtube-analytics", "/admin/bio-analytics", "/admin/whatsapp-promocoes", "/admin/sales-analytics", "/admin/compra-esperta", "/admin/editorial-commerce", "/admin/comparativos", "/admin/propagandas"]);
   const systemPaths = new Set(["/admin/integrations", "/admin/scraper-config", "/admin/video-questions-config", "/admin/tasks", "/admin/task-runs", "/admin/schedules"]);
   const menuGroups = [
     { label: "Operacao", items: menuItems.filter((item) => !growthPaths.has(item.path) && !systemPaths.has(item.path)) },

@@ -1,0 +1,283 @@
+import "server-only";
+
+import { prisma } from "@/lib/prisma";
+import { getCommerceSiteUrl } from "@/lib/siteUrls";
+import { getOrCreateCrmSettings } from "@/lib/crmSettings";
+
+export type PromoMessageTemplate = "discount" | "savings" | "daily" | "custom";
+
+export function normalizeText(value: unknown) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+export function slugify(value: string) {
+  return normalizeText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 90);
+}
+
+export async function ensureUniqueWhatsappPromoSlug(base: string, excludeId?: string | null) {
+  const raw = slugify(base) || "promocao-whatsapp";
+  let candidate = raw;
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const existing = await prisma.whatsappPromoCatalogItem.findUnique({ where: { slug: candidate }, select: { id: true } });
+    if (!existing || existing.id === excludeId) return candidate;
+    candidate = `${raw}-${attempt + 2}`;
+  }
+  return `${raw}-${Date.now()}`;
+}
+
+export function parsePrice(value: unknown) {
+  const raw = normalizeText(value);
+  if (!raw) return null;
+  const sanitized = raw.replace(/[^\d,.-]/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".");
+  const parsed = Number(sanitized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function formatPrice(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return null;
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+export function computePromoFields(oldPrice: number | null, currentPrice: number | null) {
+  if (oldPrice == null || currentPrice == null || oldPrice <= 0 || currentPrice <= 0 || oldPrice <= currentPrice) {
+    return { discountPercent: null as number | null, savingsAmount: null as number | null };
+  }
+  const savingsAmount = Number((oldPrice - currentPrice).toFixed(2));
+  const discountPercent = Math.max(1, Math.round(((oldPrice - currentPrice) / oldPrice) * 100));
+  return { discountPercent, savingsAmount };
+}
+
+export function buildPromoHeadline(title: string, discountPercent: number | null) {
+  if (discountPercent && discountPercent >= 20) return `${discountPercent}% OFF em ${title}`;
+  if (discountPercent && discountPercent >= 10) return `Oferta de hoje: ${title}`;
+  return `Achado no WhatsApp: ${title}`;
+}
+
+export function buildPromoBody(params: {
+  title: string;
+  oldPrice?: number | null;
+  currentPrice?: number | null;
+  discountPercent?: number | null;
+  savingsAmount?: number | null;
+  linkUrl: string;
+  template?: PromoMessageTemplate;
+}) {
+  const title = normalizeText(params.title);
+  const oldPrice = formatPrice(params.oldPrice ?? null);
+  const currentPrice = formatPrice(params.currentPrice ?? null);
+  const savings = formatPrice(params.savingsAmount ?? null);
+  const discountPercent = params.discountPercent ?? null;
+  const template = params.template || "discount";
+
+  if (template === "savings" && oldPrice && currentPrice && savings) {
+    return `💸 ECONOMIZE\n\n${title}\n\nAntes: ${oldPrice}\nAgora: ${currentPrice}\nVoce economiza ${savings}\n\n👉 Ver oferta:\n${params.linkUrl}`;
+  }
+  if (template === "daily") {
+    return `✨ ACHADO DO DIA\n\n${title}\n\nOferta selecionada para o grupo de promocoes de hoje.\n\n👉 Conferir:\n${params.linkUrl}`;
+  }
+  if (oldPrice && currentPrice && discountPercent) {
+    return `🔥 OFERTA\n\n${title}\n\nDe ${oldPrice} por ${currentPrice}\nDesconto de ${discountPercent}% OFF\n\n👉 Ver oferta:\n${params.linkUrl}`;
+  }
+  if (currentPrice) {
+    return `🔥 OFERTA\n\n${title}\n\nPreco atual: ${currentPrice}\n\n👉 Ver oferta:\n${params.linkUrl}`;
+  }
+  return `🔥 OFERTA\n\n${title}\n\n👉 Ver oferta:\n${params.linkUrl}`;
+}
+
+export function buildPromoLink(params: { slug?: string | null; affiliateUrl: string; destination?: string | null }) {
+  const destination = normalizeText(params.destination || "BIO_PRODUCT");
+  if (destination === "DIRECT_AFFILIATE") return params.affiliateUrl;
+  if (params.slug) return `${getCommerceSiteUrl()}/bio/${params.slug}`;
+  return `${getCommerceSiteUrl()}/ofertas`;
+}
+
+export function isCatalogItemReady(item: {
+  imageUrl?: string | null;
+  category?: string | null;
+  affiliateUrl?: string | null;
+  currentPrice?: number | null;
+  active?: boolean | null;
+}) {
+  return Boolean(item.active !== false && normalizeText(item.imageUrl) && normalizeText(item.category) && normalizeText(item.affiliateUrl) && item.currentPrice != null);
+}
+
+export function parseCsvRows(content: string) {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < content.length; i += 1) {
+    const char = content[i];
+    const next = content[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      row.push(current);
+      current = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") i += 1;
+      row.push(current);
+      if (row.some((item) => normalizeText(item))) rows.push(row);
+      row = [];
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  row.push(current);
+  if (row.some((item) => normalizeText(item))) rows.push(row);
+  return rows;
+}
+
+export function parseCsvObjects(content: string) {
+  const rows = parseCsvRows(content);
+  if (rows.length === 0) return [];
+  const headers = rows[0].map((item) => normalizeText(item));
+  return rows.slice(1).map((row) =>
+    Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])),
+  );
+}
+
+export async function sendWhatsappPromoMessage(params: {
+  targetId: string;
+  messageText: string;
+  mediaUrl?: string | null;
+}) {
+  const settings = await getOrCreateCrmSettings();
+  if (!settings.evolutionEnabled) {
+    throw new Error("Evolution API desativada nas configuracoes.");
+  }
+  const baseUrl = normalizeText(settings.evolutionBaseUrl);
+  const apiKey = normalizeText(settings.evolutionApiKey);
+  const instance = normalizeText(settings.evolutionInstanceName);
+  if (!baseUrl || !apiKey || !instance) {
+    throw new Error("Configuracao da Evolution API incompleta.");
+  }
+  if (!normalizeText(params.targetId)) {
+    throw new Error("Grupo/alvo do WhatsApp nao configurado.");
+  }
+
+  const endpoint = params.mediaUrl
+    ? `${baseUrl.replace(/\/+$/, "")}/message/sendMedia/${encodeURIComponent(instance)}`
+    : `${baseUrl.replace(/\/+$/, "")}/message/sendText/${encodeURIComponent(instance)}`;
+
+  const body = params.mediaUrl
+    ? {
+        number: params.targetId,
+        groupJid: params.targetId,
+        mediatype: "image",
+        media: params.mediaUrl,
+        caption: params.messageText,
+      }
+    : {
+        number: params.targetId,
+        groupJid: params.targetId,
+        text: params.messageText,
+      };
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: apiKey,
+    },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.message || data?.error || `Falha ao enviar mensagem (${res.status})`);
+  }
+  return data;
+}
+
+export async function runWhatsappPromoCron() {
+  const settings = await getOrCreateCrmSettings();
+  if (!settings.offersCronEnabled) {
+    return { ok: true, skipped: true, reason: "WhatsApp promo cron disabled" };
+  }
+
+  const now = new Date();
+  const currentHour = now.getHours();
+  if (currentHour < settings.offersDailyStartHour || currentHour > settings.offersDailyEndHour) {
+    return { ok: true, skipped: true, reason: "Outside daily publication window" };
+  }
+
+  const dueAt = settings.offersNextRunAt || settings.offersLastRunAt;
+  if (dueAt && settings.offersNextRunAt && settings.offersNextRunAt > now) {
+    return { ok: true, skipped: true, reason: "Next cron run not due", nextRunAt: settings.offersNextRunAt };
+  }
+
+  const post = await prisma.whatsappPromoPost.findFirst({
+    where: {
+      status: "SCHEDULED",
+      scheduledTo: { lte: now },
+    },
+    orderBy: [{ scheduledTo: "asc" }, { createdAt: "asc" }],
+    include: { catalogItem: true },
+  });
+
+  const nextRunAt = new Date(now.getTime() + Math.max(5, Number(settings.offersPublishIntervalMin || 60)) * 60 * 1000);
+  await prisma.crmSettings.update({
+    where: { id: settings.id },
+    data: { offersLastRunAt: now, offersNextRunAt: nextRunAt },
+  });
+
+  if (!post) {
+    return { ok: true, skipped: true, reason: "No scheduled WhatsApp promo due", nextRunAt };
+  }
+
+  try {
+    const delivery = await sendWhatsappPromoMessage({
+      targetId: normalizeText(post.targetId || settings.offersGroupTargetId),
+      messageText: post.bodyText,
+      mediaUrl: post.mediaUrl,
+    });
+    await prisma.$transaction([
+      prisma.whatsappPromoPost.update({
+        where: { id: post.id },
+        data: {
+          status: "SENT",
+          sentAt: now,
+          errorMessage: null,
+          deliveryPayload: JSON.stringify(delivery || {}),
+        },
+      }),
+      prisma.whatsappPromoCatalogItem.update({
+        where: { id: post.catalogItemId },
+        data: { lastPublishedAt: now },
+      }),
+    ]);
+    return { ok: true, sent: true, postId: post.id, nextRunAt };
+  } catch (error: any) {
+    await prisma.whatsappPromoPost.update({
+      where: { id: post.id },
+      data: {
+        status: "FAILED",
+        errorMessage: error?.message || "Falha ao enviar promocao",
+      },
+    });
+    return { ok: false, sent: false, postId: post.id, error: error?.message || "Falha ao enviar promocao", nextRunAt };
+  }
+}

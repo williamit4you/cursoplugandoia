@@ -68,6 +68,8 @@ export async function GET(req: NextRequest) {
       ? { ok: true, status: 200, data: { skipped: true, owner: "internal_scheduler" } }
       : await callJson(`${origin}/api/commerce-editorial/cron${encodedSecret}`);
 
+    const whatsappPromos = await callJson(`${origin}/api/whatsapp-promos/cron${encodedSecret}`);
+
     const allOk =
       taskRuns.ok &&
       mercadoLivre.ok &&
@@ -77,7 +79,8 @@ export async function GET(req: NextRequest) {
       engajamentoPipeline.ok &&
       engajamentoPublisher.ok &&
       videoQuestions.ok &&
-      commerceEditorial.ok;
+      commerceEditorial.ok &&
+      whatsappPromos.ok;
 
     console.log("[api/automation/cron] Results:", {
       taskRuns: { ok: taskRuns.ok, status: taskRuns.status },
@@ -89,6 +92,7 @@ export async function GET(req: NextRequest) {
       engajamentoPublisher: { ok: engajamentoPublisher.ok, status: engajamentoPublisher.status },
       videoQuestions: { ok: videoQuestions.ok, status: videoQuestions.status },
       commerceEditorial: { ok: commerceEditorial.ok, status: commerceEditorial.status },
+      whatsappPromos: { ok: whatsappPromos.ok, status: whatsappPromos.status },
     });
 
     return NextResponse.json({
@@ -102,6 +106,7 @@ export async function GET(req: NextRequest) {
       engajamentoPublisher,
       videoQuestions,
       commerceEditorial,
+      whatsappPromos,
     });
   } catch (error: any) {
     console.error("[api/automation/cron GET]", error);
