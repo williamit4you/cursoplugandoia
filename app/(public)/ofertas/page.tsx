@@ -152,6 +152,14 @@ export default async function OffersPage({
             <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
               Lojas, guias de produtos, achados da Shopee e caminhos diretos para você comparar com calma — tudo organizado em um só lugar.
             </p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <a href="#achados-shopee" className="rounded-2xl bg-orange-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-orange-200">
+                Ver produtos da Shopee
+              </a>
+              <a href="#lojas-parceiras" className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-slate-200 transition hover:bg-white/[0.07]">
+                Explorar lojas
+              </a>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -179,7 +187,55 @@ export default async function OffersPage({
         </div>
       </section>
 
-      <section className="relative mx-auto max-w-7xl px-5 py-10 sm:px-8">
+      <section id="achados-shopee" className="relative border-y border-white/10 bg-white/[0.025]">
+        <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8">
+          <div className="flex items-end justify-between gap-6">
+            <div>
+              <div className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">Achados recentes</div>
+              <h2 className="mt-2 text-3xl font-black tracking-tight text-white">SeleÃ§Ã£o da Shopee</h2>
+              <p className="mt-2 text-sm text-slate-400">Os produtos da Shopee aparecem primeiro para quem chega da bio e quer encontrar o item mais rÃ¡pido.</p>
+            </div>
+            <div className="hidden rounded-full border border-orange-300/20 bg-orange-300/10 px-4 py-2 text-xs font-black text-orange-200 sm:block">Shopee</div>
+          </div>
+
+          {products.length ? (
+            <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {products.map((product) => (
+                <article key={product.id} className="group overflow-hidden rounded-3xl border border-white/10 bg-[#0c1916] p-3 transition hover:-translate-y-1 hover:border-white/20">
+                  {product.imageUrl ? (
+                    <BioProductLink slug={product.slug} href={product.affiliateUrl} className="block w-full overflow-hidden rounded-2xl bg-white/5 text-left">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={product.imageUrl} alt={product.title} className="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-[1.04]" loading="lazy" />
+                    </BioProductLink>
+                  ) : (
+                    <div className="grid aspect-[4/3] place-items-center rounded-2xl border border-dashed border-orange-300/20 bg-gradient-to-br from-orange-300/15 to-emerald-300/10">
+                      <div className="text-center">
+                        <ShoppingBag className="mx-auto h-8 w-8 text-white/40" />
+                        <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/45">Imagem em atualizaÃ§Ã£o</div>
+                      </div>
+                    </div>
+                  )}
+                  <div className="px-2 pb-2 pt-4">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-200">{product.category?.name || "Achado Shopee"}</div>
+                    <h3 className="mt-2 line-clamp-2 min-h-[48px] text-base font-black leading-6 text-white">{product.title}</h3>
+                    <p className="mt-2 line-clamp-2 min-h-[40px] text-xs leading-5 text-slate-400">{product.description}</p>
+                    <div className="mt-4 grid grid-cols-[auto_1fr] gap-2">
+                      <Link href={`/bio/${product.slug}`} className="rounded-xl border border-white/10 px-3 py-3 text-center text-xs font-bold text-slate-200 hover:bg-white/5">Detalhes</Link>
+                      <BioProductLink slug={product.slug} href={product.affiliateUrl} className="rounded-xl bg-orange-300 px-3 py-3 text-center text-xs font-black text-slate-950 transition hover:bg-orange-200">Ver na Shopee</BioProductLink>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-7 rounded-3xl border border-white/10 bg-white/[0.035] p-8 text-center text-sm text-slate-400">
+              {q ? "Nenhum produto da Shopee corresponde Ã  sua busca." : "Os prÃ³ximos achados aparecerÃ£o aqui automaticamente."}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section id="lojas-parceiras" className="relative mx-auto max-w-7xl px-5 py-10 sm:px-8">
         <div>
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-amber-200">Escolha por loja</div>
           <h2 className="mt-2 text-3xl font-black tracking-tight text-white">Lojas que valem conhecer</h2>
@@ -219,7 +275,7 @@ export default async function OffersPage({
         ) : <EmptySearch />}
       </section>
 
-      <section id="achados-shopee" className="relative border-y border-white/10 bg-white/[0.025]">
+      <section hidden aria-hidden="true" className="hidden">
         <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8">
           <div className="flex items-end justify-between gap-6">
             <div>

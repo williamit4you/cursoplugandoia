@@ -31,6 +31,8 @@ export default function BioAnalyticsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [active, setActive] = useState("true");
+  const [draftImageUrls, setDraftImageUrls] = useState<Record<string, string>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -41,10 +43,59 @@ export default function BioAnalyticsPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Falha ao carregar");
       setItems(data.items || []);
+      setDraftImageUrls(
+        Object.fromEntries((data.items || []).map((item: BioAnalyticsItem) => [item.id, item.imageUrl || ""])),
+      );
     } catch (error: any) {
       setMessage(error?.message || "Falha ao carregar");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveImageUrl = async (id: string) => {
+    setSavingId(id);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/bio/admin/analytics?id=${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: draftImageUrls[id] || "" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Falha ao salvar imagem");
+      setItems((current) =>
+        current.map((item) => (item.id === id ? { ...item, imageUrl: data.item?.imageUrl || null, updatedAt: data.item?.updatedAt || item.updatedAt } : item)),
+      );
+      setDraftImageUrls((current) => ({ ...current, [id]: data.item?.imageUrl || "" }));
+    } catch (error: any) {
+      setMessage(error?.message || "Falha ao salvar imagem");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const uploadImageFile = async (id: string, file: File | null) => {
+    if (!file) return;
+    setSavingId(id);
+    setMessage(null);
+    try {
+      const formData = new FormData();
+      formData.set("image", file);
+      const res = await fetch(`/api/bio/admin/analytics?id=${encodeURIComponent(id)}`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Falha ao enviar imagem");
+      setItems((current) =>
+        current.map((item) => (item.id === id ? { ...item, imageUrl: data.item?.imageUrl || null, updatedAt: data.item?.updatedAt || item.updatedAt } : item)),
+      );
+      setDraftImageUrls((current) => ({ ...current, [id]: data.item?.imageUrl || "" }));
+    } catch (error: any) {
+      setMessage(error?.message || "Falha ao enviar imagem");
+    } finally {
+      setSavingId(null);
     }
   };
 
@@ -114,7 +165,7 @@ export default function BioAnalyticsPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "rgba(255,255,255,0.04)" }}>
-                {["Produto", "Ativo", "Cliques (7d/30d/Total)", "Links"].map((label) => (
+                {["Produto", "Imagem", "Ativo", "Cliques (7d/30d/Total)", "Links"].map((label) => (
                   <th key={label} style={{ textAlign: "left", padding: 16, fontSize: 12 }}>
                     {label}
                   </th>
@@ -124,9 +175,77 @@ export default function BioAnalyticsPage() {
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                  <td style={{ padding: 16, maxWidth: 620 }}>
+                  <td style={{ padding: 16, minWidth: 360, maxWidth: 620 }}>
                     <div style={{ fontWeight: 900 }}>{item.title}</div>
                     <div style={{ opacity: 0.7, fontSize: 12, marginTop: 4, fontFamily: "monospace" }}>{item.slug}</div>
+                  </td>
+                  <td style={{ padding: 16, minWidth: 280 }}>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <div
+                        style={{
+                          width: 112,
+                          height: 112,
+                          borderRadius: 16,
+                          overflow: "hidden",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          background: "rgba(255,255,255,0.04)",
+                          display: "grid",
+                          placeItems: "center",
+                          color: "rgba(255,255,255,0.5)",
+                          fontSize: 11,
+                          textAlign: "center",
+                          padding: 8,
+                        }}
+                      >
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          <span>Sem imagem</span>
+                        )}
+                      </div>
+                      <TextField
+                        size="small"
+                        fullWidth
+                        label="URL da imagem"
+                        value={draftImageUrls[item.id] || ""}
+                        onChange={(e) => setDraftImageUrls((current) => ({ ...current, [item.id]: e.target.value }))}
+                        placeholder="https://..."
+                      />
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                        <button
+                          onClick={() => saveImageUrl(item.id)}
+                          disabled={savingId === item.id}
+                          style={{ padding: "8px 12px", borderRadius: 10, fontWeight: 800, background: "#111827", color: "white" }}
+                        >
+                          Salvar URL
+                        </button>
+                        <label
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "8px 12px",
+                            borderRadius: 10,
+                            fontWeight: 800,
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            cursor: savingId === item.id ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          Subir foto
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={savingId === item.id}
+                            style={{ display: "none" }}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              void uploadImageFile(item.id, file);
+                              e.currentTarget.value = "";
+                            }}
+                          />
+                        </label>
+                      </div>
+                    </div>
                   </td>
                   <td style={{ padding: 16 }}>
                     <Chip label={item.active ? "ATIVO" : "INATIVO"} size="small" color={item.active ? "success" : "default"} />
@@ -158,7 +277,7 @@ export default function BioAnalyticsPage() {
 
               {!loading && items.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ padding: 24, textAlign: "center", opacity: 0.7 }}>
+                  <td colSpan={5} style={{ padding: 24, textAlign: "center", opacity: 0.7 }}>
                     Nenhum item encontrado.
                   </td>
                 </tr>
@@ -170,4 +289,3 @@ export default function BioAnalyticsPage() {
     </Box>
   );
 }
-
