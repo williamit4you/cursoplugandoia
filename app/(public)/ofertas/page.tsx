@@ -40,6 +40,12 @@ function initials(value: string) {
     .join("");
 }
 
+function truncateText(value: string, maxLength: number) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+}
+
 function offersUrl(params: { q?: string; category?: string; view?: string }) {
   const query = new URLSearchParams();
   if (params.q) query.set("q", params.q);
@@ -196,7 +202,10 @@ export default async function OffersPage({
             <>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {products.map((product) => (
-                  <article key={product.id} className="overflow-hidden rounded-[24px] border border-[#f3d7e4] bg-white p-2.5 shadow-[0_16px_35px_rgba(255,112,164,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_45px_rgba(255,112,164,0.14)]">
+                  <article
+                    key={product.id}
+                    className="flex h-full flex-col overflow-hidden rounded-[24px] border border-[#f3d7e4] bg-white p-2.5 shadow-[0_16px_35px_rgba(255,112,164,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_45px_rgba(255,112,164,0.14)]"
+                  >
                     {product.imageUrl ? (
                       <BioProductLink slug={product.slug} href={product.affiliateUrl} className="block overflow-hidden rounded-2xl bg-[#fff6f9]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -213,17 +222,18 @@ export default async function OffersPage({
                       </div>
                     )}
 
-                    <div className="px-1 pb-1 pt-3">
+                    <div className="flex flex-1 flex-col px-1 pb-1 pt-3">
                       <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#ff4f95]">
                         {product.category?.name || "Achado Shopee"}
                       </div>
                       <h2 className="mt-1.5 line-clamp-2 min-h-[40px] text-[13px] font-black leading-5 text-[#2d1830] sm:text-sm">
                         {product.title}
                       </h2>
-                      <p className="mt-1 hidden line-clamp-2 min-h-[32px] text-[11px] leading-4 text-[#8b6074] sm:block">
-                        {product.description}
+                      <p className="mt-1 hidden min-h-[32px] text-[11px] leading-4 text-[#8b6074] sm:block">
+                        {truncateText(product.description || "", 120)}
                       </p>
-                      <div className="mt-3 grid grid-cols-[auto_1fr] gap-2">
+                      <div className="mt-auto pt-3">
+                        <div className="grid grid-cols-[auto_1fr] gap-2">
                         <Link
                           href={`/bio/${product.slug}`}
                           className="rounded-xl border border-[#f1d2df] px-2.5 py-2 text-center text-[11px] font-bold text-[#8d3a63] transition hover:bg-[#fff4f8] sm:px-3"
@@ -237,6 +247,7 @@ export default async function OffersPage({
                         >
                           Ver na Shopee
                         </BioProductLink>
+                        </div>
                       </div>
                     </div>
                   </article>

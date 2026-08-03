@@ -3,6 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Box, Chip, MenuItem, Paper, TextField, Typography } from "@mui/material";
 
+type BioCategoryOption = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+type BioArticleLink = {
+  briefId: string;
+  angle: string;
+  briefTitle: string;
+  postTitle: string | null;
+  publicUrl: string | null;
+};
+
 type BioAnalyticsItem = {
   id: string;
   slug: string;
@@ -11,6 +25,8 @@ type BioAnalyticsItem = {
   imageUrl: string | null;
   videoUrl: string | null;
   affiliateUrl: string;
+  categoryId: string | null;
+  category: BioCategoryOption | null;
   active: boolean;
   publishedAt: string | null;
   createdAt: string;
@@ -18,6 +34,10 @@ type BioAnalyticsItem = {
   clicksTotal: number;
   clicks7d: number;
   clicks30d: number;
+  seoReady: boolean;
+  seoIssues: string[];
+  articleCount: number;
+  articleLinks: BioArticleLink[];
 };
 
 function baseUrl() {
@@ -25,13 +45,23 @@ function baseUrl() {
   return window.location.origin;
 }
 
+function angleLabel(value: string) {
+  if (value === "PAIN") return "Dor";
+  if (value === "PRODUCT") return "Produto";
+  if (value === "SALES") return "Oferta";
+  return value;
+}
+
 export default function BioAnalyticsPage() {
   const [items, setItems] = useState<BioAnalyticsItem[]>([]);
+  const [categories, setCategories] = useState<BioCategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [active, setActive] = useState("true");
   const [draftImageUrls, setDraftImageUrls] = useState<Record<string, string>>({});
+  const [draftCategoryIds, setDraftCategoryIds] = useState<Record<string, string>>({});
+  const [draftActive, setDraftActive] = useState<Record<string, boolean>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const load = async () => {
@@ -43,9 +73,10 @@ export default function BioAnalyticsPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Falha ao carregar");
       setItems(data.items || []);
-      setDraftImageUrls(
-        Object.fromEntries((data.items || []).map((item: BioAnalyticsItem) => [item.id, item.imageUrl || ""])),
-      );
+      setCategories(data.categories || []);
+      setDraftImageUrls(Object.fromEntries((data.items || []).map((item: BioAnalyticsItem) => [item.id, item.imageUrl || ""])));
+      setDraftCategoryIds(Object.fromEntries((data.items || []).map((item: BioAnalyticsItem) => [item.id, item.categoryId || ""])));
+      setDraftActive(Object.fromEntries((data.items || []).map((item: BioAnalyticsItem) => [item.id, Boolean(item.active)])));
     } catch (error: any) {
       setMessage(error?.message || "Falha ao carregar");
     } finally {
@@ -65,11 +96,35 @@ export default function BioAnalyticsPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Falha ao salvar imagem");
       setItems((current) =>
-        current.map((item) => (item.id === id ? { ...item, imageUrl: data.item?.imageUrl || null, updatedAt: data.item?.updatedAt || item.updatedAt } : item)),
+        current.map((item) =>
+          item.id === id ? { ...item, imageUrl: data.item?.imageUrl || null, updatedAt: data.item?.updatedAt || item.updatedAt } : item,
+        ),
       );
       setDraftImageUrls((current) => ({ ...current, [id]: data.item?.imageUrl || "" }));
     } catch (error: any) {
       setMessage(error?.message || "Falha ao salvar imagem");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const saveSeoSettings = async (id: string) => {
+    setSavingId(id);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/bio/admin/analytics?id=${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categoryId: draftCategoryIds[id] || null,
+          active: Boolean(draftActive[id]),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Falha ao salvar configuracoes SEO");
+      await load();
+    } catch (error: any) {
+      setMessage(error?.message || "Falha ao salvar configuracoes SEO");
     } finally {
       setSavingId(null);
     }
@@ -89,7 +144,9 @@ export default function BioAnalyticsPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Falha ao enviar imagem");
       setItems((current) =>
-        current.map((item) => (item.id === id ? { ...item, imageUrl: data.item?.imageUrl || null, updatedAt: data.item?.updatedAt || item.updatedAt } : item)),
+        current.map((item) =>
+          item.id === id ? { ...item, imageUrl: data.item?.imageUrl || null, updatedAt: data.item?.updatedAt || item.updatedAt } : item,
+        ),
       );
       setDraftImageUrls((current) => ({ ...current, [id]: data.item?.imageUrl || "" }));
     } catch (error: any) {
@@ -118,7 +175,7 @@ export default function BioAnalyticsPage() {
           Bio Analytics
         </Typography>
         <Typography sx={{ opacity: 0.8, mt: 1 }}>
-          Cliques nos produtos da vitrine pública (`/bio`).
+          Cliques, prontidao SEO e qualidade operacional dos produtos da vitrine publica.
         </Typography>
       </Box>
 
@@ -132,7 +189,7 @@ export default function BioAnalyticsPage() {
               label="Buscar"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Título, slug, descrição..."
+              placeholder="Titulo, slug, descricao..."
             />
           </Box>
           <Box sx={{ gridColumn: { xs: "span 12", md: "span 5" } }}>
@@ -165,7 +222,7 @@ export default function BioAnalyticsPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "rgba(255,255,255,0.04)" }}>
-                {["Produto", "Imagem", "Ativo", "Cliques (7d/30d/Total)", "Links"].map((label) => (
+                {["Produto", "Imagem", "SEO", "Cliques (7d/30d/Total)", "Links"].map((label) => (
                   <th key={label} style={{ textAlign: "left", padding: 16, fontSize: 12 }}>
                     {label}
                   </th>
@@ -178,6 +235,12 @@ export default function BioAnalyticsPage() {
                   <td style={{ padding: 16, minWidth: 360, maxWidth: 620 }}>
                     <div style={{ fontWeight: 900 }}>{item.title}</div>
                     <div style={{ opacity: 0.7, fontSize: 12, marginTop: 4, fontFamily: "monospace" }}>{item.slug}</div>
+                    <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <Chip size="small" label={item.category?.name || "Sem categoria"} variant={item.category ? "filled" : "outlined"} />
+                      <Chip size="small" label={item.active ? "ATIVO" : "INATIVO"} color={item.active ? "success" : "default"} />
+                      <Chip size="small" label={item.seoReady ? "SEO pronto" : "SEO pendente"} color={item.seoReady ? "success" : "warning"} />
+                      <Chip size="small" label={`Artigos: ${item.articleCount}`} />
+                    </div>
                   </td>
                   <td style={{ padding: 16, minWidth: 280 }}>
                     <div style={{ display: "grid", gap: 10 }}>
@@ -247,8 +310,48 @@ export default function BioAnalyticsPage() {
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: 16 }}>
-                    <Chip label={item.active ? "ATIVO" : "INATIVO"} size="small" color={item.active ? "success" : "default"} />
+                  <td style={{ padding: 16, minWidth: 260 }}>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <TextField
+                        select
+                        size="small"
+                        fullWidth
+                        label="Categoria"
+                        value={draftCategoryIds[item.id] || ""}
+                        onChange={(e) => setDraftCategoryIds((current) => ({ ...current, [item.id]: e.target.value }))}
+                      >
+                        <MenuItem value="">Sem categoria</MenuItem>
+                        {categories.map((category) => (
+                          <MenuItem key={category.id} value={category.id}>
+                            {category.name}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <TextField
+                        select
+                        size="small"
+                        fullWidth
+                        label="Status"
+                        value={draftActive[item.id] ? "true" : "false"}
+                        onChange={(e) => setDraftActive((current) => ({ ...current, [item.id]: e.target.value === "true" }))}
+                      >
+                        <MenuItem value="true">Ativo</MenuItem>
+                        <MenuItem value="false">Inativo</MenuItem>
+                      </TextField>
+                      <button
+                        onClick={() => saveSeoSettings(item.id)}
+                        disabled={savingId === item.id}
+                        style={{ padding: "8px 12px", borderRadius: 10, fontWeight: 800, background: "#111827", color: "white" }}
+                      >
+                        Salvar SEO
+                      </button>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {(item.seoIssues || []).map((issue) => (
+                          <Chip key={issue} size="small" label={issue} color="warning" variant="outlined" />
+                        ))}
+                        {item.seoIssues.length === 0 ? <Chip size="small" label="Base minima ok" color="success" variant="outlined" /> : null}
+                      </div>
+                    </div>
                   </td>
                   <td style={{ padding: 16 }}>
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -257,7 +360,7 @@ export default function BioAnalyticsPage() {
                       <Chip size="small" label={`Total: ${item.clicksTotal}`} />
                     </div>
                   </td>
-                  <td style={{ padding: 16, minWidth: 360 }}>
+                  <td style={{ padding: 16, minWidth: 420 }}>
                     <div style={{ display: "grid", gap: 8 }}>
                       <a
                         href={`${baseUrl()}/bio/${encodeURIComponent(item.slug)}`}
@@ -265,11 +368,18 @@ export default function BioAnalyticsPage() {
                         rel="noreferrer"
                         style={{ fontWeight: 900 }}
                       >
-                        Abrir página /bio
+                        Abrir pagina /bio
                       </a>
                       <a href={item.affiliateUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, opacity: 0.8 }}>
                         Abrir link afiliado
                       </a>
+                      {(item.articleLinks || []).slice(0, 3).map((article) =>
+                        article.publicUrl ? (
+                          <a key={article.briefId} href={article.publicUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, opacity: 0.8 }}>
+                            Artigo {angleLabel(article.angle)}: {article.postTitle || article.briefTitle}
+                          </a>
+                        ) : null,
+                      )}
                     </div>
                   </td>
                 </tr>

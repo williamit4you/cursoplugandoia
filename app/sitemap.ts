@@ -12,6 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = commerceRequest
     ? [
         { url: siteUrl, changeFrequency: "daily", priority: 1 },
+        { url: `${siteUrl}/ofertas`, changeFrequency: "daily", priority: 0.95 },
         { url: `${siteUrl}/lojas`, changeFrequency: "weekly", priority: 0.9 },
         { url: `${siteUrl}/comparativo`, changeFrequency: "weekly", priority: 0.8 },
       ]
@@ -40,7 +41,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ];
     }
 
-    const [stores, comparisons, editorialArticles] = await Promise.all([
+    const [stores, comparisons, editorialArticles, bioCategories, bioProducts] = await Promise.all([
       prisma.affiliateStore.findMany({
         where: { status: "ACTIVE" },
         select: { slug: true, updatedAt: true },
@@ -66,10 +67,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
         orderBy: { publishedAt: "desc" },
       }),
+      prisma.bioCategory.findMany({
+        where: { active: true, products: { some: { active: true } } },
+        select: { slug: true, updatedAt: true },
+        orderBy: { updatedAt: "desc" },
+      }),
+      prisma.bioProduct.findMany({
+        where: { active: true },
+        select: { slug: true, updatedAt: true },
+        orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+      }),
     ]);
 
     return [
       ...staticPages,
+      ...bioCategories.map((category) => ({
+        url: `${siteUrl}/bio/categoria/${category.slug}`,
+        lastModified: category.updatedAt,
+        changeFrequency: "weekly" as const,
+        priority: 0.72,
+      })),
+      ...bioProducts.map((product) => ({
+        url: `${siteUrl}/bio/${product.slug}`,
+        lastModified: product.updatedAt,
+        changeFrequency: "weekly" as const,
+        priority: 0.78,
+      })),
       ...stores.map((store) => ({
         url: `${siteUrl}/lojas/${store.slug}`,
         lastModified: store.updatedAt,

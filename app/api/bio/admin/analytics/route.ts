@@ -3,6 +3,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
 import s3Client from "@/lib/s3";
 import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
+import { getShopeeContentArticles } from "@/lib/shopee-pipeline/contentArticles";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const [products, totalClicks, clicks7d, clicks30d] = await Promise.all([
+    const [products, categories, totalClicks, clicks7d, clicks30d] = await Promise.all([
       prisma.bioProduct.findMany({
         where,
         orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
@@ -49,11 +50,21 @@ export async function GET(req: NextRequest) {
           imageUrl: true,
           videoUrl: true,
           affiliateUrl: true,
+          categoryId: true,
+          category: {
+            select: { id: true, name: true, slug: true },
+          },
           active: true,
           publishedAt: true,
           createdAt: true,
           updatedAt: true,
+          coletaId: true,
         },
+      }),
+      prisma.bioCategory.findMany({
+        where: { active: true },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: { id: true, name: true, slug: true },
       }),
       prisma.bioClick.groupBy({
         by: ["bioProductId"],
@@ -75,14 +86,33 @@ export async function GET(req: NextRequest) {
     const c7ById = new Map(clicks7d.map((row) => [row.bioProductId, row._count._all]));
     const c30ById = new Map(clicks30d.map((row) => [row.bioProductId, row._count._all]));
 
-    const items = products.map((p) => ({
+    const relatedArticles = await Promise.all(
+      products.map(async (product) => ({
+        coletaId: product.coletaId,
+        articles: await getShopeeContentArticles(product.coletaId).catch(() => []),
+      })),
+    );
+    const articlesByColetaId = new Map(relatedArticles.map((entry) => [entry.coletaId, entry.articles]));
+
+    const items = products.map((p) => {
+      const articleItems = articlesByColetaId.get(p.coletaId) || [];
+      const seoReady = Boolean(p.imageUrl && p.categoryId && p.active);
+      return ({
       ...p,
       clicksTotal: totalById.get(p.id) || 0,
       clicks7d: c7ById.get(p.id) || 0,
       clicks30d: c30ById.get(p.id) || 0,
-    }));
+      seoReady,
+      seoIssues: [
+        !p.imageUrl ? "Sem imagem" : null,
+        !p.categoryId ? "Sem categoria" : null,
+        !p.description ? "Sem descricao" : null,
+      ].filter(Boolean),
+      articleCount: articleItems.length,
+      articleLinks: articleItems,
+    })});
 
-    return NextResponse.json({ items });
+    return NextResponse.json({ items, categories });
   } catch (error: any) {
     console.error("[api/bio/admin/analytics GET]", error);
     return NextResponse.json({ error: error?.message || "Falha ao carregar analytics da bio" }, { status: 500 });
@@ -99,13 +129,49 @@ export async function PATCH(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const imageUrl = body?.imageUrl == null ? undefined : normalize(body.imageUrl) || null;
+    const categoryId = body?.categoryId == null ? undefined : normalize(body.categoryId) || null;
+    const active = typeof body?.active === "boolean" ? body.active : undefined;
 
-    const item = await prisma.bioProduct.update({
+    const existing = await prisma.bioProduct.findUnique({
       where: { id },
-      data: { ...(imageUrl !== undefined ? { imageUrl } : {}) },
       select: {
         id: true,
         imageUrl: true,
+        description: true,
+        categoryId: true,
+        active: true,
+      },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Produto da bio nao encontrado." }, { status: 404 });
+    }
+
+    const nextImageUrl = imageUrl !== undefined ? imageUrl : existing.imageUrl;
+    const nextCategoryId = categoryId !== undefined ? categoryId : existing.categoryId;
+    const nextActive = active !== undefined ? active : existing.active;
+
+    if (nextActive && !nextImageUrl) {
+      return NextResponse.json({ error: "Produto ativo precisa ter imagem." }, { status: 400 });
+    }
+    if (nextActive && !nextCategoryId) {
+      return NextResponse.json({ error: "Produto ativo precisa ter categoria." }, { status: 400 });
+    }
+    if (nextActive && !normalize(existing.description)) {
+      return NextResponse.json({ error: "Produto ativo precisa ter descricao." }, { status: 400 });
+    }
+
+    const item = await prisma.bioProduct.update({
+      where: { id },
+      data: {
+        ...(imageUrl !== undefined ? { imageUrl } : {}),
+        ...(categoryId !== undefined ? { categoryId } : {}),
+        ...(active !== undefined ? { active } : {}),
+      },
+      select: {
+        id: true,
+        imageUrl: true,
+        categoryId: true,
+        active: true,
         updatedAt: true,
       },
     });
