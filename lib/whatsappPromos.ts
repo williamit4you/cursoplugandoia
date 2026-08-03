@@ -207,6 +207,12 @@ export async function sendWhatsappPromoMessage(params: {
 
   const mediaUrl = normalizeText(params.mediaUrl);
   const endpoint = `${baseUrl.replace(/\/+$/, "")}/message/${mediaUrl ? "sendMedia" : "sendText"}/${encodeURIComponent(instance)}`;
+  const extFromMime = (mime: string) => {
+    if (/png/i.test(mime)) return "png";
+    if (/webp/i.test(mime)) return "webp";
+    if (/gif/i.test(mime)) return "gif";
+    return "jpg";
+  };
 
   const sendPayload = async (body: Record<string, unknown>) => {
     const res = await fetch(endpoint, {
@@ -233,18 +239,32 @@ export async function sendWhatsappPromoMessage(params: {
     return textResult.data;
   }
 
-  const mediaBody = { number: params.targetId, groupJid: params.targetId, mediatype: "image", media: mediaUrl, caption: params.messageText };
+  const mediaRes = await fetch(mediaUrl, { cache: "no-store" });
+  if (!mediaRes.ok) {
+    throw new Error(`Midia indisponivel (${mediaRes.status})`);
+  }
+  const mimetype = normalizeText(mediaRes.headers.get("content-type")) || "image/jpeg";
+  if (!/^image\//i.test(mimetype)) {
+    throw new Error(`Conteudo da midia invalido: ${mimetype}`);
+  }
+  const buffer = Buffer.from(await mediaRes.arrayBuffer());
+  const fileName = `whatsapp-promo.${extFromMime(mimetype)}`;
+  const base64Media = buffer.toString("base64");
+
+  const mediaBody = {
+    number: params.targetId,
+    groupJid: params.targetId,
+    mediatype: "image",
+    mimetype,
+    fileName,
+    media: mediaUrl,
+    caption: params.messageText,
+  };
   const mediaResult = await sendPayload(mediaBody);
   if (mediaResult.ok) return mediaResult.data;
 
   try {
-    const mediaRes = await fetch(mediaUrl, { cache: "no-store" });
-    if (!mediaRes.ok) throw new Error(`Midia indisponivel (${mediaRes.status})`);
-    const contentType = normalizeText(mediaRes.headers.get("content-type")) || "image/jpeg";
-    if (!/^image\//i.test(contentType)) throw new Error(`Conteudo da midia invalido: ${contentType}`);
-    const buffer = Buffer.from(await mediaRes.arrayBuffer());
-    const inlineMedia = `data:${contentType};base64,${buffer.toString("base64")}`;
-    const inlineResult = await sendPayload({ ...mediaBody, media: inlineMedia });
+    const inlineResult = await sendPayload({ ...mediaBody, media: base64Media });
     if (inlineResult.ok) return inlineResult.data;
     throw new Error(inlineResult.message);
   } catch (inlineError: any) {
