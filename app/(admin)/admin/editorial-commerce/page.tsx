@@ -5,6 +5,8 @@ import { publishEditorialArticle, runEditorialNow, toggleEditorialAutomation } f
 
 export const dynamic = "force-dynamic";
 
+const PUBLICATIONS_PER_PAGE = 20;
+
 function date(value: Date | null | undefined) {
   return value ? value.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "—";
 }
@@ -16,18 +18,44 @@ function statusClass(status: string) {
   return "bg-amber-100 text-amber-800";
 }
 
-export default async function EditorialCommerceAdminPage() {
-  const [config, runs, publications] = await Promise.all([
+function pageHref(page: number) {
+  return page === 1 ? "/admin/editorial-commerce" : `/admin/editorial-commerce?page=${page}`;
+}
+
+function paginationItems(currentPage: number, totalPages: number) {
+  const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  return Array.from(pages)
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((a, b) => a - b);
+}
+
+export default async function EditorialCommerceAdminPage({
+  searchParams,
+}: {
+  searchParams?: { page?: string };
+}) {
+  const requestedPage = Math.max(1, Number.parseInt(String(searchParams?.page || "1"), 10) || 1);
+  const publicationWhere = { product: { affiliateStoreId: { not: null } } };
+  const [config, runs, publicationCount, publishedCount] = await Promise.all([
     prisma.commerceEditorialConfig.findUnique({ where: { id: "default" } }),
     prisma.commerceEditorialRun.findMany({ orderBy: { startedAt: "desc" }, take: 50 }),
-    prisma.seoBrief.findMany({
-      where: { product: { affiliateStoreId: { not: null } } },
-      include: { product: { include: { affiliateStore: true } } },
-      orderBy: { updatedAt: "desc" },
-      take: 100,
+    prisma.seoBrief.count({ where: publicationWhere }),
+    prisma.seoBrief.count({
+      where: { ...publicationWhere, status: "PUBLISHED", indexable: true },
     }),
   ]);
-  const published = publications.filter((item) => item.status === "PUBLISHED" && item.indexable);
+  const totalPages = Math.max(1, Math.ceil(publicationCount / PUBLICATIONS_PER_PAGE));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const publications = await prisma.seoBrief.findMany({
+    where: publicationWhere,
+    include: { product: { include: { affiliateStore: true } } },
+    orderBy: { updatedAt: "desc" },
+    skip: (currentPage - 1) * PUBLICATIONS_PER_PAGE,
+    take: PUBLICATIONS_PER_PAGE,
+  });
+  const firstPublication = publicationCount ? (currentPage - 1) * PUBLICATIONS_PER_PAGE + 1 : 0;
+  const lastPublication = Math.min(currentPage * PUBLICATIONS_PER_PAGE, publicationCount);
+  const visiblePages = paginationItems(currentPage, totalPages);
   const siteUrl = getCommerceSiteUrl();
 
   return (
@@ -49,7 +77,7 @@ export default async function EditorialCommerceAdminPage() {
           ["Automação", config?.enabled ? "Ativa" : "Pausada"],
           ["Frequência", `A cada ${config?.runEveryHours || 2}h`],
           ["Próxima execução", date(config?.nextRunAt)],
-          ["Publicados no sitemap", String(published.length)],
+          ["Publicados no sitemap", String(publishedCount)],
         ].map(([label, value]) => <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</div><div className="mt-2 text-xl font-black text-slate-950">{value}</div></div>)}
       </section>
 
@@ -75,7 +103,12 @@ export default async function EditorialCommerceAdminPage() {
       </section>
 
       <section className="mt-7 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-5 py-4"><h2 className="font-black text-slate-950">Publicações geradas</h2></div>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-5 py-4">
+          <h2 className="font-black text-slate-950">Publicações geradas</h2>
+          <span className="text-xs font-bold text-slate-500">
+            Exibindo {firstPublication}-{lastPublication} de {publicationCount}
+          </span>
+        </div>
         <div className="divide-y divide-slate-100">
           {publications.map((article) => {
             const store = article.product.affiliateStore;
@@ -104,6 +137,41 @@ export default async function EditorialCommerceAdminPage() {
           })}
           {!publications.length ? <div className="px-5 py-10 text-center text-sm text-slate-500">Nenhuma publicação gerada.</div> : null}
         </div>
+        {totalPages > 1 ? (
+          <nav aria-label="Paginação das publicações" className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4">
+            <Link
+              href={pageHref(Math.max(1, currentPage - 1))}
+              aria-disabled={currentPage === 1}
+              className={`rounded-lg border px-3 py-2 text-sm font-black ${currentPage === 1 ? "pointer-events-none border-slate-200 text-slate-400" : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"}`}
+            >
+              Anterior
+            </Link>
+            <div className="flex flex-wrap items-center justify-center gap-1">
+              {visiblePages.map((page, index) => {
+                const previousPage = visiblePages[index - 1];
+                return (
+                  <span key={page} className="flex items-center gap-1">
+                    {previousPage && page - previousPage > 1 ? <span className="px-1 text-slate-400">...</span> : null}
+                    <Link
+                      href={pageHref(page)}
+                      aria-current={page === currentPage ? "page" : undefined}
+                      className={`min-w-9 rounded-lg px-3 py-2 text-center text-sm font-black ${page === currentPage ? "bg-slate-950 text-white" : "border border-slate-300 bg-white text-slate-700 hover:border-slate-400"}`}
+                    >
+                      {page}
+                    </Link>
+                  </span>
+                );
+              })}
+            </div>
+            <Link
+              href={pageHref(Math.min(totalPages, currentPage + 1))}
+              aria-disabled={currentPage === totalPages}
+              className={`rounded-lg border px-3 py-2 text-sm font-black ${currentPage === totalPages ? "pointer-events-none border-slate-200 text-slate-400" : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"}`}
+            >
+              Próxima
+            </Link>
+          </nav>
+        ) : null}
       </section>
     </main>
   );

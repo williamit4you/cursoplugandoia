@@ -23,6 +23,40 @@ function desiredNewsPlatforms(rawPlatforms: unknown, variant: string) {
   return preferred;
 }
 
+async function disableLegacyNewsMetaPosts(projectId: string) {
+  const stalePosts = await prisma.socialPost.findMany({
+    where: {
+      codeVideoProjectId: projectId,
+      platform: "META",
+      status: { in: ["DRAFT", "SCHEDULED", "PROCESSING_MEDIA", "PUBLISHING"] },
+    },
+    select: {
+      id: true,
+      log: true,
+      status: true,
+    },
+  });
+
+  for (const stalePost of stalePosts) {
+    const nextLog = [
+      stalePost.log || "",
+      `[${new Date().toLocaleTimeString("pt-BR")}] Fila META desativada automaticamente: videos de noticia nao devem mais ser publicados no Instagram/Facebook.`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    await prisma.socialPost.update({
+      where: { id: stalePost.id },
+      data: {
+        status: "FAILED",
+        log: nextLog,
+      },
+    });
+  }
+
+  return stalePosts.map((item) => item.id);
+}
+
 function buildNewsSocialSummary(project: {
   title?: string | null;
   description?: string | null;
@@ -60,6 +94,7 @@ export async function ensureNewsSocialPostsForProject(project: {
   const postId = metadata?.postId ? String(metadata.postId) : null;
   const newsVariant = String(metadata?.newsVariant || (project as any).newsVariant || "PRESENTER").toUpperCase();
   const platforms = desiredNewsPlatforms(newsAutomation.platforms, newsVariant);
+  const disabledMetaPostIds = await disableLegacyNewsMetaPosts(project.id);
   const existing = await prisma.socialPost.findMany({
     where: {
       codeVideoProjectId: project.id,
@@ -117,6 +152,7 @@ export async function ensureNewsSocialPostsForProject(project: {
         reconciled: true,
         createdCount: createdPlatforms.length,
         createdPlatforms,
+        disabledMetaPostIds,
         newsVariant,
       },
     }).catch(() => null);
@@ -125,13 +161,14 @@ export async function ensureNewsSocialPostsForProject(project: {
       projectId: project.id,
       stepName: "ENQUEUE_SOCIAL",
       message: `Reconciliacao social criou ${createdPlatforms.length} plataforma(s) faltantes.`,
-      metadata: { createdPlatforms, reconciled: true },
+      metadata: { createdPlatforms, reconciled: true, disabledMetaPostIds },
     }).catch(() => null);
   }
 
   return {
     createdCount: createdPlatforms.length,
     createdPlatforms,
+    disabledMetaPostIds,
     newsVariant,
     skipped: createdPlatforms.length === 0,
     reason: createdPlatforms.length === 0 ? "nothing_missing" : undefined,

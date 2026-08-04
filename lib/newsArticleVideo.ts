@@ -50,14 +50,18 @@ function resolvePlatforms(config: {
   autoPublishLinkedIn?: boolean | null;
   autoPublishYouTube?: boolean | null;
 }) {
-  const platforms: string[] = [];
+  const platforms: string[] = ["YOUTUBE"];
   // Notícias não devem criar posts para Instagram/Meta automaticamente.
   // As demais plataformas continuam respeitando as respectivas configurações.
   if (config.autoPublishTikTok) platforms.push("TIKTOK");
   if (config.autoPublishLinkedIn) platforms.push("LINKEDIN");
-  if (config.autoPublishYouTube) platforms.push("YOUTUBE");
   const unique = Array.from(new Set(platforms));
-  return unique.length > 0 ? unique : ["TIKTOK", "YOUTUBE"];
+  return unique;
+}
+
+function arraysEqual(a: string[], b: string[]) {
+  if (a.length !== b.length) return false;
+  return a.every((item, index) => item === b[index]);
 }
 
 export async function shouldAutoGenerateNewsVideo() {
@@ -153,7 +157,46 @@ export async function ensureNewsVideoProjectForPost(postId: string) {
     const legacyMatch = existing.find((item) => !item.newsVariant && item.metadataJson.includes(`"postId":"${post.id}"`));
     const found = existing.find((item) => item.newsVariant === variant.key) || (variant.key === "PRESENTER" ? legacyMatch : undefined);
     if (found) {
-      projects.push(found);
+      const currentMetadata = (() => {
+        try {
+          return JSON.parse(found.metadataJson || "{}");
+        } catch {
+          return {};
+        }
+      })();
+      const currentPlatforms = Array.isArray(currentMetadata?.newsAutomation?.platforms)
+        ? currentMetadata.newsAutomation.platforms.map((item: unknown) => String(item || "").trim().toUpperCase()).filter(Boolean)
+        : [];
+      const desiredPlatforms = Array.from(new Set(variant.platforms.map((item) => String(item || "").trim().toUpperCase()).filter(Boolean)));
+      const nextMetadata = {
+        ...currentMetadata,
+        sourcePosts: Array.isArray(currentMetadata?.sourcePosts) && currentMetadata.sourcePosts.length > 0 ? currentMetadata.sourcePosts : [post.id],
+        postId: post.id,
+        postSlug: post.slug,
+        coverImage: post.coverImage || currentMetadata?.coverImage || null,
+        articleUrl: articleUrl || currentMetadata?.articleUrl || null,
+        newsVariant: variant.key,
+        newsAutomation: {
+          ...(currentMetadata?.newsAutomation || {}),
+          enabled: true,
+          autoScheduleSocial: true,
+          platforms: desiredPlatforms,
+          source: "post_create_or_update",
+        },
+      };
+
+      if (!arraysEqual(currentPlatforms, desiredPlatforms) || currentMetadata?.newsVariant !== variant.key) {
+        const updatedProject = await prisma.codeVideoProject.update({
+          where: { id: found.id },
+          data: {
+            newsVariant: variant.key,
+            metadataJson: JSON.stringify(nextMetadata),
+          },
+        });
+        projects.push(updatedProject);
+      } else {
+        projects.push(found);
+      }
       continue;
     }
 

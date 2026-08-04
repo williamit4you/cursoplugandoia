@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { ensureNewsVideoProjectForPost } from "@/lib/newsArticleVideo";
+import { ensureNewsSocialPostsForProject } from "@/lib/newsSocialQueue";
 import { logCodeVideoPipelineEvent, upsertCodeVideoPipelineStep } from "@/lib/video-code/logger";
 import { POST as runVideoCodeProjectPost } from "@/app/api/video-code/projects/[id]/run/route";
 
@@ -79,6 +80,18 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
     const states = projects.map((project) => ({ project, isDone: project.status === "DONE" && project.videoUrl, isBusy: project.status === "GENERATING" || project.status === "READY" || project.status === "RENDERING" }));
 
     for (const { project, isDone, isBusy } of states) {
+      if (isDone && project.videoUrl) {
+        await ensureNewsSocialPostsForProject({
+          id: project.id,
+          title: project.title,
+          description: project.description,
+          metadataJson: project.metadataJson,
+          videoUrl: project.videoUrl,
+        }).catch((error) => {
+          console.error("[video-engagement][social-reconcile]", error);
+        });
+      }
+
       if (isDone || isBusy) continue;
       await upsertCodeVideoPipelineStep({
         projectId: project.id,

@@ -17,7 +17,7 @@ export default function robots(): MetadataRoute.Robots {
         ? ["/admin", "/api", "/crm", "/limpezavideo", "/noticias", "/curso-saas", "/curso-fundamentos-ia"]
         : ["/admin", "/api", "/crm", "/limpezavideo"],
     },
-    sitemap: `${siteUrl}/sitemap.xml`,
+    sitemap: commerceRequest ? `${siteUrl}/sitemap.xml` : [`${siteUrl}/sitemap.xml`, `${siteUrl}/noticias/sitemap.xml`],
     host: siteUrl,
   };
 }
