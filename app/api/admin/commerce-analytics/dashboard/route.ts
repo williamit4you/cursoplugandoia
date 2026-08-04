@@ -7,6 +7,7 @@ import {
   inferCommercePageType,
   type CommercePageInventoryItem,
 } from "@/lib/commercePageInventory";
+import { buildNewsAnalyticsDashboard } from "@/lib/newsAnalytics";
 import { requireServerSession } from "@/lib/serverAuth";
 
 export const runtime = "nodejs";
@@ -129,6 +130,9 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   try {
+    if (req.nextUrl.searchParams.get("scope") === "news") {
+      return NextResponse.json(await buildNewsAnalyticsDashboard(req.nextUrl.searchParams));
+    }
     const range = rangeFromRequest(req);
     const inventory = await buildCommercePageInventory();
     const filteredInventory = inventory.filter((page) => pageMatchesFilters(page, req));

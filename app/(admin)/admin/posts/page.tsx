@@ -31,6 +31,12 @@ export default async function PostsPage() {
         <div className="mt-4">
           <div className="flex flex-wrap items-start gap-3">
             <Link
+              href="/admin/operations/NEWS_CONTENT"
+              className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-xs font-black text-indigo-700"
+            >
+              Abrir analytics de Noticias
+            </Link>
+            <Link
               href="/admin/video-engajamento"
               className="inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-black text-violet-700"
             >

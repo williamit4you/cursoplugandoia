@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { recordContentMetric } from "@/lib/operationsControl";
 
 export const dynamic = "force-dynamic";
-const ALLOWED_EVENTS = new Set(["page_view", "article_view", "video_view", "affiliate_click", "lead_created", "sale_attributed"]);
+const ALLOWED_EVENTS = new Set(["page_view", "article_view", "article_engaged", "video_view", "affiliate_click", "lead_created", "sale_attributed"]);
 
 export async function POST(req: NextRequest) {
   try {
