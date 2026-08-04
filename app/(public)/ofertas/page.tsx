@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   title: "Compra Esperta Promocoes | Produtos e ofertas",
   description: "Encontre produtos da Shopee com busca rapida, categorias e acesso direto para compra.",
   alternates: { canonical: getCommerceSiteUrl() },
+  other: {
+    lomadee: "2324685",
+  },
   openGraph: {
     title: "Compra Esperta Promocoes | Produtos e ofertas",
     description: "Encontre produtos da Shopee com busca rapida, categorias e acesso direto para compra.",

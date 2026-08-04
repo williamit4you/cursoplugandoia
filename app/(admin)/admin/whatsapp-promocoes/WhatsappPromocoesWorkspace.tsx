@@ -130,6 +130,17 @@ function matchesDateRange(value: string | null | undefined, from: string, to: st
   return true;
 }
 
+function isSameDay(value: string | null | undefined, compare = new Date()) {
+  if (!value) return false;
+  const current = new Date(value);
+  return current.getFullYear() === compare.getFullYear() && current.getMonth() === compare.getMonth() && current.getDate() === compare.getDate();
+}
+
+function isPastDate(value: string | null | undefined) {
+  if (!value) return false;
+  return new Date(value).getTime() < Date.now();
+}
+
 export default function WhatsappPromocoesWorkspace({ section }: { section: WhatsappPromocoesSection }) {
   const [config, setConfig] = useState<ConfigState | null>(null);
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
@@ -273,6 +284,10 @@ export default function WhatsappPromocoesWorkspace({ section }: { section: Whats
   const scheduledCount = useMemo(() => posts.filter((item) => item.status === "SCHEDULED").length, [posts]);
   const sentCount = useMemo(() => posts.filter((item) => item.status === "SENT").length, [posts]);
   const failedCount = useMemo(() => posts.filter((item) => item.status === "FAILED").length, [posts]);
+  const pendingCatalogCount = useMemo(() => catalog.filter((item) => !item._count?.posts).length, [catalog]);
+  const scheduledTodayCount = useMemo(() => posts.filter((item) => item.status === "SCHEDULED" && isSameDay(item.scheduledTo)).length, [posts]);
+  const overdueScheduledCount = useMemo(() => posts.filter((item) => item.status === "SCHEDULED" && isPastDate(item.scheduledTo)).length, [posts]);
+  const approvalQueueCount = useMemo(() => posts.filter((item) => item.status === "DRAFT" || item.status === "APPROVED").length, [posts]);
 
   const statusColor = (status: string) =>
     status === "SENT" ? "success" : status === "FAILED" ? "error" : status === "SCHEDULED" ? "info" : status === "CANCELED" ? "warning" : "default";
@@ -285,6 +300,15 @@ export default function WhatsappPromocoesWorkspace({ section }: { section: Whats
     boxShadow: "0 22px 70px rgba(15, 23, 42, 0.08)",
     background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.98) 100%)",
   } as const;
+
+  const metricCards = [
+    { label: "Catalogo", value: catalog.length, tone: "#0f172a" },
+    { label: "Sem agenda", value: pendingCatalogCount, tone: "#7c3aed" },
+    { label: "Agendados hoje", value: scheduledTodayCount, tone: "#2563eb" },
+    { label: "Atrasados", value: overdueScheduledCount, tone: "#dc2626" },
+    { label: "Fila de aprovacao", value: approvalQueueCount, tone: "#475569" },
+    { label: "Enviados", value: sentCount, tone: "#059669" },
+  ];
 
   const saveConfig = async () => {
     if (!config) return;
@@ -627,6 +651,14 @@ export default function WhatsappPromocoesWorkspace({ section }: { section: Whats
               <Chip label={`Enviados: ${sentCount}`} sx={{ bgcolor: "rgba(250,204,21,0.22)", color: "white", fontWeight: 700 }} />
               {failedCount ? <Chip label={`Falhas: ${failedCount}`} sx={{ bgcolor: "rgba(248,113,113,0.24)", color: "white", fontWeight: 700 }} /> : null}
             </Box>
+            <Box sx={{ mt: 2.5, display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", xl: "repeat(6, minmax(0, 1fr))" }, gap: 1.2 }}>
+              {metricCards.map((card) => (
+                <Box key={card.label} sx={{ p: 1.5, borderRadius: 3, bgcolor: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.12)" }}>
+                  <Typography sx={{ fontSize: 12, color: "rgba(255,255,255,0.68)" }}>{card.label}</Typography>
+                  <Typography sx={{ mt: 0.35, fontWeight: 900, fontSize: 24, lineHeight: 1 }}>{card.value}</Typography>
+                </Box>
+              ))}
+            </Box>
           </Box>
           <Box sx={{ display: "grid", gap: 1.25, alignContent: "start" }}>
             <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
@@ -730,7 +762,7 @@ export default function WhatsappPromocoesWorkspace({ section }: { section: Whats
             </Box>
           </Box>
 
-          <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.7fr 1fr 1fr 1fr auto" }, gap: 1.25 }}>
+          <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.7fr 1fr 1fr 1fr auto" }, gap: 1.25, position: "sticky", top: 12, zIndex: 4, p: 1.5, borderRadius: 3, bgcolor: "rgba(255,255,255,0.94)", backdropFilter: "blur(12px)", border: "1px solid", borderColor: "rgba(148,163,184,0.18)" }}>
             <TextField label="Buscar item" value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} />
             <TextField select label="Filtro" value={catalogFilter} onChange={(e) => setCatalogFilter(e.target.value as CatalogFilter)}>
               <MenuItem value="ALL">Todos</MenuItem>
@@ -745,10 +777,12 @@ export default function WhatsappPromocoesWorkspace({ section }: { section: Whats
             <Button variant="outlined" onClick={() => { setCatalogSearch(""); setCatalogFilter("ALL"); setCatalogDateFrom(""); setCatalogDateTo(""); }}>Limpar</Button>
           </Box>
 
-          <Box sx={{ mt: 2, p: 1.5, borderRadius: 3, bgcolor: "#f8fafc", border: "1px solid", borderColor: "rgba(148,163,184,0.18)", display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+          <Box sx={{ mt: 2, p: 1.5, borderRadius: 3, bgcolor: "#f8fafc", border: "1px solid", borderColor: "rgba(148,163,184,0.18)", display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center", position: "sticky", top: { xs: 150, md: 96 }, zIndex: 3 }}>
             <TextField type="datetime-local" size="small" label="Agendar selecionados para" value={bulkScheduleAt} onChange={(e) => setBulkScheduleAt(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 260 }} />
             <Button variant="contained" disabled={!selectedCatalogIds.length || saving} onClick={bulkScheduleSelected} sx={{ bgcolor: "#2563eb" }}>Agendar selecionados</Button>
             <Button variant="outlined" disabled={!selectedCatalogIds.length} onClick={() => setSelectedCatalogIds([])}>Limpar selecao</Button>
+            <Chip size="small" label={`${pendingCatalogCount} sem agenda`} color="warning" variant="outlined" />
+            <Chip size="small" label={`${scheduledTodayCount} para hoje`} color="info" variant="outlined" />
           </Box>
 
           <TableContainer sx={{ mt: 2, border: "1px solid", borderColor: "divider", borderRadius: 3, maxHeight: 680 }}>
@@ -775,7 +809,7 @@ export default function WhatsappPromocoesWorkspace({ section }: { section: Whats
                 {catalogPageItems.map((item) => {
                   const meta = catalogMeta.get(item.id) || { hasScheduled: false, hasPending: false, hasSent: false, hasFailed: false, nextScheduledAt: null };
                   return (
-                    <TableRow key={item.id} hover selected={selectedCatalogIds.includes(item.id)}>
+                    <TableRow key={item.id} hover selected={selectedCatalogIds.includes(item.id)} sx={meta.nextScheduledAt && isPastDate(meta.nextScheduledAt) ? { bgcolor: "rgba(254,242,242,0.95)" } : undefined}>
                       <TableCell padding="checkbox"><Checkbox checked={selectedCatalogIds.includes(item.id)} onChange={() => toggleCatalogSelection(item.id)} /></TableCell>
                       <TableCell sx={{ maxWidth: 320 }}>
                         <Typography sx={{ fontWeight: 800, fontSize: 14 }} noWrap>{item.title}</Typography>
@@ -790,6 +824,8 @@ export default function WhatsappPromocoesWorkspace({ section }: { section: Whats
                           {meta.hasPending ? <Chip size="small" label="Na fila" /> : null}
                           {meta.hasSent ? <Chip size="small" label="Enviado" color="success" /> : null}
                           {meta.hasFailed ? <Chip size="small" label="Falhou" color="error" /> : null}
+                          {meta.nextScheduledAt && isSameDay(meta.nextScheduledAt) ? <Chip size="small" label="Hoje" color="info" variant="outlined" /> : null}
+                          {meta.nextScheduledAt && isPastDate(meta.nextScheduledAt) ? <Chip size="small" label="Atrasado" color="error" variant="outlined" /> : null}
                           {!item._count?.posts ? <Chip size="small" label="Sem agendamento" variant="outlined" /> : null}
                         </Box>
                       </TableCell>
@@ -844,7 +880,7 @@ export default function WhatsappPromocoesWorkspace({ section }: { section: Whats
             </Box>
           </Box>
 
-          <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.5fr 1fr 1fr 1fr 1fr auto" }, gap: 1.25 }}>
+          <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.5fr 1fr 1fr 1fr 1fr auto" }, gap: 1.25, position: "sticky", top: 12, zIndex: 4, p: 1.5, borderRadius: 3, bgcolor: "rgba(255,255,255,0.94)", backdropFilter: "blur(12px)", border: "1px solid", borderColor: "rgba(148,163,184,0.18)" }}>
             <TextField label="Buscar postagem" value={postSearch} onChange={(e) => setPostSearch(e.target.value)} />
             <TextField select label="Status" value={postStatusFilter} onChange={(e) => setPostStatusFilter(e.target.value)}>
               {["ALL", "DRAFT", "APPROVED", "SCHEDULED", "SENT", "FAILED", "CANCELED"].map((item) => (
@@ -862,9 +898,23 @@ export default function WhatsappPromocoesWorkspace({ section }: { section: Whats
             <Button variant="outlined" onClick={() => { setPostSearch(""); setPostStatusFilter("ALL"); setPostDateMode("ANY"); setPostDateFrom(""); setPostDateTo(""); }}>Limpar</Button>
           </Box>
 
+          <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, gap: 1.25 }}>
+            {[
+              { label: "Aguardando aprovacao", value: approvalQueueCount, tone: "#475569" },
+              { label: "Agendados hoje", value: scheduledTodayCount, tone: "#2563eb" },
+              { label: "Atrasados", value: overdueScheduledCount, tone: "#dc2626" },
+              { label: "Falharam", value: failedCount, tone: "#b91c1c" },
+            ].map((card) => (
+              <Box key={card.label} sx={{ p: 1.5, borderRadius: 3, border: "1px solid", borderColor: "rgba(148,163,184,0.18)", bgcolor: "rgba(248,250,252,0.9)" }}>
+                <Typography sx={{ fontSize: 12, color: "text.secondary" }}>{card.label}</Typography>
+                <Typography sx={{ mt: 0.5, fontWeight: 900, fontSize: 24, color: card.tone }}>{card.value}</Typography>
+              </Box>
+            ))}
+          </Box>
+
           <Box sx={{ mt: 2, display: "grid", gap: 2 }}>
             {postPageItems.map((post) => (
-              <Box key={post.id} sx={{ border: "1px solid #e5e7eb", borderRadius: 3, p: 2, display: "grid", gap: 1.5, bgcolor: "rgba(255,255,255,0.9)" }}>
+              <Box key={post.id} sx={{ border: "1px solid #e5e7eb", borderRadius: 3, p: 2, display: "grid", gap: 1.5, bgcolor: post.status === "SCHEDULED" && isPastDate(post.scheduledTo) ? "rgba(254,242,242,0.96)" : "rgba(255,255,255,0.9)" }}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
                   <Box>
                     <Typography sx={{ fontWeight: 900 }}>{post.headline}</Typography>
@@ -873,6 +923,8 @@ export default function WhatsappPromocoesWorkspace({ section }: { section: Whats
                   <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                     <Chip size="small" label={post.status} color={statusColor(post.status)} />
                     <Chip size="small" label={post.sentAt ? `Enviado: ${formatDateTime(post.sentAt)}` : "Nao enviado"} />
+                    {post.status === "SCHEDULED" && isSameDay(post.scheduledTo) ? <Chip size="small" label="Hoje" color="info" variant="outlined" /> : null}
+                    {post.status === "SCHEDULED" && isPastDate(post.scheduledTo) ? <Chip size="small" label="Atrasado" color="error" variant="outlined" /> : null}
                   </Box>
                 </Box>
                 <Box sx={{ p: 1.5, borderRadius: 2.5, bgcolor: "#f8fafc", border: "1px solid", borderColor: "rgba(148,163,184,0.12)" }}>
