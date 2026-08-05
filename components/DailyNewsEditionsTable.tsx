@@ -86,6 +86,7 @@ export default function DailyNewsEditionsTable({
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [creatingToday, setCreatingToday] = useState(false);
+  const [busyIds, setBusyIds] = useState<string[]>([]);
 
   const filteredItems = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("pt-BR");
@@ -177,6 +178,102 @@ export default function DailyNewsEditionsTable({
   const copySelectedIds = async () => {
     await navigator.clipboard.writeText(selectedItems.map((item) => item.id).join("\n"));
     toast.success("IDs copiados.");
+  };
+
+  const setBusy = (id: string, active: boolean) => {
+    setBusyIds((current) =>
+      active ? Array.from(new Set([...current, id])) : current.filter((item) => item !== id),
+    );
+  };
+
+  const cancelEdition = async (id: string) => {
+    setBusy(id, true);
+    try {
+      const res = await fetch(`/api/resumo-noticias/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELED", errorMessage: "Cancelado manualmente pelo operador." }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Falha ao cancelar a edicao.");
+      setItems((current) =>
+        current.map((item) => (item.id === id ? { ...item, status: "CANCELED", errorMessage: "Cancelado manualmente pelo operador." } : item)),
+      );
+      toast.success("Edicao cancelada.");
+      router.refresh();
+    } catch (error: any) {
+      toast.error(error?.message || "Falha ao cancelar a edicao.");
+    } finally {
+      setBusy(id, false);
+    }
+  };
+
+  const deleteEdition = async (id: string) => {
+    setBusy(id, true);
+    try {
+      const res = await fetch(`/api/resumo-noticias/${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Falha ao excluir a edicao.");
+      setItems((current) => current.filter((item) => item.id !== id));
+      setSelectedIds((current) => current.filter((itemId) => itemId !== id));
+      toast.success("Edicao excluida.");
+      router.refresh();
+    } catch (error: any) {
+      toast.error(error?.message || "Falha ao excluir a edicao.");
+    } finally {
+      setBusy(id, false);
+    }
+  };
+
+  const cancelSelected = async () => {
+    for (const id of selectedIds) {
+      await cancelEdition(id);
+    }
+  };
+
+  const deleteSelected = async () => {
+    if (!confirm("Excluir as edicoes selecionadas da lista?")) return;
+    for (const id of selectedIds) {
+      await deleteEdition(id);
+    }
+  };
+
+  const rerunEdition = async (id: string) => {
+    setBusy(id, true);
+    try {
+      const res = await fetch(`/api/resumo-noticias/${id}/run`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Falha ao gerar novamente a edicao.");
+
+      setItems((current) =>
+        current.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                status: data?.item?.status || "RENDERING",
+                errorMessage: null,
+                codeVideoProject: data?.item?.codeVideoProject || item.codeVideoProject,
+              }
+            : item,
+        ),
+      );
+      toast.success("Geracao reiniciada.");
+      router.refresh();
+    } catch (error: any) {
+      toast.error(error?.message || "Falha ao gerar novamente a edicao.");
+    } finally {
+      setBusy(id, false);
+    }
+  };
+
+  const rerunSelected = async () => {
+    for (const id of selectedIds) {
+      await rerunEdition(id);
+    }
   };
 
   const toggleAllVisible = () => {
@@ -305,6 +402,27 @@ export default function DailyNewsEditionsTable({
               >
                 Exportar CSV
               </button>
+              <button
+                type="button"
+                onClick={() => void rerunSelected()}
+                className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700"
+              >
+                Gerar novamente
+              </button>
+              <button
+                type="button"
+                onClick={() => void cancelSelected()}
+                className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void deleteSelected()}
+                className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-black text-rose-700"
+              >
+                Excluir
+              </button>
             </div>
           </div>
         ) : null}
@@ -424,6 +542,36 @@ export default function DailyNewsEditionsTable({
                           Video
                         </a>
                       ) : null}
+                      {["FAILED", "CANCELED"].includes(String(item.status || "").toUpperCase()) ? (
+                        <button
+                          type="button"
+                          disabled={busyIds.includes(item.id)}
+                          onClick={() => void rerunEdition(item.id)}
+                          className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black text-emerald-700 disabled:opacity-50"
+                        >
+                          Gerar novamente
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        disabled={busyIds.includes(item.id)}
+                        onClick={() => void cancelEdition(item.id)}
+                        className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black text-amber-700 disabled:opacity-50"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyIds.includes(item.id)}
+                        onClick={() => {
+                          if (confirm("Excluir esta edicao da lista?")) {
+                            void deleteEdition(item.id);
+                          }
+                        }}
+                        className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[10px] font-black text-rose-700 disabled:opacity-50"
+                      >
+                        Excluir
+                      </button>
                     </div>
                   </td>
                 </tr>

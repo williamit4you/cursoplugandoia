@@ -251,3 +251,35 @@ export async function PATCH(
   const item = await readEdition(existing.id);
   return NextResponse.json({ item });
 }
+
+export async function DELETE(
+  _: NextRequest,
+  ctx: { params: { id: string } },
+) {
+  const session = await requireAdmin();
+  if (!session) {
+    return NextResponse.json({ error: "Nao autorizado." }, { status: 401 });
+  }
+
+  if (!dailyNewsEdition) {
+    return dailyNewsUnavailableResponse();
+  }
+
+  const existing = await readEdition(ctx.params.id);
+  if (!existing) {
+    return NextResponse.json({ error: "Nao encontrado." }, { status: 404 });
+  }
+
+  try {
+    await prisma.dailyNewsEdition.delete({
+      where: { id: existing.id },
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || "Falha ao excluir a edicao." },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({ ok: true });
+}
