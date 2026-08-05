@@ -69,6 +69,8 @@ export async function GET(req: NextRequest) {
       ? { ok: true, status: 200, data: { skipped: true, owner: "internal_scheduler" } }
       : await callJson(`${origin}/api/commerce-editorial/cron${encodedSecret}`);
 
+    const affiliatePrograms = await callJson(`${origin}/api/affiliate-programs/cron${encodedSecret}`);
+
     const whatsappPromos = await callJson(`${origin}/api/whatsapp-promos/cron${encodedSecret}`);
 
     const allOk =
@@ -82,6 +84,7 @@ export async function GET(req: NextRequest) {
       engajamentoPublisher.ok &&
       videoQuestions.ok &&
       commerceEditorial.ok &&
+      affiliatePrograms.ok &&
       whatsappPromos.ok;
 
     console.log("[api/automation/cron] Results:", {
@@ -95,6 +98,7 @@ export async function GET(req: NextRequest) {
       engajamentoPublisher: { ok: engajamentoPublisher.ok, status: engajamentoPublisher.status },
       videoQuestions: { ok: videoQuestions.ok, status: videoQuestions.status },
       commerceEditorial: { ok: commerceEditorial.ok, status: commerceEditorial.status },
+      affiliatePrograms: { ok: affiliatePrograms.ok, status: affiliatePrograms.status },
       whatsappPromos: { ok: whatsappPromos.ok, status: whatsappPromos.status },
     });
 
@@ -110,6 +114,7 @@ export async function GET(req: NextRequest) {
       engajamentoPublisher,
       videoQuestions,
       commerceEditorial,
+      affiliatePrograms,
       whatsappPromos,
     });
   } catch (error: any) {

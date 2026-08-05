@@ -15,8 +15,8 @@ Transformar a base atual em uma central de programas afiliados com continuidade 
 - [x] Criar uma central admin para visualizar os 12 programas
 - [x] Ligar o seed principal ao catalogo de `AffiliateStore`
 - [x] Verificar o estado real das migrations no banco atual antes de novas migrations
-- [ ] Criar modelos compartilhados para jobs/editorial queue multi-programa
-- [ ] Unificar cron diario por programa
+- [x] Criar uma camada compartilhada inicial de operacoes por programa no codigo
+- [x] Unificar um cron inicial de programas afiliados no codigo
 
 ## Fase 1 - Cobasi como piloto operacional
 
@@ -31,6 +31,7 @@ Transformar a base atual em uma central de programas afiliados com continuidade 
 
 - [ ] Brascol: modelar clusters editoriais e fila inicial
 - [ ] Electrolux: modelar hubs, comparativos, reviews e problemas
+- [x] Electrolux: conectar a central compartilhada ao pipeline editorial direcionado por loja
 - [ ] Cicatribem: modelar trilhas com compliance reforcado
 - [ ] Pibe Brasil: modelar trilhas de creatina gummy com guardrails
 - [ ] Funko Brasil: modelar colecoes, franquias e guias de compra
@@ -43,6 +44,8 @@ Transformar a base atual em uma central de programas afiliados com continuidade 
 
 ## Fase 3 - Operacao
 
+- [x] Central admin com acoes compartilhadas de bootstrap/execucao para o piloto Cobasi
+- [x] Central admin com execucao direcionada para Electrolux via pipeline editorial
 - [ ] Checklist operacional no admin para revisar fontes, CTA e sitemap
 - [ ] Registro de estado por programa: draft, queued, review, published, stale
 - [ ] Observabilidade de runs e erros por programa

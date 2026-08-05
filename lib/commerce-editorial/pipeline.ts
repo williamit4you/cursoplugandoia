@@ -36,7 +36,17 @@ async function selectStore(cursor: number) {
   };
 }
 
-export async function runCommerceEditorialOnce(options: { force?: boolean } = {}) {
+async function selectExplicitStore(storeSlug: string) {
+  const store = await prisma.affiliateStore.findUnique({
+    where: { slug: storeSlug },
+    include: { products: { select: { productUrl: true }, orderBy: { createdAt: "desc" }, take: 200 } },
+  });
+  if (!store) throw new Error("Loja afiliada nao encontrada");
+  if (store.status !== "ACTIVE") throw new Error(`Loja ${store.name} nao esta ativa para execucao editorial`);
+  return store;
+}
+
+export async function runCommerceEditorialOnce(options: { force?: boolean; storeSlug?: string } = {}) {
   const config = await prisma.commerceEditorialConfig.upsert({
     where: { id: "default" },
     update: {},
@@ -59,20 +69,31 @@ export async function runCommerceEditorialOnce(options: { force?: boolean } = {}
 
   const run = await prisma.commerceEditorialRun.create({ data: { status: "RUNNING", step: "SELECT_STORE" } });
   try {
-    const rotation = await selectStore(config.storeCursor);
+    const explicitStore = options.storeSlug ? await selectExplicitStore(options.storeSlug) : null;
+    const rotation = explicitStore
+      ? { store: explicitStore, position: -1, total: 1, nextCursor: config.storeCursor }
+      : await selectStore(config.storeCursor);
     const store = rotation.store;
     await Promise.all([
-      prisma.commerceEditorialConfig.update({
-        where: { id: "default" },
-        data: { storeCursor: rotation.nextCursor },
-      }),
+      ...(explicitStore
+        ? []
+        : [prisma.commerceEditorialConfig.update({
+            where: { id: "default" },
+            data: { storeCursor: rotation.nextCursor },
+          })]),
       prisma.commerceEditorialRun.update({
         where: { id: run.id },
         data: {
           storeId: store.id,
           step: "DISCOVER_PRODUCT",
-          message: `Loja ${rotation.position + 1} de ${rotation.total}: pesquisando um produto em ${store.name}`,
-          detailsJson: json({ storePosition: rotation.position + 1, totalStores: rotation.total, nextStorePosition: rotation.nextCursor + 1 }),
+          message: explicitStore
+            ? `Execucao direcionada: pesquisando um produto em ${store.name}`
+            : `Loja ${rotation.position + 1} de ${rotation.total}: pesquisando um produto em ${store.name}`,
+          detailsJson: json(
+            explicitStore
+              ? { explicitStore: store.slug, totalStores: rotation.total }
+              : { storePosition: rotation.position + 1, totalStores: rotation.total, nextStorePosition: rotation.nextCursor + 1 },
+          ),
         },
       }),
     ]);
@@ -137,9 +158,10 @@ export async function runCommerceEditorialOnce(options: { force?: boolean } = {}
         briefId: brief.id, status, step: status === "PUBLISHED" ? "SITEMAP_READY" : "EDITORIAL_REVIEW",
         message: status === "PUBLISHED" ? "Artigo aprovado, publicado e liberado para o sitemap." : "Artigo criado, mas retido para revisão.",
         detailsJson: json({
-          storePosition: rotation.position + 1,
+          storePosition: rotation.position >= 0 ? rotation.position + 1 : null,
           totalStores: rotation.total,
-          nextStorePosition: rotation.nextCursor + 1,
+          nextStorePosition: rotation.position >= 0 ? rotation.nextCursor + 1 : null,
+          explicitStore: explicitStore?.slug || null,
           wordCount: agents.wordCount,
           reviewer: agents.review,
           duplicate,

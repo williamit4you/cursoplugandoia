@@ -10,7 +10,8 @@ export async function GET(req: NextRequest) {
   try {
     await requireAdminOrCronSecret(req);
     const force = req.nextUrl.searchParams.get("force") === "1";
-    const result = await runCommerceEditorialOnce({ force });
+    const storeSlug = String(req.nextUrl.searchParams.get("store") || "").trim() || undefined;
+    const result = await runCommerceEditorialOnce({ force, storeSlug });
     return NextResponse.json(result);
   } catch (error: any) {
     console.error("[api/commerce-editorial/cron]", error);

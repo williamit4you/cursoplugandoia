@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { AFFILIATE_PROGRAMS } from "@/lib/affiliatePrograms";
+import { listAffiliateProgramSummaries } from "@/lib/affiliate-programs/operations";
+import { bootstrapAffiliateProgramAction, runAffiliateProgramNowAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,38 +16,10 @@ function formatDate(value: Date | null | undefined) {
 }
 
 export default async function AffiliateProgramsAdminPage() {
-  const stores = await prisma.affiliateStore.findMany({
-    where: {
-      slug: { in: AFFILIATE_PROGRAMS.map((item) => item.storeSlug) },
-    },
-    select: {
-      slug: true,
-      name: true,
-      category: true,
-      status: true,
-      complianceClass: true,
-      updatedAt: true,
-      _count: {
-        select: {
-          petContentPages: true,
-          petStoreUnits: true,
-          clicks: true,
-        },
-      },
-    },
-  });
-
-  const storeMap = new Map(stores.map((store) => [store.slug, store]));
-  const petConfig = await prisma.petSeoConfig.findUnique({ where: { id: "cobasi" } });
-  const [petPagesByStatus, petLocations] = await Promise.all([
-    prisma.petContentPage.groupBy({
-      by: ["status"],
-      where: { affiliateStore: { slug: "cobasi" } },
-      _count: { _all: true },
-    }),
-    prisma.petLocation.count(),
-  ]);
-  const petTotals = Object.fromEntries(petPagesByStatus.map((row) => [row.status, row._count._all]));
+  const summaries = await listAffiliateProgramSummaries();
+  const activeStores = summaries.filter((item) => item.store?.status === "ACTIVE").length;
+  const cobasi = summaries.find((item) => item.spec.storeSlug === "cobasi");
+  const electrolux = summaries.find((item) => item.spec.storeSlug === "electrolux");
 
   return (
     <main className="p-5 sm:p-8">
@@ -62,9 +34,9 @@ export default async function AffiliateProgramsAdminPage() {
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <MetricCard label="Programas priorizados" value={String(AFFILIATE_PROGRAMS.length)} />
-            <MetricCard label="Lojas ativas no seed" value={String(stores.filter((store) => store.status === "ACTIVE").length)} />
-            <MetricCard label="Paginas Cobasi publicadas" value={String(petTotals.PUBLISHED || 0)} />
+            <MetricCard label="Programas priorizados" value={String(summaries.length)} />
+            <MetricCard label="Lojas ativas no seed" value={String(activeStores)} />
+            <MetricCard label="Paginas Cobasi publicadas" value={String(cobasi?.runtime.publishedCount || 0)} />
           </div>
         </div>
       </section>
@@ -82,10 +54,10 @@ export default async function AffiliateProgramsAdminPage() {
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <MiniStat label="Job" value={petConfig?.enabled ? "Ativo" : "Pausado"} />
-            <MiniStat label="Cadencia" value={`${petConfig?.runEveryHours || 24}h`} />
-            <MiniStat label="Cidades cadastradas" value={String(petLocations)} />
-            <MiniStat label="Fila atual" value={String((petTotals.QUEUED || 0) + (petTotals.GENERATING || 0) + (petTotals.REVIEW || 0))} />
+            <MiniStat label="Job" value={cobasi?.runtime.configStatus === "ACTIVE" ? "Ativo" : "Pausado"} />
+            <MiniStat label="Cadencia" value={cobasi?.runtime.cadenceLabel || "—"} />
+            <MiniStat label="Cidades cadastradas" value={String(cobasi?.runtime.locations || 0)} />
+            <MiniStat label="Fila atual" value={String((cobasi?.runtime.queueCount || 0) + (cobasi?.runtime.reviewCount || 0))} />
           </div>
 
           <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-900">
@@ -94,8 +66,14 @@ export default async function AffiliateProgramsAdminPage() {
         </div>
 
         <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-black text-slate-900">Checklist vivo</h2>
-          <p className="mt-1 text-sm text-slate-500">Arquivo mantido no repositorio para continuarmos de onde pararmos.</p>
+          <h2 className="text-lg font-black text-slate-900">Electrolux conectada</h2>
+          <p className="mt-1 text-sm text-slate-500">Segundo programa real usando a camada compartilhada, via pipeline editorial direcionado por loja.</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <MiniStat label="Fila editorial" value={String(electrolux?.runtime.queueCount || 0)} />
+            <MiniStat label="Em revisao" value={String(electrolux?.runtime.reviewCount || 0)} />
+            <MiniStat label="Publicados" value={String(electrolux?.runtime.publishedCount || 0)} />
+            <MiniStat label="Modo" value={electrolux?.runtime.cadenceLabel || "—"} />
+          </div>
           <div className="mt-4 rounded-2xl bg-slate-50 p-4">
             <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Arquivo</div>
             <p className="mt-2 break-all text-sm font-bold text-emerald-700">
@@ -115,8 +93,7 @@ export default async function AffiliateProgramsAdminPage() {
         </div>
 
         <div className="grid gap-4 p-5 xl:grid-cols-2">
-          {AFFILIATE_PROGRAMS.map((program) => {
-            const store = storeMap.get(program.storeSlug);
+          {summaries.map(({ spec: program, store, runtime, support }) => {
             return (
               <article key={program.storeSlug} className="rounded-[22px] border border-slate-200 bg-slate-50/60 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -164,7 +141,15 @@ export default async function AffiliateProgramsAdminPage() {
                   </div>
                   <div>
                     <dt className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Cliques rastreados</dt>
-                    <dd className="mt-1 text-sm text-slate-700">{store?._count.clicks || 0}</dd>
+                    <dd className="mt-1 text-sm text-slate-700">{store?.clickCount || 0}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Fila / revisao</dt>
+                    <dd className="mt-1 text-sm text-slate-700">{runtime.queueCount} / {runtime.reviewCount}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Publicados</dt>
+                    <dd className="mt-1 text-sm text-slate-700">{runtime.publishedCount}</dd>
                   </div>
                 </dl>
 
@@ -178,6 +163,35 @@ export default async function AffiliateProgramsAdminPage() {
                   <Link href={program.adminPath} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-black text-slate-800">
                     Abrir admin
                   </Link>
+                  {program.storeSlug === "cobasi" && support.bootstrap ? (
+                    <>
+                      <form action={bootstrapAffiliateProgramAction}>
+                        <input type="hidden" name="storeSlug" value={program.storeSlug} />
+                        <button className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-black text-slate-800">
+                          Bootstrap
+                        </button>
+                      </form>
+                      <form action={runAffiliateProgramNowAction}>
+                        <input type="hidden" name="storeSlug" value={program.storeSlug} />
+                        <button className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-black text-white">
+                          Rodar agora
+                        </button>
+                      </form>
+                    </>
+                  ) : null}
+                  {program.storeSlug === "electrolux" && support.runNow ? (
+                    <>
+                      <form action={runAffiliateProgramNowAction}>
+                        <input type="hidden" name="storeSlug" value={program.storeSlug} />
+                        <button className="rounded-xl bg-sky-600 px-3 py-2 text-sm font-black text-white">
+                          Gerar artigo
+                        </button>
+                      </form>
+                      <Link href="/admin/editorial-commerce" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-black text-slate-800">
+                        Abrir pipeline editorial
+                      </Link>
+                    </>
+                  ) : null}
                   <span className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-mono text-slate-700">
                     {program.docsPath}
                   </span>
