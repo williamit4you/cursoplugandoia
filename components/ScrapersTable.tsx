@@ -45,6 +45,7 @@ export default function ScrapersTable({ initialData }: { initialData: any[] }) {
 
   const [triggerStatus, setTriggerStatus] = useState({ state: "", message: "" });
   const [isRunning, setIsRunning] = useState(false);
+  const [isSeedingPreset, setIsSeedingPreset] = useState(false);
   const [pipelineLogs, setPipelineLogs] = useState<any[]>([]);
   const [showMonitor, setShowMonitor] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
@@ -145,11 +146,48 @@ export default function ScrapersTable({ initialData }: { initialData: any[] }) {
     };
   };
 
+  const handleSeedPresetSources = async () => {
+    setIsSeedingPreset(true);
+    setTriggerStatus({ state: "", message: "" });
+    try {
+      const res = await fetch("/api/scrapers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "seed_preset" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Falha ao cadastrar fontes sugeridas.");
+      }
+
+      setTriggerStatus({
+        state: "success",
+        message: `Fontes sugeridas cadastradas. Novas: ${data.inserted}. Ja existentes: ${data.skipped}.`,
+      });
+      router.refresh();
+    } catch (error: any) {
+      setTriggerStatus({
+        state: "error",
+        message: error?.message || "Falha ao cadastrar fontes sugeridas.",
+      });
+    } finally {
+      setIsSeedingPreset(false);
+    }
+  };
+
   return (
     <>
       <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
         <Button variant="contained" color="primary" onClick={handleOpenNew}>
           Adicionar Fonte (RSS/Url)
+        </Button>
+        <Button
+          variant="outlined"
+          color="primary"
+          onClick={handleSeedPresetSources}
+          disabled={isSeedingPreset}
+        >
+          {isSeedingPreset ? "Cadastrando fontes..." : "Cadastrar fontes sugeridas"}
         </Button>
         <Button
           variant="outlined"
