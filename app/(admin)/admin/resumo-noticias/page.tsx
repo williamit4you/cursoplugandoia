@@ -1,50 +1,58 @@
 import Link from "next/link";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
 
 import DailyNewsEditionsTable from "@/components/DailyNewsEditionsTable";
 import QuickScrapeTestButton from "@/components/QuickScrapeTestButton";
-
-const connectionString = process.env.DATABASE_URL!;
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewsSummaryPage() {
-  const editions = await prisma.dailyNewsEdition.findMany({
-    orderBy: [{ editionDate: "desc" }, { createdAt: "desc" }],
-    include: {
-      codeVideoProject: {
-        select: {
-          id: true,
-          status: true,
-          videoUrl: true,
-          thumbUrl: true,
-          renderProgress: true,
+  const dailyNewsEdition = (prisma as any).dailyNewsEdition;
+  let editions: any[] = [];
+  let loadError = "";
+
+  if (!dailyNewsEdition) {
+    loadError =
+      "O client do Prisma em execucao ainda nao reconhece DailyNewsEdition. Verifique deploy da migration e prisma generate no ambiente.";
+  } else {
+    try {
+      editions = await dailyNewsEdition.findMany({
+        orderBy: [{ editionDate: "desc" }, { createdAt: "desc" }],
+        include: {
+          codeVideoProject: {
+            select: {
+              id: true,
+              status: true,
+              videoUrl: true,
+              thumbUrl: true,
+              renderProgress: true,
+            },
+          },
+          items: {
+            orderBy: { position: "asc" },
+            select: {
+              id: true,
+              postId: true,
+              position: true,
+              titleSnapshot: true,
+              category: true,
+            },
+          },
+          assets: {
+            select: {
+              id: true,
+              status: true,
+              assetType: true,
+            },
+          },
         },
-      },
-      items: {
-        orderBy: { position: "asc" },
-        select: {
-          id: true,
-          postId: true,
-          position: true,
-          titleSnapshot: true,
-          category: true,
-        },
-      },
-      assets: {
-        select: {
-          id: true,
-          status: true,
-          assetType: true,
-        },
-      },
-    },
-  });
+      });
+    } catch (error: any) {
+      loadError =
+        error?.message ||
+        "Falha ao carregar as edicoes de resumo de noticias.";
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -71,6 +79,11 @@ export default async function NewsSummaryPage() {
           </div>
         </div>
       </div>
+      {loadError ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-700">
+          {loadError}
+        </div>
+      ) : null}
       <DailyNewsEditionsTable initialData={editions} />
     </div>
   );
