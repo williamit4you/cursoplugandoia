@@ -25,6 +25,30 @@ const SENSITIVE_TERMS = [
   "terror",
 ];
 
+const COMMERCIAL_TITLE_PATTERNS = [
+  "oferta",
+  "vale a pena investir",
+  "por que investir",
+  "porque investir",
+  "compre",
+  "desconto",
+  "promocao",
+  "promoção",
+  "produto",
+];
+
+const PRIORITY_CATEGORY_TERMS = [
+  "politica",
+  "economia",
+  "tecnologia",
+  "mundo",
+  "saude",
+  "esporte",
+  "esportes",
+  "ciencia",
+  "educacao",
+];
+
 type CuratablePost = Prisma.PostGetPayload<{
   include: {
     categories: {
@@ -58,6 +82,46 @@ export function isSensitiveNews(post: Pick<CuratablePost, "title" | "summary">) 
   return SENSITIVE_TERMS.some((term) => text.includes(term));
 }
 
+function normalizePt(value: string) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
+}
+
+function hasCommercialTitle(post: Pick<CuratablePost, "title" | "summary">) {
+  const text = normalizePt(`${post.title || ""} ${post.summary || ""}`);
+  return COMMERCIAL_TITLE_PATTERNS.some((term) => text.includes(term));
+}
+
+function resolvePrimaryCategory(post: CuratablePost) {
+  return normalizePt(
+    post.categories[0]?.category?.slug ||
+      post.categories[0]?.category?.name ||
+      "",
+  );
+}
+
+function isPriorityCategory(post: CuratablePost) {
+  const category = resolvePrimaryCategory(post);
+  return PRIORITY_CATEGORY_TERMS.some((term) => category.includes(term));
+}
+
+function sourceDomain(post: Pick<CuratablePost, "sourceUrl">) {
+  const raw = String(post.sourceUrl || "").trim();
+  if (!raw) return "";
+  try {
+    return new URL(raw).hostname.replace(/^www\./i, "").toLocaleLowerCase("pt-BR");
+  } catch {
+    return "";
+  }
+}
+
+function isEligibleNewsPost(post: CuratablePost) {
+  return Boolean(String(post.sourceUrl || "").trim()) && !hasCommercialTitle(post);
+}
+
 export function buildVerificationSnapshot(
   post: Pick<CuratablePost, "title" | "summary" | "sourceUrl">,
   position: number,
@@ -82,10 +146,11 @@ function scorePost(post: CuratablePost, nowMs: number) {
   const recencyHours = publishedMs ? Math.max(1, (nowMs - publishedMs) / 36e5) : 999;
   const featuredBoost = post.featured ? 80 : 0;
   const sourceBoost = post.sourceUrl ? 25 : 0;
-  const categoryBoost = post.categories.length ? 10 : 0;
+  const categoryBoost = isPriorityCategory(post) ? 55 : post.categories.length ? 10 : 0;
   const viewsBoost = Math.min(40, Math.round((post.views || 0) / 25));
   const freshnessScore = Math.max(0, 140 - recencyHours * 4);
   const sensitivityPenalty = isSensitiveNews(post) ? 20 : 0;
+  const commercialPenalty = hasCommercialTitle(post) ? 200 : 0;
 
   return (
     freshnessScore +
@@ -93,7 +158,8 @@ function scorePost(post: CuratablePost, nowMs: number) {
     sourceBoost +
     categoryBoost +
     viewsBoost -
-    sensitivityPenalty
+    sensitivityPenalty -
+    commercialPenalty
   );
 }
 
@@ -103,19 +169,34 @@ export function buildAutoCuratedEditionPosts(posts: CuratablePost[]) {
 
   for (const post of posts) {
     const key = String(post.slug || post.title || post.id).trim().toLocaleLowerCase("pt-BR");
-    if (!key || uniqueBySlugOrTitle.has(key)) continue;
+    if (!key || uniqueBySlugOrTitle.has(key) || !isEligibleNewsPost(post)) continue;
     uniqueBySlugOrTitle.set(key, post);
   }
 
-  return Array.from(uniqueBySlugOrTitle.values())
+  const ranked = Array.from(uniqueBySlugOrTitle.values())
     .sort((a, b) => {
+      const categoryDiff = Number(isPriorityCategory(b)) - Number(isPriorityCategory(a));
+      if (categoryDiff !== 0) return categoryDiff;
       const scoreDiff = scorePost(b, nowMs) - scorePost(a, nowMs);
       if (scoreDiff !== 0) return scoreDiff;
       const bDate = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
       const aDate = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
       return bDate - aDate;
-    })
-    .slice(0, DAILY_NEWS_MAX_ITEMS);
+    });
+
+  const selected: CuratablePost[] = [];
+  const byDomain = new Map<string, number>();
+
+  for (const post of ranked) {
+    const domain = sourceDomain(post) || `unknown:${post.id}`;
+    const currentCount = byDomain.get(domain) || 0;
+    if (currentCount >= 2) continue;
+    selected.push(post);
+    byDomain.set(domain, currentCount + 1);
+    if (selected.length >= DAILY_NEWS_MAX_ITEMS) break;
+  }
+
+  return selected;
 }
 
 export async function loadCandidateNewsPosts(editionDate: Date) {
@@ -125,6 +206,7 @@ export async function loadCandidateNewsPosts(editionDate: Date) {
   const current = await (await import("@/lib/prisma")).prisma.post.findMany({
     where: {
       ...whereBase,
+      sourceUrl: { not: null },
       publishedAt: {
         gte: currentWindow.start,
         lte: currentWindow.end,
@@ -150,6 +232,7 @@ export async function loadCandidateNewsPosts(editionDate: Date) {
   return (await (await import("@/lib/prisma")).prisma.post.findMany({
     where: {
       ...whereBase,
+      sourceUrl: { not: null },
       publishedAt: {
         gte: fallbackStart,
         lte: currentWindow.end,
