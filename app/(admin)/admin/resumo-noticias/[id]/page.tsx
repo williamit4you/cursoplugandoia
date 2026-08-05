@@ -33,12 +33,28 @@ type EditionDetail = {
     status: string;
     videoUrl?: string | null;
     thumbUrl?: string | null;
+    metadataJson?: string | null;
+    renderProgress?: number | null;
     socialPosts?: Array<{
       id: string;
       platform: string;
       status: string;
       postUrl?: string | null;
       youtubePostUrl?: string | null;
+    }>;
+    pipelineSteps?: Array<{
+      id: string;
+      stepName: string;
+      status: string;
+      startedAt?: string | null;
+      finishedAt?: string | null;
+      durationMs?: number | null;
+      attempt: number;
+      nextRetryAt?: string | null;
+      errorCode?: string | null;
+      errorMessage?: string | null;
+      createdAt: string;
+      updatedAt: string;
     }>;
     pipelineEvents?: Array<{
       id: string;
@@ -83,6 +99,19 @@ type EditionDetail = {
   }>;
 };
 
+type RenderSegment = {
+  index: number;
+  label?: string | null;
+  durationSec?: number | null;
+  status?: string | null;
+  videoUrl?: string | null;
+  audioUrl?: string | null;
+  audioStatus?: string | null;
+  videoStatus?: string | null;
+  currentStage?: string | null;
+  errorMessage?: string | null;
+};
+
 function formatDate(value: string | null | undefined, withTime = false) {
   if (!value) return "-";
   const date = new Date(value);
@@ -103,6 +132,24 @@ function publicPostUrl(slug: string | null | undefined) {
   return clean ? `/noticias/${clean}` : null;
 }
 
+function safeJsonParse<T>(value: string | null | undefined, fallback: T): T {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function downloadNameFromUrl(url: string | null | undefined, fallback: string) {
+  try {
+    const pathname = new URL(String(url || "")).pathname;
+    const name = pathname.split("/").filter(Boolean).pop();
+    return name || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function statusTone(status: string) {
   const normalized = String(status || "").toUpperCase();
   if (["PUBLISHED", "APPROVED"].includes(normalized)) return "bg-emerald-50 text-emerald-700 border-emerald-200";
@@ -118,19 +165,37 @@ export default function NewsSummaryDetailPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`/api/resumo-noticias/${params.id}`, { cache: "no-store" })
-      .then((response) => response.json())
-      .then((data) => {
+    let active = true;
+
+    const fetchEdition = async (keepLoading = false) => {
+      if (keepLoading) setLoading(true);
+      try {
+        const response = await fetch(`/api/resumo-noticias/${params.id}`, { cache: "no-store" });
+        const data = await response.json();
         if (!data?.item) {
           throw new Error(data?.error || "Edicao nao encontrada.");
         }
+        if (!active) return;
         setItem(data.item);
+        setError("");
         setLoading(false);
-      })
-      .catch((err: any) => {
+      } catch (err: any) {
+        if (!active) return;
         setError(err?.message || "Falha ao carregar a edicao.");
         setLoading(false);
-      });
+      }
+    };
+
+    void fetchEdition(true);
+
+    const interval = window.setInterval(() => {
+      void fetchEdition(false);
+    }, 10000);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
   }, [params.id]);
 
   const cards = useMemo(() => {
@@ -142,6 +207,136 @@ export default function NewsSummaryDetailPage() {
       { label: "YouTube", value: item.youtubePostUrl ? "Publicado" : "Nao enviado", tone: item.youtubePostUrl ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-slate-100 text-slate-700 border-slate-200" },
     ];
   }, [item]);
+
+  const renderSegments = useMemo(() => {
+    const metadata = safeJsonParse<any>(item?.codeVideoProject?.metadataJson, {});
+    return Array.isArray(metadata?.renderSegments)
+      ? (metadata.renderSegments as RenderSegment[])
+      : [];
+  }, [item?.codeVideoProject?.metadataJson]);
+
+  const pipelineMeta = useMemo(() => {
+    const metadata = safeJsonParse<any>(item?.codeVideoProject?.metadataJson, {});
+    return {
+      mergeStatus: String(metadata?.mergeStatus || "PENDING"),
+      actualDurationSec: Number(metadata?.actualDurationSec || 0),
+      youtubeTags: Array.isArray(metadata?.dailyNews?.youtubeTags) ? metadata.dailyNews.youtubeTags : [],
+      youtubeTitle: String(metadata?.dailyNews?.youtubeTitle || item?.title || ""),
+      thumbnailHeadline: String(metadata?.dailyNews?.thumbnailHeadline || ""),
+      thumbnailSubheadline: String(metadata?.dailyNews?.thumbnailSubheadline || ""),
+    };
+  }, [item?.codeVideoProject?.metadataJson, item?.title]);
+
+  const pipelineStats = useMemo(() => {
+    const steps = item?.codeVideoProject?.pipelineSteps || [];
+    const totalSegments = renderSegments.length;
+    const audioReady = renderSegments.filter((segment) => segment.audioStatus === "SUCCESS").length;
+    const videoReady = renderSegments.filter((segment) => segment.videoStatus === "SUCCESS").length;
+    const failedSegments = renderSegments.filter((segment) => String(segment.status || "").toUpperCase() === "FAILED").length;
+    const runningSegments = renderSegments.filter((segment) => String(segment.status || "").toUpperCase() === "RUNNING").length;
+    const totalDurationSec = renderSegments.reduce((total, segment) => total + Math.max(0, Number(segment.durationSec || 0)), 0);
+    const completedDurationSec = renderSegments
+      .filter((segment) => segment.videoStatus === "SUCCESS")
+      .reduce((total, segment) => total + Math.max(0, Number(segment.durationSec || 0)), 0);
+    const informativeItems = item?.items.filter((news) => Boolean(news.sourceUrl) && !/oferta/i.test(String(news.category || ""))).length || 0;
+    const sourceBackedItems = item?.items.filter((news) => Boolean(news.sourceUrl)).length || 0;
+    const offerItems = item?.items.filter((news) => /oferta/i.test(String(news.category || ""))).length || 0;
+    const projectProgress = Math.max(
+      0,
+      Math.min(
+        100,
+        Number(item?.codeVideoProject?.renderProgress || 0) ||
+          (totalSegments > 0 ? Math.round(((audioReady * 0.3 + videoReady * 0.7) / totalSegments) * 100) : 0),
+      ),
+    );
+    const startedAtCandidates = steps
+      .map((step) => step.startedAt || step.createdAt)
+      .filter(Boolean)
+      .map((value) => new Date(String(value)).getTime())
+      .filter((value) => Number.isFinite(value));
+    const firstStartedAt = startedAtCandidates.length ? Math.min(...startedAtCandidates) : null;
+    const elapsedMs = firstStartedAt ? Math.max(0, Date.now() - firstStartedAt) : 0;
+    const completedWorkUnits = Math.max(0, audioReady + videoReady + (pipelineMeta.mergeStatus === "SUCCESS" ? 1 : 0));
+    const totalWorkUnits = Math.max(1, totalSegments * 2 + 1);
+    const avgMsPerUnit = completedWorkUnits > 0 ? elapsedMs / completedWorkUnits : 0;
+    const remainingUnits = Math.max(0, totalWorkUnits - completedWorkUnits);
+    const estimatedRemainingMs = avgMsPerUnit > 0 ? Math.round(avgMsPerUnit * remainingUnits) : null;
+    const failedSteps = steps.filter((step) => step.status === "FAILED").length;
+    const runningStep = [...steps].reverse().find((step) => step.status === "RUNNING") || null;
+
+    return {
+      totalSegments,
+      audioReady,
+      videoReady,
+      failedSegments,
+      runningSegments,
+      totalDurationSec,
+      completedDurationSec,
+      projectProgress,
+      estimatedRemainingMs,
+      informativeItems,
+      sourceBackedItems,
+      offerItems,
+      failedSteps,
+      runningStep,
+      elapsedMs,
+    };
+  }, [item, pipelineMeta.mergeStatus, renderSegments]);
+
+  const timelineEvents = useMemo(() => {
+    return [...(item?.codeVideoProject?.pipelineEvents || [])].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [item?.codeVideoProject?.pipelineEvents]);
+
+  const stepTimeline = useMemo(() => {
+    return [...(item?.codeVideoProject?.pipelineSteps || [])].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+  }, [item?.codeVideoProject?.pipelineSteps]);
+
+  const editorialSignal = useMemo(() => {
+    if (!item) return { label: "-", tone: "text-slate-500", detail: "-" };
+    if (pipelineStats.sourceBackedItems >= Math.max(5, Math.ceil(item.items.length * 0.7)) && pipelineStats.offerItems <= Math.floor(item.items.length * 0.25)) {
+      return {
+        label: "Alto carater informativo",
+        tone: "text-emerald-700",
+        detail: `${pipelineStats.sourceBackedItems}/${item.items.length} itens com fonte externa e baixa presenca de oferta.`,
+      };
+    }
+    if (pipelineStats.sourceBackedItems >= Math.max(3, Math.ceil(item.items.length * 0.45))) {
+      return {
+        label: "Carater misto",
+        tone: "text-amber-700",
+        detail: `${pipelineStats.sourceBackedItems}/${item.items.length} itens com fonte externa. Vale revisar se esta mais noticia do que oferta.`,
+      };
+    }
+    return {
+      label: "Baixo carater informativo",
+      tone: "text-rose-700",
+      detail: `Poucas fontes externas detectadas (${pipelineStats.sourceBackedItems}/${item.items.length}). O conteudo pode estar parecendo mais oferta do que noticias.`,
+    };
+  }, [item, pipelineStats.offerItems, pipelineStats.sourceBackedItems]);
+
+  const estimateLabel = useMemo(() => {
+    if (!pipelineStats.estimatedRemainingMs || pipelineStats.projectProgress >= 100) return "Sem estimativa ainda";
+    const totalSec = Math.round(pipelineStats.estimatedRemainingMs / 1000);
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    return `${min}m ${String(sec).padStart(2, "0")}s`;
+  }, [pipelineStats.estimatedRemainingMs, pipelineStats.projectProgress]);
+
+  const artifactLinks = useMemo(
+    () =>
+      [
+        { label: "Preview", url: item?.previewVideoUrl || null, file: "preview.mp4" },
+        { label: "Video final", url: item?.finalVideoUrl || item?.codeVideoProject?.videoUrl || null, file: "resumo-noticias-final.mp4" },
+        { label: "Thumbnail", url: item?.thumbnailUrl || item?.codeVideoProject?.thumbUrl || null, file: "thumbnail-resumo-noticias.png" },
+        { label: "Legenda", url: item?.captionsUrl || null, file: "resumo-noticias.vtt" },
+        { label: "YouTube", url: item?.youtubePostUrl || null, file: "youtube-link.txt" },
+      ].filter(Boolean),
+    [item],
+  );
 
   if (loading) {
     return (
@@ -247,6 +442,87 @@ export default function NewsSummaryDetailPage() {
         ))}
       </section>
 
+      <section className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-lg font-black text-slate-900">Progresso operacional</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Aqui fica o retrato real do andamento: o que ja foi gerado, o que falta e se existe erro no pipeline.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Etapa atual</p>
+            <p className="mt-1 text-sm font-black text-slate-900">
+              {pipelineStats.runningStep?.stepName || (pipelineStats.projectProgress >= 100 ? "Concluido" : "Aguardando atualizacao")}
+            </p>
+          </div>
+        </div>
+        <div className="mt-5">
+          <div className="flex items-center justify-between gap-3 text-xs font-bold text-slate-600">
+            <span>Progresso geral</span>
+            <span>{pipelineStats.projectProgress}%</span>
+          </div>
+          <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-indigo-600 transition-all"
+              style={{ width: `${pipelineStats.projectProgress}%` }}
+            />
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Tempo estimado restante</p>
+            <p className="mt-2 text-lg font-black text-slate-900">{estimateLabel}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Audios gerados</p>
+            <p className="mt-2 text-lg font-black text-slate-900">
+              {pipelineStats.audioReady}/{pipelineStats.totalSegments || 0}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Videos prontos</p>
+            <p className="mt-2 text-lg font-black text-slate-900">
+              {pipelineStats.videoReady}/{pipelineStats.totalSegments || 0}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Duracao final prevista</p>
+            <p className="mt-2 text-lg font-black text-slate-900">
+              {durationLabel(pipelineStats.totalDurationSec || item.targetDurationSec)}
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Timeline concluida</p>
+            <p className="mt-2 text-sm font-black text-slate-900">
+              {durationLabel(pipelineStats.completedDurationSec)} de {durationLabel(pipelineStats.totalDurationSec || item.targetDurationSec)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Merge final</p>
+            <p className="mt-2 text-sm font-black text-slate-900">{pipelineMeta.mergeStatus}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Falhas detectadas</p>
+            <p className="mt-2 text-sm font-black text-slate-900">
+              Steps: {pipelineStats.failedSteps} • Partes: {pipelineStats.failedSegments}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Carater editorial</p>
+            <p className={`mt-2 text-sm font-black ${editorialSignal.tone}`}>{editorialSignal.label}</p>
+            <p className="mt-1 text-xs text-slate-500">{editorialSignal.detail}</p>
+          </div>
+        </div>
+        {pipelineStats.failedSteps > 0 || pipelineStats.failedSegments > 0 ? (
+          <Alert severity="error" className="mt-4 rounded-xl">
+            O pipeline registrou falha. Verifique a etapa com erro e a ultima mensagem na timeline abaixo.
+          </Alert>
+        ) : null}
+      </section>
+
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-6">
           <section className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm">
@@ -323,31 +599,107 @@ export default function NewsSummaryDetailPage() {
           <section className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-black text-slate-900">Artefatos e publicacao</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {[
-                { label: "Preview", url: item.previewVideoUrl },
-                { label: "Video final", url: item.finalVideoUrl || item.codeVideoProject?.videoUrl || null },
-                { label: "Thumbnail", url: item.thumbnailUrl || item.codeVideoProject?.thumbUrl || null },
-                { label: "Legenda", url: item.captionsUrl },
-                { label: "YouTube", url: item.youtubePostUrl },
-              ].map((artifact) => (
+              {artifactLinks.map((artifact) => (
                 <div key={artifact.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-xs font-black uppercase tracking-wide text-slate-400">{artifact.label}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-700">
                     {artifact.url ? "Disponivel" : "Pendente"}
                   </p>
                   {artifact.url ? (
-                    <a
-                      href={artifact.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-3 inline-flex items-center gap-2 text-xs font-black text-indigo-600"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Abrir
-                    </a>
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      <a
+                        href={artifact.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 text-xs font-black text-indigo-600"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        Abrir
+                      </a>
+                      {artifact.label !== "YouTube" ? (
+                        <a
+                          href={artifact.url}
+                          download={artifact.file}
+                          className="inline-flex items-center gap-2 text-xs font-black text-slate-700"
+                        >
+                          <FileText className="h-4 w-4" />
+                          Baixar
+                        </a>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
               ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-black text-slate-900">Partes renderizadas</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Cada trecho gerado fica com link facil para assistir e baixar assim que estiver pronto.
+            </p>
+            <div className="mt-4 space-y-3">
+              {renderSegments.length ? (
+                renderSegments.map((segment) => (
+                  <article key={`segment-${segment.index}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-sm font-black text-slate-900">
+                          {segment.label || `Parte ${Number(segment.index) + 1}`}
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          Status: {segment.status || "-"} • Audio: {segment.audioStatus || "-"} • Video: {segment.videoStatus || "-"} • Duracao: {durationLabel(segment.durationSec || null)}
+                        </p>
+                        {segment.errorMessage ? (
+                          <p className="mt-2 text-xs font-semibold text-rose-600">{segment.errorMessage}</p>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {segment.audioUrl ? (
+                          <>
+                            <a
+                              href={segment.audioUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[11px] font-black text-indigo-700"
+                            >
+                              Ouvir audio
+                            </a>
+                            <a
+                              href={segment.audioUrl}
+                              download={downloadNameFromUrl(segment.audioUrl, `audio-parte-${Number(segment.index) + 1}.mp3`)}
+                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-slate-700"
+                            >
+                              Baixar audio
+                            </a>
+                          </>
+                        ) : null}
+                        {segment.videoUrl ? (
+                          <>
+                            <a
+                              href={segment.videoUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-[11px] font-black text-violet-700"
+                            >
+                              Assistir parte
+                            </a>
+                            <a
+                              href={segment.videoUrl}
+                              download={downloadNameFromUrl(segment.videoUrl, `video-parte-${Number(segment.index) + 1}.mp4`)}
+                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-slate-700"
+                            >
+                              Baixar parte
+                            </a>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400">As partes ainda nao foram registradas no metadataJson do projeto.</p>
+              )}
             </div>
           </section>
         </div>
@@ -366,6 +718,47 @@ export default function NewsSummaryDetailPage() {
                   {item.scriptText || "Roteiro ainda nao gerado."}
                 </p>
               </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-slate-400">Titulo YouTube</p>
+                <p className="mt-1 leading-6">{pipelineMeta.youtubeTitle || "Ainda nao definido."}</p>
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-slate-400">Capa prevista</p>
+                <p className="mt-1 leading-6">
+                  {pipelineMeta.thumbnailHeadline || "Sem headline"}{pipelineMeta.thumbnailSubheadline ? ` • ${pipelineMeta.thumbnailSubheadline}` : ""}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-black text-slate-900">Etapas do pipeline</h2>
+            <div className="mt-4 space-y-3">
+              {stepTimeline.length ? (
+                stepTimeline.map((step) => (
+                  <article key={step.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                        {step.stepName}
+                      </p>
+                      <span className="text-[11px] font-semibold text-slate-500">
+                        {step.status}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      Tentativa {step.attempt} • Duracao: {step.durationMs ? `${Math.round(step.durationMs / 1000)}s` : "-"}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Inicio: {formatDate(step.startedAt || step.createdAt, true)} • Fim: {formatDate(step.finishedAt || null, true)}
+                    </p>
+                    {step.errorMessage ? (
+                      <p className="mt-2 text-xs font-semibold text-rose-600">{step.errorMessage}</p>
+                    ) : null}
+                  </article>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400">Nenhuma etapa operacional registrada ainda.</p>
+              )}
             </div>
           </section>
 
@@ -377,8 +770,8 @@ export default function NewsSummaryDetailPage() {
                   {item.errorMessage}
                 </div>
               ) : null}
-              {item.codeVideoProject?.pipelineEvents?.length ? (
-                item.codeVideoProject.pipelineEvents.map((event) => (
+              {timelineEvents.length ? (
+                timelineEvents.map((event) => (
                   <article key={event.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-xs font-black uppercase tracking-wide text-slate-400">

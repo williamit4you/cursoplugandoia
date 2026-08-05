@@ -38,6 +38,14 @@ type RenderRequest = {
   videoSpec: any;
 };
 
+type StillRequest = {
+  projectId: string;
+  aspectRatio?: string | null;
+  format?: "png" | "jpeg";
+  frame?: number | null;
+  videoSpec: any;
+};
+
 let renderQueue: Promise<void> = Promise.resolve();
 let cachedBundlePromise: Promise<string> | null = null;
 
@@ -622,6 +630,80 @@ async function renderProject(payload: RenderRequest) {
   });
 }
 
+async function renderStillImage(payload: StillRequest) {
+  return withRenderLock(async () => {
+    const projectId = String(payload?.projectId || "").trim();
+    const videoSpec = payload?.videoSpec;
+    if (!projectId) throw new Error("projectId is required");
+    if (!videoSpec) throw new Error("videoSpec is required");
+
+    const bucketName = process.env.MINIO_BUCKET_NAME || "uploads";
+    const publicBase = process.env.MINIO_PUBLIC_URL;
+    if (!publicBase) throw new Error("MINIO_PUBLIC_URL not configured");
+    await ensureBucket(bucketName);
+
+    // eslint-disable-next-line no-eval
+    const req = eval("require") as (name: string) => any;
+    const { bundle } = req("@remotion/bundler") as typeof import("@remotion/bundler");
+    const { getCompositions, renderStill } = req("@remotion/renderer") as typeof import("@remotion/renderer");
+
+    const entryPoint = path.resolve(process.cwd(), "remotion", "index.ts");
+    const browserPath = process.env.REMOTION_CHROME_BIN || undefined;
+    const outDir = path.resolve(process.cwd(), ".remotion-temp", `${projectId}-still`);
+    await fs.mkdir(outDir, { recursive: true });
+
+    const extension = String(payload?.format || "png").toLowerCase() === "jpeg" ? "jpeg" : "png";
+    const localStill = path.join(outDir, `code-video-${projectId}.${extension}`);
+
+    try {
+      const bundleLocation = await getCachedBundle(bundle, entryPoint);
+      const compositions = await getCompositions(bundleLocation, {
+        inputProps: { videoSpec, audioUrl: null, transcription: null },
+        browserExecutable: browserPath,
+      });
+
+      const compositionId =
+        payload.aspectRatio === "LANDSCAPE_16_9" || payload.aspectRatio === "16:9"
+          ? "VideoLandscape"
+          : "VideoPortrait";
+      const comp = compositions.find((item: any) => item.id === compositionId);
+      if (!comp) throw new Error(`Composition not found: ${compositionId}`);
+
+      const fps = Number(videoSpec?.meta?.fps || comp.fps || 30);
+      const durationInFrames = totalDurationInFramesFromSpec(videoSpec, fps);
+      const composition = { ...comp, fps, durationInFrames };
+
+      await renderStill({
+        composition,
+        serveUrl: bundleLocation,
+        output: localStill,
+        inputProps: { videoSpec, audioUrl: null, transcription: null },
+        frame: Math.max(0, Number(payload?.frame || 0)),
+        imageFormat: extension,
+        browserExecutable: browserPath,
+      });
+
+      const key = `code-video-thumbnail-${projectId}.${extension}`;
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: bucketName,
+          Key: key,
+          Body: await fs.readFile(localStill),
+          ContentType: extension === "jpeg" ? "image/jpeg" : "image/png",
+        }),
+      );
+
+      return {
+        projectId,
+        imageUrl: `${publicBase}/${key}`,
+        imageFormat: extension,
+      };
+    } finally {
+      await removeIfExists(outDir);
+    }
+  });
+}
+
 async function concatRenderedVideos(payload: {
   projectId: string;
   videoUrls: string[];
@@ -762,6 +844,19 @@ const server = http.createServer(async (req, res) => {
     } catch (error: any) {
       console.error("[render-service][shopee/search]", error);
       return json(res, 502, { ok: false, error: error?.message || "Shopee search failed" });
+    }
+  }
+
+  if (req.method === "POST" && req.url === "/still") {
+    try {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(Buffer.from(chunk));
+      const payload = safeJsonParse(Buffer.concat(chunks).toString("utf8")) as StillRequest | null;
+      if (!payload) return json(res, 400, { error: "Invalid JSON" });
+      const result = await renderStillImage(payload);
+      return json(res, 200, result);
+    } catch (error: any) {
+      return json(res, 500, { error: error?.message || "Failed to render still" });
     }
   }
 

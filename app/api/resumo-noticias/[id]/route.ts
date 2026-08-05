@@ -40,15 +40,15 @@ async function readEdition(id: string) {
           include: {
             socialPosts: {
               orderBy: { createdAt: "desc" },
-              take: 5,
+              take: 20,
             },
             pipelineSteps: {
-              orderBy: { createdAt: "desc" },
-              take: 20,
+              orderBy: { createdAt: "asc" },
+              take: 200,
             },
             pipelineEvents: {
-              orderBy: { createdAt: "desc" },
-              take: 20,
+              orderBy: { createdAt: "asc" },
+              take: 400,
             },
           },
         },

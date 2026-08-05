@@ -17,6 +17,11 @@ import {
   normalizeEditionDate,
   sourceNameFromUrl,
 } from "@/lib/dailyNewsEdition";
+import {
+  buildDailyNewsClickbaitTitle,
+  buildDailyNewsThumbnailVideoSpec,
+  ensureDailyNewsHashtag,
+} from "@/lib/dailyNewsThumbnail";
 import { searchPexelsMedia } from "@/lib/pexels";
 import { ensureNewsSocialPostsForProject } from "@/lib/newsSocialQueue";
 import { logCodeVideoPipelineEvent, upsertCodeVideoPipelineStep } from "@/lib/video-code/logger";
@@ -47,6 +52,38 @@ function makeJsonRequest(baseUrl: string, pathname: string, body: unknown) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+async function renderStillWithExternalService(params: {
+  projectId: string;
+  aspectRatio: "LANDSCAPE_16_9" | "PORTRAIT_9_16";
+  videoSpec: any;
+}) {
+  const baseUrl = String(process.env.VIDEO_RENDER_SERVICE_URL || "").trim().replace(/\/+$/, "");
+  if (!baseUrl) {
+    throw new Error("VIDEO_RENDER_SERVICE_URL not configured");
+  }
+
+  const response = await fetch(`${baseUrl}/still`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      projectId: params.projectId,
+      aspectRatio: params.aspectRatio,
+      format: "png",
+      frame: 0,
+      videoSpec: params.videoSpec,
+    }),
+    signal: AbortSignal.timeout(1000 * 60 * 10),
+  });
+
+  const data = await response.json().catch(() => ({} as any));
+  if (!response.ok || !data.imageUrl) {
+    throw new Error(
+      data?.error || `Still render failed (HTTP ${response.status})`,
+    );
+  }
+  return data.imageUrl as string;
 }
 
 async function readRouteResponse(res: Response) {
@@ -273,10 +310,13 @@ async function buildEditionEditorialPlan(edition: EditionWithItems) {
     "Responda somente JSON valido.",
     "Objetivo: criar um video horizontal de 3 a 5 minutos, com narracao natural e SEO forte para YouTube.",
     "A narrativa deve ser clara, profissional, objetiva e sem clickbait barato no corpo do texto.",
-    "Campos obrigatorios: editionTitle, editionDescription, youtubeDescription, youtubeTags, introText, outroText, items.",
+    "Campos obrigatorios: editionTitle, youtubeTitle, thumbnailHeadline, thumbnailSubheadline, editionDescription, youtubeDescription, youtubeTags, introText, outroText, items.",
     "items deve ser uma lista com todos os postId recebidos, sem excluir nenhum.",
     "Cada item deve ter: postId, shortTitle, narrationText, pexelsQueries.",
     "narrationText de cada item deve ser texto falado puro, sem colchetes, sem marcacoes de cena e sem listas.",
+    "youtubeTitle deve ser fortemente clicavel, com tom jornalistico e sem inventar fatos.",
+    "thumbnailHeadline deve ser curta, forte e focada na manchete principal.",
+    "thumbnailSubheadline deve reforcar curiosidade, por exemplo com algo como veja isso e muito mais.",
     "youtubeTags deve ser um array de 8 a 15 tags curtas em portugues.",
     "youtubeDescription deve terminar com uma secao Fontes: listando titulo e URL das noticias quando houver URL.",
   ].join("\n");
@@ -331,6 +371,32 @@ async function buildEditionEditorialPlan(edition: EditionWithItems) {
         ),
         120,
       ),
+      youtubeTitle: ensureDailyNewsHashtag(
+        clip(
+          String(
+            plan?.youtubeTitle ||
+              plan?.editionTitle ||
+              buildDailyNewsClickbaitTitle({
+                editionDate: new Date(edition.editionDate),
+                mainHeadline: edition.items[0]?.titleSnapshot || edition.title || "Resumo do dia",
+              }),
+          ),
+          98,
+        ),
+      ),
+      thumbnailHeadline: clip(
+        String(
+          plan?.thumbnailHeadline ||
+            edition.items[0]?.titleSnapshot ||
+            edition.title ||
+            "Noticias do dia",
+        ),
+        64,
+      ),
+      thumbnailSubheadline: clip(
+        String(plan?.thumbnailSubheadline || "Veja isso e muito mais no resumo do dia."),
+        72,
+      ),
       editionDescription: clip(
         String(
           plan?.editionDescription ||
@@ -358,6 +424,13 @@ async function buildEditionEditorialPlan(edition: EditionWithItems) {
     return {
       editionTitle:
         edition.title || buildEditionTitle(new Date(edition.editionDate)),
+      youtubeTitle: buildDailyNewsClickbaitTitle({
+        editionDate: new Date(edition.editionDate),
+        mainHeadline: edition.items[0]?.titleSnapshot || edition.title || "Resumo do dia",
+      }),
+      thumbnailHeadline:
+        edition.items[0]?.titleSnapshot || edition.title || "Noticias do dia",
+      thumbnailSubheadline: "Veja isso e muito mais no resumo do dia.",
       editionDescription:
         edition.description || "Resumo diario das principais noticias do dia.",
       youtubeDescription: edition.items
@@ -594,8 +667,11 @@ async function createOrUpdateEditionProject(
       editionId: edition.id,
       editionDate: new Date(edition.editionDate).toISOString(),
       timezone: edition.timezone,
+      youtubeTitle: plan.youtubeTitle,
       youtubeDescription: plan.youtubeDescription,
       youtubeTags: plan.youtubeTags,
+      thumbnailHeadline: plan.thumbnailHeadline,
+      thumbnailSubheadline: plan.thumbnailSubheadline,
       sourcePostIds: edition.items.map((item: any) => item.postId),
     },
     newsVariant: "BROLL",
@@ -610,7 +686,7 @@ async function createOrUpdateEditionProject(
   const baseData: any = {
     status: "READY",
     projectType: "LONG_FORM_MARKETING",
-    ideaPrompt: plan.editionTitle,
+    ideaPrompt: plan.youtubeTitle,
     aspectRatio: "LANDSCAPE_16_9",
     videoDurationSec: Math.max(
       180,
@@ -620,10 +696,10 @@ async function createOrUpdateEditionProject(
     ttsVoice: "pt-BR-AntonioNeural",
     ttsSpeed: "+5%",
     useExternalMedia: true,
-    title: plan.editionTitle,
+    title: plan.youtubeTitle,
     description: plan.editionDescription,
     narrationText,
-    thumbUrl: firstAsset?.technicalJson?.thumbnail || edition.thumbnailUrl || null,
+    thumbUrl: edition.thumbnailUrl || firstAsset?.technicalJson?.thumbnail || null,
     metadataJson: JSON.stringify(metadata),
     videoSpecJson: JSON.stringify(videoSpec),
     errorMessage: null,
@@ -762,6 +838,33 @@ export async function prepareDailyNewsEdition(editionId: string) {
   const freshEdition = await loadEdition(editionId);
   const assets = await rebuildEditionAssets(freshEdition, plan);
   const project = await createOrUpdateEditionProject(freshEdition, plan, assets);
+
+  try {
+    const thumbnailUrl = await renderStillWithExternalService({
+      projectId: `${project.id}-thumbnail`,
+      aspectRatio: "LANDSCAPE_16_9",
+      videoSpec: buildDailyNewsThumbnailVideoSpec({
+        editionDate: new Date(freshEdition.editionDate),
+        mainHeadline: plan.thumbnailHeadline || freshEdition.items[0]?.titleSnapshot || plan.editionTitle,
+      }),
+    });
+
+    await prisma.codeVideoProject.update({
+      where: { id: project.id },
+      data: { thumbUrl: thumbnailUrl },
+    });
+    await prisma.dailyNewsEdition.update({
+      where: { id: editionId },
+      data: { thumbnailUrl },
+    });
+  } catch (error: any) {
+    await logCodeVideoPipelineEvent({
+      projectId: project.id,
+      stepName: "DAILY_NEWS_THUMBNAIL",
+      level: "WARN",
+      message: `Thumbnail Remotion nao gerada automaticamente: ${error?.message || "erro desconhecido"}`,
+    }).catch(() => null);
+  }
 
   await logCodeVideoPipelineEvent({
     projectId: project.id,
