@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import {
+  dailyNewsUnavailableResponse,
+  getDailyNewsDelegates,
+  isDailyNewsSchemaMissing,
+} from "@/lib/dailyNewsAvailability";
 import { requireServerSession } from "@/lib/serverAuth";
 import {
   buildEditionItems,
@@ -15,8 +20,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const dailyNewsEdition = (prisma as any).dailyNewsEdition;
-const dailyNewsEditionItem = (prisma as any).dailyNewsEditionItem;
+const { dailyNewsEdition, dailyNewsEditionItem } = getDailyNewsDelegates();
 
 async function requireAdmin() {
   const session = await requireServerSession();
@@ -28,49 +32,56 @@ async function requireAdmin() {
 }
 
 async function readEdition(id: string) {
-  return dailyNewsEdition.findUnique({
-    where: { id },
-    include: {
-      codeVideoProject: {
-        include: {
-          socialPosts: {
-            orderBy: { createdAt: "desc" },
-            take: 5,
-          },
-          pipelineSteps: {
-            orderBy: { createdAt: "desc" },
-            take: 20,
-          },
-          pipelineEvents: {
-            orderBy: { createdAt: "desc" },
-            take: 20,
-          },
-        },
-      },
-      items: {
-        orderBy: { position: "asc" },
-        include: {
-          post: {
-            select: {
-              id: true,
-              slug: true,
-              status: true,
-              summary: true,
-              publishedAt: true,
-              coverImage: true,
+  try {
+    return await dailyNewsEdition.findUnique({
+      where: { id },
+      include: {
+        codeVideoProject: {
+          include: {
+            socialPosts: {
+              orderBy: { createdAt: "desc" },
+              take: 5,
+            },
+            pipelineSteps: {
+              orderBy: { createdAt: "desc" },
+              take: 20,
+            },
+            pipelineEvents: {
+              orderBy: { createdAt: "desc" },
+              take: 20,
             },
           },
-          assets: {
-            orderBy: { createdAt: "asc" },
+        },
+        items: {
+          orderBy: { position: "asc" },
+          include: {
+            post: {
+              select: {
+                id: true,
+                slug: true,
+                status: true,
+                summary: true,
+                publishedAt: true,
+                coverImage: true,
+              },
+            },
+            assets: {
+              orderBy: { createdAt: "asc" },
+            },
           },
         },
+        assets: {
+          where: { editionItemId: null },
+          orderBy: { createdAt: "asc" },
+        },
       },
-      assets: {
-        where: { editionItemId: null },
-        orderBy: { createdAt: "asc" },
-      },
-    },
-  });
+    });
+  } catch (error) {
+    if (isDailyNewsSchemaMissing(error)) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function GET(
@@ -80,6 +91,10 @@ export async function GET(
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Nao autorizado." }, { status: 401 });
+  }
+
+  if (!dailyNewsEdition) {
+    return dailyNewsUnavailableResponse();
   }
 
   const item = await readEdition(ctx.params.id);
@@ -99,10 +114,22 @@ export async function PATCH(
     return NextResponse.json({ error: "Nao autorizado." }, { status: 401 });
   }
 
-  const existing = await dailyNewsEdition.findUnique({
-    where: { id: ctx.params.id },
-    include: { items: true },
-  });
+  if (!dailyNewsEdition || !dailyNewsEditionItem) {
+    return dailyNewsUnavailableResponse();
+  }
+
+  let existing: any;
+  try {
+    existing = await dailyNewsEdition.findUnique({
+      where: { id: ctx.params.id },
+      include: { items: true },
+    });
+  } catch (error) {
+    if (isDailyNewsSchemaMissing(error)) {
+      return dailyNewsUnavailableResponse();
+    }
+    throw error;
+  }
   if (!existing) {
     return NextResponse.json({ error: "Nao encontrado." }, { status: 404 });
   }
@@ -183,29 +210,43 @@ export async function PATCH(
       .filter(Boolean) as typeof posts;
     data.sourceSnapshotJson = buildEditionSnapshots(orderedPosts as any);
 
-    await prisma.$transaction([
-      dailyNewsEditionItem.deleteMany({
-        where: { editionId: existing.id },
-      }),
-      dailyNewsEdition.update({
-        where: { id: existing.id },
-        data: {
-          ...data,
-          items: {
-            create: buildEditionItems(orderedPosts as any),
+    try {
+      await prisma.$transaction([
+        dailyNewsEditionItem.deleteMany({
+          where: { editionId: existing.id },
+        }),
+        dailyNewsEdition.update({
+          where: { id: existing.id },
+          data: {
+            ...data,
+            items: {
+              create: buildEditionItems(orderedPosts as any),
+            },
           },
-        },
-      }),
-    ]);
+        }),
+      ]);
+    } catch (error) {
+      if (isDailyNewsSchemaMissing(error)) {
+        return dailyNewsUnavailableResponse();
+      }
+      throw error;
+    }
 
     const item = await readEdition(existing.id);
     return NextResponse.json({ item });
   }
 
-  await dailyNewsEdition.update({
-    where: { id: existing.id },
-    data,
-  });
+  try {
+    await dailyNewsEdition.update({
+      where: { id: existing.id },
+      data,
+    });
+  } catch (error) {
+    if (isDailyNewsSchemaMissing(error)) {
+      return dailyNewsUnavailableResponse();
+    }
+    throw error;
+  }
 
   const item = await readEdition(existing.id);
   return NextResponse.json({ item });

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import {
+  dailyNewsUnavailableResponse,
+  getDailyNewsDelegates,
+  isDailyNewsSchemaMissing,
+} from "@/lib/dailyNewsAvailability";
 import { requireServerSession } from "@/lib/serverAuth";
 import {
   buildAutoCuratedEditionPosts,
@@ -22,7 +27,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const dailyNewsEdition = (prisma as any).dailyNewsEdition;
+const { dailyNewsEdition } = getDailyNewsDelegates();
 
 async function requireAdmin() {
   const session = await requireServerSession();
@@ -39,6 +44,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Nao autorizado." }, { status: 401 });
   }
 
+  if (!dailyNewsEdition) {
+    return dailyNewsUnavailableResponse();
+  }
+
   const status = String(req.nextUrl.searchParams.get("status") || "")
     .trim()
     .toUpperCase();
@@ -48,46 +57,54 @@ export async function GET(req: NextRequest) {
     Math.max(1, Number(req.nextUrl.searchParams.get("take") || 50)),
   );
 
-  const items = await dailyNewsEdition.findMany({
-    where: {
-      ...(status ? { status: normalizeDailyNewsStatus(status) } : {}),
-      ...(q
-        ? {
-            OR: [
-              { id: { contains: q, mode: "insensitive" } },
-              { title: { contains: q, mode: "insensitive" } },
-              { description: { contains: q, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: [{ editionDate: "desc" }, { createdAt: "desc" }],
-    take,
-    include: {
-      codeVideoProject: {
-        select: {
-          id: true,
-          status: true,
-          videoUrl: true,
-          thumbUrl: true,
-          renderProgress: true,
+  let items: any[] = [];
+  try {
+    items = await dailyNewsEdition.findMany({
+      where: {
+        ...(status ? { status: normalizeDailyNewsStatus(status) } : {}),
+        ...(q
+          ? {
+              OR: [
+                { id: { contains: q, mode: "insensitive" } },
+                { title: { contains: q, mode: "insensitive" } },
+                { description: { contains: q, mode: "insensitive" } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ editionDate: "desc" }, { createdAt: "desc" }],
+      take,
+      include: {
+        codeVideoProject: {
+          select: {
+            id: true,
+            status: true,
+            videoUrl: true,
+            thumbUrl: true,
+            renderProgress: true,
+          },
+        },
+        items: {
+          orderBy: { position: "asc" },
+          select: {
+            id: true,
+            postId: true,
+            position: true,
+            titleSnapshot: true,
+            category: true,
+          },
+        },
+        assets: {
+          select: { id: true, status: true, assetType: true },
         },
       },
-      items: {
-        orderBy: { position: "asc" },
-        select: {
-          id: true,
-          postId: true,
-          position: true,
-          titleSnapshot: true,
-          category: true,
-        },
-      },
-      assets: {
-        select: { id: true, status: true, assetType: true },
-      },
-    },
-  });
+    });
+  } catch (error) {
+    if (isDailyNewsSchemaMissing(error)) {
+      return dailyNewsUnavailableResponse();
+    }
+    throw error;
+  }
 
   return NextResponse.json({ items });
 }
@@ -96,6 +113,10 @@ export async function POST(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Nao autorizado." }, { status: 401 });
+  }
+
+  if (!dailyNewsEdition) {
+    return dailyNewsUnavailableResponse();
   }
 
   const body = await req.json().catch(() => ({}));
@@ -109,15 +130,23 @@ export async function POST(req: NextRequest) {
     body?.targetDurationSec ?? DAILY_NEWS_DEFAULT_DURATION_SEC,
   );
 
-  const existing = await dailyNewsEdition.findUnique({
-    where: {
-      editionDate_timezone: {
-        editionDate,
-        timezone,
+  let existing: { id: string } | null = null;
+  try {
+    existing = await dailyNewsEdition.findUnique({
+      where: {
+        editionDate_timezone: {
+          editionDate,
+          timezone,
+        },
       },
-    },
-    select: { id: true },
-  });
+      select: { id: true },
+    });
+  } catch (error) {
+    if (isDailyNewsSchemaMissing(error)) {
+      return dailyNewsUnavailableResponse();
+    }
+    throw error;
+  }
   if (existing) {
     return NextResponse.json(
       { error: "Ja existe uma edicao para esta data e timezone." },
@@ -162,26 +191,36 @@ export async function POST(req: NextRequest) {
 
   const sourceSnapshotJson = buildEditionSnapshots(orderedPosts as any);
 
-  const item = await dailyNewsEdition.create({
-    data: {
-      editionDate,
-      timezone,
-      title: title || buildEditionTitle(editionDate),
-      description: description || null,
-      targetDurationSec,
-      sourceSnapshotJson,
-      items: {
-        create: buildEditionItems(orderedPosts as any),
+  let item: any;
+  try {
+    item = await dailyNewsEdition.create({
+      data: {
+        editionDate,
+        timezone,
+        title: title || buildEditionTitle(editionDate),
+        description: description || null,
+        targetDurationSec,
+        sourceSnapshotJson,
+        items: {
+          create: buildEditionItems(orderedPosts as any),
+        },
       },
-    },
-    include: {
-      items: {
-        orderBy: { position: "asc" },
+      include: {
+        items: {
+          orderBy: { position: "asc" },
+        },
+        assets: true,
+        codeVideoProject: true,
       },
-      assets: true,
-      codeVideoProject: true,
-    },
-  });
+    });
+  } catch (error) {
+    if (isDailyNewsSchemaMissing(error)) {
+      return dailyNewsUnavailableResponse(
+        "A criacao da edicao foi bloqueada porque a migration do modulo ainda nao foi aplicada.",
+      );
+    }
+    throw error;
+  }
 
   return NextResponse.json({ item }, { status: 201 });
 }

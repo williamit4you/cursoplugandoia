@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { dailyNewsUnavailableResponse, isDailyNewsSchemaMissing } from "@/lib/dailyNewsAvailability";
 import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
 import { runTodayDailyNewsAutomation } from "@/lib/dailyNewsPipeline";
 
@@ -20,6 +21,11 @@ export async function GET(req: NextRequest) {
     const result = await runTodayDailyNewsAutomation(baseUrl(req));
     return NextResponse.json(result);
   } catch (error: any) {
+    if (isDailyNewsSchemaMissing(error)) {
+      return dailyNewsUnavailableResponse(
+        "A automacao diaria foi bloqueada porque a base ainda nao possui as tabelas do modulo.",
+      );
+    }
     return NextResponse.json(
       { error: error?.message || "Falha no cron do resumo-noticias." },
       { status: 500 },

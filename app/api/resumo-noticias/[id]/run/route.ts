@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { dailyNewsUnavailableResponse, isDailyNewsSchemaMissing } from "@/lib/dailyNewsAvailability";
 import { requireAdminOrCronSecret } from "@/lib/shopee-pipeline/apiAuth";
 import {
   runDailyNewsEditionPipeline,
@@ -32,6 +33,11 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
       item: synced || item,
     });
   } catch (error: any) {
+    if (isDailyNewsSchemaMissing(error)) {
+      return dailyNewsUnavailableResponse(
+        "A execucao do pipeline foi bloqueada porque a base ainda nao possui as tabelas do modulo.",
+      );
+    }
     return NextResponse.json(
       { error: error?.message || "Falha ao executar resumo-noticias." },
       { status: 500 },
