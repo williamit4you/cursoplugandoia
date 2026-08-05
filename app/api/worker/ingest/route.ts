@@ -100,6 +100,14 @@ function baseUrl(req: NextRequest) {
   return `${protocol}://${host}`;
 }
 
+function isNewsArticlePayload(body: any) {
+  return Boolean(
+    String(body?.sourceUrl || "").trim() &&
+      String(body?.title || "").trim() &&
+      String(body?.content || "").trim(),
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -156,36 +164,46 @@ export async function POST(req: NextRequest) {
     }).catch((err) => console.error("[worker ingest -> auto video]", err));
 
     if (body.videoUrl) {
+      const newsArticlePayload = isNewsArticlePayload(body);
       const existingSocial = await prisma.socialPost.findFirst({
-        where: { postId: upsertedPost.id },
+        where: newsArticlePayload
+          ? {
+              postId: upsertedPost.id,
+              platform: "YOUTUBE",
+            }
+          : { postId: upsertedPost.id },
       });
 
       if (!existingSocial) {
-        const scraperConfig = await prisma.scraperConfig.findFirst({
-          orderBy: { createdAt: "desc" },
-        });
-
         const platformsToCreate: { platform: string; postType: string }[] = [];
-        if (scraperConfig) {
-          if (scraperConfig.autoPublishReels) {
+        if (newsArticlePayload) {
+          platformsToCreate.push({ platform: "YOUTUBE", postType: "REEL" });
+        } else {
+          const scraperConfig = await prisma.scraperConfig.findFirst({
+            orderBy: { createdAt: "desc" },
+          });
+
+          if (scraperConfig) {
+            if (scraperConfig.autoPublishReels) {
+              platformsToCreate.push({ platform: "META", postType: "REEL" });
+            }
+            if (scraperConfig.autoPublishStory) {
+              platformsToCreate.push({ platform: "META", postType: "STORY" });
+            }
+            if (scraperConfig.autoPublishTikTok) {
+              platformsToCreate.push({ platform: "TIKTOK", postType: "REEL" });
+            }
+            if (scraperConfig.autoPublishLinkedIn) {
+              platformsToCreate.push({ platform: "LINKEDIN", postType: "REEL" });
+            }
+            if (scraperConfig.autoPublishYouTube) {
+              platformsToCreate.push({ platform: "YOUTUBE", postType: "REEL" });
+            }
+          }
+
+          if (platformsToCreate.length === 0) {
             platformsToCreate.push({ platform: "META", postType: "REEL" });
           }
-          if (scraperConfig.autoPublishStory) {
-            platformsToCreate.push({ platform: "META", postType: "STORY" });
-          }
-          if (scraperConfig.autoPublishTikTok) {
-            platformsToCreate.push({ platform: "TIKTOK", postType: "REEL" });
-          }
-          if (scraperConfig.autoPublishLinkedIn) {
-            platformsToCreate.push({ platform: "LINKEDIN", postType: "REEL" });
-          }
-          if (scraperConfig.autoPublishYouTube) {
-            platformsToCreate.push({ platform: "YOUTUBE", postType: "REEL" });
-          }
-        }
-
-        if (platformsToCreate.length === 0) {
-          platformsToCreate.push({ platform: "META", postType: "REEL" });
         }
 
         const createdPosts = [];
