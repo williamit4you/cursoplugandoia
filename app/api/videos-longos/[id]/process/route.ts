@@ -96,16 +96,26 @@ export async function POST(
       where: { id: project.id },
     });
     const meta = parseLongFormMetadata(planned?.metadataJson);
-    await prisma.codeVideoProject.update({
-      where: { id: project.id },
-      data: {
-        metadataJson: JSON.stringify({
-          ...meta,
-          planningApproved: true,
-          finalApproved: true,
-        }),
-      },
-    });
+    if (!meta.planningApproved) {
+      await prisma.codeVideoProject.update({
+        where: { id: project.id },
+        data: { status: "READY" },
+      });
+      await logCodeVideoPipelineEvent({
+        projectId: project.id,
+        stepName: "LONG_FORM_APPROVAL",
+        level: "WARN",
+        message:
+          "Planejamento pronto para revisao. Aprove o planejamento antes de iniciar o render.",
+      }).catch(() => null);
+      return NextResponse.json(
+        {
+          error:
+            "Planejamento pronto para revisao. Aprove o planejamento antes de iniciar o render.",
+        },
+        { status: 409 },
+      );
+    }
 
     const renderRequest = new NextRequest(
       new URL("/api/video-code/render", req.url),

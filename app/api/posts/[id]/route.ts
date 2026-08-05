@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { triggerNewsVideoGenerationForPost } from "@/lib/newsArticleVideoTrigger";
+import { requireServerSession } from "@/lib/serverAuth";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -18,7 +19,45 @@ function baseUrl(req: NextRequest) {
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const post = await prisma.post.findUnique({ where: { id: params.id } });
+    const adminView = _req.nextUrl.searchParams.get("adminView") === "1";
+    const session = adminView ? await requireServerSession().catch(() => null) : null;
+    const isAdmin = Boolean(session?.user && String((session.user as any)?.role || "") === "ADMIN");
+
+    const post = await prisma.post.findUnique({
+      where: { id: params.id },
+      include: adminView && isAdmin
+        ? {
+            categories: {
+              include: { category: true },
+              orderBy: { category: { sortOrder: "asc" } },
+            },
+            codeVideoProjects: {
+              select: {
+                id: true,
+                status: true,
+                newsVariant: true,
+                videoUrl: true,
+                thumbUrl: true,
+                createdAt: true,
+                updatedAt: true,
+                socialPosts: {
+                  select: {
+                    id: true,
+                    platform: true,
+                    status: true,
+                    scheduledTo: true,
+                    postedAt: true,
+                    postUrl: true,
+                    youtubePostUrl: true,
+                  },
+                  orderBy: [{ scheduledTo: "desc" }, { createdAt: "desc" }],
+                },
+              },
+              orderBy: { createdAt: "desc" },
+            },
+          }
+        : undefined,
+    });
     if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(post);
   } catch {

@@ -66,14 +66,25 @@ export async function upsertCodeVideoPipelineStep(params: {
     orderBy: { updatedAt: "desc" },
   });
 
+  const resolvedStartedAt = startedAt ?? existing?.startedAt ?? undefined;
+  const resolvedFinishedAt = finishedAt ?? existing?.finishedAt ?? undefined;
+  const resolvedDurationMs =
+    durationMs ??
+    (resolvedStartedAt && resolvedFinishedAt
+      ? Math.max(
+          0,
+          resolvedFinishedAt.getTime() - resolvedStartedAt.getTime(),
+        )
+      : undefined);
+
   const data = {
     projectId,
     stepName,
     status: status as any,
     attempt,
-    startedAt: startedAt ?? undefined,
-    finishedAt: finishedAt ?? undefined,
-    durationMs: durationMs ?? undefined,
+    startedAt: resolvedStartedAt,
+    finishedAt: resolvedFinishedAt,
+    durationMs: resolvedDurationMs,
     nextRetryAt: nextRetryAt ?? undefined,
     errorCode: errorCode ?? undefined,
     errorMessage: errorMessage ?? undefined,

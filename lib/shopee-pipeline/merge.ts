@@ -19,20 +19,25 @@ export async function mergeProductAndCopyVideos(params: {
   form.set("copy_video_url", params.copyVideoUrl);
   form.set("upload_mode", "external");
 
-  const res = await fetch(targetUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: form.toString(),
-    cache: "no-store",
-    signal: AbortSignal.timeout(Math.min(60 * 60 * 1000, Math.max(10_000, Number(params.timeoutMs || 30 * 60 * 1000)))),
-  });
+  let res: Response;
+  try {
+    res = await fetch(targetUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+      cache: "no-store",
+      signal: AbortSignal.timeout(Math.min(60 * 60 * 1000, Math.max(10_000, Number(params.timeoutMs || 30 * 60 * 1000)))),
+    });
+  } catch (error: any) {
+    const reason = error?.cause?.message || error?.message || "erro desconhecido";
+    throw new Error(`Falha ao conectar no worker de merge (${targetUrl}): ${reason}`);
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`Worker /merge-videos failed (HTTP ${res.status}): ${text}`);
+    throw new Error(`Worker /merge-videos failed via ${targetUrl} (HTTP ${res.status}): ${text}`);
   }
 
   const buf = Buffer.from(await res.arrayBuffer());
   return { buffer: buf, contentType: res.headers.get("content-type") || "video/mp4" };
 }
-

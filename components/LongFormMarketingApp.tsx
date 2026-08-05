@@ -146,6 +146,7 @@ export function LongFormMarketingApp() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [processingIds, setProcessingIds] = useState<string[]>([]);
+  const [actioningIds, setActioningIds] = useState<string[]>([]);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [showBulkPaste, setShowBulkPaste] = useState(false);
@@ -297,6 +298,37 @@ export function LongFormMarketingApp() {
         current.filter((projectId) => projectId !== id),
       );
       await load(true);
+    }
+  };
+
+  const runProjectAction = async (
+    id: string,
+    action: "approve-planning" | "approve-final" | "schedule",
+    successMessage: string,
+  ) => {
+    setActioningIds((current) =>
+      current.includes(id) ? current : [...current, id],
+    );
+    setError("");
+    try {
+      if (action === "schedule") {
+        await call(`/api/videos-longos/${id}/schedule`, { method: "POST" });
+      } else {
+        await call(`/api/videos-longos/${id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        });
+      }
+      setNotice(successMessage);
+      await load(true);
+      if (details?.id === id) {
+        await openDetails(id, true);
+      }
+    } catch (actionError: any) {
+      setError(actionError.message);
+    } finally {
+      setActioningIds((current) => current.filter((item) => item !== id));
     }
   };
 
@@ -849,6 +881,28 @@ export function LongFormMarketingApp() {
             setDetails(null);
             void processProject(id);
           }}
+          onApprovePlanning={() =>
+            void runProjectAction(
+              details.id,
+              "approve-planning",
+              "Planejamento aprovado.",
+            )
+          }
+          onApproveFinal={() =>
+            void runProjectAction(
+              details.id,
+              "approve-final",
+              "Aprovacao final registrada.",
+            )
+          }
+          onSchedule={() =>
+            void runProjectAction(
+              details.id,
+              "schedule",
+              "Video enviado para a fila do YouTube.",
+            )
+          }
+          isActioning={actioningIds.includes(details.id)}
         />
       ) : null}
     </div>
@@ -860,11 +914,19 @@ function ProjectDetails({
   onClose,
   onRefresh,
   onReprocess,
+  onApprovePlanning,
+  onApproveFinal,
+  onSchedule,
+  isActioning,
 }: {
   project: any;
   onClose: () => void;
   onRefresh: () => void;
   onReprocess: () => void;
+  onApprovePlanning: () => void;
+  onApproveFinal: () => void;
+  onSchedule: () => void;
+  isActioning: boolean;
 }) {
   const metadata = parseMetadata(project);
   const status = statusConfig[project.status] || statusConfig.DRAFT;
@@ -881,6 +943,13 @@ function ProjectDetails({
   const renderSegments = Array.isArray(metadata.renderSegments)
     ? metadata.renderSegments
     : [];
+  const planningApproved = metadata.planningApproved === true;
+  const finalApproved = metadata.finalApproved === true;
+  const canApprovePlanning =
+    Boolean(String(project.narrationText || "").trim()) && !planningApproved;
+  const canApproveFinal =
+    planningApproved && Boolean(project.videoUrl) && !finalApproved;
+  const canSchedule = planningApproved && finalApproved && Boolean(project.videoUrl);
   const standardSteps = [
     {
       key: "BRIEFING",
@@ -1028,6 +1097,35 @@ function ProjectDetails({
                 </article>
               ))}
             </div>
+          </section>
+
+          <section className="grid gap-4 md:grid-cols-2">
+            <article className={`rounded-2xl border p-4 ${planningApproved ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+              <p className="text-xs font-black uppercase tracking-wide text-slate-600">
+                Aprovacao do planejamento
+              </p>
+              <p className={`mt-2 text-sm font-black ${planningApproved ? "text-emerald-800" : "text-amber-800"}`}>
+                {planningApproved ? "Aprovado" : "Pendente"}
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                {planningApproved
+                  ? `${metadata.planningApprovedBy || "admin"} em ${new Date(metadata.planningApprovedAt).toLocaleString("pt-BR")}`
+                  : "O render final fica bloqueado ate a aprovacao do planejamento."}
+              </p>
+            </article>
+            <article className={`rounded-2xl border p-4 ${finalApproved ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
+              <p className="text-xs font-black uppercase tracking-wide text-slate-600">
+                Aprovacao final
+              </p>
+              <p className={`mt-2 text-sm font-black ${finalApproved ? "text-emerald-800" : "text-slate-800"}`}>
+                {finalApproved ? "Aprovado" : "Pendente"}
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                {finalApproved
+                  ? `${metadata.finalApprovedBy || "admin"} em ${new Date(metadata.finalApprovedAt).toLocaleString("pt-BR")}`
+                  : "O agendamento no YouTube fica bloqueado ate a aprovacao final."}
+              </p>
+            </article>
           </section>
 
           <section className="rounded-2xl border border-slate-200">
@@ -1294,6 +1392,30 @@ function ProjectDetails({
         </div>
 
         <footer className="flex flex-wrap justify-end gap-2 border-t bg-slate-50 px-6 py-4">
+          <button
+            type="button"
+            disabled={!canApprovePlanning || isActioning}
+            onClick={onApprovePlanning}
+            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-black text-amber-800 disabled:opacity-40"
+          >
+            Aprovar planejamento
+          </button>
+          <button
+            type="button"
+            disabled={!canApproveFinal || isActioning}
+            onClick={onApproveFinal}
+            className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-black text-blue-800 disabled:opacity-40"
+          >
+            Aprovar final
+          </button>
+          <button
+            type="button"
+            disabled={!canSchedule || isActioning}
+            onClick={onSchedule}
+            className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-black text-emerald-800 disabled:opacity-40"
+          >
+            Agendar YouTube
+          </button>
           <button
             type="button"
             onClick={onClose}

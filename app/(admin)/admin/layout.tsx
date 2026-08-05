@@ -65,6 +65,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Perguntas e Respostas", icon: <QuizIcon className="text-purple-500" />, path: "/admin/video-questions" },
     // END NEW PIPELINE ROUTES
 
+    { text: "Resumo Noticias", icon: <ArticleIcon className="text-indigo-500" />, path: "/admin/posts" },
     { text: "Artigos", icon: <ArticleIcon />, path: "/admin/posts" },
     { text: "Videos de Produto", icon: <VideoCameraBackIcon />, path: "/admin/video-engajamento" },
     { text: "Integracoes", icon: <WebhookIcon />, path: "/admin/integrations" },

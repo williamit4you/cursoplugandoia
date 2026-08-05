@@ -23,22 +23,22 @@ export default async function PostsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm">
-        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Posts & Noticias</h1>
-        <p className="text-slate-500 text-sm font-medium mt-1">
-          Gerencie artigos e publicacoes do site. As noticias automatizadas ja ficam visiveis assim que sao criadas.
+      <div className="rounded-[28px] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-6 text-white shadow-sm">
+        <h1 className="text-3xl font-black tracking-tight">Central de Resumo de Noticias</h1>
+        <p className="mt-1 text-sm font-medium text-slate-300">
+          Gerencie as noticias do site com o padrao operacional da fase atual: listagem, lote, detalhe e vinculos de video.
         </p>
         <div className="mt-4">
           <div className="flex flex-wrap items-start gap-3">
             <Link
               href="/admin/operations/NEWS_CONTENT"
-              className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-xs font-black text-indigo-700"
+              className="inline-flex items-center gap-2 rounded-xl border border-indigo-300/30 bg-indigo-400/10 px-4 py-2 text-xs font-black text-indigo-100"
             >
               Abrir analytics de Noticias
             </Link>
             <Link
               href="/admin/video-engajamento"
-              className="inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-black text-violet-700"
+              className="inline-flex items-center gap-2 rounded-xl border border-violet-300/30 bg-violet-400/10 px-4 py-2 text-xs font-black text-violet-100"
             >
               Abrir rastreamento de Video Engajamento
             </Link>

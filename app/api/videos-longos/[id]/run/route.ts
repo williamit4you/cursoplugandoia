@@ -27,7 +27,11 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
       return NextResponse.json({ error: "Roteiro pronto para revisao. Aprove o planejamento antes de renderizar e agendar." }, { status: 409 });
     }
     await invoke(origin, "/api/video-code/render", { projectId: project.id });
-    const scheduled = await invoke(origin, `/api/videos-longos/${project.id}/schedule`, { approve: true });
+    const rendered = await prisma.codeVideoProject.findUnique({ where: { id: project.id } });
+    if (!rendered || !parseLongFormMetadata(rendered.metadataJson).finalApproved) {
+      return NextResponse.json({ error: "Render concluido. Aprove o resultado final antes de agendar no YouTube." }, { status: 409 });
+    }
+    const scheduled = await invoke(origin, `/api/videos-longos/${project.id}/schedule`);
     return NextResponse.json(scheduled);
   } catch (error: any) {
     const message = error?.message || "Falha na automacao";

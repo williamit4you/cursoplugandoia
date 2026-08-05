@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   LONG_FORM_PROJECT_TYPE,
+  LONG_FORM_MIN_DURATION_SEC,
+  durationFromVideoSpec,
   normalizeSubtopics,
   parseLongFormMetadata,
 } from "@/lib/longFormMarketing";
+import { clearPlanningApproval } from "@/lib/longFormWorkflow";
+import { getLongFormApprovalActor, markFinalApproved, markPlanningApproved } from "@/lib/longFormWorkflow";
+import { requireServerSession } from "@/lib/serverAuth";
+import { logCodeVideoPipelineEvent } from "@/lib/video-code/logger";
+import { upsertCodeVideoPipelineStep } from "@/lib/video-code/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +90,11 @@ export async function PATCH(
     funnelStage,
     subtopics,
     ...(briefingChanged
-      ? {
+      ? clearPlanningApproval({
+          ...currentMeta,
+          ...(body.metadata || {}),
+          funnelStage,
+          subtopics,
           titleOptions: undefined,
           selectedTitle: undefined,
           chapters: undefined,
@@ -92,10 +103,8 @@ export async function PATCH(
           subtopicCoverage: undefined,
           renderSegments: undefined,
           mergeStatus: undefined,
-          planningApproved: false,
-          finalApproved: false,
           actualDurationSec: null,
-        }
+        })
       : {}),
   };
 
@@ -132,6 +141,140 @@ export async function PATCH(
       where: { id: project.id },
       data,
     }),
+  );
+}
+
+export async function POST(
+  req: NextRequest,
+  ctx: { params: { id: string } },
+) {
+  const session = await requireServerSession();
+  const user = session?.user as any;
+  if (!session?.user || String(user?.role || "") !== "ADMIN") {
+    return NextResponse.json({ error: "Nao autorizado." }, { status: 401 });
+  }
+
+  const project = await read(ctx.params.id);
+  if (!project) {
+    return NextResponse.json({ error: "Nao encontrado" }, { status: 404 });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const action = String(body?.action || "").trim();
+  const metadata = parseLongFormMetadata(project.metadataJson);
+  const actor = await getLongFormApprovalActor();
+
+  if (action === "approve-planning") {
+    if (!String(project.narrationText || "").trim()) {
+      return NextResponse.json(
+        { error: "Gere o planejamento antes de aprovar." },
+        { status: 409 },
+      );
+    }
+
+    const startedAt = new Date();
+    const updated = await prisma.codeVideoProject.update({
+      where: { id: project.id },
+      data: {
+        status: project.videoUrl ? project.status : "READY",
+        metadataJson: JSON.stringify(markPlanningApproved(metadata, actor)),
+      },
+    });
+
+    await upsertCodeVideoPipelineStep({
+      projectId: project.id,
+      stepName: "LONG_FORM_APPROVE_PLANNING",
+      status: "SUCCESS",
+      attempt: 1,
+      startedAt,
+      finishedAt: new Date(),
+      responsePayload: {
+        actorId: actor.id,
+        actorLabel: actor.label,
+      },
+    }).catch(() => null);
+    await logCodeVideoPipelineEvent({
+      projectId: project.id,
+      stepName: "LONG_FORM_APPROVAL",
+      message: `Planejamento aprovado por ${actor.label}.`,
+      metadata: {
+        actorId: actor.id,
+        actorLabel: actor.label,
+      },
+    }).catch(() => null);
+
+    return NextResponse.json({ project: updated });
+  }
+
+  if (action === "approve-final") {
+    if (!metadata.planningApproved) {
+      return NextResponse.json(
+        { error: "Aprove o planejamento antes da aprovacao final." },
+        { status: 409 },
+      );
+    }
+
+    if (!project.videoUrl) {
+      return NextResponse.json(
+        { error: "Renderize o MP4 final antes da aprovacao final." },
+        { status: 409 },
+      );
+    }
+
+    const actualDurationSec = Number(metadata.actualDurationSec || 0);
+    if (actualDurationSec < LONG_FORM_MIN_DURATION_SEC) {
+      return NextResponse.json(
+        {
+          error: `Duracao real do MP4 nao confirmada ou inferior a ${LONG_FORM_MIN_DURATION_SEC}s.`,
+        },
+        { status: 409 },
+      );
+    }
+
+    const startedAt = new Date();
+    const updated = await prisma.codeVideoProject.update({
+      where: { id: project.id },
+      data: {
+        metadataJson: JSON.stringify(markFinalApproved(metadata, actor)),
+      },
+    });
+
+    await upsertCodeVideoPipelineStep({
+      projectId: project.id,
+      stepName: "LONG_FORM_APPROVE_FINAL",
+      status: "SUCCESS",
+      attempt: 1,
+      startedAt,
+      finishedAt: new Date(),
+      responsePayload: {
+        actorId: actor.id,
+        actorLabel: actor.label,
+      },
+    }).catch(() => null);
+    await logCodeVideoPipelineEvent({
+      projectId: project.id,
+      stepName: "LONG_FORM_APPROVAL",
+      message: `Aprovacao final registrada por ${actor.label}.`,
+      metadata: {
+        actorId: actor.id,
+        actorLabel: actor.label,
+      },
+    }).catch(() => null);
+
+    return NextResponse.json({ project: updated });
+  }
+
+  if (action === "stats") {
+    return NextResponse.json({
+      projectId: project.id,
+      plannedDurationSec: durationFromVideoSpec(project.videoSpecJson),
+      actualDurationSec: Number(metadata.actualDurationSec || 0),
+    });
+  }
+
+  return NextResponse.json(
+    { error: "Acao nao suportada." },
+    { status: 400 },
   );
 }
 

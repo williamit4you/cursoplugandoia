@@ -1,5 +1,7 @@
 # Boletim Diário de Notícias para YouTube — especificação de produto e implementação
 
+> Documento de referencia historica. A implementacao aprovada, com piloto de 3 a 5 minutos, e governada por `docs/specs/long-form-video-program/README.md` e `CHECKLIST.md`.
+
 **Status:** proposta; nenhuma automação, publicação ou alteração de produto foi feita por este documento.  
 **Objetivo:** gerar uma edição diária horizontal (16:9), com até 10 minutos, que informe com precisão as principais notícias do dia e seja preparada para publicação no YouTube.
 
@@ -306,4 +308,3 @@ Cada transição deve gerar evento, ator, timestamp, versão do roteiro e motivo
 | IA confundida com registro real | não gerar reconstituição realista de evento; rotular ilustração e usar disclosure do YouTube quando aplicável |
 | automação publicar conteúdo sensível | gate humano obrigatório por matriz de risco |
 | custo e fila de render | orçamento máximo por edição, prévia baixa resolução e render final somente após aprovação |
-

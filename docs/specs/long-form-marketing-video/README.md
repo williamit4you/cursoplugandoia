@@ -1,5 +1,7 @@
 # Spec Driven Development — Vídeo Longo de Marketing Digital para YouTube
 
+> Documento de referencia historica. A evolucao aprovada do educacional, inicialmente com 5 a 8 minutos, e governada por `docs/specs/long-form-video-program/README.md` e `CHECKLIST.md`.
+
 **Status:** proposta para aprovação de produto, qualidade e custo.  
 **Escopo:** nova experiência independente para criar vídeos horizontais de 8–10 minutos sobre marketing digital e publicar somente no canal YouTube já conectado.  
 **Fora de escopo:** notícias, múltiplos canais, alteração da automação de vídeos curtos, publicação em Instagram/TikTok e substituição das pipelines existentes.

@@ -7,17 +7,24 @@ function workerBaseUrl() {
 }
 
 async function postFormForBuffer(path: string, form: URLSearchParams, timeoutMs: number) {
-  const res = await fetch(`${workerBaseUrl()}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: form.toString(),
-    cache: "no-store",
-    signal: AbortSignal.timeout(Math.min(60 * 60 * 1000, Math.max(10_000, timeoutMs))),
-  });
+  const targetUrl = `${workerBaseUrl()}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(targetUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+      cache: "no-store",
+      signal: AbortSignal.timeout(Math.min(60 * 60 * 1000, Math.max(10_000, timeoutMs))),
+    });
+  } catch (error: any) {
+    const reason = error?.cause?.message || error?.message || "erro desconhecido";
+    throw new Error(`Falha ao conectar no worker de audio/video (${targetUrl}): ${reason}`);
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`Worker ${path} failed (HTTP ${res.status}): ${text}`);
+    throw new Error(`Worker ${path} failed via ${targetUrl} (HTTP ${res.status}): ${text}`);
   }
 
   return {
