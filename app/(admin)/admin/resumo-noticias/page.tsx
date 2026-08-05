@@ -75,6 +75,12 @@ export default async function NewsSummaryPage() {
             >
               Abrir videos de Noticias
             </Link>
+            <Link
+              href="/admin/scrapers"
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-2 text-xs font-black text-emerald-100"
+            >
+              Abrir fontes de Noticias
+            </Link>
             <QuickScrapeTestButton />
           </div>
         </div>

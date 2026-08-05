@@ -201,11 +201,15 @@ export function buildAutoCuratedEditionPosts(posts: CuratablePost[]) {
 
 export async function loadCandidateNewsPosts(editionDate: Date) {
   const currentWindow = buildEditionWindow(editionDate);
-  const whereBase = { status: "PUBLISHED" as const };
+  const publishedWhereBase = { status: "PUBLISHED" as const };
+  const scrapedWhereBase = {
+    status: { in: ["PUBLISHED", "DRAFT"] as string[] },
+    sourceUrl: { not: null },
+  };
 
   const current = await (await import("@/lib/prisma")).prisma.post.findMany({
     where: {
-      ...whereBase,
+      ...publishedWhereBase,
       sourceUrl: { not: null },
       publishedAt: {
         gte: currentWindow.start,
@@ -226,17 +230,58 @@ export async function loadCandidateNewsPosts(editionDate: Date) {
     return current;
   }
 
+  const scrapedCurrent = await (await import("@/lib/prisma")).prisma.post.findMany({
+    where: {
+      ...scrapedWhereBase,
+      OR: [
+        {
+          publishedAt: {
+            gte: currentWindow.start,
+            lte: currentWindow.end,
+          },
+        },
+        {
+          createdAt: {
+            gte: currentWindow.start,
+            lte: currentWindow.end,
+          },
+        },
+      ],
+    },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    include: {
+      categories: {
+        include: { category: true },
+        orderBy: { category: { sortOrder: "asc" } },
+      },
+    },
+    take: 80,
+  });
+
+  if (scrapedCurrent.length >= DAILY_NEWS_MIN_ITEMS) {
+    return scrapedCurrent as CuratablePost[];
+  }
+
   const fallbackStart = new Date(currentWindow.start);
   fallbackStart.setDate(fallbackStart.getDate() - 2);
 
   return (await (await import("@/lib/prisma")).prisma.post.findMany({
     where: {
-      ...whereBase,
-      sourceUrl: { not: null },
-      publishedAt: {
-        gte: fallbackStart,
-        lte: currentWindow.end,
-      },
+      ...scrapedWhereBase,
+      OR: [
+        {
+          publishedAt: {
+            gte: fallbackStart,
+            lte: currentWindow.end,
+          },
+        },
+        {
+          createdAt: {
+            gte: fallbackStart,
+            lte: currentWindow.end,
+          },
+        },
+      ],
     },
     orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
     include: {

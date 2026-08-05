@@ -24,10 +24,15 @@ import {
   normalizeIds,
   sourceNameFromUrl,
 } from "@/lib/dailyNewsEdition";
+import { createManualScrapeTestRun } from "@/lib/manualScrapeTest";
 
 export const dynamic = "force-dynamic";
 
 const { dailyNewsEdition } = getDailyNewsDelegates();
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function requireAdmin() {
   const session = await requireServerSession();
@@ -129,6 +134,7 @@ export async function POST(req: NextRequest) {
   const targetDurationSec = normalizeDuration(
     body?.targetDurationSec ?? DAILY_NEWS_DEFAULT_DURATION_SEC,
   );
+  const autoCollectBeforeCreate = body?.mode === "AUTO_COLLECT_CREATE_TODAY";
 
   let existing: { id: string } | null = null;
   try {
@@ -154,17 +160,89 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const posts = postIds.length
-    ? await prisma.post.findMany({
-        where: { id: { in: postIds } },
-        include: {
-          categories: {
-            include: { category: true },
-            orderBy: { category: { sortOrder: "asc" } },
-          },
+  let triggerRunId: string | null = null;
+  let posts;
+
+  if (postIds.length) {
+    posts = await prisma.post.findMany({
+      where: { id: { in: postIds } },
+      include: {
+        categories: {
+          include: { category: true },
+          orderBy: { category: { sortOrder: "asc" } },
         },
-      })
-    : await loadCandidateNewsPosts(editionDate);
+      },
+    });
+  } else if (autoCollectBeforeCreate) {
+    const triggerRun = await createManualScrapeTestRun();
+    triggerRunId = triggerRun.id;
+
+    const attempts = 8;
+    const waitMs = 10000;
+    let candidates: any[] = [];
+    let curated: any[] = [];
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      if (attempt > 1) {
+        await sleep(waitMs);
+      }
+      candidates = await loadCandidateNewsPosts(editionDate);
+      curated = buildAutoCuratedEditionPosts(candidates);
+      if (curated.length >= DAILY_NEWS_MIN_ITEMS) {
+        break;
+      }
+    }
+
+    posts = candidates;
+
+    if (curated.length >= DAILY_NEWS_MIN_ITEMS) {
+      const sourceSnapshotJson = buildEditionSnapshots(curated as any);
+
+      let item: any;
+      try {
+        item = await dailyNewsEdition.create({
+          data: {
+            editionDate,
+            timezone,
+            title: title || buildEditionTitle(editionDate),
+            description:
+              description || "Edicao automatica criada apos disparo da coleta das fontes.",
+            targetDurationSec,
+            sourceSnapshotJson,
+            items: {
+              create: buildEditionItems(curated as any),
+            },
+          },
+          include: {
+            items: {
+              orderBy: { position: "asc" },
+            },
+            assets: true,
+            codeVideoProject: true,
+          },
+        });
+      } catch (error) {
+        if (isDailyNewsSchemaMissing(error)) {
+          return dailyNewsUnavailableResponse(
+            "A criacao da edicao foi bloqueada porque a migration do modulo ainda nao foi aplicada.",
+          );
+        }
+        throw error;
+      }
+
+      return NextResponse.json(
+        {
+          item,
+          triggerRunId,
+          candidateCount: candidates.length,
+          selectedCount: curated.length,
+        },
+        { status: 201 },
+      );
+    }
+  } else {
+    posts = await loadCandidateNewsPosts(editionDate);
+  }
 
   if (postIds.length && posts.length !== postIds.length) {
     return NextResponse.json(
@@ -183,7 +261,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "Nao ha noticias publicadas suficientes para montar a edicao automatica. Minimo de 5 noticias.",
+          "Nao ha noticias reais suficientes na base para montar a edicao automatica. Rode a coleta das fontes ou publique mais noticias. Minimo de 5 noticias com sourceUrl.",
+        triggerRunId,
+        candidateCount: posts.length,
+        selectedCount: orderedPosts.length,
+        requiredCount: DAILY_NEWS_MIN_ITEMS,
       },
       { status: 409 },
     );
@@ -222,5 +304,5 @@ export async function POST(req: NextRequest) {
     throw error;
   }
 
-  return NextResponse.json({ item }, { status: 201 });
+  return NextResponse.json({ item, triggerRunId }, { status: 201 });
 }

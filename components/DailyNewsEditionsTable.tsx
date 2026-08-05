@@ -135,13 +135,20 @@ export default function DailyNewsEditionsTable({
       const res = await fetch("/api/resumo-noticias", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ editionDate: date }),
+        body: JSON.stringify({ editionDate: date, mode: "AUTO_COLLECT_CREATE_TODAY" }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Falha ao criar a edicao.");
+      if (!res.ok) {
+        if (res.status === 409 && data?.existingId) {
+          toast.info("A edicao de hoje ja existe. Abrindo a tela operacional.");
+          router.push(`/admin/resumo-noticias/${data.existingId}`);
+          return;
+        }
+        throw new Error(data.error || "Falha ao criar a edicao.");
+      }
       if (data?.item) {
         setItems((current) => [data.item, ...current]);
-        toast.success("Edicao de hoje criada.");
+        toast.success("Coleta executada e edicao de hoje criada.");
         router.push(`/admin/resumo-noticias/${data.item.id}`);
       }
     } catch (error: any) {
@@ -308,7 +315,7 @@ export default function DailyNewsEditionsTable({
               disabled={creatingToday}
               className="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-black text-white transition-all disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {creatingToday ? "CRIANDO..." : "GERAR EDICAO AUTOMATICA DE HOJE"}
+              {creatingToday ? "COLETANDO E CRIANDO..." : "GERAR EDICAO AUTOMATICA DE HOJE"}
             </button>
           </div>
         </div>
