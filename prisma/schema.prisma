@@ -207,42 +207,42 @@ enum SalesPageDeviceType {
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
-  password  String   // Armazenará o hash gerado a partir do env inicial
+  password  String // Armazenará o hash gerado a partir do env inicial
   role      String   @default("ADMIN")
   name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  crmOwnedContacts CrmContact[]  @relation("CrmContactOwner")
-  crmTasks         CrmTask[]     @relation("CrmTaskAssignee")
-  crmActivities    CrmActivity[] @relation("CrmActivityAuthor")
-  crmSettings      CrmSettings[] @relation("CrmDefaultAssignee")
+  crmOwnedContacts CrmContact[]      @relation("CrmContactOwner")
+  crmTasks         CrmTask[]         @relation("CrmTaskAssignee")
+  crmActivities    CrmActivity[]     @relation("CrmActivityAuthor")
+  crmSettings      CrmSettings[]     @relation("CrmDefaultAssignee")
   videoCleanupJobs VideoCleanupJob[] @relation("VideoCleanupJobOwner")
 }
 
 model Post {
-  id          String   @id @default(cuid())
-  title       String
-  slug        String   @unique
-  summary     String
-  content     String   // Conteúdo em Markdown ou HTML enriquecido
-  status      String   @default("DRAFT") // Valores: DRAFT, PUBLISHED
-  views       Int      @default(0)
-  coverImage  String?  // URL do MinIO
-  sourceUrl   String?  @unique // Evita duplicidade de rotinas do robô
-  publishedAt DateTime?
-  featured    Boolean  @default(false)
+  id              String    @id @default(cuid())
+  title           String
+  slug            String    @unique
+  summary         String
+  content         String // Conteúdo em Markdown ou HTML enriquecido
+  status          String    @default("DRAFT") // Valores: DRAFT, PUBLISHED
+  views           Int       @default(0)
+  coverImage      String? // URL do MinIO
+  sourceUrl       String?   @unique // Evita duplicidade de rotinas do robô
+  publishedAt     DateTime?
+  featured        Boolean   @default(false)
   readTimeMinutes Int?
-  seoTitle    String?
+  seoTitle        String?
   metaDescription String?
-  origin      String   @default("MANUAL")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  origin          String    @default("MANUAL")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  socialPosts SocialPost[]
-  aiUsageLogs AiUsageLog[]
-  categories  PostNewsCategory[]
-  codeVideoProjects CodeVideoProject[]
+  socialPosts           SocialPost[]
+  aiUsageLogs           AiUsageLog[]
+  categories            PostNewsCategory[]
+  codeVideoProjects     CodeVideoProject[]
   dailyNewsEditionItems DailyNewsEditionItem[]
 
   @@index([status, publishedAt])
@@ -260,7 +260,7 @@ model NewsCategory {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  posts       PostNewsCategory[]
+  posts PostNewsCategory[]
 }
 
 model PostNewsCategory {
@@ -274,37 +274,37 @@ model PostNewsCategory {
 }
 
 model AffiliateComparison {
-  id              String             @id @default(cuid())
-  title           String
-  slug            String             @unique
-  theme           String
-  targetYear      Int?
-  introSummary    String?
-  seoTitle        String?
-  metaDescription String?
-  heroTitle       String?
-  heroSubtitle    String?
-  contentHtml     String             @default("")
-  faqJson         String             @default("[]")
-  schemaJson      String             @default("{}")
-  status          ComparisonStatus   @default(DRAFT)
-  publishedAt     DateTime?
-  sourceCount     Int                @default(0)
-  validSourceCount Int               @default(0)
-  views           Int                @default(0)
+  id               String           @id @default(cuid())
+  title            String
+  slug             String           @unique
+  theme            String
+  targetYear       Int?
+  introSummary     String?
+  seoTitle         String?
+  metaDescription  String?
+  heroTitle        String?
+  heroSubtitle     String?
+  contentHtml      String           @default("")
+  faqJson          String           @default("[]")
+  schemaJson       String           @default("{}")
+  status           ComparisonStatus @default(DRAFT)
+  publishedAt      DateTime?
+  sourceCount      Int              @default(0)
+  validSourceCount Int              @default(0)
+  views            Int              @default(0)
   featuredImageUrl String?
-  generationModel String?
-  generationNotes String?
-  errorMessage    String?
-  attemptCount    Int                @default(0)
-  lastError       String?
-  createdByUserId String?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  generationModel  String?
+  generationNotes  String?
+  errorMessage     String?
+  attemptCount     Int              @default(0)
+  lastError        String?
+  createdByUserId  String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  items           AffiliateComparisonItem[]
-  steps           AffiliateComparisonStep[]
-  events          AffiliateComparisonEvent[]
+  items  AffiliateComparisonItem[]
+  steps  AffiliateComparisonStep[]
+  events AffiliateComparisonEvent[]
 
   @@index([status])
   @@index([publishedAt])
@@ -343,9 +343,9 @@ model AffiliateComparisonItem {
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
 
+  @@unique([comparisonId, sourceUrl])
   @@index([comparisonId, sortOrder])
   @@index([status])
-  @@unique([comparisonId, sourceUrl])
 }
 
 model AffiliateComparisonStep {
@@ -488,74 +488,74 @@ model SalesPageConfig {
 }
 
 model ScrapingSource {
-  id          String   @id @default(cuid())
-  url         String   @unique
+  id          String    @id @default(cuid())
+  url         String    @unique
   name        String
-  isActive    Boolean  @default(true)
+  isActive    Boolean   @default(true)
   lastScraped DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model IntegrationSettings {
-  id              String   @id @default(cuid())
-  platform        String   @unique // Valores: META, LINKEDIN, INSTAGRAM, N8N, WHATSAPP, YOUTUBE
-  apiKey          String?
-  apiSecret       String?
-  appId           String?
-  pageId          String?
-  instagramId     String?
-  accessToken     String?
-  refreshToken    String?
-  webhookUrl      String?
-  isActive        Boolean  @default(false)
-  updatedAt       DateTime @updatedAt
+  id           String   @id @default(cuid())
+  platform     String   @unique // Valores: META, LINKEDIN, INSTAGRAM, N8N, WHATSAPP, YOUTUBE
+  apiKey       String?
+  apiSecret    String?
+  appId        String?
+  pageId       String?
+  instagramId  String?
+  accessToken  String?
+  refreshToken String?
+  webhookUrl   String?
+  isActive     Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
 }
 
 model SocialPost {
-  id          String   @id @default(cuid())
-  postId      String?  
-  title       String?
-  summary     String
-  videoUrl    String
-  newsVariant String?
-  status      String   @default("DRAFT") // DRAFT, SCHEDULED, POSTED, FAILED
-  scheduledTo DateTime?
-  postedAt    DateTime?
+  id                String    @id @default(cuid())
+  postId            String?
+  title             String?
+  summary           String
+  videoUrl          String
+  newsVariant       String?
+  status            String    @default("DRAFT") // DRAFT, SCHEDULED, POSTED, FAILED
+  scheduledTo       DateTime?
+  postedAt          DateTime?
   youtubePostedAt   DateTime?
   metaStoryPostedAt DateTime?
   metaReelPostedAt  DateTime?
   tiktokPostedAt    DateTime?
   linkedinPostedAt  DateTime?
 
-  platform    String   @default("META")
-  postType    String   @default("REEL") // REEL | STORY
-  log         String?
-  thumbUrl    String?  // URL de thumbnail (MinIO)
-  publicationKey String? @unique
-  metaContainerAttemptedAt DateTime?
+  platform                        String            @default("META")
+  postType                        String            @default("REEL") // REEL | STORY
+  log                             String?
+  thumbUrl                        String? // URL de thumbnail (MinIO)
+  publicationKey                  String?           @unique
+  metaContainerAttemptedAt        DateTime?
   metaInstagramPublishAttemptedAt DateTime?
-  metaFacebookPublishAttemptedAt DateTime?
-  tiktokPublishAttemptedAt DateTime?
-  metaContainerId String? // ID do container criado na Meta (para publicação async)
-  postUrl     String?  // URL pública da postagem
-  youtubePostUrl    String?
-  metaStoryPostUrl  String?
-  metaReelPostUrl   String?
-  tiktokPostUrl     String?
-  linkedinPostUrl   String?
-  views       Int      @default(0) // Visualizações
-  clicksCount     Int                @default(0)
-  clicks          SocialPostClick[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  metaFacebookPublishAttemptedAt  DateTime?
+  tiktokPublishAttemptedAt        DateTime?
+  metaContainerId                 String? // ID do container criado na Meta (para publicação async)
+  postUrl                         String? // URL pública da postagem
+  youtubePostUrl                  String?
+  metaStoryPostUrl                String?
+  metaReelPostUrl                 String?
+  tiktokPostUrl                   String?
+  linkedinPostUrl                 String?
+  views                           Int               @default(0) // Visualizações
+  clicksCount                     Int               @default(0)
+  clicks                          SocialPostClick[]
+  createdAt                       DateTime          @default(now())
+  updatedAt                       DateTime          @updatedAt
 
-  post        Post?    @relation(fields: [postId], references: [id])
+  post               Post?             @relation(fields: [postId], references: [id])
   codeVideoProjectId String?
   codeVideoProject   CodeVideoProject? @relation(fields: [codeVideoProjectId], references: [id])
 
   automationTaskId    String?
-  automationTask      AutomationTask? @relation(fields: [automationTaskId], references: [id], onDelete: SetNull)
+  automationTask      AutomationTask?    @relation(fields: [automationTaskId], references: [id], onDelete: SetNull)
   automationTaskRunId String?
   automationTaskRun   AutomationTaskRun? @relation(fields: [automationTaskRunId], references: [id], onDelete: SetNull)
 
@@ -568,10 +568,10 @@ model SocialPostClick {
   id           String     @id @default(cuid())
   socialPostId String
   socialPost   SocialPost @relation(fields: [socialPostId], references: [id], onDelete: Cascade)
-  platform     String     // e.g. "YOUTUBE", "TIKTOK", "LINKEDIN", "META"
+  platform     String // e.g. "YOUTUBE", "TIKTOK", "LINKEDIN", "META"
   referrer     String?
   userAgent    String?
-  ipHash       String?    // SHA-256 hash of client IP
+  ipHash       String? // SHA-256 hash of client IP
   createdAt    DateTime   @default(now())
 
   @@index([socialPostId])
@@ -579,11 +579,11 @@ model SocialPostClick {
 }
 
 model CodeVideoProject {
-  id               String           @id @default(cuid())
-  status           String           @default("DRAFT") // DRAFT | GENERATING | READY | RENDERING | DONE | FAILED
-  projectType      String           @default("GENERIC") // GENERIC | PRODUCT_AD
-  postId           String?
-  newsVariant      String?
+  id          String  @id @default(cuid())
+  status      String  @default("DRAFT") // DRAFT | GENERATING | READY | RENDERING | DONE | FAILED
+  projectType String  @default("GENERIC") // GENERIC | PRODUCT_AD
+  postId      String?
+  newsVariant String?
 
   // Entrada do usuário
   ideaPrompt       String
@@ -596,57 +596,57 @@ model CodeVideoProject {
   useExternalMedia Boolean          @default(false)
 
   // Conteúdo editável (IA -> usuário pode revisar)
-  title            String?
-  description      String?
-  narrationText    String?
-  promptPreview    String?
-  metadataJson     String           @default("{}")
+  title         String?
+  description   String?
+  narrationText String?
+  promptPreview String?
+  metadataJson  String  @default("{}")
 
   // Plano do vídeo (JSON serializado, validado no backend)
-  videoSpecJson    String           @default("{}")
+  videoSpecJson String @default("{}")
 
   // Artefatos gerados
-  audioUrl         String?
-  captionsUrl      String?
-  videoUrl         String?
-  thumbUrl         String?
-  renderProgress   Float            @default(0)
+  audioUrl       String?
+  captionsUrl    String?
+  videoUrl       String?
+  thumbUrl       String?
+  renderProgress Float   @default(0)
 
-  errorMessage     String?
-  log              String?
+  errorMessage String?
+  log          String?
 
-  pipelineStatus     ShopeePipelineStatus       @default(PENDING)
-  videoStatus        String?                    // RENDERING | COMPLETED | FAILED
-  attemptCount       Int                        @default(0)
-  lastError          String?
-  
+  pipelineStatus ShopeePipelineStatus @default(PENDING)
+  videoStatus    String? // RENDERING | COMPLETED | FAILED
+  attemptCount   Int                  @default(0)
+  lastError      String?
+
   // Relations to track logging
-  pipelineSteps      CodeVideoPipelineStep[]
-  pipelineEvents     CodeVideoPipelineEvent[]
+  pipelineSteps  CodeVideoPipelineStep[]
+  pipelineEvents CodeVideoPipelineEvent[]
 
-  socialPosts      SocialPost[]
-  post             Post?            @relation(fields: [postId], references: [id], onDelete: SetNull)
-  dailyNewsEdition DailyNewsEdition?
+  socialPosts            SocialPost[]
+  post                   Post?                   @relation(fields: [postId], references: [id], onDelete: SetNull)
+  dailyNewsEdition       DailyNewsEdition?
   automationAssetBundles AutomationAssetBundle[]
-  question         VideoQuestion?
+  question               VideoQuestion?
 
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([postId, newsVariant])
 }
 
 model DailyNewsEdition {
-  id                  String   @id @default(cuid())
+  id                  String    @id @default(cuid())
   editionDate         DateTime
-  timezone            String   @default("America/Sao_Paulo")
-  status              String   @default("DRAFT") // DRAFT | CURATING | SCRIPTING | AWAITING_REVIEW | APPROVED | GENERATING_AUDIO | PLANNING_VISUALS | RENDERING | QA | SCHEDULED | PUBLISHED | REJECTED | FAILED | CANCELED
+  timezone            String    @default("America/Sao_Paulo")
+  status              String    @default("DRAFT") // DRAFT | CURATING | SCRIPTING | AWAITING_REVIEW | APPROVED | GENERATING_AUDIO | PLANNING_VISUALS | RENDERING | QA | SCHEDULED | PUBLISHED | REJECTED | FAILED | CANCELED
   title               String?
   description         String?
   scriptText          String?
-  targetDurationSec   Int      @default(240)
+  targetDurationSec   Int       @default(240)
   measuredDurationSec Float?
-  codeVideoProjectId  String?  @unique
+  codeVideoProjectId  String?   @unique
   previewVideoUrl     String?
   finalVideoUrl       String?
   thumbnailUrl        String?
@@ -661,23 +661,23 @@ model DailyNewsEdition {
   sourceSnapshotJson  Json?
   assetPlanJson       Json?
   errorMessage        String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  codeVideoProject    CodeVideoProject? @relation(fields: [codeVideoProjectId], references: [id], onDelete: SetNull)
-  items               DailyNewsEditionItem[]
-  assets              DailyNewsAsset[]
+  codeVideoProject CodeVideoProject?      @relation(fields: [codeVideoProjectId], references: [id], onDelete: SetNull)
+  items            DailyNewsEditionItem[]
+  assets           DailyNewsAsset[]
 
   @@unique([editionDate, timezone])
   @@index([status, createdAt])
 }
 
 model DailyNewsEditionItem {
-  id                  String   @id @default(cuid())
+  id                  String           @id @default(cuid())
   editionId           String
   edition             DailyNewsEdition @relation(fields: [editionId], references: [id], onDelete: Cascade)
   postId              String
-  post                Post     @relation(fields: [postId], references: [id], onDelete: Restrict)
+  post                Post             @relation(fields: [postId], references: [id], onDelete: Restrict)
   position            Int
   category            String?
   titleSnapshot       String
@@ -687,162 +687,162 @@ model DailyNewsEditionItem {
   narrationText       String?
   targetDurationSec   Int?
   verificationJson    Json?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 
-  assets              DailyNewsAsset[]
+  assets DailyNewsAsset[]
 
   @@unique([editionId, postId])
   @@unique([editionId, position])
 }
 
 model DailyNewsAsset {
-  id              String   @id @default(cuid())
-  editionId       String
-  edition         DailyNewsEdition @relation(fields: [editionId], references: [id], onDelete: Cascade)
-  editionItemId   String?
-  editionItem     DailyNewsEditionItem? @relation(fields: [editionItemId], references: [id], onDelete: SetNull)
-  assetType       String
-  source          String
-  query           String?
-  originalUrl     String
-  stableUrl       String?
-  author          String?
-  licenseUrl      String?
-  credit          String?
-  technicalJson   Json?
-  contentHash     String?
-  startSec        Float?
-  endSec          Float?
-  status          String   @default("DISCOVERED") // DISCOVERED | APPROVED | REJECTED | READY
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String                @id @default(cuid())
+  editionId     String
+  edition       DailyNewsEdition      @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  editionItemId String?
+  editionItem   DailyNewsEditionItem? @relation(fields: [editionItemId], references: [id], onDelete: SetNull)
+  assetType     String
+  source        String
+  query         String?
+  originalUrl   String
+  stableUrl     String?
+  author        String?
+  licenseUrl    String?
+  credit        String?
+  technicalJson Json?
+  contentHash   String?
+  startSec      Float?
+  endSec        Float?
+  status        String                @default("DISCOVERED") // DISCOVERED | APPROVED | REJECTED | READY
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
 
   @@index([editionId, status])
   @@index([editionItemId])
 }
 
 model CodeVideoPipelineStep {
-  id              String   @id @default(cuid())
+  id              String                   @id @default(cuid())
   projectId       String
-  project         CodeVideoProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project         CodeVideoProject         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   stepName        String
   status          ShopeePipelineStepStatus @default(PENDING)
   startedAt       DateTime?
   finishedAt      DateTime?
   durationMs      Int?
-  attempt         Int      @default(1)
+  attempt         Int                      @default(1)
   nextRetryAt     DateTime?
   errorCode       String?
   errorMessage    String?
   requestPayload  Json?
   responsePayload Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   @@index([projectId])
 }
 
 model CodeVideoPipelineEvent {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   projectId String
   project   CodeVideoProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
   stepName  String?
-  level     String   @default("INFO") // INFO | ERROR | WARN
+  level     String           @default("INFO") // INFO | ERROR | WARN
   message   String
   metadata  Json?
-  createdAt DateTime @default(now())
+  createdAt DateTime         @default(now())
 
   @@index([projectId])
   @@index([createdAt])
 }
 
 model VideoQuestionConfig {
-  id                String   @id @default(cuid())
-  isEnabled         Boolean  @default(true)
+  id        String  @id @default(cuid())
+  isEnabled Boolean @default(true)
 
   // Agendamento
-  intervalMinutes   Int      @default(60)      // executa a cada X minutos
-  scheduledTimes    String   @default("[]")    // JSON: ["08:00","14:00"]
-  useScheduledTimes Boolean  @default(false)
+  intervalMinutes   Int     @default(60) // executa a cada X minutos
+  scheduledTimes    String  @default("[]") // JSON: ["08:00","14:00"]
+  useScheduledTimes Boolean @default(false)
 
   // Limites
-  maxQuestionsPerRun Int     @default(3)
+  maxQuestionsPerRun Int @default(3)
 
   // Defaults do vídeo
   defaultAspectRatio VideoAspectRatio @default(PORTRAIT_9_16)
-  videoDurationSec   Int      @default(30)
-  fps                Int      @default(30)
-  ttsVoice           String   @default("pt-BR-AntonioNeural")
-  ttsSpeed           String   @default("+5%")
+  videoDurationSec   Int              @default(30)
+  fps                Int              @default(30)
+  ttsVoice           String           @default("pt-BR-AntonioNeural")
+  ttsSpeed           String           @default("+5%")
 
   // Pós-processo
-  autoEnqueueMetaStory  Boolean @default(false)
-  autoEnqueueMetaReels  Boolean @default(false)
-  autoEnqueueTikTok   Boolean @default(false)
-  autoEnqueueLinkedIn Boolean @default(false)
-  autoEnqueueYouTube  Boolean @default(false)
-  useExternalMedia    Boolean @default(false)
+  autoEnqueueMetaStory Boolean @default(false)
+  autoEnqueueMetaReels Boolean @default(false)
+  autoEnqueueTikTok    Boolean @default(false)
+  autoEnqueueLinkedIn  Boolean @default(false)
+  autoEnqueueYouTube   Boolean @default(false)
+  useExternalMedia     Boolean @default(false)
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model VideoQuestion {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   questionText     String
-  status           String   @default("PENDING") // PENDING | PROCESSING | DONE | FAILED
+  status           String    @default("PENDING") // PENDING | PROCESSING | DONE | FAILED
   errorMessage     String?
   startedAt        DateTime?
   completedAt      DateTime?
   useExternalMedia Boolean   @default(false)
 
-  codeVideoProjectId String? @unique
+  codeVideoProjectId String?           @unique
   codeVideoProject   CodeVideoProject? @relation(fields: [codeVideoProjectId], references: [id])
 
-  pipelineStatus     ShopeePipelineStatus         @default(PENDING)
-  videoStatus        String?                      // RENDERING | COMPLETED | FAILED
-  attemptCount       Int                          @default(0)
-  lastError          String?
-  
-  // Relations to track logging
-  pipelineSteps      VideoQuestionPipelineStep[]
-  pipelineEvents     VideoQuestionPipelineEvent[]
+  pipelineStatus ShopeePipelineStatus @default(PENDING)
+  videoStatus    String? // RENDERING | COMPLETED | FAILED
+  attemptCount   Int                  @default(0)
+  lastError      String?
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  // Relations to track logging
+  pipelineSteps  VideoQuestionPipelineStep[]
+  pipelineEvents VideoQuestionPipelineEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model VideoQuestionPipelineStep {
-  id              String   @id @default(cuid())
+  id              String                   @id @default(cuid())
   questionId      String
-  question        VideoQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question        VideoQuestion            @relation(fields: [questionId], references: [id], onDelete: Cascade)
   stepName        String
   status          ShopeePipelineStepStatus @default(PENDING)
   startedAt       DateTime?
   finishedAt      DateTime?
   durationMs      Int?
-  attempt         Int      @default(1)
+  attempt         Int                      @default(1)
   nextRetryAt     DateTime?
   errorCode       String?
   errorMessage    String?
   requestPayload  Json?
   responsePayload Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   @@index([questionId])
 }
 
 model VideoQuestionPipelineEvent {
-  id          String   @id @default(cuid())
-  questionId  String
-  question    VideoQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  stepName    String?
-  level       String   @default("INFO") // INFO | ERROR | WARN
-  message     String
-  metadata  Json?
-  createdAt   DateTime @default(now())
+  id         String        @id @default(cuid())
+  questionId String
+  question   VideoQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  stepName   String?
+  level      String        @default("INFO") // INFO | ERROR | WARN
+  message    String
+  metadata   Json?
+  createdAt  DateTime      @default(now())
 
   @@index([questionId])
   @@index([createdAt])
@@ -852,53 +852,53 @@ model Lead {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
-  source    String?  // Ref do Post (Slug) para saber onde o lead foi captado
+  source    String? // Ref do Post (Slug) para saber onde o lead foi captado
   createdAt DateTime @default(now())
 }
 
 model CrmSettings {
-  id                     String   @id @default(cuid())
-  whatsappEnabled        Boolean  @default(false)
-  whatsappDisplayLabel   String   @default("Falar no WhatsApp")
-  whatsappNumber         String?
-  whatsappDefaultMessage String   @default("Olá! Quero falar sobre automação, agentes de IA e WhatsApp.")
-  evolutionEnabled       Boolean  @default(false)
-  evolutionBaseUrl       String?
-  evolutionApiKey        String?
-  evolutionInstanceName  String?
-  evolutionWebhookSecret String?
-  offersCronEnabled      Boolean  @default(false)
-  offersGroupTargetId    String?
-  offersGroupLabel       String?
-  offersPublishIntervalMin Int    @default(60)
-  offersDailyStartHour   Int      @default(8)
-  offersDailyEndHour     Int      @default(22)
-  offersRequireApproval  Boolean  @default(true)
-  offersLastRunAt        DateTime?
-  offersNextRunAt        DateTime?
-  openAiModel            String   @default("gpt-4o-mini")
-  assistantEnabled       Boolean  @default(true)
-  assistantScope         String   @default("Automação com n8n, agentes de IA, RAG, WhatsApp, Evolution API, integrações e implantação comercial.")
-  assistantSystemPrompt  String   @default("Você é um atendente comercial da Plugando IA. Tire dúvidas apenas sobre automação, n8n, agentes de IA, RAG, WhatsApp, Evolution API, integrações, implantação e consultoria. Se o assunto sair desse escopo, recuse com educação, explique o escopo atendido e convide o lead a voltar ao tema comercial.")
-  defaultAssigneeUserId  String?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id                       String    @id @default(cuid())
+  whatsappEnabled          Boolean   @default(false)
+  whatsappDisplayLabel     String    @default("Falar no WhatsApp")
+  whatsappNumber           String?
+  whatsappDefaultMessage   String    @default("Olá! Quero falar sobre automação, agentes de IA e WhatsApp.")
+  evolutionEnabled         Boolean   @default(false)
+  evolutionBaseUrl         String?
+  evolutionApiKey          String?
+  evolutionInstanceName    String?
+  evolutionWebhookSecret   String?
+  offersCronEnabled        Boolean   @default(false)
+  offersGroupTargetId      String?
+  offersGroupLabel         String?
+  offersPublishIntervalMin Int       @default(60)
+  offersDailyStartHour     Int       @default(8)
+  offersDailyEndHour       Int       @default(22)
+  offersRequireApproval    Boolean   @default(true)
+  offersLastRunAt          DateTime?
+  offersNextRunAt          DateTime?
+  openAiModel              String    @default("gpt-4o-mini")
+  assistantEnabled         Boolean   @default(true)
+  assistantScope           String    @default("Automação com n8n, agentes de IA, RAG, WhatsApp, Evolution API, integrações e implantação comercial.")
+  assistantSystemPrompt    String    @default("Você é um atendente comercial da Plugando IA. Tire dúvidas apenas sobre automação, n8n, agentes de IA, RAG, WhatsApp, Evolution API, integrações, implantação e consultoria. Se o assunto sair desse escopo, recuse com educação, explique o escopo atendido e convide o lead a voltar ao tema comercial.")
+  defaultAssigneeUserId    String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
-  defaultAssignee        User?    @relation("CrmDefaultAssignee", fields: [defaultAssigneeUserId], references: [id])
+  defaultAssignee User? @relation("CrmDefaultAssignee", fields: [defaultAssigneeUserId], references: [id])
 }
 
 model WhatsappPromoCatalogItem {
-  id                String   @id @default(cuid())
+  id                String          @id @default(cuid())
   productCatalogId  String?
   productCatalog    ProductCatalog? @relation(fields: [productCatalogId], references: [id], onDelete: SetNull)
-  sourceType        String   @default("MANUAL") // MANUAL | CSV_BATCH | SHOPEE_BATCH
+  sourceType        String          @default("MANUAL") // MANUAL | CSV_BATCH | SHOPEE_BATCH
   sourceBatchKey    String?
   sourceOfferName   String?
   sourceOfferType   String?
   sourceOfferPeriod String?
   sourceUrl         String?
   title             String
-  slug              String   @unique
+  slug              String          @unique
   description       String?
   imageUrl          String?
   category          String?
@@ -908,14 +908,14 @@ model WhatsappPromoCatalogItem {
   currentPrice      Float?
   discountPercent   Int?
   savingsAmount     Float?
-  active            Boolean  @default(true)
-  readyForPublish   Boolean  @default(false)
+  active            Boolean         @default(true)
+  readyForPublish   Boolean         @default(false)
   lastPriceCheckAt  DateTime?
   lastPublishedAt   DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
-  posts             WhatsappPromoPost[]
+  posts WhatsappPromoPost[]
 
   @@index([active, readyForPublish, updatedAt])
   @@index([sourceBatchKey])
@@ -923,22 +923,22 @@ model WhatsappPromoCatalogItem {
 }
 
 model WhatsappPromoPost {
-  id              String   @id @default(cuid())
+  id              String                   @id @default(cuid())
   catalogItemId   String
   catalogItem     WhatsappPromoCatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
-  status          String   @default("DRAFT") // DRAFT | APPROVED | SCHEDULED | SENT | FAILED | CANCELED
+  status          String                   @default("DRAFT") // DRAFT | APPROVED | SCHEDULED | SENT | FAILED | CANCELED
   headline        String
   bodyText        String
   linkUrl         String
   mediaUrl        String?
   scheduledTo     DateTime?
   sentAt          DateTime?
-  targetType      String   @default("GROUP") // GROUP
+  targetType      String                   @default("GROUP") // GROUP
   targetId        String?
-  deliveryPayload String   @default("{}")
+  deliveryPayload String                   @default("{}")
   errorMessage    String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   @@index([status, scheduledTo])
   @@index([catalogItemId, createdAt])
@@ -959,10 +959,10 @@ model CrmContact {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  owner           User?              @relation("CrmContactOwner", fields: [ownerUserId], references: [id])
-  activities      CrmActivity[]
-  tasks           CrmTask[]
-  conversations   CrmConversation[]
+  owner         User?             @relation("CrmContactOwner", fields: [ownerUserId], references: [id])
+  activities    CrmActivity[]
+  tasks         CrmTask[]
+  conversations CrmConversation[]
 
   @@index([stage])
   @@index([ownerUserId])
@@ -981,8 +981,8 @@ model CrmActivity {
   authorUserId String?
   metadataJson String               @default("{}")
 
-  contact      CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  author       User?      @relation("CrmActivityAuthor", fields: [authorUserId], references: [id])
+  contact CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  author  User?      @relation("CrmActivityAuthor", fields: [authorUserId], references: [id])
 
   @@index([contactId, happenedAt])
   @@index([type])
@@ -1000,8 +1000,8 @@ model CrmTask {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  contact          CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  assignedTo       User?      @relation("CrmTaskAssignee", fields: [assignedToUserId], references: [id])
+  contact    CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  assignedTo User?      @relation("CrmTaskAssignee", fields: [assignedToUserId], references: [id])
 
   @@index([contactId, status])
   @@index([assignedToUserId])
@@ -1016,8 +1016,8 @@ model CrmConversation {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  contact          CrmContact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  messages         CrmMessage[]
+  contact  CrmContact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages CrmMessage[]
 
   @@index([contactId, updatedAt])
 }
@@ -1033,51 +1033,51 @@ model CrmMessage {
   guardrailTriggered Boolean              @default(false)
   createdAt          DateTime             @default(now())
 
-  conversation       CrmConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversation CrmConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
 }
 
 model PipelineLog {
   id        String   @id @default(cuid())
-  step      String   // FETCH, AI, VIDEO, UPLOAD, INGEST, PEXELS, ERROR
+  step      String // FETCH, AI, VIDEO, UPLOAD, INGEST, PEXELS, ERROR
   message   String
   level     String   @default("INFO") // INFO, SUCCESS, ERROR, WARN
   createdAt DateTime @default(now())
 }
 
 model OperationDefinition {
-  id             String          @id @default(cuid())
-  key            String          @unique
-  name           String
-  family         String
-  description    String?
-  enabled        Boolean         @default(true)
+  id               String         @id @default(cuid())
+  key              String         @unique
+  name             String
+  family           String
+  description      String?
+  enabled          Boolean        @default(true)
   expectedEverySec Int?
-  owner          String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  runs           OperationRun[]
+  owner            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  runs             OperationRun[]
 }
 
 model OperationRun {
-  id              String              @id @default(cuid())
-  runId           String              @unique @default(cuid())
-  operationKey    String
-  status          String              @default("RUNNING") // RUNNING | SUCCESS | PARTIAL | FAILED | STALE
-  startedAt       DateTime            @default(now())
-  heartbeatAt     DateTime            @default(now())
-  finishedAt      DateTime?
-  nextRunAt       DateTime?
-  itemsFound      Int                 @default(0)
-  itemsProcessed  Int                 @default(0)
-  itemsSucceeded  Int                 @default(0)
-  itemsFailed     Int                 @default(0)
+  id               String              @id @default(cuid())
+  runId            String              @unique @default(cuid())
+  operationKey     String
+  status           String              @default("RUNNING") // RUNNING | SUCCESS | PARTIAL | FAILED | STALE
+  startedAt        DateTime            @default(now())
+  heartbeatAt      DateTime            @default(now())
+  finishedAt       DateTime?
+  nextRunAt        DateTime?
+  itemsFound       Int                 @default(0)
+  itemsProcessed   Int                 @default(0)
+  itemsSucceeded   Int                 @default(0)
+  itemsFailed      Int                 @default(0)
   estimatedCostUsd Float               @default(0)
-  errorMessage    String?
-  metadataJson    String?
-  createdAt       DateTime            @default(now())
-  operation       OperationDefinition @relation(fields: [operationKey], references: [key], onDelete: Cascade)
+  errorMessage     String?
+  metadataJson     String?
+  createdAt        DateTime            @default(now())
+  operation        OperationDefinition @relation(fields: [operationKey], references: [key], onDelete: Cascade)
 
   @@index([operationKey, startedAt])
   @@index([status, heartbeatAt])
@@ -1085,53 +1085,53 @@ model OperationRun {
 }
 
 model OperationAlert {
-  id            String    @id @default(cuid())
-  fingerprint   String    @unique
-  operationKey  String?
-  severity      String    @default("WARNING") // INFO | WARNING | CRITICAL
-  status        String    @default("OPEN") // OPEN | ACKNOWLEDGED | RESOLVED
-  title         String
-  message       String
-  actionUrl     String?
-  metadataJson  String?
-  firstSeenAt   DateTime  @default(now())
-  lastSeenAt    DateTime  @default(now())
-  resolvedAt    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  fingerprint  String    @unique
+  operationKey String?
+  severity     String    @default("WARNING") // INFO | WARNING | CRITICAL
+  status       String    @default("OPEN") // OPEN | ACKNOWLEDGED | RESOLVED
+  title        String
+  message      String
+  actionUrl    String?
+  metadataJson String?
+  firstSeenAt  DateTime  @default(now())
+  lastSeenAt   DateTime  @default(now())
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([status, severity, lastSeenAt])
   @@index([operationKey, status])
 }
 
 model ManualActionAudit {
-  id            String    @id @default(cuid())
-  action        String
-  entityType    String
-  entityId      String?
-  actor         String?
-  summary       String
-  metadataJson  String?
-  createdAt     DateTime  @default(now())
+  id           String   @id @default(cuid())
+  action       String
+  entityType   String
+  entityId     String?
+  actor        String?
+  summary      String
+  metadataJson String?
+  createdAt    DateTime @default(now())
 
   @@index([entityType, entityId, createdAt])
   @@index([createdAt])
 }
 
 model ContentMetricEvent {
-  id            String    @id @default(cuid())
-  eventType     String    // page_view | article_view | video_view | affiliate_click | lead_created | sale_attributed
-  postId        String?
-  socialPostId  String?
-  productId     String?
-  sessionId     String?
-  source        String?
-  medium        String?
-  campaign      String?
-  referrer      String?
-  metadataJson  String?
-  occurredAt    DateTime  @default(now())
-  createdAt     DateTime  @default(now())
+  id           String   @id @default(cuid())
+  eventType    String // page_view | article_view | video_view | affiliate_click | lead_created | sale_attributed
+  postId       String?
+  socialPostId String?
+  productId    String?
+  sessionId    String?
+  source       String?
+  medium       String?
+  campaign     String?
+  referrer     String?
+  metadataJson String?
+  occurredAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
 
   @@index([eventType, occurredAt])
   @@index([postId, occurredAt])
@@ -1139,37 +1139,37 @@ model ContentMetricEvent {
 }
 
 model DailyContentReport {
-  id            String    @id @default(cuid())
-  reportDate    DateTime  @unique
-  timezone      String    @default("America/Sao_Paulo")
-  metricsJson   String
-  alertsJson    String?
-  generatedAt   DateTime  @default(now())
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String   @id @default(cuid())
+  reportDate  DateTime @unique
+  timezone    String   @default("America/Sao_Paulo")
+  metricsJson String
+  alertsJson  String?
+  generatedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model ProductCatalog {
-  id            String    @id @default(cuid())
-  externalRef   String?   @unique
-  name          String
-  slug          String    @unique
-  description   String?
-  productUrl    String?
-  affiliateUrl  String?
-  imageUrl      String?
-  price         Float?
-  currency      String    @default("BRL")
-  category      String?
-  status        String    @default("ACTIVE") // ACTIVE | PAUSED | ARCHIVED
-  metadataJson  String?
+  id               String   @id @default(cuid())
+  externalRef      String?  @unique
+  name             String
+  slug             String   @unique
+  description      String?
+  productUrl       String?
+  affiliateUrl     String?
+  imageUrl         String?
+  price            Float?
+  currency         String   @default("BRL")
+  category         String?
+  status           String   @default("ACTIVE") // ACTIVE | PAUSED | ARCHIVED
+  metadataJson     String?
   affiliateStoreId String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  affiliateStore AffiliateStore? @relation(fields: [affiliateStoreId], references: [id], onDelete: SetNull)
-  opportunities SeoOpportunity[]
-  briefs        SeoBrief[]
+  affiliateStore     AffiliateStore?            @relation(fields: [affiliateStoreId], references: [id], onDelete: SetNull)
+  opportunities      SeoOpportunity[]
+  briefs             SeoBrief[]
   whatsappPromoItems WhatsappPromoCatalogItem[]
 
   @@index([status, updatedAt])
@@ -1177,56 +1177,56 @@ model ProductCatalog {
 }
 
 model SeoOpportunity {
-  id            String    @id @default(cuid())
-  productId     String
-  keyword       String
-  region        String    @default("BR")
-  source        String    // SEARCH_CONSOLE | TRENDS | KEYWORD_PLANNER | SUGGEST
-  intent        String?
-  cluster       String?
-  demandScore   Float     @default(0)
-  trendScore    Float     @default(0)
-  competitionScore Float  @default(0)
-  relevanceScore Float    @default(0)
-  conversionScore Float   @default(0)
-  opportunityScore Float  @default(0)
-  collectedAt   DateTime  @default(now())
-  rawDataJson   String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id               String   @id @default(cuid())
+  productId        String
+  keyword          String
+  region           String   @default("BR")
+  source           String // SEARCH_CONSOLE | TRENDS | KEYWORD_PLANNER | SUGGEST
+  intent           String?
+  cluster          String?
+  demandScore      Float    @default(0)
+  trendScore       Float    @default(0)
+  competitionScore Float    @default(0)
+  relevanceScore   Float    @default(0)
+  conversionScore  Float    @default(0)
+  opportunityScore Float    @default(0)
+  collectedAt      DateTime @default(now())
+  rawDataJson      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  product       ProductCatalog @relation(fields: [productId], references: [id], onDelete: Cascade)
-  briefs        SeoBrief[]
+  product ProductCatalog @relation(fields: [productId], references: [id], onDelete: Cascade)
+  briefs  SeoBrief[]
 
   @@index([productId, opportunityScore])
   @@index([keyword, region, collectedAt])
 }
 
 model SeoBrief {
-  id            String    @id @default(cuid())
-  productId     String
-  opportunityId String?
-  angle         String    // PAIN | PRODUCT | COMPARISON
-  status        String    @default("DRAFT") // DRAFT | REVIEW | APPROVED | PUBLISHED | REJECTED
-  title         String
-  slug          String    @unique
-  primaryKeyword String
-  intent        String?
-  outlineJson   String?
+  id                String    @id @default(cuid())
+  productId         String
+  opportunityId     String?
+  angle             String // PAIN | PRODUCT | COMPARISON
+  status            String    @default("DRAFT") // DRAFT | REVIEW | APPROVED | PUBLISHED | REJECTED
+  title             String
+  slug              String    @unique
+  primaryKeyword    String
+  intent            String?
+  outlineJson       String?
   internalLinksJson String?
-  sourcesJson   String?
-  reviewNotes   String?
-  metaDescription String?
-  contentJson   String?
-  qualityScore  Float?
-  indexable     Boolean   @default(false)
-  publishedAt   DateTime?
-  postId        String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  sourcesJson       String?
+  reviewNotes       String?
+  metaDescription   String?
+  contentJson       String?
+  qualityScore      Float?
+  indexable         Boolean   @default(false)
+  publishedAt       DateTime?
+  postId            String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  product       ProductCatalog @relation(fields: [productId], references: [id], onDelete: Cascade)
-  opportunity   SeoOpportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  product     ProductCatalog  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  opportunity SeoOpportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
 
   @@unique([productId, angle])
   @@index([status, updatedAt])
@@ -1234,115 +1234,115 @@ model SeoBrief {
 }
 
 model CommerceEditorialConfig {
-  id              String   @id @default("default")
-  enabled         Boolean  @default(true)
-  autoPublish     Boolean  @default(true)
-  runEveryHours   Int      @default(2)
-  maxItemsPerRun  Int      @default(1)
-  minimumWords    Int      @default(900)
-  storeCursor     Int      @default(0)
-  lastRunAt       DateTime?
-  nextRunAt       DateTime?
-  lockedAt        DateTime?
-  lastResultJson  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String    @id @default("default")
+  enabled        Boolean   @default(true)
+  autoPublish    Boolean   @default(true)
+  runEveryHours  Int       @default(2)
+  maxItemsPerRun Int       @default(1)
+  minimumWords   Int       @default(900)
+  storeCursor    Int       @default(0)
+  lastRunAt      DateTime?
+  nextRunAt      DateTime?
+  lockedAt       DateTime?
+  lastResultJson String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model CommerceEditorialRun {
-  id            String   @id @default(cuid())
-  status        String   @default("RUNNING") // RUNNING | PUBLISHED | REVIEW | FAILED | SKIPPED
-  step          String   @default("SELECT_STORE")
-  storeId       String?
-  productId     String?
-  briefId       String?
-  sourceUrl     String?
-  message       String?
-  detailsJson   String?
-  startedAt     DateTime @default(now())
-  completedAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String    @id @default(cuid())
+  status      String    @default("RUNNING") // RUNNING | PUBLISHED | REVIEW | FAILED | SKIPPED
+  step        String    @default("SELECT_STORE")
+  storeId     String?
+  productId   String?
+  briefId     String?
+  sourceUrl   String?
+  message     String?
+  detailsJson String?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([status, startedAt])
   @@index([storeId, startedAt])
 }
 
 model CostLedger {
-  id            String    @id @default(cuid())
-  operationKey  String?
-  provider      String
-  assetType     String
-  assetId       String?
-  quantity      Float     @default(1)
-  unit          String    @default("unit")
-  costUsd       Float     @default(0)
-  metadataJson  String?
-  occurredAt    DateTime  @default(now())
-  createdAt     DateTime  @default(now())
+  id           String   @id @default(cuid())
+  operationKey String?
+  provider     String
+  assetType    String
+  assetId      String?
+  quantity     Float    @default(1)
+  unit         String   @default("unit")
+  costUsd      Float    @default(0)
+  metadataJson String?
+  occurredAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
 
   @@index([operationKey, occurredAt])
   @@index([provider, occurredAt])
 }
 
 model ProviderCircuitBreaker {
-  id            String    @id @default(cuid())
-  provider      String    @unique
-  state         String    @default("CLOSED") // CLOSED | OPEN | HALF_OPEN
-  failureCount  Int       @default(0)
-  openedAt      DateTime?
-  retryAfter    DateTime?
-  lastError     String?
-  updatedAt     DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  provider     String    @unique
+  state        String    @default("CLOSED") // CLOSED | OPEN | HALF_OPEN
+  failureCount Int       @default(0)
+  openedAt     DateTime?
+  retryAfter   DateTime?
+  lastError    String?
+  updatedAt    DateTime  @updatedAt
 }
 
 model ScraperConfig {
-  id                String   @id @default(cuid())
+  id                  String   @id @default(cuid())
   // Agendamento
-  intervalHours     Int      @default(6)
-  scheduledTimes    String   @default("[]")    // JSON: ["08:00","14:00"]
-  useScheduledTimes Boolean  @default(false)   // true = horários fixos; false = intervalo
-  isEnabled         Boolean  @default(true)
+  intervalHours       Int      @default(6)
+  scheduledTimes      String   @default("[]") // JSON: ["08:00","14:00"]
+  useScheduledTimes   Boolean  @default(false) // true = horários fixos; false = intervalo
+  isEnabled           Boolean  @default(true)
   // Limites
-  maxArticlesPerRun Int      @default(3)       // 1 | 3 | 5 | 7 | 10
+  maxArticlesPerRun   Int      @default(3) // 1 | 3 | 5 | 7 | 10
   // Modelo de IA
-  aiModel           String   @default("gpt-4o-mini")
-  aiTemperature     Float    @default(0.7)
+  aiModel             String   @default("gpt-4o-mini")
+  aiTemperature       Float    @default(0.7)
   // Prompt
-  systemPrompt      String   @default("")
+  systemPrompt        String   @default("")
   // Vídeo
-  videoDurationSec  Int      @default(30)      // 30 | 60 | 90 | 120 | 180 | 300
-  videoStyle        String   @default("journalism") // journalism|story|ad|funny|ironic
+  videoDurationSec    Int      @default(30) // 30 | 60 | 90 | 120 | 180 | 300
+  videoStyle          String   @default("journalism") // journalism|story|ad|funny|ironic
   // TTS
-  ttsVoice          String   @default("pt-BR-AntonioNeural")
-  ttsSpeed          String   @default("+5%")
+  ttsVoice            String   @default("pt-BR-AntonioNeural")
+  ttsSpeed            String   @default("+5%")
   // Pexels
-  pexelsEnabled     Boolean  @default(true)
+  pexelsEnabled       Boolean  @default(true)
   // Auto-publicação por plataforma
   autoPublishReels    Boolean  @default(false)
   autoPublishStory    Boolean  @default(false)
   autoPublishTikTok   Boolean  @default(false)
   autoPublishLinkedIn Boolean  @default(false)
   autoPublishYouTube  Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 model ScraperRun {
-  id             String       @id @default(cuid())
+  id             String    @id @default(cuid())
   startedAt      DateTime
   finishedAt     DateTime?
-  status         String       @default("RUNNING") // RUNNING | SUCCESS | FAILED | PARTIAL
-  articlesFound  Int          @default(0)
-  articlesSaved  Int          @default(0)
-  triggerType    String       @default("AUTO")    // AUTO | MANUAL
+  status         String    @default("RUNNING") // RUNNING | SUCCESS | FAILED | PARTIAL
+  articlesFound  Int       @default(0)
+  articlesSaved  Int       @default(0)
+  triggerType    String    @default("AUTO") // AUTO | MANUAL
   errorMessage   String?
-  totalTokensIn  Int          @default(0)
-  totalTokensOut Int          @default(0)
-  totalCostUsd   Float        @default(0)
-  createdAt      DateTime     @default(now())
+  totalTokensIn  Int       @default(0)
+  totalTokensOut Int       @default(0)
+  totalCostUsd   Float     @default(0)
+  createdAt      DateTime  @default(now())
 
-  aiUsageLogs    AiUsageLog[]
+  aiUsageLogs AiUsageLog[]
 }
 
 model MercadoLivreAffiliateConfig {
@@ -1375,32 +1375,32 @@ model MercadoLivreAffiliateConfig {
 }
 
 model MercadoLivreAffiliatePick {
-  id                  String    @id @default(cuid())
-  mercadoLivreItemId  String    @unique
-  title               String
-  price               Float?
-  currencyId          String?
-  permalink           String
-  affiliateUrl        String?
-  thumbnailUrl        String?
-  categoryId          String?
-  status              String    @default("SELECTED")
-  scheduledBaseAt     DateTime?
-  codeVideoProjectId  String?
-  errorMessage        String?
-  metadataJson        String    @default("{}")
+  id                 String    @id @default(cuid())
+  mercadoLivreItemId String    @unique
+  title              String
+  price              Float?
+  currencyId         String?
+  permalink          String
+  affiliateUrl       String?
+  thumbnailUrl       String?
+  categoryId         String?
+  status             String    @default("SELECTED")
+  scheduledBaseAt    DateTime?
+  codeVideoProjectId String?
+  errorMessage       String?
+  metadataJson       String    @default("{}")
 
-  pipelineStatus      ShopeePipelineStatus @default(PENDING)
-  videoStatus         String?            // RENDERING | COMPLETED | FAILED
-  attemptCount        Int                @default(0)
-  lastError           String?
+  pipelineStatus ShopeePipelineStatus @default(PENDING)
+  videoStatus    String? // RENDERING | COMPLETED | FAILED
+  attemptCount   Int                  @default(0)
+  lastError      String?
   // Media outputs
-  audioUrl            String?
-  copyVideoUrl        String?
-  videoFinalUrl       String?
+  audioUrl       String?
+  copyVideoUrl   String?
+  videoFinalUrl  String?
 
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([createdAt])
   @@index([status])
@@ -1408,56 +1408,56 @@ model MercadoLivreAffiliatePick {
 }
 
 model ShopeeAffiliateConfig {
-  id                 String   @id @default(cuid())
-  isEnabled          Boolean  @default(false)
-  site               String   @default("br") // br, mx, co, cl, etc (public endpoints)
-  domain             String   @default("shopee.com.br")
-  searchTerms        String   @default("[\"ofertas\"]")
+  id                 String  @id @default(cuid())
+  isEnabled          Boolean @default(false)
+  site               String  @default("br") // br, mx, co, cl, etc (public endpoints)
+  domain             String  @default("shopee.com.br")
+  searchTerms        String  @default("[\"ofertas\"]")
   minPrice           Float?
   maxPrice           Float?
-  maxProductsPerRun  Int      @default(8)
-  postIntervalHours  Int      @default(2)
-  preferredPlatforms String   @default("[\"YOUTUBE\",\"INSTAGRAM\",\"TIKTOK\"]")
-  autoGenerateScript Boolean  @default(true)
-  autoRenderVideo    Boolean  @default(false)
-  autoEnqueueSocial  Boolean  @default(true)
+  maxProductsPerRun  Int     @default(8)
+  postIntervalHours  Int     @default(2)
+  preferredPlatforms String  @default("[\"YOUTUBE\",\"INSTAGRAM\",\"TIKTOK\"]")
+  autoGenerateScript Boolean @default(true)
+  autoRenderVideo    Boolean @default(false)
+  autoEnqueueSocial  Boolean @default(true)
 
   // Shopee Open Platform credentials (Partner ID / Key).
   // NOTE: These are NOT required for public product scraping endpoints, but kept for future automation.
-  appId              String?
-  clientSecret       String?
+  appId        String?
+  clientSecret String?
 
-  lastRunAt          DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  lastRunAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model ShopeeAffiliatePick {
-  id                String   @id @default(cuid())
-  shopeeItemId      String   @unique
-  title             String
-  price             Float?
-  currencyId        String?
-  permalink         String
-  affiliateUrl      String?
-  thumbnailUrl      String?
-  status            String   @default("SELECTED")
-  scheduledBaseAt   DateTime?
+  id                 String    @id @default(cuid())
+  shopeeItemId       String    @unique
+  title              String
+  price              Float?
+  currencyId         String?
+  permalink          String
+  affiliateUrl       String?
+  thumbnailUrl       String?
+  status             String    @default("SELECTED")
+  scheduledBaseAt    DateTime?
   codeVideoProjectId String?
-  errorMessage      String?
-  metadataJson      String   @default("{}")
+  errorMessage       String?
+  metadataJson       String    @default("{}")
 
-  pipelineStatus      ShopeePipelineStatus @default(PENDING)
-  videoStatus         String?            // RENDERING | COMPLETED | FAILED
-  attemptCount        Int                @default(0)
-  lastError           String?
+  pipelineStatus ShopeePipelineStatus @default(PENDING)
+  videoStatus    String? // RENDERING | COMPLETED | FAILED
+  attemptCount   Int                  @default(0)
+  lastError      String?
   // Media outputs
-  audioUrl            String?
-  copyVideoUrl        String?
-  videoFinalUrl       String?
+  audioUrl       String?
+  copyVideoUrl   String?
+  videoFinalUrl  String?
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([createdAt])
   @@index([status])
@@ -1465,30 +1465,30 @@ model ShopeeAffiliatePick {
 }
 
 model AutomationTask {
-  id                  String                @id @default(cuid())
+  id                  String               @id @default(cuid())
   name                String
-  slug                String                @unique
+  slug                String               @unique
   type                AutomationTaskType
-  status              AutomationTaskStatus  @default(DRAFT)
-  isEnabled           Boolean               @default(true)
-  timezone            String                @default("America/Sao_Paulo")
+  status              AutomationTaskStatus @default(DRAFT)
+  isEnabled           Boolean              @default(true)
+  timezone            String               @default("America/Sao_Paulo")
   cronExpression      String?
   runIntervalMinutes  Int?
   maxRunsPerDay       Int?
-  priority            Int                   @default(100)
-  sourceConfigJson    String                @default("{}")
-  creativeConfigJson  String                @default("{}")
-  publishConfigJson   String                @default("{}")
-  executionConfigJson String                @default("{}")
+  priority            Int                  @default(100)
+  sourceConfigJson    String               @default("{}")
+  creativeConfigJson  String               @default("{}")
+  publishConfigJson   String               @default("{}")
+  executionConfigJson String               @default("{}")
   creativeTemplateId  String?
   lastRunAt           DateTime?
   nextRunAt           DateTime?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
-  runs                AutomationTaskRun[]
-  socialPosts          SocialPost[]
-  assetBundles         AutomationAssetBundle[]
+  runs         AutomationTaskRun[]
+  socialPosts  SocialPost[]
+  assetBundles AutomationAssetBundle[]
 
   @@index([status])
   @@index([isEnabled])
@@ -1497,96 +1497,96 @@ model AutomationTask {
 }
 
 model AutomationTaskRun {
-  id                 String                  @id @default(cuid())
+  id                 String                @id @default(cuid())
   taskId             String
-  task               AutomationTask          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task               AutomationTask        @relation(fields: [taskId], references: [id], onDelete: Cascade)
   triggerType        AutomationTriggerType
-  status             AutomationRunStatus     @default(PENDING)
+  status             AutomationRunStatus   @default(PENDING)
   startedAt          DateTime?
   finishedAt         DateTime?
   summary            String?
   errorMessage       String?
-  inputSnapshotJson  String                  @default("{}")
-  outputSnapshotJson String                  @default("{}")
-  createdAt          DateTime                @default(now())
-  updatedAt          DateTime                @updatedAt
+  inputSnapshotJson  String                @default("{}")
+  outputSnapshotJson String                @default("{}")
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 
-  steps              AutomationTaskStepRun[]
-  socialPosts         SocialPost[]
-  assetBundle         AutomationAssetBundle?
+  steps       AutomationTaskStepRun[]
+  socialPosts SocialPost[]
+  assetBundle AutomationAssetBundle?
 
   @@index([taskId, createdAt])
   @@index([status])
 }
 
 model AutomationTaskStepRun {
-  id           String                @id @default(cuid())
+  id           String               @id @default(cuid())
   taskRunId    String
-  taskRun      AutomationTaskRun     @relation(fields: [taskRunId], references: [id], onDelete: Cascade)
+  taskRun      AutomationTaskRun    @relation(fields: [taskRunId], references: [id], onDelete: Cascade)
   stepKey      String
   stepOrder    Int
-  status       AutomationStepStatus  @default(PENDING)
+  status       AutomationStepStatus @default(PENDING)
   startedAt    DateTime?
   finishedAt   DateTime?
-  inputJson    String                @default("{}")
-  outputJson   String                @default("{}")
+  inputJson    String               @default("{}")
+  outputJson   String               @default("{}")
   errorMessage String?
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
   @@index([taskRunId, stepOrder])
   @@index([status])
 }
 
 model AutomationAssetBundle {
-  id                 String   @id @default(cuid())
-  taskId             String
-  task               AutomationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskRunId          String   @unique
-  taskRun            AutomationTaskRun @relation(fields: [taskRunId], references: [id], onDelete: Cascade)
+  id        String            @id @default(cuid())
+  taskId    String
+  task      AutomationTask    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskRunId String            @unique
+  taskRun   AutomationTaskRun @relation(fields: [taskRunId], references: [id], onDelete: Cascade)
 
-  title              String?
-  description        String?
-  technicalDetails   String?
-  scriptText         String?
-  ctaText            String?
+  title            String?
+  description      String?
+  technicalDetails String?
+  scriptText       String?
+  ctaText          String?
 
-  sourceItemsJson    String   @default("{}")
-  imagesJson         String   @default("[]")
-  videosJson         String   @default("[]")
-  metadataJson       String   @default("{}")
+  sourceItemsJson String @default("{}")
+  imagesJson      String @default("[]")
+  videosJson      String @default("[]")
+  metadataJson    String @default("{}")
 
-  affiliateUrl       String?
-  productUrl         String?
-  thumbUrl           String?
-  finalVideoUrl      String?
+  affiliateUrl  String?
+  productUrl    String?
+  thumbUrl      String?
+  finalVideoUrl String?
 
   codeVideoProjectId String?
   codeVideoProject   CodeVideoProject? @relation(fields: [codeVideoProjectId], references: [id], onDelete: SetNull)
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([taskId, createdAt])
   @@index([codeVideoProjectId])
 }
 
 model AiUsageLog {
-  id               String      @id @default(cuid())
+  id               String   @id @default(cuid())
   runId            String?
   postId           String?
-  operation        String      // rewrite_article
+  operation        String // rewrite_article
   model            String
-  promptTokens     Int         @default(0)
-  completionTokens Int         @default(0)
-  totalTokens      Int         @default(0)
-  costUsd          Float       @default(0)
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  costUsd          Float    @default(0)
   inputSummary     String?
   outputSummary    String?
-  createdAt        DateTime    @default(now())
+  createdAt        DateTime @default(now())
 
-  run              ScraperRun? @relation(fields: [runId], references: [id])
-  post             Post?       @relation(fields: [postId], references: [id])
+  run  ScraperRun? @relation(fields: [runId], references: [id])
+  post Post?       @relation(fields: [postId], references: [id])
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1595,97 +1595,97 @@ model AiUsageLog {
 
 model YtCategory {
   id        String   @id @default(cuid())
-  name      String   @unique  // "Entretenimento / Humor"
-  slug      String   @unique  // "entretenimento-humor"
+  name      String   @unique // "Entretenimento / Humor"
+  slug      String   @unique // "entretenimento-humor"
   color     String   @default("#6366f1")
-  icon      String?  // Nome do ícone MUI
+  icon      String? // Nome do ícone MUI
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  channels  YtChannel[]
+  channels YtChannel[]
 }
 
 model YtChannel {
-  id                String   @id @default(cuid())
-  youtubeChannelId  String   @unique
-  name              String
-  handle            String?
-  description       String?
-  thumbnailUrl      String?
-  bannerUrl         String?
-  country           String?
-  customUrl         String?
+  id               String  @id @default(cuid())
+  youtubeChannelId String  @unique
+  name             String
+  handle           String?
+  description      String?
+  thumbnailUrl     String?
+  bannerUrl        String?
+  country          String?
+  customUrl        String?
 
   // Métricas atuais (última coleta)
-  subscribers       BigInt   @default(0)
-  totalViews        BigInt   @default(0)
-  totalVideos       Int      @default(0)
+  subscribers BigInt @default(0)
+  totalViews  BigInt @default(0)
+  totalVideos Int    @default(0)
 
   // Métricas calculadas
-  viewsShorts       BigInt   @default(0)
-  viewsLongs        BigInt   @default(0)
-  viewsLives        BigInt   @default(0)
-  avgViewsPerVideo  Float    @default(0)
-  avgViewsPerShort  Float    @default(0)
-  weeklyGrowth      Float    @default(0)
-  monthlyGrowth     Float    @default(0)
-  uploadsThisWeek   Int      @default(0)
-  uploadsThisMonth  Int      @default(0)
-  subsGainedWeek    Int      @default(0)
-  subsGainedMonth   Int      @default(0)
-  livesPerMonth     Float    @default(0)
-  lastVideoAt       DateTime?
+  viewsShorts      BigInt    @default(0)
+  viewsLongs       BigInt    @default(0)
+  viewsLives       BigInt    @default(0)
+  avgViewsPerVideo Float     @default(0)
+  avgViewsPerShort Float     @default(0)
+  weeklyGrowth     Float     @default(0)
+  monthlyGrowth    Float     @default(0)
+  uploadsThisWeek  Int       @default(0)
+  uploadsThisMonth Int       @default(0)
+  subsGainedWeek   Int       @default(0)
+  subsGainedMonth  Int       @default(0)
+  livesPerMonth    Float     @default(0)
+  lastVideoAt      DateTime?
 
   // Ranking
-  rankPosition      Int      @default(0)
+  rankPosition Int @default(0)
 
   // Relações
-  categoryId        String
-  category          YtCategory @relation(fields: [categoryId], references: [id])
+  categoryId String
+  category   YtCategory @relation(fields: [categoryId], references: [id])
 
-  isActive          Boolean  @default(true)
-  lastFetchedAt     DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  isActive      Boolean   @default(true)
+  lastFetchedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  videos            YtVideo[]
-  snapshots         YtChannelSnapshot[]
-  aiReports         YtAiReport[]
+  videos    YtVideo[]
+  snapshots YtChannelSnapshot[]
+  aiReports YtAiReport[]
 
   @@index([categoryId])
   @@index([rankPosition])
 }
 
 model YtVideo {
-  id              String   @id @default(cuid())
-  youtubeVideoId  String   @unique
-  title           String
-  description     String?
-  thumbnailUrl    String?
+  id             String  @id @default(cuid())
+  youtubeVideoId String  @unique
+  title          String
+  description    String?
+  thumbnailUrl   String?
 
   // Tipo: SHORT | LONG | LIVE
-  videoType       String   @default("LONG")
+  videoType String @default("LONG")
 
   // Métricas
-  views           BigInt   @default(0)
-  likes           Int      @default(0)
-  comments        Int      @default(0)
-  duration        Int      @default(0) // segundos
+  views    BigInt @default(0)
+  likes    Int    @default(0)
+  comments Int    @default(0)
+  duration Int    @default(0) // segundos
 
   // Temporal
-  publishedAt     DateTime
-  dayOfWeek       Int?     // 0=Dom, 6=Sab
-  hourOfDay       Int?     // 0-23
+  publishedAt DateTime
+  dayOfWeek   Int? // 0=Dom, 6=Sab
+  hourOfDay   Int? // 0-23
 
   // Relações
-  channelId       String
-  channel         YtChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId String
+  channel   YtChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
-  snapshots       YtVideoSnapshot[]
+  snapshots YtVideoSnapshot[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([channelId])
   @@index([channelId, publishedAt])
@@ -1693,38 +1693,38 @@ model YtVideo {
 }
 
 model YtChannelSnapshot {
-  id               String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  subscribers      BigInt
-  totalViews       BigInt
-  totalVideos      Int
-  viewsShorts      BigInt   @default(0)
-  viewsLongs       BigInt   @default(0)
+  subscribers BigInt
+  totalViews  BigInt
+  totalVideos Int
+  viewsShorts BigInt @default(0)
+  viewsLongs  BigInt @default(0)
 
   // Deltas desde snapshot anterior
-  deltaSubscribers Int      @default(0)
-  deltaViews       BigInt   @default(0)
-  deltaVideos      Int      @default(0)
+  deltaSubscribers Int    @default(0)
+  deltaViews       BigInt @default(0)
+  deltaVideos      Int    @default(0)
 
-  channelId        String
-  channel          YtChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId String
+  channel   YtChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
-  snapshotDate     DateTime @default(now())
-  createdAt        DateTime @default(now())
+  snapshotDate DateTime @default(now())
+  createdAt    DateTime @default(now())
 
   @@index([channelId, snapshotDate])
   @@index([snapshotDate])
 }
 
 model YtVideoSnapshot {
-  id           String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  views        BigInt
-  likes        Int      @default(0)
-  comments     Int      @default(0)
+  views    BigInt
+  likes    Int    @default(0)
+  comments Int    @default(0)
 
-  videoId      String
-  video        YtVideo  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoId String
+  video   YtVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   snapshotDate DateTime @default(now())
   createdAt    DateTime @default(now())
@@ -1733,25 +1733,25 @@ model YtVideoSnapshot {
 }
 
 model YtAiReport {
-  id               String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Conteúdo
-  summary          String   // Resumo executivo
-  insights         String   // JSON com insights detalhados
-  recommendations  String   // JSON com recomendações
-  rawResponse      String?  // Resposta bruta da IA
+  summary         String // Resumo executivo
+  insights        String // JSON com insights detalhados
+  recommendations String // JSON com recomendações
+  rawResponse     String? // Resposta bruta da IA
 
   // Metadados
-  model            String   @default("gpt-4o-mini")
-  promptTokens     Int      @default(0)
-  completionTokens Int      @default(0)
-  costUsd          Float    @default(0)
+  model            String @default("gpt-4o-mini")
+  promptTokens     Int    @default(0)
+  completionTokens Int    @default(0)
+  costUsd          Float  @default(0)
 
   // Relação
-  channelId        String
-  channel          YtChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId String
+  channel   YtChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
-  createdAt        DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([channelId, createdAt])
 }
@@ -1761,44 +1761,44 @@ model YtAiReport {
 // ═══════════════════════════════════════════════════════════════
 
 model ColetaDadosShoppe {
-  id               String   @id @default(cuid())
-  url              String
-  sourceUrl        String?
-  inputMode        ShopeePipelineInputMode @default(SCRAPE_SOURCE)
-  pipelineKind     ColetaPipelineKind @default(SALES)
-  titulo           String?
-  detalhes         String?
-  descricao        String?
-  aiPromptVendas   String?
+  id                  String                  @id @default(cuid())
+  url                 String
+  sourceUrl           String?
+  inputMode           ShopeePipelineInputMode @default(SCRAPE_SOURCE)
+  pipelineKind        ColetaPipelineKind      @default(SALES)
+  titulo              String?
+  detalhes            String?
+  descricao           String?
+  aiPromptVendas      String?
   aiPromptEngajamento String?
-  status           String   @default("PENDING") // PENDING, SCRAPING, COMPLETED, FAILED
-  errorMessage     String?
-  videoFinalUrl    String?  // URL do vídeo TikTok gerado (MinIO)
-  videoStatus      String?  // RENDERING, COMPLETED, FAILED
-  pipelineStatus   ShopeePipelineStatus @default(PENDING)
-  useAi            Boolean  @default(true)
-  active           Boolean  @default(true)
-  priority         Int      @default(0)
-  lockedAt         DateTime?
-  lockedBy         String?
-  nextRunAt        DateTime?
-  attemptCount     Int      @default(0)
-  lastError        String?
-  mediaImageUrls   String[] @default([])
-  mediaVideoUrls   String[] @default([])
-  audioUrl         String?
-  copyVideoUrl     String?
-  affiliateUrl     String?
-  platformMetadata Json?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  status              String                  @default("PENDING") // PENDING, SCRAPING, COMPLETED, FAILED
+  errorMessage        String?
+  videoFinalUrl       String? // URL do vídeo TikTok gerado (MinIO)
+  videoStatus         String? // RENDERING, COMPLETED, FAILED
+  pipelineStatus      ShopeePipelineStatus    @default(PENDING)
+  useAi               Boolean                 @default(true)
+  active              Boolean                 @default(true)
+  priority            Int                     @default(0)
+  lockedAt            DateTime?
+  lockedBy            String?
+  nextRunAt           DateTime?
+  attemptCount        Int                     @default(0)
+  lastError           String?
+  mediaImageUrls      String[]                @default([])
+  mediaVideoUrls      String[]                @default([])
+  audioUrl            String?
+  copyVideoUrl        String?
+  affiliateUrl        String?
+  platformMetadata    Json?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 
-  linksMedia       LinksVideosImagens[]
-  pipelineSteps    ShopeePipelineStep[]
-  pipelineEvents   ShopeePipelineEvent[]
-  storyAd          StoryAd?
-  bioProduct       BioProduct?
-  engagementIdeas  EngagementIdea[]
+  linksMedia      LinksVideosImagens[]
+  pipelineSteps   ShopeePipelineStep[]
+  pipelineEvents  ShopeePipelineEvent[]
+  storyAd         StoryAd?
+  bioProduct      BioProduct?
+  engagementIdeas EngagementIdea[]
 
   creatorPersonaId String?
   creatorPersona   CreatorPersona? @relation(fields: [creatorPersonaId], references: [id])
@@ -1808,54 +1808,54 @@ model ColetaDadosShoppe {
 }
 
 model LinksVideosImagens {
-  id               String   @id @default(cuid())
-  coletaId         String
-  coleta           ColetaDadosShoppe @relation(fields: [coletaId], references: [id], onDelete: Cascade)
-  tipo             String   // "VIDEO" ou "IMAGE"
-  urlMinio         String
+  id       String            @id @default(cuid())
+  coletaId String
+  coleta   ColetaDadosShoppe @relation(fields: [coletaId], references: [id], onDelete: Cascade)
+  tipo     String // "VIDEO" ou "IMAGE"
+  urlMinio String
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([coletaId])
 }
 
 model ShopeePipelineConfig {
-  id                String   @id @default(cuid())
-  pipelineKind      ColetaPipelineKind @default(SALES)
-  enabled           Boolean  @default(false)
-  runEveryMinutes   Int      @default(5)
-  maxItemsPerRun    Int      @default(1)
-  processOneAtATime Boolean  @default(true)
-  lastCronRunAt     DateTime?
-  nextCronRunAt     DateTime?
-  userBaseImageUrl  String?
-  userVoiceRefUrl   String?
+  id                       String             @id @default(cuid())
+  pipelineKind             ColetaPipelineKind @default(SALES)
+  enabled                  Boolean            @default(false)
+  runEveryMinutes          Int                @default(5)
+  maxItemsPerRun           Int                @default(1)
+  processOneAtATime        Boolean            @default(true)
+  lastCronRunAt            DateTime?
+  nextCronRunAt            DateTime?
+  userBaseImageUrl         String?
+  userVoiceRefUrl          String?
   comfyAudioPromptTemplate Json?
   comfyVideoPromptTemplate Json?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
 
   @@unique([pipelineKind])
 }
 
 model ShopeePipelineStep {
-  id              String   @id @default(cuid())
+  id              String                   @id @default(cuid())
   coletaId        String
-  coleta          ColetaDadosShoppe @relation(fields: [coletaId], references: [id], onDelete: Cascade)
+  coleta          ColetaDadosShoppe        @relation(fields: [coletaId], references: [id], onDelete: Cascade)
   stepName        String
   status          ShopeePipelineStepStatus @default(PENDING)
   startedAt       DateTime?
   finishedAt      DateTime?
   durationMs      Int?
-  attempt         Int      @default(1)
+  attempt         Int                      @default(1)
   nextRetryAt     DateTime?
   errorCode       String?
   errorMessage    String?
   requestPayload  Json?
   responsePayload Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   @@index([coletaId])
   @@index([stepName])
@@ -1864,52 +1864,52 @@ model ShopeePipelineStep {
 }
 
 model ShopeePipelineEvent {
-  id        String   @id @default(cuid())
+  id        String            @id @default(cuid())
   coletaId  String
   coleta    ColetaDadosShoppe @relation(fields: [coletaId], references: [id], onDelete: Cascade)
   stepName  String?
-  level     String   @default("INFO") // DEBUG | INFO | WARN | ERROR
+  level     String            @default("INFO") // DEBUG | INFO | WARN | ERROR
   message   String
   metadata  Json?
-  createdAt DateTime @default(now())
+  createdAt DateTime          @default(now())
 
   @@index([coletaId])
   @@index([createdAt])
 }
 
 model PodSession {
-  id                  String   @id @default(cuid())
+  id                  String           @id @default(cuid())
   status              PodSessionStatus @default(OFFLINE)
   startedAt           DateTime?
   stoppedAt           DateTime?
   lastOnlineCheckAt   DateTime?
   lastActivityAt      DateTime?
   currentPodId        String?
-  pendingPod          Boolean  @default(false)
+  pendingPod          Boolean          @default(false)
   pendingSince        DateTime?
   currentColetaId     String?
   currentStepName     String?
   shutdownRequestedAt DateTime?
   errorMessage        String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 
   @@index([status])
   @@index([lastActivityAt])
 }
 
 model StoryAd {
-  id           String   @id @default(cuid())
-  coletaId     String   @unique
+  id           String            @id @default(cuid())
+  coletaId     String            @unique
   coleta       ColetaDadosShoppe @relation(fields: [coletaId], references: [id], onDelete: Cascade)
   title        String
   description  String
   videoUrl     String
   affiliateUrl String
   scheduledAt  DateTime?
-  status       StoryAdStatus @default(DRAFT)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  status       StoryAdStatus     @default(DRAFT)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   publications StoryPublication[]
 
@@ -1918,20 +1918,20 @@ model StoryAd {
 }
 
 model StoryPublication {
-  id              String   @id @default(cuid())
+  id              String                 @id @default(cuid())
   storyAdId       String
-  storyAd         StoryAd @relation(fields: [storyAdId], references: [id], onDelete: Cascade)
+  storyAd         StoryAd                @relation(fields: [storyAdId], references: [id], onDelete: Cascade)
   platform        StoryPlatform
   status          StoryPublicationStatus @default(PENDING)
   externalPostId  String?
   publishedUrl    String?
-  attemptCount    Int      @default(0)
+  attemptCount    Int                    @default(0)
   nextRetryAt     DateTime?
   errorMessage    String?
   requestPayload  Json?
   responsePayload Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
 
   @@index([platform])
   @@index([status])
@@ -1947,27 +1947,27 @@ model BioCategory {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  products  BioProduct[]
+  products BioProduct[]
 }
 
 model BioProduct {
-  id           String   @id @default(cuid())
-  coletaId     String   @unique
+  id           String            @id @default(cuid())
+  coletaId     String            @unique
   coleta       ColetaDadosShoppe @relation(fields: [coletaId], references: [id], onDelete: Cascade)
-  slug         String   @unique
+  slug         String            @unique
   title        String
   description  String
   imageUrl     String?
   videoUrl     String?
   affiliateUrl String
   categoryId   String?
-  category     BioCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  active       Boolean  @default(true)
+  category     BioCategory?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  active       Boolean           @default(true)
   publishedAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
-  clicks       BioClick[]
+  clicks BioClick[]
 
   @@index([active])
   @@index([publishedAt])
@@ -1975,45 +1975,167 @@ model BioProduct {
 }
 
 model BioClick {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   bioProductId String
   bioProduct   BioProduct @relation(fields: [bioProductId], references: [id], onDelete: Cascade)
   source       String?
   userAgent    String?
   ipHash       String?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime   @default(now())
 
   @@index([bioProductId])
   @@index([createdAt])
 }
 
 model AffiliateStore {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   name            String
-  slug            String   @unique
+  slug            String    @unique
   category        String
   defaultCopy     String
   baseUrl         String
   affiliateUrl    String
   domain          String
-  status          String   @default("ACTIVE") // ACTIVE | NEEDS_FIX | PAUSED | BLOCKED
-  complianceClass String   @default("STANDARD")
+  status          String    @default("ACTIVE") // ACTIVE | NEEDS_FIX | PAUSED | BLOCKED
+  complianceClass String    @default("STANDARD")
   logoUrl         String?
-  featured        Boolean  @default(false)
-  sortOrder       Int      @default(0)
+  featured        Boolean   @default(false)
+  sortOrder       Int       @default(0)
   verifiedAt      DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  clicks AffiliateStoreClick[]
-  products ProductCatalog[]
+  clicks          AffiliateStoreClick[]
+  products        ProductCatalog[]
+  petContentPages PetContentPage[]
+  petStoreUnits   PetStoreUnit[]
 
   @@index([status, featured, sortOrder])
   @@index([category, status])
 }
 
+model PetSeoConfig {
+  id             String    @id @default("cobasi")
+  enabled        Boolean   @default(true)
+  autoPublish    Boolean   @default(false)
+  runEveryHours  Int       @default(24)
+  maxItemsPerRun Int       @default(1)
+  minimumWords   Int       @default(900)
+  minimumScore   Float     @default(80)
+  lastRunAt      DateTime?
+  nextRunAt      DateTime?
+  lockedAt       DateTime?
+  lastResultJson String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model PetLocation {
+  id         String    @id @default(cuid())
+  city       String
+  state      String
+  slug       String    @unique
+  status     String    @default("PENDING_VERIFICATION") // PENDING_VERIFICATION | VERIFIED | PAUSED | REJECTED
+  sourceUrl  String?
+  factsJson  String?
+  verifiedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  pages PetContentPage[]
+  units PetStoreUnit[]
+
+  @@unique([city, state])
+  @@index([status, state, city])
+}
+
+model PetStoreUnit {
+  id               String   @id @default(cuid())
+  locationId       String
+  affiliateStoreId String
+  name             String
+  address          String
+  postalCode       String?
+  phone            String?
+  latitude         Float?
+  longitude        Float?
+  openingHoursJson String?
+  servicesJson     String?
+  sourceUrl        String
+  status           String   @default("ACTIVE")
+  verifiedAt       DateTime
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  location       PetLocation    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  affiliateStore AffiliateStore @relation(fields: [affiliateStoreId], references: [id], onDelete: Cascade)
+
+  @@index([locationId, status])
+  @@index([affiliateStoreId, status])
+}
+
+model PetContentPage {
+  id                String    @id @default(cuid())
+  type              String // HUB | CATEGORY | GUIDE | COMPARISON | LOCAL
+  status            String    @default("DRAFT") // DRAFT | QUEUED | GENERATING | REVIEW | PUBLISHED | FAILED | STALE | ARCHIVED
+  path              String    @unique
+  slug              String
+  title             String
+  seoTitle          String?
+  metaDescription   String?
+  primaryKeyword    String
+  searchIntent      String?
+  outlineJson       String?
+  contentJson       String?
+  sourcesJson       String?
+  internalLinksJson String?
+  reviewJson        String?
+  qualityScore      Float?
+  indexable         Boolean   @default(false)
+  affiliateStoreId  String
+  locationId        String?
+  scheduledAt       DateTime?
+  publishedAt       DateTime?
+  reviewedAt        DateTime?
+  expiresAt         DateTime?
+  attemptCount      Int       @default(0)
+  lastError         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  affiliateStore AffiliateStore @relation(fields: [affiliateStoreId], references: [id], onDelete: Restrict)
+  location       PetLocation?   @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  runs           PetSeoRun[]
+
+  @@index([status, scheduledAt, createdAt])
+  @@index([status, indexable, publishedAt])
+  @@index([type, status])
+  @@index([affiliateStoreId, status])
+  @@index([locationId, status])
+}
+
+model PetSeoRun {
+  id          String    @id @default(cuid())
+  pageId      String?
+  status      String    @default("RUNNING")
+  step        String    @default("SELECT_TOPIC")
+  message     String?
+  detailsJson String?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  page PetContentPage? @relation(fields: [pageId], references: [id], onDelete: SetNull)
+
+  @@index([status, startedAt])
+  @@index([pageId, startedAt])
+}
+
 model AffiliateStoreClick {
-  id        String   @id @default(cuid())
+  id        String         @id @default(cuid())
   storeId   String
   store     AffiliateStore @relation(fields: [storeId], references: [id], onDelete: Cascade)
   source    String?
@@ -2022,27 +2144,27 @@ model AffiliateStoreClick {
   referrer  String?
   userAgent String?
   ipHash    String?
-  createdAt DateTime @default(now())
+  createdAt DateTime       @default(now())
 
   @@index([storeId, createdAt])
   @@index([createdAt])
 }
 
 model SimpleCreatorVideo {
-  id              String   @id @default(cuid())
-  narrationText   String
-  creatorImageUrl String
+  id               String    @id @default(cuid())
+  narrationText    String
+  creatorImageUrl  String
   voiceRefUrl      String?
   audioUrl         String?
   videoUrl         String?
   captionsUrl      String?
-  status           String   @default("DRAFT") // DRAFT | GENERATING_AUDIO | AUDIO_READY | GENERATING_VIDEO | READY | FAILED
-  audioLanguage    String   @default("Portuguese")
-  speechRate       Float    @default(1)
-  formatPreset     String   @default("TIKTOK")
-  videoWidth       Int      @default(432)
-  videoHeight      Int      @default(768)
-  videoFps         Int      @default(25)
+  status           String    @default("DRAFT") // DRAFT | GENERATING_AUDIO | AUDIO_READY | GENERATING_VIDEO | READY | FAILED
+  audioLanguage    String    @default("Portuguese")
+  speechRate       Float     @default(1)
+  formatPreset     String    @default("TIKTOK")
+  videoWidth       Int       @default(432)
+  videoHeight      Int       @default(768)
+  videoFps         Int       @default(25)
   audioPromptId    String?
   videoPromptId    String?
   startedAt        DateTime?
@@ -2051,15 +2173,15 @@ model SimpleCreatorVideo {
   videoStartedAt   DateTime?
   completedAt      DateTime?
   errorMessage     String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([status])
   @@index([createdAt])
 }
 
 model MixedCreatorVideo {
-  id                  String   @id @default(cuid())
+  id                  String    @id @default(cuid())
   narrationText       String
   creatorImageUrl     String
   voiceRefUrl         String?
@@ -2067,47 +2189,47 @@ model MixedCreatorVideo {
   talkingHeadVideoUrl String?
   finalVideoUrl       String?
   captionsUrl         String?
-  status              String   @default("DRAFT") // DRAFT | PLANNING_VISUALS | GENERATING_AUDIO | GENERATING_TALKING_HEAD | COMPOSING_VIDEO | READY | FAILED
-  aspectRatio         String   @default("PORTRAIT_9_16")
-  audioLanguage       String   @default("Portuguese")
-  speechRate          Float    @default(1)
-  assetPlanJson       String   @default("{}")
-  renderSpecJson      String   @default("{}")
+  status              String    @default("DRAFT") // DRAFT | PLANNING_VISUALS | GENERATING_AUDIO | GENERATING_TALKING_HEAD | COMPOSING_VIDEO | READY | FAILED
+  aspectRatio         String    @default("PORTRAIT_9_16")
+  audioLanguage       String    @default("Portuguese")
+  speechRate          Float     @default(1)
+  assetPlanJson       String    @default("{}")
+  renderSpecJson      String    @default("{}")
   errorMessage        String?
   startedAt           DateTime?
   completedAt         DateTime?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  assets              MixedCreatorVideoAsset[]
+  assets MixedCreatorVideoAsset[]
 
   @@index([status])
   @@index([createdAt])
 }
 
 model MixedCreatorVideoAsset {
-  id                 String           @id @default(cuid())
+  id                  String            @id @default(cuid())
   mixedCreatorVideoId String
-  mixedCreatorVideo  MixedCreatorVideo @relation(fields: [mixedCreatorVideoId], references: [id], onDelete: Cascade)
-  url                String
-  kind               String
-  source             String           @default("UPLOAD")
-  originalName       String?
-  userLabel          String?
-  autoLabel          String?
-  sortOrder          Int              @default(0)
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  mixedCreatorVideo   MixedCreatorVideo @relation(fields: [mixedCreatorVideoId], references: [id], onDelete: Cascade)
+  url                 String
+  kind                String
+  source              String            @default("UPLOAD")
+  originalName        String?
+  userLabel           String?
+  autoLabel           String?
+  sortOrder           Int               @default(0)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
   @@index([mixedCreatorVideoId, sortOrder])
 }
 
 model VideoCleanupJob {
-  id                   String   @id @default(cuid())
+  id                   String    @id @default(cuid())
   ownerUserId          String
-  ownerUser            User     @relation("VideoCleanupJobOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
-  status               String   @default("UPLOADING") // UPLOADING | QUEUED | PROCESSING | READY | FAILED | CANCELED
-  sourceType           String   @default("UPLOAD")
+  ownerUser            User      @relation("VideoCleanupJobOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  status               String    @default("UPLOADING") // UPLOADING | QUEUED | PROCESSING | READY | FAILED | CANCELED
+  sourceType           String    @default("UPLOAD")
   originalFilename     String?
   mimeType             String?
   inputBucketKey       String?
@@ -2117,31 +2239,31 @@ model VideoCleanupJob {
   affiliateUrl         String?   @ignore
   logoBucketKey        String?
   logoUrl              String?
-  instagramHandle      String?  @default("@compraesperta.promocoes")
+  instagramHandle      String?   @default("@compraesperta.promocoes")
   showTopMessage       Boolean   @default(true) @ignore
   isPublished          Boolean   @default(false) @ignore
   publishedAt          DateTime? @ignore
-  endCardDurationSec   Float    @default(2.0)
+  endCardDurationSec   Float     @default(2.0)
   durationSec          Float?
   fileSizeBytes        BigInt?
   width                Int?
   height               Int?
   fps                  Float?
-  audioMode            String   @default("PRESERVE") // PRESERVE | REDUCE | MUTE
-  audioVolumePercent   Int      @default(100)
-  outputFormat         String   @default("mp4")
-  progressPercent      Float    @default(0)
+  audioMode            String    @default("PRESERVE") // PRESERVE | REDUCE | MUTE
+  audioVolumePercent   Int       @default(100)
+  outputFormat         String    @default("mp4")
+  progressPercent      Float     @default(0)
   currentStep          String?
   estimatedSecondsLeft Int?
   processingStartedAt  DateTime?
   processingFinishedAt DateTime?
   errorMessage         String?
-  metadataJson         String   @default("{}")
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  metadataJson         String    @default("{}")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  steps                VideoCleanupStep[]
-  events               VideoCleanupEvent[]
+  steps  VideoCleanupStep[]
+  events VideoCleanupEvent[]
 
   @@index([ownerUserId, createdAt])
   @@index([status])
@@ -2149,33 +2271,33 @@ model VideoCleanupJob {
 }
 
 model VideoCleanupStep {
-  id              String   @id @default(cuid())
+  id              String          @id @default(cuid())
   jobId           String
   job             VideoCleanupJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
   stepName        String
-  status          String   @default("PENDING") // PENDING | RUNNING | SUCCESS | FAILED | SKIPPED
+  status          String          @default("PENDING") // PENDING | RUNNING | SUCCESS | FAILED | SKIPPED
   startedAt       DateTime?
   finishedAt      DateTime?
   durationMs      Int?
   errorMessage    String?
   requestPayload  Json?
   responsePayload Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   @@index([jobId, stepName])
   @@index([status])
 }
 
 model VideoCleanupEvent {
-  id        String   @id @default(cuid())
+  id        String          @id @default(cuid())
   jobId     String
   job       VideoCleanupJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  level     String   @default("INFO")
+  level     String          @default("INFO")
   stepName  String?
   message   String
   metadata  Json?
-  createdAt DateTime @default(now())
+  createdAt DateTime        @default(now())
 
   @@index([jobId, createdAt])
 }
@@ -2189,30 +2311,30 @@ model CreatorAsset {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([url])
   @@index([kind])
   @@index([active])
-  @@unique([url])
 }
 
 model EngagementIdea {
-  id            String   @id @default(cuid())
-  coletaId      String?
-  templateType  String
-  personaName   String?
-  hook          String
-  script        String
-  onScreenText  Json     @default("[]")
-  ctaComment    String?
-  status        String   @default("DRAFT") // DRAFT | APPROVED | GENERATING_AUDIO | AUDIO_READY | GENERATING_VIDEO | READY | FAILED | DISMISSED
+  id              String   @id @default(cuid())
+  coletaId        String?
+  templateType    String
+  personaName     String?
+  hook            String
+  script          String
+  onScreenText    Json     @default("[]")
+  ctaComment      String?
+  status          String   @default("DRAFT") // DRAFT | APPROVED | GENERATING_AUDIO | AUDIO_READY | GENERATING_VIDEO | READY | FAILED | DISMISSED
   creatorImageUrl String?
-  audioUrl      String?
-  videoUrl      String?
-  captionsUrl   String?
-  errorMessage  String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  audioUrl        String?
+  videoUrl        String?
+  captionsUrl     String?
+  errorMessage    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  coleta        ColetaDadosShoppe? @relation(fields: [coletaId], references: [id], onDelete: SetNull)
+  coleta ColetaDadosShoppe? @relation(fields: [coletaId], references: [id], onDelete: SetNull)
 
   @@index([coletaId])
   @@index([templateType])
@@ -2221,13 +2343,13 @@ model EngagementIdea {
 }
 
 model CreatorPersona {
-  id            String   @id @default(cuid())
-  name          String
-  imageUrl      String
-  voiceRefUrl   String?
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  imageUrl    String
+  voiceRefUrl String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   coletasShopee ColetaDadosShoppe[]
 }

@@ -12,7 +12,9 @@
     "prisma:generate": "prisma generate",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:seed-affiliate-stores": "npx tsx scripts/seed-affiliate-stores.ts",
-    "db:seed-news-sources": "npx tsx scripts/seed-news-sources.ts"
+    "db:seed-news-sources": "npx tsx scripts/seed-news-sources.ts",
+    "db:seed-pet-seo": "npx tsx scripts/seed-pet-seo.ts",
+    "test:pet-seo": "tsx --test tests/pet-seo.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1032.0",

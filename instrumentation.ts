@@ -14,5 +14,8 @@ export async function register() {
 
     const { startInternalCronSchedulerCommerceEditorial } = await import("./lib/internalCronSchedulerCommerceEditorial");
     startInternalCronSchedulerCommerceEditorial();
+
+    const { startInternalCronSchedulerPetSeo } = await import("./lib/internalCronSchedulerPetSeo");
+    startInternalCronSchedulerPetSeo();
   }
 }

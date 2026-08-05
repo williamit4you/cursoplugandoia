@@ -28,7 +28,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       return staticPages;
     }
 
-    const [stores, comparisons, editorialArticles, bioCategories, bioProducts] = await Promise.all([
+    const [stores, comparisons, editorialArticles, bioCategories, bioProducts, petPages] = await Promise.all([
       prisma.affiliateStore.findMany({
         where: { status: "ACTIVE" },
         select: { slug: true, updatedAt: true },
@@ -64,6 +64,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         select: { slug: true, updatedAt: true },
         orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
       }),
+      prisma.petContentPage.findMany({
+        where: { status: "PUBLISHED", indexable: true, publishedAt: { not: null }, contentJson: { not: null }, affiliateStore: { slug: "cobasi", status: "ACTIVE" } },
+        select: { path: true, type: true, updatedAt: true },
+        orderBy: { publishedAt: "desc" },
+      }),
     ]);
 
     return [
@@ -97,6 +102,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: comparison.updatedAt,
         changeFrequency: "monthly" as const,
         priority: 0.75,
+      })),
+      ...petPages.map((page) => ({
+        url: `${siteUrl}/${page.path}`,
+        lastModified: page.updatedAt,
+        changeFrequency: page.type === "LOCAL" ? "weekly" as const : "monthly" as const,
+        priority: page.type === "HUB" ? 0.9 : page.type === "CATEGORY" ? 0.85 : 0.78,
       })),
     ];
   } catch (error) {
