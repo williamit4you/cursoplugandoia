@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { bootstrapPetSeoProgram } from "../lib/pet-seo/bootstrap";
 
 bootstrapPetSeoProgram()
@@ -9,4 +10,3 @@ bootstrapPetSeoProgram()
     console.error(error);
     process.exit(1);
   });
-

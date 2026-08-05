@@ -1,5 +1,3 @@
-import "server-only";
-
 import { prisma } from "@/lib/prisma";
 import { COBASI_STORE_SLUG, validateCobasiAffiliateUrl } from "./affiliateRules";
 import { PET_CONTENT_SEEDS, PET_LOCATION_SEEDS } from "./catalog";
@@ -62,4 +60,3 @@ export async function bootstrapPetSeoProgram() {
   ]);
   return { store: store.slug, locations: locationCount, pages: pageCount, queued: queuedCount };
 }
-
