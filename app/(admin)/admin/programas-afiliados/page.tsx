@@ -21,23 +21,24 @@ export default async function AffiliateProgramsAdminPage() {
   const cobasi = summaries.find((item) => item.spec.storeSlug === "cobasi");
   const electrolux = summaries.find((item) => item.spec.storeSlug === "electrolux");
   const brascol = summaries.find((item) => item.spec.storeSlug === "brascol");
+  const tng = summaries.find((item) => item.spec.storeSlug === "tng");
 
   return (
     <main className="p-5 sm:p-8">
       <section className="overflow-hidden rounded-[28px] bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,.28),transparent_34%),linear-gradient(135deg,#0f172a,#14532d)] px-6 py-7 text-white shadow-xl shadow-slate-900/10 md:px-8">
         <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div>
-            <div className="text-xs font-black uppercase tracking-[0.22em] text-emerald-300">Compra Esperta • Operacao afiliada</div>
+            <div className="text-xs font-black uppercase tracking-[0.22em] text-emerald-300">Compra Esperta • Operação afiliada</div>
             <h1 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">Central de Programas Afiliados</h1>
             <p className="mt-2 max-w-4xl text-sm leading-6 text-emerald-50/85">
-              Acompanhamento unico da fundacao multi-loja: catalogo de afiliados, rollout editorial, riscos de compliance,
+              Acompanhamento único da fundação multi-loja: catálogo de afiliados, rollout editorial, riscos de compliance,
               CTA indireto por loja, seed e status operacional do piloto Cobasi.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <MetricCard label="Programas priorizados" value={String(summaries.length)} />
             <MetricCard label="Lojas ativas no seed" value={String(activeStores)} />
-            <MetricCard label="Paginas Cobasi publicadas" value={String(cobasi?.runtime.publishedCount || 0)} />
+            <MetricCard label="Páginas Cobasi publicadas" value={String(cobasi?.runtime.publishedCount || 0)} />
           </div>
         </div>
       </section>
@@ -47,37 +48,41 @@ export default async function AffiliateProgramsAdminPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-black text-slate-900">Piloto Cobasi</h2>
-              <p className="mt-1 text-sm text-slate-500">O primeiro programa com cron, fila editorial, sitemap controlado e paginas locais.</p>
+              <p className="mt-1 text-sm text-slate-500">O primeiro programa com cron, fila editorial, sitemap controlado e páginas locais.</p>
             </div>
             <Link href="/admin/seo-pet-cobasi" className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-black text-white">
-              Abrir operacao Cobasi
+              Abrir operação Cobasi
             </Link>
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MiniStat label="Job" value={cobasi?.runtime.configStatus === "ACTIVE" ? "Ativo" : "Pausado"} />
-            <MiniStat label="Cadencia" value={cobasi?.runtime.cadenceLabel || "—"} />
+            <MiniStat label="Cadência" value={cobasi?.runtime.cadenceLabel || "—"} />
             <MiniStat label="Cidades cadastradas" value={String(cobasi?.runtime.locations || 0)} />
             <MiniStat label="Fila atual" value={String((cobasi?.runtime.queueCount || 0) + (cobasi?.runtime.reviewCount || 0))} />
           </div>
 
           <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-900">
-            Proxima etapa tecnica: reconciliar a migration pendente do banco e mover o fluxo de Cobasi para dentro do controlador multi-programa, sem perder a URL atual do admin.
+            Próxima etapa técnica: reconciliar a migration pendente do banco e mover o fluxo de Cobasi para dentro do controlador multi-programa, sem perder a URL atual do admin.
           </div>
         </div>
 
         <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-black text-slate-900">Editorial compartilhado</h2>
-          <p className="mt-1 text-sm text-slate-500">Electrolux e Brascol ja usam a mesma camada operacional, cada uma com execucao direcionada por loja.</p>
+          <p className="mt-1 text-sm text-slate-500">Electrolux, Brascol e TNG já usam a mesma camada operacional, cada uma com execução direcionada por loja.</p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <MiniStat label="Electrolux fila" value={String(electrolux?.runtime.queueCount || 0)} />
-            <MiniStat label="Electrolux revisao" value={String(electrolux?.runtime.reviewCount || 0)} />
+            <MiniStat label="Electrolux revisão" value={String(electrolux?.runtime.reviewCount || 0)} />
             <MiniStat label="Electrolux publicados" value={String(electrolux?.runtime.publishedCount || 0)} />
             <MiniStat label="Electrolux modo" value={electrolux?.runtime.cadenceLabel || "—"} />
             <MiniStat label="Brascol fila" value={String(brascol?.runtime.queueCount || 0)} />
-            <MiniStat label="Brascol revisao" value={String(brascol?.runtime.reviewCount || 0)} />
+            <MiniStat label="Brascol revisão" value={String(brascol?.runtime.reviewCount || 0)} />
             <MiniStat label="Brascol publicados" value={String(brascol?.runtime.publishedCount || 0)} />
             <MiniStat label="Brascol modo" value={brascol?.runtime.cadenceLabel || "—"} />
+            <MiniStat label="TNG fila" value={String(tng?.runtime.queueCount || 0)} />
+            <MiniStat label="TNG revisão" value={String(tng?.runtime.reviewCount || 0)} />
+            <MiniStat label="TNG publicados" value={String(tng?.runtime.publishedCount || 0)} />
+            <MiniStat label="TNG modo" value={tng?.runtime.cadenceLabel || "—"} />
           </div>
           <div className="mt-4 rounded-2xl bg-slate-50 p-4">
             <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Arquivo</div>
@@ -86,15 +91,15 @@ export default async function AffiliateProgramsAdminPage() {
             </p>
           </div>
           <div className="mt-4 space-y-2 text-sm text-slate-600">
-            <p>O checklist ja marca a fundacao concluida nesta etapa e separa claramente o que depende de banco, cron e expansao por loja.</p>
+            <p>O checklist já marca a fundação concluída nesta etapa e separa claramente o que depende de banco, cron e expansão por loja.</p>
           </div>
         </div>
       </section>
 
       <section className="mt-7 rounded-[24px] border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-5 py-4">
-          <h2 className="text-lg font-black text-slate-900">Portfolio de programas</h2>
-          <p className="mt-1 text-sm text-slate-500">As 12 lojas priorizadas, com docs, CTA indireto e estado atual da implementacao.</p>
+          <h2 className="text-lg font-black text-slate-900">Portfólio de programas</h2>
+          <p className="mt-1 text-sm text-slate-500">As 12 lojas priorizadas, com docs, CTA indireto e estado atual da implementação.</p>
         </div>
 
         <div className="grid gap-4 p-5 xl:grid-cols-2">
@@ -116,7 +121,7 @@ export default async function AffiliateProgramsAdminPage() {
                 <dl className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div>
                     <dt className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Loja seed</dt>
-                    <dd className="mt-1 text-sm font-semibold text-slate-900">{store?.name || "Nao encontrada"}</dd>
+                    <dd className="mt-1 text-sm font-semibold text-slate-900">{store?.name || "Não encontrada"}</dd>
                   </div>
                   <div>
                     <dt className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Status afiliado</dt>
@@ -129,7 +134,7 @@ export default async function AffiliateProgramsAdminPage() {
                     <dd className="mt-1 text-sm text-slate-700">{program.firstBatchLabel}</dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Cadencia alvo</dt>
+                    <dt className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Cadência alvo</dt>
                     <dd className="mt-1 text-sm text-slate-700">{program.cadenceLabel}</dd>
                   </div>
                   <div>
@@ -146,10 +151,12 @@ export default async function AffiliateProgramsAdminPage() {
                   </div>
                   <div>
                     <dt className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Cliques rastreados</dt>
-                    <dd className="mt-1 text-sm text-slate-700">{store?.clickCount || 0}</dd>
+                    <dd className="mt-1 text-sm text-slate-700">
+                      Total {store?.clickCount || 0} • 30d {store?.clickCount30d || 0} • 7d {store?.clickCount7d || 0}
+                    </dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Fila / revisao</dt>
+                    <dt className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Fila / revisão</dt>
                     <dd className="mt-1 text-sm text-slate-700">{runtime.queueCount} / {runtime.reviewCount}</dd>
                   </div>
                   <div>
@@ -160,7 +167,7 @@ export default async function AffiliateProgramsAdminPage() {
 
                 {program.storeSlug === "cobasi" ? (
                   <div className="mt-4 rounded-2xl border border-emerald-100 bg-white p-4 text-sm text-slate-700">
-                    Cobasi ja usa `PetContentPage`, `PetLocation`, `PetStoreUnit` e `PetSeoRun`. As demais lojas entram na proxima fase sobre a fundacao compartilhada.
+                    Cobasi já usa `PetContentPage`, `PetLocation`, `PetStoreUnit` e `PetSeoRun`. As demais lojas entram na próxima fase sobre a fundação compartilhada.
                   </div>
                 ) : null}
 
@@ -202,6 +209,19 @@ export default async function AffiliateProgramsAdminPage() {
                       <form action={runAffiliateProgramNowAction}>
                         <input type="hidden" name="storeSlug" value={program.storeSlug} />
                         <button className="rounded-xl bg-amber-600 px-3 py-2 text-sm font-black text-white">
+                          Gerar artigo
+                        </button>
+                      </form>
+                      <Link href="/admin/editorial-commerce" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-black text-slate-800">
+                        Abrir pipeline editorial
+                      </Link>
+                    </>
+                  ) : null}
+                  {program.storeSlug === "tng" && support.runNow ? (
+                    <>
+                      <form action={runAffiliateProgramNowAction}>
+                        <input type="hidden" name="storeSlug" value={program.storeSlug} />
+                        <button className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-black text-white">
                           Gerar artigo
                         </button>
                       </form>

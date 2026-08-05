@@ -39,7 +39,7 @@ Transformar a base atual em uma central de programas afiliados com continuidade 
 - [ ] Thermos Brasil: modelar uso, categorias e kits
 - [ ] Escuta o Veio: modelar editorial/comercial com presentes e moda
 - [ ] GLNC Farma: modelar conteudo sensivel com validacao extra
-- [ ] TNG: modelar conteudo editorial/comercial masculino
+- [x] TNG: conectar a central compartilhada ao pipeline editorial direcionado por loja
 - [ ] Drogaria Rosario: modelar clusters com compliance farmaceutico
 
 ## Fase 3 - Operacao
@@ -47,8 +47,12 @@ Transformar a base atual em uma central de programas afiliados com continuidade 
 - [x] Central admin com acoes compartilhadas de bootstrap/execucao para o piloto Cobasi
 - [x] Central admin com execucao direcionada para Electrolux via pipeline editorial
 - [x] Central admin com execucao direcionada para Brascol via pipeline editorial
+- [x] Central admin com execucao direcionada para TNG via pipeline editorial
 - [ ] Checklist operacional no admin para revisar fontes, CTA e sitemap
 - [ ] Registro de estado por programa: draft, queued, review, published, stale
+- [x] Analytics base de cliques via `/go/loja/[slug]` consolidado em `AffiliateStoreClick` e `SalesPageEvent`
+- [x] Inventario de analytics ampliado para incluir paginas pet/local da Cobasi
+- [x] Central admin com visao de cliques por programa em total, 30d e 7d
 - [ ] Observabilidade de runs e erros por programa
 - [ ] Politica de refresh de conteudos stale
 - [ ] Criterios de autopublish por programa

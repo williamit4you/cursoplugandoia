@@ -9,6 +9,7 @@ import { runPetSeoOnce } from "@/lib/pet-seo/pipeline";
 export type AffiliateProgramSummary = {
   spec: AffiliateProgramSpec;
   store: {
+    id: string;
     name: string;
     slug: string;
     category: string;
@@ -16,6 +17,8 @@ export type AffiliateProgramSummary = {
     complianceClass: string;
     updatedAt: Date;
     clickCount: number;
+    clickCount7d: number;
+    clickCount30d: number;
   } | null;
   support: {
     bootstrap: boolean;
@@ -36,10 +39,15 @@ export type AffiliateProgramSummary = {
 };
 
 export async function listAffiliateProgramSummaries(): Promise<AffiliateProgramSummary[]> {
-  const [stores, petConfig, petPagesByStatus, petLocations, petUnits, editorialRows] = await Promise.all([
+  const now = new Date();
+  const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const [stores, clicks7d, clicks30d, petConfig, petPagesByStatus, petLocations, petUnits, editorialRows] = await Promise.all([
     prisma.affiliateStore.findMany({
       where: { slug: { in: AFFILIATE_PROGRAMS.map((item) => item.storeSlug) } },
       select: {
+        id: true,
         name: true,
         slug: true,
         category: true,
@@ -48,6 +56,16 @@ export async function listAffiliateProgramSummaries(): Promise<AffiliateProgramS
         updatedAt: true,
         _count: { select: { clicks: true } },
       },
+    }),
+    prisma.affiliateStoreClick.groupBy({
+      by: ["storeId"],
+      where: { createdAt: { gte: last7d } },
+      _count: { _all: true },
+    }),
+    prisma.affiliateStoreClick.groupBy({
+      by: ["storeId"],
+      where: { createdAt: { gte: last30d } },
+      _count: { _all: true },
     }),
     prisma.petSeoConfig.findUnique({ where: { id: "cobasi" } }),
     prisma.petContentPage.groupBy({
@@ -72,10 +90,14 @@ export async function listAffiliateProgramSummaries(): Promise<AffiliateProgramS
     }),
   ]);
 
+  const clickMap7d = new Map(clicks7d.map((row) => [row.storeId, row._count._all]));
+  const clickMap30d = new Map(clicks30d.map((row) => [row.storeId, row._count._all]));
+
   const storeMap = new Map(
     stores.map((store) => [
       store.slug,
       {
+        id: store.id,
         name: store.name,
         slug: store.slug,
         category: store.category,
@@ -83,6 +105,8 @@ export async function listAffiliateProgramSummaries(): Promise<AffiliateProgramS
         complianceClass: store.complianceClass,
         updatedAt: store.updatedAt,
         clickCount: store._count.clicks,
+        clickCount7d: Number(clickMap7d.get(store.id) || 0),
+        clickCount30d: Number(clickMap30d.get(store.id) || 0),
       },
     ]),
   );
@@ -102,18 +126,19 @@ export async function listAffiliateProgramSummaries(): Promise<AffiliateProgramS
     const isCobasi = spec.storeSlug === "cobasi";
     const isElectrolux = spec.storeSlug === "electrolux";
     const isBrascol = spec.storeSlug === "brascol";
+    const isTng = spec.storeSlug === "tng";
     const editorialCounts = editorialCountsByStore.get(spec.storeSlug) || { queueCount: 0, reviewCount: 0, publishedCount: 0 };
     return {
       spec,
       store: storeMap.get(spec.storeSlug) || null,
       support: {
         bootstrap: isCobasi,
-        runNow: isCobasi || isElectrolux || isBrascol,
+        runNow: isCobasi || isElectrolux || isBrascol || isTng,
         cron: isCobasi,
       },
       runtime: {
-        configStatus: isCobasi ? (petConfig?.enabled ? "ACTIVE" : "PAUSED") : (isElectrolux || isBrascol) ? "ACTIVE" : null,
-        cadenceLabel: isCobasi ? `${petConfig?.runEveryHours || 24}h / ${petConfig?.maxItemsPerRun || 1} item(ns)` : (isElectrolux || isBrascol) ? "Sob demanda via pipeline editorial" : null,
+        configStatus: isCobasi ? (petConfig?.enabled ? "ACTIVE" : "PAUSED") : (isElectrolux || isBrascol || isTng) ? "ACTIVE" : null,
+        cadenceLabel: isCobasi ? `${petConfig?.runEveryHours || 24}h / ${petConfig?.maxItemsPerRun || 1} item(ns)` : (isElectrolux || isBrascol || isTng) ? "Sob demanda via pipeline editorial" : null,
         queueCount: isCobasi ? Number(petTotals.QUEUED || 0) + Number(petTotals.GENERATING || 0) : editorialCounts.queueCount,
         reviewCount: isCobasi ? Number(petTotals.REVIEW || 0) : editorialCounts.reviewCount,
         publishedCount: isCobasi ? Number(petTotals.PUBLISHED || 0) : editorialCounts.publishedCount,
@@ -139,6 +164,7 @@ export async function runAffiliateProgramNow(storeSlug: string) {
   if (storeSlug === "cobasi") return runPetSeoOnce({ force: true });
   if (storeSlug === "electrolux") return runCommerceEditorialOnce({ force: true, storeSlug });
   if (storeSlug === "brascol") return runCommerceEditorialOnce({ force: true, storeSlug });
+  if (storeSlug === "tng") return runCommerceEditorialOnce({ force: true, storeSlug });
   throw new Error(`Execucao ainda nao implementada para ${spec.displayName}`);
 }
 

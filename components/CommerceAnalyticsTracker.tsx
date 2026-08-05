@@ -37,10 +37,18 @@ function pageType(pathname: string) {
   if (pathname === "/bio") return "BIO";
   if (/^\/comparativo\/[^/]+$/.test(pathname)) return "COMPARISON";
   if (pathname === "/comparativo") return "COMPARISONS";
+  if (pathname === "/pets" || pathname === "/pet-shop" || /^\/pets\/[^/]+$/.test(pathname)) return "PET_HUB";
+  if (/^\/pets\/comparativos\/[^/]+$/.test(pathname)) return "PET_COMPARISON";
+  if (/^\/pets\/guias\/[^/]+$/.test(pathname)) return "PET_GUIDE";
+  if (/^\/pets\/[^/]+\/[^/]+$/.test(pathname)) return "PET_CATEGORY";
+  if (/^\/pet-shop\/[^/]+$/.test(pathname) || /^\/loja-pet\/[^/]+$/.test(pathname)) return "PET_LOCAL";
   return "OTHER";
 }
 
 function storeSlugFromPath(pathname: string) {
+  if (pathname === "/pets" || pathname === "/pet-shop" || pathname.startsWith("/pets/") || pathname.startsWith("/pet-shop/") || pathname.startsWith("/loja-pet/")) {
+    return "cobasi";
+  }
   return pathname.match(/^\/lojas\/([^/]+)/)?.[1] || null;
 }
 
