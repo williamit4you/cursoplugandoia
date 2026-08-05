@@ -1,162 +1,198 @@
 # Plano técnico compartilhado
 
-## 1. Objetivo
+## 1. Decisão arquitetural
 
-Generalizar o motor entregue para Cobasi, evitando três pipelines independentes e difíceis de manter.
-
-## 2. Modelos propostos
+Generalizar o motor da Cobasi em um domínio `affiliate-content`, mantendo adaptadores temporários para as tabelas e rotas pet. Não criar onze cópias de `PetSeoConfig`, `PetContentPage` e `PetSeoRun`.
 
 ```text
-ContentProgram
-- key, name, storeSlug, niche
-- enabled, autoPublish, runEveryHours, maxItemsPerRun
-- minimumWords, minimumScore
-- requiredTrackingJson, allowedHostsJson
-- promptPolicyJson, publicationPolicyJson
-- lastRunAt, nextRunAt, lockedAt
-
-ProgramContentPage
-- programId, type, status, path, title
-- seoTitle, metaDescription, primaryKeyword, intent
-- contentJson, outlineJson, sourcesJson, internalLinksJson
-- qualityScore, indexable, scheduledAt, publishedAt
-- expiresAt, attemptCount, lastError
-
-ProgramContentRun
-- programId, pageId, operation, status, step
-- message, detailsJson, startedAt, completedAt
-
-ProgramContentSource
-- pageId, url, publisher, accessedAt, expiresAt
-- sourceType, supportsClaimsJson
-
-ProgramTopic
-- programId, parentId, name, slug, status
+Cron autenticado
+  → Portfolio Scheduler
+    → Program Scheduler
+      → Opportunity/Refresh Selector
+        → Agent Pipeline
+          → Review Gates
+            → Publication Preflight
+              → Public Renderer
+                → Sitemap + Analytics
 ```
 
-Cobasi mantém suas entidades locais/unidades; Brascol e Electrolux usam módulos complementares somente quando necessário.
+## 2. Princípios
 
-## 3. Affiliate guard genérico
+- configuração, não `if` por loja;
+- uma operação por item por ciclo;
+- publicação transacional e idempotente;
+- falha fechada para afiliado, fonte e compliance;
+- rascunho pode existir incompleto; publicação não;
+- cada afirmação volátil aponta para uma fonte e validade;
+- sitemap é projeção do estado elegível no banco;
+- agente sugere; regras determinísticas decidem bloqueios;
+- job diário é operação contínua, não fábrica obrigatória de URLs.
 
-1. receber apenas `programKey`, `source`, `medium`, `campaign` e destino opcional;
-2. resolver `storeSlug` no servidor;
-3. buscar `AffiliateStore` ativa;
-4. validar HTTPS, domínio e parâmetros cadastrados;
-5. permitir deep link apenas em allowlist;
-6. preservar tracking;
-7. bloquear URL comercial no conteúdo;
-8. renderizar CTA interno `/go/loja/{storeSlug}`;
-9. registrar clique por programa, página e posição;
-10. falhar fechado.
+## 3. Componentes
 
-## 4. Agentes compartilhados
+### 3.1 Portfolio Scheduler
 
-- Opportunity Agent: escolhe tema sem canibalização;
-- Research Agent: coleta e estrutura fontes;
-- SEO Strategist: intenção, keyword, title e outline;
-- Writer: conteúdo no schema do tipo;
-- Fact Reviewer: confere alegações versus fontes;
-- SEO Reviewer: headings, intenção, links e duplicidade;
-- Affiliate Reviewer: loja, disclosure, CTA e claims;
-- Editor: corrige e devolve versão completa;
-- Publisher: executa preflight e sitemap.
+- chamado por `/api/affiliate-content/cron` com `CRON_SECRET`;
+- encontra programas `enabled` com `nextRunAt <= now`;
+- aplica limite global de custo e concorrência;
+- distribui capacidade com round-robin ponderado;
+- evita que um programa grande bloqueie os menores;
+- registra heartbeat e resultado na observabilidade existente.
 
-Cada programa injeta políticas próprias. Exemplo: Brascol bloqueia promessa de lucro; Electrolux bloqueia reparo perigoso; Cobasi bloqueia aconselhamento veterinário.
+### 3.2 Program Runner
 
-## 5. Scheduler
+- adquire lock atômico por programa;
+- seleciona uma operação elegível;
+- executa no máximo `maxItemsPerRun`;
+- atualiza `lastRunAt` e `nextRunAt` mesmo em `WAIT`;
+- limpa lock em sucesso e falha;
+- recupera lock vencido com registro explícito.
 
-Um scheduler verifica programas vencidos a cada minuto, mas cada programa mantém seu próprio `nextRunAt`:
+### 3.3 Pipeline de agentes
 
-- Cobasi: uma pauta/dia;
-- Brascol: operação diária, até três publicações/semana;
-- Electrolux: uma pauta/dia no piloto;
-- lock independente por programa;
-- retry exponencial;
-- limite de custo diário;
-- pause automático após falhas consecutivas;
-- nenhuma execução concorrente para o mesmo programa/página.
+Agentes compartilhados recebem `ProgramPolicy`:
 
-## 6. Sitemap
+1. Opportunity Agent;
+2. Research Agent;
+3. SEO Strategist;
+4. Writer;
+5. Fact Reviewer;
+6. SEO Reviewer;
+7. Compliance Reviewer;
+8. Affiliate Reviewer;
+9. Editor;
+10. Publisher.
 
-- incluir somente `PUBLISHED + indexable + canonical + content + loja ativa`;
-- separar por programa ao ganhar escala;
-- `/sitemap-pets.xml`;
-- `/sitemap-revenda-moda.xml`;
-- `/sitemap-casa-e-cozinha.xml`;
-- `lastModified` apenas para mudança material;
-- excluir filtros, rascunhos, redirects, páginas vencidas e sem fonte obrigatória;
-- auditoria diária compara banco, resposta HTTP e sitemap.
+Detalhes em [jobs, agentes e operação](./15-jobs-agentes-operacao.md).
 
-## 7. Painel
+### 3.4 Preflight de publicação
 
-Cada painel mostra:
+O serviço `validateProgramPageForPublication(pageId)` retorna lista estruturada de achados. O serviço não lança exceção de UI para falha editorial esperada; a action persiste `lastError`, mantém o status anterior e devolve feedback ao operador.
 
-- status do job e próxima execução;
-- orçamento/custo dos agentes;
-- fila por tipo;
-- rascunhos em revisão;
-- publicados e sitemap;
-- fontes vencendo;
-- páginas com queda de desempenho;
-- cliques afiliados;
-- logs e falhas;
-- botão produzir próxima pauta;
-- pausa, reprocessamento, publicação e despublicação.
+Validações mínimas:
 
-## 8. Fases
+- programa e loja ativos;
+- `page.programId` corresponde à loja esperada;
+- tracking e domínio válidos;
+- nenhum URL comercial direto armazenado;
+- conteúdo e metadata completos;
+- exatamente um H1 e ordem H2/H3 válida;
+- fontes mínimas e não vencidas;
+- risk gate aprovado;
+- similaridade/canibalização abaixo do limite;
+- links internos de entrada e saída;
+- canonical único e rota sem conflito;
+- schema compatível com conteúdo visível;
+- aprovação humana válida;
+- preço/estoque/localidade atualizados quando aplicável.
 
-### Fase A — generalização
+### 3.5 Publicação
 
-- extrair modelos e pipeline comuns;
-- migrar Cobasi sem mudar URLs públicas;
-- criar affiliate guard parametrizado;
-- adicionar testes de regressão.
+Em uma transação:
 
-### Fase B — Brascol
+1. criar `ContentRevision` imutável;
+2. marcar versão aprovada;
+3. definir `status=PUBLISHED`, `indexable=true`, `publishedAt`;
+4. registrar `PublicationEvent`;
+5. concluir `ContentRun`;
+6. emitir evento para revalidação de rota e sitemap.
 
-- cadastrar programa e prompts;
-- importar 30 pautas;
-- criar rotas `/revender-roupas/...`;
-- gerar rascunhos;
-- publicar três por semana.
+Se qualquer passo falhar, nenhuma alteração parcial deixa a página indexável.
 
-### Fase C — Electrolux
+## 4. Migração da Cobasi
 
-- cadastrar taxonomia e 36 pautas;
-- criar rotas `/casa-e-cozinha/...`;
-- implementar fonte/manual/modelo;
-- gerar rascunhos;
-- publicar até cinco por semana.
+1. manter `/admin/seo-pet-cobasi` e rotas públicas atuais;
+2. introduzir `ContentProgram(key=COBASI_PET, storeSlug=cobasi)`;
+3. criar adaptador de leitura/escrita entre o motor novo e entidades pet;
+4. mover seleção, agentes, validação e scheduler para serviços genéricos;
+5. provar paridade com testes existentes;
+6. migrar dados em etapa posterior e somente com plano reversível;
+7. preservar URLs, canonical, sitemap e analytics.
 
-### Fase D — mensuração e escala
+## 5. Rotas
 
-- conectar Search Console;
-- relatórios por programa;
-- atualização por expiração;
-- sitemaps separados;
-- liberar lotes de 10–20 páginas conforme desempenho.
+### Administração
 
-## 9. Testes de aceite
+```text
+/admin/programas-afiliados
+/admin/programas-afiliados/{programKey}
+/admin/programas-afiliados/{programKey}/conteudos/{pageId}
+/admin/programas-afiliados/{programKey}/fila
+/admin/programas-afiliados/{programKey}/execucoes
+/admin/programas-afiliados/{programKey}/fontes
+/admin/programas-afiliados/{programKey}/analytics
+```
 
-- programa nunca usa loja afiliada de outro programa;
-- Brascol sempre roteia por `/go/loja/brascol`;
-- Electrolux sempre roteia por `/go/loja/electrolux`;
-- parâmetro obrigatório ausente bloqueia publicação;
-- conteúdo com URL comercial direta é reprovado;
-- rascunho/noindex não entra no sitemap;
-- exatamente um H1 e hierarquia H2/H3 válida;
-- fonte vencida retém página comercial;
-- similaridade/canibalização acima do limite bloqueia publicação;
-- conteúdo de segurança Electrolux não oferece reparo perigoso;
-- conteúdo Brascol não promete lucro/faturamento;
-- build, typecheck, testes e auditoria de links passam.
+Aliases como `/admin/conteudo-brascol` podem redirecionar para a aba canônica.
 
-## 10. Ordem recomendada
+### API
 
-1. estabilizar e ativar Cobasi;
-2. generalizar o motor;
-3. implantar Brascol, menor e ótimo para validar multi-programa;
-4. implantar Electrolux;
-5. observar 12 semanas;
-6. escalar somente os clusters que indexarem e converterem.
+```text
+GET  /api/admin/affiliate-content/programs
+PATCH /api/admin/affiliate-content/programs/{key}
+POST /api/admin/affiliate-content/programs/{key}/run
+POST /api/admin/affiliate-content/programs/{key}/bootstrap
+GET  /api/admin/affiliate-content/pages
+POST /api/admin/affiliate-content/pages/{id}/queue
+POST /api/admin/affiliate-content/pages/{id}/approve
+POST /api/admin/affiliate-content/pages/{id}/publish
+POST /api/admin/affiliate-content/pages/{id}/unpublish
+POST /api/admin/affiliate-content/pages/{id}/retry
+GET  /api/admin/affiliate-content/pages/{id}/preflight
+GET  /api/affiliate-content/cron
+GET  /go/loja/{storeSlug}
+```
+
+Mutação administrativa exige sessão/autorização; cron exige segredo; ações são protegidas por CSRF conforme o padrão do projeto.
+
+## 6. Renderização pública
+
+- rota é derivada de `path`, nunca da marca;
+- página server-rendered com metadata no primeiro HTML;
+- um único componente de CTA recebe `programKey`, `pageId`, `placement` e destino lógico opcional;
+- o componente não aceita `href` comercial arbitrário;
+- HTML rascunho/preview inclui `noindex,nofollow`;
+- conteúdo publicado fica disponível somente se elegível; caso contrário retorna estado seguro e sai do sitemap.
+
+## 7. Observabilidade
+
+Cada execução registra:
+
+- programa, página, operação, etapa e tentativa;
+- duração e custo estimado;
+- modelo/prompt versionado;
+- contagem de fontes e achados;
+- status e próximo retry;
+- motivo de `WAIT`, bloqueio ou pausa;
+- correlação com evento de publicação.
+
+Alertas:
+
+- três falhas consecutivas pausam automaticamente o programa;
+- qualquer falha de isolamento de afiliado pausa o portfólio;
+- sitemap divergente cria incidente P1;
+- conteúdo `HIGH` publicado sem aprovação especializada cria incidente P0 e despublicação automática.
+
+## 8. Segurança e resiliência
+
+- segredo e chave de IA apenas no servidor;
+- prompts não recebem cookies, tokens ou URL afiliada completa;
+- sanitização de HTML/Markdown/JSON antes de persistir;
+- allowlist de protocolos `https:` para fontes;
+- SSRF protegido na coleta de fontes;
+- limites de tamanho e timeout;
+- lock com compare-and-set;
+- retry com jitter e fila morta após limite;
+- exclusão lógica para conteúdo publicado;
+- revisão/auditoria imutáveis.
+
+## 9. Estratégia de testes
+
+- unitários: tracking, sanitizer, headings, canonical, estado e escolha de operação;
+- integração: programa → loja → CTA → redirect; preflight → publish → sitemap;
+- contrato: schema de saída de cada agente;
+- regressão: Cobasi mantém comportamento e URLs;
+- E2E: criar, gerar, revisar, publicar, acessar, clicar e despublicar;
+- propriedade: para qualquer programa, CTA nunca resolve para outro `storeSlug`;
+- snapshot de HTML: H1/H2/H3, disclosure, schema e links.
 

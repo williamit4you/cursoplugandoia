@@ -40,6 +40,7 @@ export default async function PetSeoCobasiAdminPage({ searchParams }: { searchPa
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Fila diária com agentes de pesquisa, estratégia, redação e revisão. A marca é interna; as páginas públicas priorizam produtos, necessidades e cidades.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href="/admin/programas-afiliados" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black">Central de programas</Link>
           <form action={bootstrapPetSeo}><button className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black">Preparar programa</button></form>
           <form action={togglePetSeo}><button className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black">{config?.enabled ? "Pausar job" : "Ativar job"}</button></form>
           <form action={runPetSeoNow}><button className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white">Produzir próxima pauta</button></form>
@@ -91,4 +92,3 @@ export default async function PetSeoCobasiAdminPage({ searchParams }: { searchPa
     </main>
   );
 }
-

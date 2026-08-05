@@ -1,5 +1,13 @@
 # Projeto de conteúdo — Electrolux
 
+Programa: `ELECTROLUX_CASA`
+
+Loja: `electrolux`
+
+CTA: `/go/loja/electrolux`
+
+Risco: `MEDIUM`; `CRITICAL` para reparo elétrico, gás ou refrigeração
+
 ## 1. Tese
 
 Electrolux sustenta um programa editorial maior porque a compra de eletrodomésticos envolve pesquisa longa, modelos, capacidades, tecnologias, instalação, consumo, ambientes, orçamento e comparação. O portal deve ser sobre casa, cozinha, lavanderia, limpeza e climatização; a marca entra como opção comercial e fonte primária quando pertinente.
@@ -261,4 +269,3 @@ Distribuição inicial:
 - conversão por faixa de ticket;
 - páginas vencidas ou sem estoque;
 - Core Web Vitals em tabelas e imagens.
-

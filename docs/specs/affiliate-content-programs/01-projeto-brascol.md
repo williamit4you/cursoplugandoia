@@ -1,5 +1,13 @@
 # Projeto de conteúdo — Brascol
 
+Programa: `BRASCOL_REVENDA_MODA`
+
+Loja: `brascol`
+
+CTA: `/go/loja/brascol`
+
+Risco: `MEDIUM` em finanças/tributação; `LOW` nos demais conteúdos
+
 ## 1. Tese
 
 A Brascol deve ser trabalhada como fornecedora para lojistas e revendedores, não como varejo genérico de moda. O público de maior intenção é quem deseja iniciar ou ampliar um negócio de moda bebê e infantil.
@@ -230,4 +238,3 @@ Total provável: 120–250 páginas. Não existe benefício em perseguir 1.000 U
 - páginas indexadas versus enviadas;
 - atualização sazonal no prazo;
 - conversão por categoria, quando disponível.
-

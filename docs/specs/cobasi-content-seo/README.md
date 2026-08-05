@@ -1,9 +1,20 @@
 # Programa editorial pet e SEO local
 
-Status: planejamento aprovado para implementação incremental  
-Site: `https://compraesperta-promocoes.shop`  
-Última revisão: 5 de agosto de 2026  
+Status: planejamento aprovado para implementação incremental
+
+Site: `https://compraesperta-promocoes.shop`
+
+Última revisão: 5 de agosto de 2026
+
 Escopo inicial: produtos vendidos pela Cobasi e 97 cidades informadas pelo proprietário do site
+
+Programa: `COBASI_PET`
+
+Loja: `cobasi`
+
+CTA: `/go/loja/cobasi`
+
+Integração multi-loja: [Plataforma de marketing de conteúdo afiliado](../affiliate-content-programs/README.md)
 
 ## Objetivo
 
@@ -95,4 +106,3 @@ Depois de 8 a 12 semanas de dados no Search Console, o programa amplia apenas os
 - [Boas práticas para títulos](https://developers.google.com/search/docs/appearance/title-link)
 - [Boas práticas para meta descriptions](https://developers.google.com/search/docs/appearance/snippet)
 - [Dados estruturados de negócio local](https://developers.google.com/search/docs/appearance/structured-data/local-business)
-

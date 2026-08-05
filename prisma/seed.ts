@@ -6,6 +6,7 @@ import "dotenv/config";
 import { YT_CATEGORIES } from './seedData/ytCategories';
 import { YT_SEED_CHANNELS } from './seedData/ytChannels';
 import { YT_CURATED_SEED_CHANNELS } from './seedData/ytCuratedRankings';
+import { seedAffiliateStores } from './seedData/affiliateStores';
 
 const connectionString = process.env.DATABASE_URL
 
@@ -84,6 +85,10 @@ async function main() {
     })
     console.log(`🔁 LimpezaVideo user password updated for email: ${videoCleanupEmail}`)
   }
+
+  console.log('\n🛍️ Seeding affiliate stores...')
+  const affiliateSeedResult = await seedAffiliateStores(prisma)
+  console.log(`✅ Affiliate stores seeded. ACTIVE=${affiliateSeedResult.active} NEEDS_FIX=${affiliateSeedResult.needsFix} BLOCKED=${affiliateSeedResult.blocked}`)
 
   // ── Seed YouTube Analytics Categories ────────────────────
   console.log('\n🎯 Seeding YouTube Analytics categories...')
