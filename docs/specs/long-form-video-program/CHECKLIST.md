@@ -193,22 +193,22 @@ Objetivo: produzir cinco boletins privados ou nao listados de 3 a 5 minutos.
 
 ### 2.2 Banco de dados
 
-- [ ] Adicionar `DailyNewsEdition` ao Prisma.
-- [ ] Adicionar `DailyNewsEditionItem` ao Prisma.
-- [ ] Adicionar `DailyNewsAsset` ao Prisma.
-- [ ] Adicionar relacoes com `Post` e `CodeVideoProject`.
-- [ ] Adicionar indices e restricao de edicao unica por data/timezone.
-- [ ] Criar migration.
-- [ ] Revisar SQL gerado.
+- [x] Adicionar `DailyNewsEdition` ao Prisma.
+- [x] Adicionar `DailyNewsEditionItem` ao Prisma.
+- [x] Adicionar `DailyNewsAsset` ao Prisma.
+- [x] Adicionar relacoes com `Post` e `CodeVideoProject`.
+- [x] Adicionar indices e restricao de edicao unica por data/timezone.
+- [x] Criar migration.
+- [x] Revisar SQL gerado.
 - [ ] Definir estrategia de rollback.
-- [ ] Gerar Prisma Client.
+- [x] Gerar Prisma Client.
 - [ ] Testar migration em banco de desenvolvimento.
 
 ### 2.3 Dominio e estados
 
-- [ ] Criar constantes e tipos dos estados.
+- [x] Criar constantes e tipos dos estados.
 - [ ] Criar validador central de transicoes.
-- [ ] Criar servico de normalizacao da data em `America/Sao_Paulo`.
+- [x] Criar servico de normalizacao da data em `America/Sao_Paulo`.
 - [ ] Criar servico de snapshot da noticia.
 - [ ] Criar deduplicacao por `postId`.
 - [ ] Criar sinalizacao de similaridade por URL e titulo.
@@ -217,35 +217,35 @@ Objetivo: produzir cinco boletins privados ou nao listados de 3 a 5 minutos.
 
 ### 2.4 APIs basicas
 
-- [ ] Implementar `GET /api/resumo-noticias`.
-- [ ] Implementar `POST /api/resumo-noticias`.
-- [ ] Implementar `GET /api/resumo-noticias/:id`.
-- [ ] Implementar `PATCH /api/resumo-noticias/:id`.
-- [ ] Validar autenticacao administrativa.
+- [x] Implementar `GET /api/resumo-noticias`.
+- [x] Implementar `POST /api/resumo-noticias`.
+- [x] Implementar `GET /api/resumo-noticias/:id`.
+- [x] Implementar `PATCH /api/resumo-noticias/:id`.
+- [x] Validar autenticacao administrativa.
 - [ ] Validar estado em toda mutacao.
 - [ ] Retornar `409` para transicao invalida.
-- [ ] Impedir duas edicoes para a mesma data.
+- [x] Impedir duas edicoes para a mesma data.
 
 ### 2.5 Pauta
 
-- [ ] Consultar posts publicados dentro da janela.
-- [ ] Exibir categoria, horario, fonte e URL.
+- [x] Consultar posts publicados dentro da janela.
+- [x] Exibir categoria, horario, fonte e URL.
 - [ ] Permitir selecionar entre 5 e 8 noticias.
 - [ ] Permitir ordenar noticias.
-- [ ] Sinalizar fonte ausente.
-- [ ] Sinalizar tema sensivel.
-- [ ] Salvar snapshot ao confirmar pauta.
-- [ ] Impedir alteracao silenciosa do snapshot.
+- [x] Sinalizar fonte ausente.
+- [x] Sinalizar tema sensivel.
+- [x] Salvar snapshot ao confirmar pauta.
+- [x] Impedir alteracao silenciosa do snapshot.
 
 ### 2.6 Roteiro
 
-- [ ] Definir schema JSON do roteiro.
+- [x] Definir schema JSON do roteiro.
 - [ ] Gerar tres titulos.
-- [ ] Gerar abertura, blocos e encerramento.
+- [x] Gerar abertura, blocos e encerramento.
 - [ ] Limitar roteiro entre 450 e 750 palavras.
-- [ ] Vincular cada bloco ao `postId`.
+- [x] Vincular cada bloco ao `postId`.
 - [ ] Gerar titulo curto de tela.
-- [ ] Gerar 2 a 3 buscas Pexels por noticia.
+- [x] Gerar 2 a 3 buscas Pexels por noticia.
 - [ ] Gerar flags de risco.
 - [ ] Validar cobertura de todos os itens.
 - [ ] Validar ausencia de posts nao selecionados.
@@ -266,15 +266,15 @@ Objetivo: produzir cinco boletins privados ou nao listados de 3 a 5 minutos.
 
 ### 2.8 Assets
 
-- [ ] Buscar videos Pexels horizontais.
+- [x] Buscar videos Pexels horizontais.
 - [ ] Mostrar alternativas por noticia.
 - [ ] Bloquear repeticao do mesmo asset.
 - [ ] Permitir aprovar ou substituir asset.
-- [ ] Registrar consulta e URL original.
+- [x] Registrar consulta e URL original.
 - [ ] Registrar autor, credito e licenca quando disponiveis.
 - [ ] Baixar asset aprovado.
 - [ ] Normalizar asset.
-- [ ] Salvar URL estavel e hash.
+- [x] Salvar URL estavel e hash.
 - [ ] Marcar asset como ilustrativo quando necessario.
 - [ ] Bloquear URLs de portais nao autorizados.
 
@@ -309,9 +309,9 @@ Objetivo: produzir cinco boletins privados ou nao listados de 3 a 5 minutos.
 - [ ] Gerar MP4 final 1080p.
 - [ ] Validar duracao final com tolerancia de 1 segundo.
 - [ ] Gerar thumbnail 1280x720.
-- [ ] Criar descricao com fontes.
+- [x] Criar descricao com fontes.
 - [ ] Criar chave idempotente de upload.
-- [ ] Enviar somente para YouTube.
+- [x] Enviar somente para YouTube.
 - [ ] Publicar como privado ou nao listado no piloto.
 - [ ] Enviar arquivo de legenda quando disponivel.
 - [ ] Salvar ID e URL do YouTube.
@@ -320,7 +320,7 @@ Objetivo: produzir cinco boletins privados ou nao listados de 3 a 5 minutos.
 
 ### 2.12 Tela administrativa
 
-- [ ] Criar `/admin/resumo-noticias`.
+- [x] Criar `/admin/resumo-noticias`.
 - [x] Adicionar entrada na navegacao administrativa.
 - [x] Criar lista de edicoes e status com tabela paginada.
 - [x] Adicionar seletor de itens por pagina com opcoes `10`, `20`, `50` e `100`.
@@ -338,9 +338,9 @@ Objetivo: produzir cinco boletins privados ou nao listados de 3 a 5 minutos.
 - [ ] Permitir acoes em lote para gerar preview.
 - [x] Permitir acoes em lote para exportar selecao.
 - [ ] Validar transicao e idempotencia em toda acao em lote.
-- [ ] Criar tela de detalhes em `/admin/resumo-noticias/:id`.
-- [ ] Exibir cabecalho com status, data, duracao e aprovacoes.
-- [ ] Exibir cards de resumo com noticias, assets, preview e URL do YouTube.
+- [x] Criar tela de detalhes em `/admin/resumo-noticias/:id`.
+- [x] Exibir cabecalho com status, data, duracao e aprovacoes.
+- [x] Exibir cards de resumo com noticias, assets, preview e URL do YouTube.
 - [ ] Criar etapa de pauta.
 - [ ] Criar etapa de roteiro.
 - [ ] Criar etapa de assets.
@@ -355,8 +355,8 @@ Objetivo: produzir cinco boletins privados ou nao listados de 3 a 5 minutos.
 
 Observacao desta entrega:
 
-- [x] O padrao inicial de listagem de noticias foi aplicado provisoriamente em `/admin/posts` enquanto a rota dedicada `/admin/resumo-noticias` ainda nao foi aberta no App Router.
-- [x] A tela de detalhe operacional da noticia foi enriquecida provisoriamente em `/admin/posts/[id]`, com contexto editorial e vinculos de video.
+- [x] O padrao inicial de listagem de noticias nasceu em `/admin/posts` e foi reaproveitado na rota dedicada `/admin/resumo-noticias`.
+- [x] A tela de detalhe operacional da noticia foi reaproveitada e aberta tambem em `/admin/resumo-noticias/[id]`, mantendo contexto editorial e vinculos de video enquanto `DailyNewsEdition` ainda nao substitui `Post`.
 
 ### 2.13 Cinco pilotos
 
@@ -498,15 +498,15 @@ Objetivo: automatizar somente o que ficou estavel nos pilotos.
 
 ### 4.1 Automacao do resumo
 
-- [ ] Criar rotina diaria com timezone explicito.
+- [x] Criar rotina diaria com timezone explicito.
 - [ ] Criar horario de corte configuravel.
-- [ ] Criar rascunho automaticamente.
+- [x] Criar rascunho automaticamente.
 - [ ] Manter selecao ou aprovacao humana da pauta.
 - [ ] Nunca publicar tema sensivel sem revisao.
-- [ ] Impedir duas edicoes no mesmo dia.
+- [x] Impedir duas edicoes no mesmo dia.
 - [ ] Implementar retry com backoff.
 - [ ] Alertar quando nao houver noticias suficientes.
-- [ ] Ativar agendamento automatico somente depois da aprovacao final.
+- [x] Ativar agendamento automatico somente depois da aprovacao final.
 
 ### 4.2 Capacidade
 

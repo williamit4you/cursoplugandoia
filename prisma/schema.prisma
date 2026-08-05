@@ -243,6 +243,7 @@ model Post {
   aiUsageLogs AiUsageLog[]
   categories  PostNewsCategory[]
   codeVideoProjects CodeVideoProject[]
+  dailyNewsEditionItems DailyNewsEditionItem[]
 
   @@index([status, publishedAt])
   @@index([featured, publishedAt])
@@ -625,6 +626,7 @@ model CodeVideoProject {
 
   socialPosts      SocialPost[]
   post             Post?            @relation(fields: [postId], references: [id], onDelete: SetNull)
+  dailyNewsEdition DailyNewsEdition?
   automationAssetBundles AutomationAssetBundle[]
   question         VideoQuestion?
 
@@ -632,6 +634,92 @@ model CodeVideoProject {
   updatedAt        DateTime         @updatedAt
 
   @@index([postId, newsVariant])
+}
+
+model DailyNewsEdition {
+  id                  String   @id @default(cuid())
+  editionDate         DateTime
+  timezone            String   @default("America/Sao_Paulo")
+  status              String   @default("DRAFT") // DRAFT | CURATING | SCRIPTING | AWAITING_REVIEW | APPROVED | GENERATING_AUDIO | PLANNING_VISUALS | RENDERING | QA | SCHEDULED | PUBLISHED | REJECTED | FAILED | CANCELED
+  title               String?
+  description         String?
+  scriptText          String?
+  targetDurationSec   Int      @default(240)
+  measuredDurationSec Float?
+  codeVideoProjectId  String?  @unique
+  previewVideoUrl     String?
+  finalVideoUrl       String?
+  thumbnailUrl        String?
+  captionsUrl         String?
+  scriptApprovedAt    DateTime?
+  scriptApprovedBy    String?
+  finalApprovedAt     DateTime?
+  finalApprovedBy     String?
+  scheduledAt         DateTime?
+  publishedAt         DateTime?
+  youtubePostUrl      String?
+  sourceSnapshotJson  Json?
+  assetPlanJson       Json?
+  errorMessage        String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  codeVideoProject    CodeVideoProject? @relation(fields: [codeVideoProjectId], references: [id], onDelete: SetNull)
+  items               DailyNewsEditionItem[]
+  assets              DailyNewsAsset[]
+
+  @@unique([editionDate, timezone])
+  @@index([status, createdAt])
+}
+
+model DailyNewsEditionItem {
+  id                  String   @id @default(cuid())
+  editionId           String
+  edition             DailyNewsEdition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  postId              String
+  post                Post     @relation(fields: [postId], references: [id], onDelete: Restrict)
+  position            Int
+  category            String?
+  titleSnapshot       String
+  sourceName          String?
+  sourceUrl           String?
+  publishedAtSnapshot DateTime?
+  narrationText       String?
+  targetDurationSec   Int?
+  verificationJson    Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  assets              DailyNewsAsset[]
+
+  @@unique([editionId, postId])
+  @@unique([editionId, position])
+}
+
+model DailyNewsAsset {
+  id              String   @id @default(cuid())
+  editionId       String
+  edition         DailyNewsEdition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  editionItemId   String?
+  editionItem     DailyNewsEditionItem? @relation(fields: [editionItemId], references: [id], onDelete: SetNull)
+  assetType       String
+  source          String
+  query           String?
+  originalUrl     String
+  stableUrl       String?
+  author          String?
+  licenseUrl      String?
+  credit          String?
+  technicalJson   Json?
+  contentHash     String?
+  startSec        Float?
+  endSec          Float?
+  status          String   @default("DISCOVERED") // DISCOVERED | APPROVED | REJECTED | READY
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([editionId, status])
+  @@index([editionItemId])
 }
 
 model CodeVideoPipelineStep {

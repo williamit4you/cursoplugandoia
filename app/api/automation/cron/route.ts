@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
     const mercadoLivre = await callJson(`${origin}/api/mercado-livre/cron${encodedSecret}`);
 
     // Publica posts sociais agendados cujo horário já passou
+    const dailyNews = await callJson(`${origin}/api/resumo-noticias/cron${encodedSecret}`);
     const social = internalOwnsPipelines ? { ok: true, status: 200, data: { skipped: true, owner: "internal_scheduler" } } : await callJson(`${origin}/api/social/cron${encodedSecret}`);
 
     // Orquestrador do pipeline de URLs da Coleta Shopee
@@ -73,6 +74,7 @@ export async function GET(req: NextRequest) {
     const allOk =
       taskRuns.ok &&
       mercadoLivre.ok &&
+      dailyNews.ok &&
       social.ok &&
       shopeePipeline.ok &&
       shopeePublisher.ok &&
@@ -85,6 +87,7 @@ export async function GET(req: NextRequest) {
     console.log("[api/automation/cron] Results:", {
       taskRuns: { ok: taskRuns.ok, status: taskRuns.status },
       mercadoLivre: { ok: mercadoLivre.ok, status: mercadoLivre.status },
+      dailyNews: { ok: dailyNews.ok, status: dailyNews.status },
       social: { ok: social.ok, status: social.status },
       shopeePipeline: { ok: shopeePipeline.ok, status: shopeePipeline.status },
       shopeePublisher: { ok: shopeePublisher.ok, status: shopeePublisher.status },
@@ -99,6 +102,7 @@ export async function GET(req: NextRequest) {
       ok: allOk,
       taskRuns,
       mercadoLivre,
+      dailyNews,
       social,
       shopeePipeline,
       shopeePublisher,

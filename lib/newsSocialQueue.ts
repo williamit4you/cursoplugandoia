@@ -63,11 +63,12 @@ function buildNewsSocialSummary(project: {
   metadataJson?: string | null;
 }, source = "social") {
   const metadata = parseProjectMetadata(project.metadataJson || "{}") || {};
+  const dailyNewsDescription = String(metadata?.dailyNews?.youtubeDescription || "").trim();
   const title = String(project.title || "Resumo da noticia").trim();
   const description = String(project.description || "").trim();
   const articleUrl = String(metadata?.articleUrl || "").trim();
   const trackedUrl = articleUrl ? withCampaignTracking(articleUrl, { source: source.toLowerCase(), medium: "organic", campaign: "news_video" }) : "";
-  return [title, description, trackedUrl ? `Leia a materia completa: ${trackedUrl}` : ""]
+  return [title, dailyNewsDescription || description, trackedUrl ? `Leia a materia completa: ${trackedUrl}` : ""]
     .filter(Boolean)
     .join("\n\n")
     .slice(0, 4500);

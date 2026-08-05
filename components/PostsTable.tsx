@@ -46,7 +46,19 @@ function sourceHost(url: string | null | undefined) {
   }
 }
 
-export default function PostsTable({ initialData }: { initialData: PostRow[] }) {
+export default function PostsTable({
+  initialData,
+  detailBasePath = "/admin/posts",
+  newPath = "/admin/posts/new",
+  title = "Central de Noticias",
+  description = "Listagem padronizada com paginacao, acoes por linha, selecao multipla e tela de detalhe.",
+}: {
+  initialData: PostRow[];
+  detailBasePath?: string;
+  newPath?: string;
+  title?: string;
+  description?: string;
+}) {
   const [posts, setPosts] = useState<PostRow[]>(initialData);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [publishingAll, setPublishingAll] = useState(false);
@@ -250,10 +262,10 @@ export default function PostsTable({ initialData }: { initialData: PostRow[] }) 
         <div className="flex flex-col gap-4 border-b border-slate-200 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-xl font-black tracking-tight text-slate-800">
-              Central de Noticias
+              {title}
             </h2>
             <p className="mt-1 text-sm font-medium text-slate-500">
-              Listagem padronizada com paginacao, acoes por linha, selecao multipla e tela de detalhe.
+              {description}
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
@@ -266,7 +278,7 @@ export default function PostsTable({ initialData }: { initialData: PostRow[] }) 
               {publishingAll ? "PUBLICANDO..." : "PUBLICAR TODOS"}
             </button>
             <Link
-              href="/admin/posts/new"
+              href={newPath}
               className="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-black text-white transition-all"
             >
               NOVA NOTICIA
@@ -493,7 +505,7 @@ export default function PostsTable({ initialData }: { initialData: PostRow[] }) 
                   <td className="px-6 py-4 text-right align-top">
                     <div className="flex justify-end gap-2">
                       <Link
-                        href={`/admin/posts/${item.id}`}
+                        href={`${detailBasePath}/${item.id}`}
                         className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs font-black text-slate-700"
                         title="Abrir detalhes"
                       >
