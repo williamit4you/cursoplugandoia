@@ -20,6 +20,7 @@ export default async function AffiliateProgramsAdminPage() {
   const activeStores = summaries.filter((item) => item.store?.status === "ACTIVE").length;
   const cobasi = summaries.find((item) => item.spec.storeSlug === "cobasi");
   const electrolux = summaries.find((item) => item.spec.storeSlug === "electrolux");
+  const brascol = summaries.find((item) => item.spec.storeSlug === "brascol");
 
   return (
     <main className="p-5 sm:p-8">
@@ -66,13 +67,17 @@ export default async function AffiliateProgramsAdminPage() {
         </div>
 
         <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-black text-slate-900">Electrolux conectada</h2>
-          <p className="mt-1 text-sm text-slate-500">Segundo programa real usando a camada compartilhada, via pipeline editorial direcionado por loja.</p>
+          <h2 className="text-lg font-black text-slate-900">Editorial compartilhado</h2>
+          <p className="mt-1 text-sm text-slate-500">Electrolux e Brascol ja usam a mesma camada operacional, cada uma com execucao direcionada por loja.</p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <MiniStat label="Fila editorial" value={String(electrolux?.runtime.queueCount || 0)} />
-            <MiniStat label="Em revisao" value={String(electrolux?.runtime.reviewCount || 0)} />
-            <MiniStat label="Publicados" value={String(electrolux?.runtime.publishedCount || 0)} />
-            <MiniStat label="Modo" value={electrolux?.runtime.cadenceLabel || "—"} />
+            <MiniStat label="Electrolux fila" value={String(electrolux?.runtime.queueCount || 0)} />
+            <MiniStat label="Electrolux revisao" value={String(electrolux?.runtime.reviewCount || 0)} />
+            <MiniStat label="Electrolux publicados" value={String(electrolux?.runtime.publishedCount || 0)} />
+            <MiniStat label="Electrolux modo" value={electrolux?.runtime.cadenceLabel || "—"} />
+            <MiniStat label="Brascol fila" value={String(brascol?.runtime.queueCount || 0)} />
+            <MiniStat label="Brascol revisao" value={String(brascol?.runtime.reviewCount || 0)} />
+            <MiniStat label="Brascol publicados" value={String(brascol?.runtime.publishedCount || 0)} />
+            <MiniStat label="Brascol modo" value={brascol?.runtime.cadenceLabel || "—"} />
           </div>
           <div className="mt-4 rounded-2xl bg-slate-50 p-4">
             <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Arquivo</div>
@@ -184,6 +189,19 @@ export default async function AffiliateProgramsAdminPage() {
                       <form action={runAffiliateProgramNowAction}>
                         <input type="hidden" name="storeSlug" value={program.storeSlug} />
                         <button className="rounded-xl bg-sky-600 px-3 py-2 text-sm font-black text-white">
+                          Gerar artigo
+                        </button>
+                      </form>
+                      <Link href="/admin/editorial-commerce" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-black text-slate-800">
+                        Abrir pipeline editorial
+                      </Link>
+                    </>
+                  ) : null}
+                  {program.storeSlug === "brascol" && support.runNow ? (
+                    <>
+                      <form action={runAffiliateProgramNowAction}>
+                        <input type="hidden" name="storeSlug" value={program.storeSlug} />
+                        <button className="rounded-xl bg-amber-600 px-3 py-2 text-sm font-black text-white">
                           Gerar artigo
                         </button>
                       </form>

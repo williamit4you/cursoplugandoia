@@ -29,7 +29,7 @@ Transformar a base atual em uma central de programas afiliados com continuidade 
 
 ## Fase 2 - Expansao para as outras lojas
 
-- [ ] Brascol: modelar clusters editoriais e fila inicial
+- [x] Brascol: conectar a central compartilhada ao pipeline editorial direcionado por loja
 - [ ] Electrolux: modelar hubs, comparativos, reviews e problemas
 - [x] Electrolux: conectar a central compartilhada ao pipeline editorial direcionado por loja
 - [ ] Cicatribem: modelar trilhas com compliance reforcado
@@ -46,6 +46,7 @@ Transformar a base atual em uma central de programas afiliados com continuidade 
 
 - [x] Central admin com acoes compartilhadas de bootstrap/execucao para o piloto Cobasi
 - [x] Central admin com execucao direcionada para Electrolux via pipeline editorial
+- [x] Central admin com execucao direcionada para Brascol via pipeline editorial
 - [ ] Checklist operacional no admin para revisar fontes, CTA e sitemap
 - [ ] Registro de estado por programa: draft, queued, review, published, stale
 - [ ] Observabilidade de runs e erros por programa

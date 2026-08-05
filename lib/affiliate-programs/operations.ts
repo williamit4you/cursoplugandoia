@@ -101,18 +101,19 @@ export async function listAffiliateProgramSummaries(): Promise<AffiliateProgramS
   return AFFILIATE_PROGRAMS.map((spec) => {
     const isCobasi = spec.storeSlug === "cobasi";
     const isElectrolux = spec.storeSlug === "electrolux";
+    const isBrascol = spec.storeSlug === "brascol";
     const editorialCounts = editorialCountsByStore.get(spec.storeSlug) || { queueCount: 0, reviewCount: 0, publishedCount: 0 };
     return {
       spec,
       store: storeMap.get(spec.storeSlug) || null,
       support: {
         bootstrap: isCobasi,
-        runNow: isCobasi || isElectrolux,
+        runNow: isCobasi || isElectrolux || isBrascol,
         cron: isCobasi,
       },
       runtime: {
-        configStatus: isCobasi ? (petConfig?.enabled ? "ACTIVE" : "PAUSED") : isElectrolux ? "ACTIVE" : null,
-        cadenceLabel: isCobasi ? `${petConfig?.runEveryHours || 24}h / ${petConfig?.maxItemsPerRun || 1} item(ns)` : isElectrolux ? "Sob demanda via pipeline editorial" : null,
+        configStatus: isCobasi ? (petConfig?.enabled ? "ACTIVE" : "PAUSED") : (isElectrolux || isBrascol) ? "ACTIVE" : null,
+        cadenceLabel: isCobasi ? `${petConfig?.runEveryHours || 24}h / ${petConfig?.maxItemsPerRun || 1} item(ns)` : (isElectrolux || isBrascol) ? "Sob demanda via pipeline editorial" : null,
         queueCount: isCobasi ? Number(petTotals.QUEUED || 0) + Number(petTotals.GENERATING || 0) : editorialCounts.queueCount,
         reviewCount: isCobasi ? Number(petTotals.REVIEW || 0) : editorialCounts.reviewCount,
         publishedCount: isCobasi ? Number(petTotals.PUBLISHED || 0) : editorialCounts.publishedCount,
@@ -137,6 +138,7 @@ export async function runAffiliateProgramNow(storeSlug: string) {
   if (!spec) throw new Error("Programa afiliado nao encontrado");
   if (storeSlug === "cobasi") return runPetSeoOnce({ force: true });
   if (storeSlug === "electrolux") return runCommerceEditorialOnce({ force: true, storeSlug });
+  if (storeSlug === "brascol") return runCommerceEditorialOnce({ force: true, storeSlug });
   throw new Error(`Execucao ainda nao implementada para ${spec.displayName}`);
 }
 
