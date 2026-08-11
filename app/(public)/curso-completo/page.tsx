@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { MetaPixelScript } from "@/components/MetaPixelScript";
@@ -12,33 +11,20 @@ import {
   TrackedAccordion,
   TrackedCheckoutButton,
 } from "@/components/course-completo/interactive";
-import {
-  aiPillars,
-  architectureTopics,
-  courseConfig,
-  faq,
-  getCourseRuntimeConfig,
-  objections,
-  offerChecklist,
-  problemCards,
-  projects,
-  proofItems,
-  quickBenefits,
-  roadmap,
-} from "@/lib/courseCompletoConfig";
+import { courseConfig, getCourseRuntimeConfig } from "@/lib/courseCompletoConfig";
 import { resolveSalesPageMetaPixelId } from "@/lib/salesPagePixel";
 
 export const metadata = {
   title: "Formacao Desenvolvedor Full Stack + IA | Plugando IA",
   description:
-    "Aprenda programacao do zero e avance por C#, .NET, Arquitetura de Software, Next.js, AWS, automacoes, SaaS e Inteligencia Artificial atraves de projetos praticos.",
+    "Aprenda programacao construindo projetos de verdade. Comece do zero com C# e evolua para .NET, Next.js, AWS, automacoes e Inteligencia Artificial.",
   alternates: {
     canonical: "/curso-completo",
   },
   openGraph: {
     title: "Formacao Desenvolvedor Full Stack + IA | Plugando IA",
     description:
-      "Aprenda programacao do zero e avance por C#, .NET, Arquitetura de Software, Next.js, AWS, automacoes, SaaS e Inteligencia Artificial atraves de projetos praticos.",
+      "Aprenda programacao construindo projetos de verdade. Comece do zero com C# e evolua para .NET, Next.js, AWS, automacoes e Inteligencia Artificial.",
     url: "/curso-completo",
     siteName: "Plugando IA",
     type: "website",
@@ -47,178 +33,363 @@ export const metadata = {
     card: "summary_large_image",
     title: "Formacao Desenvolvedor Full Stack + IA | Plugando IA",
     description:
-      "Aprenda programacao do zero e avance por C#, .NET, Arquitetura de Software, Next.js, AWS, automacoes, SaaS e Inteligencia Artificial atraves de projetos praticos.",
+      "Aprenda programacao construindo projetos de verdade. Comece do zero com C# e evolua para .NET, Next.js, AWS, automacoes e Inteligencia Artificial.",
   },
 };
 
-const curriculumEntries = [
+const journeyItems = [
   {
     number: "01",
-    title: "Fundamentos de C#",
-    status: "Disponivel agora",
-    description: "Comece pela base de logica, sintaxe e pensamento de programacao antes de acelerar com frameworks.",
+    title: "Fundamentos",
+    description:
+      "Comece entendendo logica, variaveis, condicoes, funcoes, orientacao a objetos e os conceitos essenciais da programacao usando C#.",
+    stack: "C# • Logica • POO • LINQ",
   },
   {
     number: "02",
-    title: "Backend .NET",
-    status: "Disponivel agora",
-    description: "Construa APIs, regras de negocio, autenticacao e acesso a dados em projetos com contexto real.",
+    title: "Backend",
+    description:
+      "Aprenda como construir APIs, salvar informacoes em banco de dados, criar autenticacao e desenvolver a parte que fica por tras das aplicacoes.",
+    stack: ".NET • Web API • EF Core • JWT",
   },
   {
     number: "03",
-    title: "Arquitetura",
-    status: "Disponivel agora",
-    description: "Entenda como organizar software, tomar decisoes melhores e reduzir retrabalho conforme os sistemas crescem.",
+    title: "Full Stack",
+    description: "Avance para aplicacoes web e entenda como interface, servidor e dados trabalham juntos.",
+    stack: "Next.js • APIs • Server Actions",
   },
   {
     number: "04",
-    title: "Next.js",
-    status: "Disponivel agora",
-    description: "Conecte frontend e backend em aplicacoes Full Stack com interface, rotas e fluxo de dados.",
+    title: "Arquitetura",
+    description:
+      "Conforme seus projetos crescem, aprenda principios para organizar melhor o codigo e tomar decisoes melhores na construcao de software.",
+    stack: "SOLID • Coesao • Acoplamento • Arquitetura",
+  },
+  {
+    number: "05",
+    title: "Cloud",
+    description:
+      "Tire seus projetos da sua maquina e conheca servicos utilizados para colocar aplicacoes e bancos de dados na nuvem.",
+    stack: "AWS • EC2 • RDS • S3 • Lambda",
+  },
+  {
+    number: "06",
+    title: "Automacao e IA",
+    description:
+      "Conecte sistemas, automatize processos e comece a integrar Inteligencia Artificial as suas aplicacoes.",
+    stack: "n8n • APIs • IA • RAG • Agentes",
+  },
+  {
+    number: "07",
+    title: "SaaS",
+    description: "Veja todas essas pecas se encontrando na construcao de um software completo.",
+    stack: "Sistema • Banco • Pagamentos • Assinatura • Deploy",
+  },
+];
+
+const projectItems = [
+  {
+    title: "API completa com .NET",
+    description:
+      "Crie uma API com cadastro de clientes, servicos e agendamentos, banco de dados, relacionamentos, autenticacao e autorizacao.",
+    stack: "C# • .NET • EF Core • JWT",
+    image: "/plugando-ia-hero.svg",
+  },
+  {
+    title: "Aplicacao Full Stack",
+    description: "Aprenda a criar aplicacoes web modernas e conectar interface, rotas, APIs e dados.",
+    stack: "Next.js • Server Components • Server Actions • APIs",
+    image: "/imersao-ia-tech-stack.svg",
+  },
+  {
+    title: "Aplicacao na AWS",
+    description:
+      "Entenda como publicar aplicacoes e trabalhar com infraestrutura, servidores, bancos de dados e servicos em Cloud.",
+    stack: "EC2 • RDS • S3 • Elastic Beanstalk • Lambda",
+    image: "/plugando-ia-hero.svg",
+  },
+  {
+    title: "Automacoes com n8n",
+    description: "Crie fluxos que recebem informacoes, executam regras, chamam APIs e automatizam processos.",
+    stack: "n8n • HTTP Request • APIs • Workflows",
+    image: "/imersao-ia-tech-stack.svg",
+  },
+  {
+    title: "Aplicacao com RAG",
+    description:
+      "Aprenda como uma aplicacao pode consultar informacoes proprias para fornecer contexto a uma Inteligencia Artificial.",
+    stack: "IA • RAG • PostgreSQL • Banco vetorial",
+    image: "/plugando-ia-hero.svg",
+  },
+  {
+    title: "Agente de IA",
+    description: "Construa uma aplicacao que conversa com modelos de IA utilizando contexto e memoria.",
+    stack: "Next.js • IA • Contexto • Memoria",
+    image: "/imersao-ia-tech-stack.svg",
+  },
+  {
+    title: "SaaS completo",
+    description:
+      "Acompanhe a construcao de um sistema com usuarios, clientes, produtos, servicos, banco de dados, trial, pagamentos, assinatura e deploy.",
+    stack: "SaaS • PostgreSQL • Pagamentos • Docker • Deploy",
+    image: "/plugando-ia-hero.svg",
+  },
+];
+
+const curriculumSections = [
+  {
+    number: "01",
+    title: "Fundamentos da Linguagem C#",
+    subtitle: "Para quem esta comecando.",
+    items: [
+      "Logica de programacao",
+      "Variaveis e tipos de dados",
+      "Operadores",
+      "Condicionais",
+      "Loops",
+      "Metodos",
+      "Arrays e listas",
+      "Dictionary, Queue e Stack",
+      "Classes e objetos",
+      "Orientacao a objetos",
+      "Heranca",
+      "Interfaces",
+      "Records",
+      "Manipulacao de strings",
+      "Datas",
+      "Arquivos",
+      "LINQ",
+    ],
+  },
+  {
+    number: "02",
+    title: "Backend com .NET Web API",
+    subtitle: "Comece a construir aplicacoes de verdade.",
+    items: [
+      "APIs REST",
+      "Controllers",
+      "Modelagem de dados",
+      "Entity Framework Core",
+      "Migrations",
+      "CRUD",
+      "Relacionamentos",
+      "Banco de dados",
+      "JWT",
+      "Identity",
+      "Login",
+      "Autenticacao",
+      "Autorizacao",
+      "Claims",
+    ],
+  },
+  {
+    number: "03",
+    title: "Desenvolvimento com Next.js",
+    subtitle: "Entenda como construir aplicacoes web modernas.",
+    items: [
+      "Rotas",
+      "Layouts",
+      "Rotas dinamicas",
+      "Server Components",
+      "Client Components",
+      "Navegacao",
+      "APIs",
+      "Cache",
+      "Middleware",
+      "Server Actions",
+      "Formularios",
+    ],
+  },
+  {
+    number: "04",
+    title: "Fundamentos de Arquitetura de Software",
+    subtitle: "Aprenda a organizar melhor o que voce constroi.",
+    items: [
+      "Requisitos funcionais e nao funcionais",
+      "Regras de negocio",
+      "Escalabilidade",
+      "Disponibilidade",
+      "Desempenho",
+      "Seguranca",
+      "Manutenibilidade",
+      "Alta coesao e baixo acoplamento",
+      "Separacao de responsabilidades",
+      "Encapsulamento",
+      "Modularidade",
+      "Abstracao",
+      "SOLID",
+      "DRY, KISS e YAGNI",
+      "Arquitetura em camadas",
+      "Monolitos",
+      "REST",
+      "GraphQL",
+      "gRPC",
+      "WebSockets",
+    ],
   },
   {
     number: "05",
     title: "AWS",
-    status: "Disponivel agora",
-    description: "Leve o que voce construiu para infraestrutura real e veja como o software sai do localhost.",
+    subtitle: "Aprenda como seus projetos chegam a nuvem.",
+    items: [
+      "EC2",
+      "Linux e Windows na AWS",
+      "IAM",
+      "VPC",
+      "Subnets",
+      "Elastic IP",
+      "RDS",
+      "PostgreSQL",
+      "S3",
+      "SNS",
+      "Elastic Beanstalk",
+      "Auto Scaling",
+      "Lambda",
+      "API Gateway",
+    ],
   },
   {
     number: "06",
-    title: "n8n",
-    status: "Disponivel agora",
-    description: "Automatize processos e integre sistemas sem perder a visao de arquitetura e produto.",
+    title: "Automacao com n8n",
+    subtitle: "Faca sistemas conversarem entre si.",
+    items: ["Workflows", "Triggers", "Credenciais", "Condicoes", "Filtros", "Code Node", "HTTP Request", "APIs", "Integracoes"],
   },
   {
     number: "07",
-    title: "IA",
-    status: "Em expansao",
-    description: "Use modelos como aceleradores dentro de aplicacoes, com criterio tecnico e objetivo claro.",
+    title: "Inteligencia Artificial e Agentes",
+    subtitle: "Use IA dentro das aplicacoes que voce constroi.",
+    items: ["Integracao com modelos de IA", "APIs de IA", "Chat", "Contexto", "Memoria", "Agentes", "RAG", "Banco vetorial"],
   },
   {
     number: "08",
-    title: "Agentes",
-    status: "Em expansao",
-    description: "Avance para fluxos com contexto, memoria e acao sobre ferramentas e dados proprios.",
-  },
-  {
-    number: "09",
-    title: "SaaS",
-    status: "Em expansao",
-    description: "Entenda como codigo, operacao e experiencia se conectam para virar software vendavel.",
+    title: "Construcao de SaaS",
+    subtitle: "Veja como uma aplicacao pode evoluir para um produto.",
+    items: [
+      "Cadastro",
+      "Login",
+      "Banco PostgreSQL",
+      "Clientes",
+      "Produtos e servicos",
+      "Importacao de dados",
+      "Ordens de servico",
+      "Trial",
+      "Pagamentos",
+      "Assinaturas",
+      "Docker",
+      "Deploy",
+    ],
   },
 ];
 
-function Eyebrow({ children, tone = "default" }: { children: ReactNode; tone?: "default" | "green" | "orange" }) {
-  const tones = {
-    default: "text-[#295CFF]",
-    green: "text-[#B8F34A]",
-    orange: "text-[#151515]",
-  };
+const audienceItems = [
+  "Nunca programou e quer comecar",
+  "Ja comecou outros cursos, mas continua perdido",
+  "Quer aprender seguindo uma sequencia",
+  "Quer construir projetos em vez de apenas assistir aulas",
+  "Quer aprender backend e frontend",
+  "Quer entender banco de dados",
+  "Quer aprender Cloud",
+  "Quer conhecer Arquitetura de Software",
+  "Quer entender como IA entra em aplicacoes reais",
+  "Tem vontade de construir seu proprio sistema ou SaaS",
+];
 
-  return <div className={`font-mono text-xs uppercase tracking-[0.28em] ${tones[tone]}`}>{children}</div>;
+const receiveItems = [
+  "Fundamentos de C#",
+  "Backend com .NET",
+  "Entity Framework Core",
+  "APIs REST",
+  "Autenticacao JWT",
+  "Next.js",
+  "Fundamentos de Arquitetura",
+  "AWS",
+  "n8n",
+  "Inteligencia Artificial",
+  "Agentes de IA",
+  "RAG",
+  "Projeto SaaS",
+  "Projetos praticos",
+];
+
+const faqItems = [
+  {
+    question: "Preciso saber programar antes?",
+    answer:
+      "Nao. A formacao comeca pelos fundamentos de programacao utilizando C# e avanca gradualmente para os demais conteudos.",
+  },
+  {
+    question: "Por onde devo comecar?",
+    answer: "Se voce esta comecando do zero, comece pela trilha de Fundamentos de C# e siga a sequencia recomendada da formacao.",
+  },
+  {
+    question: "Preciso estudar tudo ao mesmo tempo?",
+    answer:
+      "Nao. Justamente o contrario. A proposta e que voce avance por etapas e construa sua base antes de chegar aos assuntos mais avancados.",
+  },
+  {
+    question: "Vou aprender frontend e backend?",
+    answer: "Sim. O backend e trabalhado principalmente com C# e .NET, enquanto Next.js e utilizado na construcao das aplicacoes web.",
+  },
+  {
+    question: "Tem banco de dados?",
+    answer: "Sim. Banco de dados aparece em diferentes projetos, incluindo Entity Framework Core e PostgreSQL.",
+  },
+  {
+    question: "Tem AWS?",
+    answer:
+      "Sim. A formacao possui uma trilha dedicada a AWS, passando por servicos como EC2, RDS, S3, VPC, Elastic Beanstalk, Lambda e outros.",
+  },
+  {
+    question: "Arquitetura de Software ja esta disponivel?",
+    answer: "A trilha de Fundamentos de Arquitetura esta sendo adicionada a formacao e continuara recebendo novas aulas.",
+  },
+  {
+    question: "Vou aprender Inteligencia Artificial?",
+    answer: "Sim. A formacao avanca para aplicacoes que integram modelos de IA, agentes, contexto, memoria e RAG.",
+  },
+  {
+    question: "Tem projetos praticos?",
+    answer: "Sim. A formacao acompanha projetos envolvendo APIs, aplicacoes web, Cloud, automacoes, agentes, RAG e SaaS.",
+  },
+  {
+    question: "Ate quando vale o preco de lancamento?",
+    answer: "O valor de R$ 149,90 e a condicao de lancamento ate 31 de agosto de 2026, as 23:59.",
+  },
+];
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return <div className="font-mono text-xs uppercase tracking-[0.28em] text-[#295CFF]">{children}</div>;
 }
 
-function SectionHeading({
+function SectionTitle({
   eyebrow,
   title,
   description,
-  dark = false,
+  light = false,
 }: {
   eyebrow: string;
-  title: ReactNode;
-  description?: ReactNode;
-  dark?: boolean;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  light?: boolean;
 }) {
   return (
     <div className="max-w-4xl">
-      <Eyebrow tone={dark ? "green" : "default"}>{eyebrow}</Eyebrow>
+      <div className={`font-mono text-xs uppercase tracking-[0.28em] ${light ? "text-[#B8F34A]" : "text-[#295CFF]"}`}>{eyebrow}</div>
       <h2
-        className={`mt-4 max-w-4xl text-balance text-[2.3rem] font-black leading-[0.98] tracking-[-0.04em] md:text-[4rem] ${
-          dark ? "text-[#F6F3EC]" : "text-[#151515]"
+        className={`mt-4 text-balance text-[2.2rem] font-black leading-[0.98] tracking-[-0.04em] md:text-[4rem] ${
+          light ? "text-[#F6F3EC]" : "text-[#151515]"
         }`}
       >
         {title}
       </h2>
-      {description ? (
-        <p className={`mt-5 max-w-3xl text-pretty text-base leading-7 md:text-lg ${dark ? "text-[#C9C4B8]" : "text-[#62625E]"}`}>
-          {description}
-        </p>
-      ) : null}
+      {description ? <p className={`mt-5 max-w-3xl text-lg leading-8 ${light ? "text-[#C9C4B8]" : "text-[#62625E]"}`}>{description}</p> : null}
     </div>
-  );
-}
-
-function NavLink({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <a
-      href={href}
-      className="relative text-sm text-[#62625E] transition after:absolute after:bottom-[-0.35rem] after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-[#151515] after:transition-transform hover:text-[#151515] hover:after:scale-x-100"
-    >
-      {children}
-    </a>
-  );
-}
-
-function SecondaryLink({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <a
-      href={href}
-      className="inline-flex items-center justify-center rounded-[8px] border border-[#151515] px-5 py-3 text-sm font-semibold text-[#151515] transition hover:bg-[#151515] hover:text-[#F4F1EA]"
-    >
-      {children}
-    </a>
-  );
-}
-
-function StatLine({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border-t border-[#D7D3CA] pt-3">
-      <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#62625E]">{label}</div>
-      <div className="mt-1 text-lg font-semibold text-[#151515]">{value}</div>
-    </div>
-  );
-}
-
-function CurriculumAccordion({
-  title,
-  number,
-  status,
-  description,
-  pageKey,
-  pagePath,
-  pageTitle,
-}: {
-  title: string;
-  number: string;
-  status: string;
-  description: string;
-  pageKey: string;
-  pagePath: string;
-  pageTitle: string;
-}) {
-  return (
-    <TrackedAccordion
-      title={`${number}  ${title}`}
-      pageKey={pageKey}
-      pagePath={pagePath}
-      pageTitle={pageTitle}
-      eventName="curriculum_open"
-      className="rounded-none border-x-0 border-b border-t-0 border-[#D7D3CA] bg-transparent px-0 py-5 open:bg-transparent"
-      titleClassName="text-xl font-semibold text-[#151515] md:text-2xl"
-      contentClassName="text-[#62625E] text-base leading-7"
-      iconClassName="h-9 w-9 rounded-none border-[#D7D3CA] bg-transparent text-[#151515]"
-    >
-      <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.22em] text-[#295CFF]">{status}</div>
-      {description}
-    </TrackedAccordion>
   );
 }
 
 export default async function CursoCompletoPage() {
   const config = getCourseRuntimeConfig();
-  const metaPixelId = await resolveSalesPageMetaPixelId(courseConfig.pageKey, {
-    preferEnvFallback: true,
-  });
+  const metaPixelId = await resolveSalesPageMetaPixelId(courseConfig.pageKey, { preferEnvFallback: true });
   const priceLabel = `R$ ${config.activePrice.toFixed(2).replace(".", ",")}`;
   const eventData = {
     content_name: config.name,
@@ -235,11 +406,7 @@ export default async function CursoCompletoPage() {
         pageKey={config.pageKey}
         pagePath={config.pagePath}
         pageTitle={config.pageTitle}
-        metadata={{
-          offerPrice: config.activePrice,
-          currency: "BRL",
-          offerName: config.name,
-        }}
+        metadata={{ offerPrice: config.activePrice, currency: "BRL", offerName: config.name }}
       />
       <SalesViewContentTracker
         pageKey={config.pageKey}
@@ -247,102 +414,77 @@ export default async function CursoCompletoPage() {
         pageTitle={config.pageTitle}
         currency="BRL"
         value={config.activePrice}
-        metadata={{
-          contentName: config.name,
-          contentType: "course",
-        }}
+        metadata={{ contentName: config.name, contentType: "course" }}
       />
       <MetaPixelViewContent data={eventData} />
-      <SectionViewTracker
-        selectorId="roadmap"
-        pageKey={config.pageKey}
-        pagePath={config.pagePath}
-        pageTitle={config.pageTitle}
-        eventName="roadmap_view"
-      />
-      <SectionViewTracker
-        selectorId="architecture"
-        pageKey={config.pageKey}
-        pagePath={config.pagePath}
-        pageTitle={config.pageTitle}
-        eventName="architecture_section_view"
-      />
-      <SectionViewTracker
-        selectorId="offer"
-        pageKey={config.pageKey}
-        pagePath={config.pagePath}
-        pageTitle={config.pageTitle}
-        eventName="offer_view"
-      />
-      <SectionViewTracker
-        selectorId="pricing"
-        pageKey={config.pageKey}
-        pagePath={config.pagePath}
-        pageTitle={config.pageTitle}
-        eventName="pricing_view"
-      />
+      <SectionViewTracker selectorId="journey" pageKey={config.pageKey} pagePath={config.pagePath} pageTitle={config.pageTitle} eventName="journey_view" />
+      <SectionViewTracker selectorId="projects" pageKey={config.pageKey} pagePath={config.pagePath} pageTitle={config.pageTitle} eventName="projects_view" />
+      <SectionViewTracker selectorId="pricing" pageKey={config.pageKey} pagePath={config.pagePath} pageTitle={config.pageTitle} eventName="pricing_view" />
 
-      <header className="sticky top-0 z-40 border-b border-[#D7D3CA] bg-[#F4F1EA]/92 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-[#D7D3CA] bg-[#F4F1EA]/94 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-5 py-4 md:px-8">
           <Link href="/curso-completo" className="font-mono text-xs uppercase tracking-[0.28em] text-[#151515]">
-            Plugando IA / Formacao 2026
+            Formacao Full Stack + IA
           </Link>
           <nav className="hidden items-center gap-8 md:flex">
-            <NavLink href="#roadmap">Caminho</NavLink>
-            <NavLink href="#architecture">Arquitetura</NavLink>
-            <NavLink href="#projects">Projetos</NavLink>
-            <NavLink href="#pricing">Oferta</NavLink>
-            <NavLink href="#faq">FAQ</NavLink>
+            <a href="#journey" className="text-sm text-[#62625E] transition hover:text-[#151515]">
+              O caminho
+            </a>
+            <a href="#projects" className="text-sm text-[#62625E] transition hover:text-[#151515]">
+              Projetos
+            </a>
+            <a href="#curriculum" className="text-sm text-[#62625E] transition hover:text-[#151515]">
+              Formacao
+            </a>
+            <a href="#pricing" className="text-sm text-[#62625E] transition hover:text-[#151515]">
+              Oferta
+            </a>
+            <a href="#faq" className="text-sm text-[#62625E] transition hover:text-[#151515]">
+              FAQ
+            </a>
           </nav>
-          <div className="hidden md:block">
-            <TrackedCheckoutButton
-              href={config.checkoutUrl}
-              label="ENTRAR NA FORMACAO →"
-              pageKey={config.pageKey}
-              pagePath={config.pagePath}
-              pageTitle={config.pageTitle}
-              value={config.activePrice}
-              currency="BRL"
-              customEvent="header_cta_click"
-              eventData={eventData}
-              hideGlow
-              className="rounded-[8px] border border-[#295CFF] bg-[#295CFF] px-5 py-3 text-sm font-semibold text-white shadow-none hover:bg-[#1E49D6]"
-            />
-          </div>
+          <TrackedCheckoutButton
+            href={config.checkoutUrl}
+            label="QUERO COMECAR AGORA →"
+            pageKey={config.pageKey}
+            pagePath={config.pagePath}
+            pageTitle={config.pageTitle}
+            value={config.activePrice}
+            currency="BRL"
+            customEvent="header_cta_click"
+            eventData={eventData}
+            hideGlow
+            className="hidden rounded-[8px] border border-[#295CFF] bg-[#295CFF] px-5 py-3 text-sm font-semibold text-white shadow-none hover:bg-[#1E49D6] md:inline-flex"
+          />
         </div>
       </header>
 
-      <section id="formacao" className="relative overflow-hidden border-b border-[#D7D3CA]">
-        <div className="pointer-events-none absolute left-[-8rem] top-[-4rem] h-64 w-64 rounded-full bg-[#295CFF]/8 blur-3xl" />
-        <div className="pointer-events-none absolute right-[-5rem] top-[8rem] h-40 w-40 rounded-full bg-[#FF5A36]/10 blur-3xl" />
-        <div className="mx-auto grid max-w-7xl gap-14 px-5 py-14 md:grid-cols-[1.1fr,0.9fr] md:px-8 md:py-20">
+      <section className="border-b border-[#D7D3CA]">
+        <div className="mx-auto grid max-w-7xl gap-12 px-5 py-16 md:grid-cols-[1.05fr,0.95fr] md:px-8 md:py-24">
           <FadeIn>
-            <Eyebrow>Plugando IA / Formacao 2026</Eyebrow>
-            <h1 className="mt-5 max-w-5xl text-balance text-[3rem] font-black leading-[0.95] tracking-[-0.05em] text-[#151515] md:text-[5.2rem]">
-              Aprenda a construir.
-              <br />
-              Depois aprenda a arquitetar.
-              <br />
-              Entao acelere com IA.
+            <Eyebrow>Formacao Full Stack + IA • Nova turma 2026</Eyebrow>
+            <h1 className="mt-5 max-w-5xl text-balance text-[3rem] font-black leading-[0.94] tracking-[-0.05em] md:text-[5.4rem]">
+              Aprenda programacao construindo projetos de verdade.
             </h1>
-            <p className="mt-6 max-w-3xl text-pretty text-lg leading-8 text-[#62625E] md:text-xl">
-              Uma formacao completa para comecar pelos fundamentos e evoluir por C#, .NET, Arquitetura de
-              Software, Next.js, AWS, automacoes, SaaS e Inteligencia Artificial.
+            <p className="mt-6 max-w-3xl text-lg leading-8 text-[#62625E] md:text-xl">
+              Comece do zero com C# e evolua passo a passo para APIs com .NET, aplicacoes com Next.js, Cloud com AWS, automacoes e projetos com Inteligencia Artificial.
             </p>
-
-            <div className="mt-8 grid gap-6 md:max-w-3xl md:grid-cols-[1.1fr,0.9fr]">
-              <div className="space-y-3">
-                <div className="font-mono text-xs uppercase tracking-[0.26em] text-[#FF5A36]">Lancamento / ate 31 AGO</div>
-                <div className="text-sm text-[#62625E] line-through">R$ {config.regularPrice.toFixed(0)}</div>
-                <div className="text-[3rem] font-black leading-none tracking-[-0.05em] text-[#151515] md:text-[4.4rem]">
-                  {priceLabel}
-                </div>
-                <div className="text-sm text-[#62625E]">Acesso online. Estude no seu ritmo.</div>
+            <div className="mt-8 space-y-3 text-base font-semibold text-[#151515]">
+              <div>✓ Comece mesmo sem experiencia em programacao</div>
+              <div>✓ Aprenda seguindo uma sequencia clara</div>
+              <div>✓ Construa projetos enquanto evolui</div>
+            </div>
+            <div className="mt-10 grid gap-5 border-t border-[#D7D3CA] pt-8 md:max-w-2xl md:grid-cols-[1fr,0.9fr]">
+              <div>
+                <div className="font-mono text-xs uppercase tracking-[0.25em] text-[#FF5A36]">Preco especial de lancamento</div>
+                <div className="mt-4 text-sm text-[#62625E] line-through">R$ {config.regularPrice.toFixed(0)}</div>
+                <div className="mt-2 text-[3.3rem] font-black leading-none tracking-[-0.05em] md:text-[4.8rem]">{priceLabel}</div>
+                <div className="mt-2 text-sm font-semibold text-[#FF5A36]">ate 31 de agosto</div>
               </div>
               <div className="grid gap-3">
                 <TrackedCheckoutButton
                   href={config.checkoutUrl}
-                  label="QUERO COMECAR →"
+                  label="QUERO COMECAR AGORA →"
                   pageKey={config.pageKey}
                   pagePath={config.pagePath}
                   pageTitle={config.pageTitle}
@@ -353,240 +495,80 @@ export default async function CursoCompletoPage() {
                   hideGlow
                   className="w-full rounded-[8px] border border-[#295CFF] bg-[#295CFF] px-6 py-4 text-sm font-semibold uppercase tracking-[0.08em] text-white shadow-none hover:bg-[#1E49D6]"
                 />
-                <SecondaryLink href="#roadmap">VER O CAMINHO →</SecondaryLink>
+                <div className="text-sm text-[#62625E]">Acesso online • Estude no seu ritmo</div>
               </div>
-            </div>
-
-            <div className="mt-10 grid gap-4 sm:grid-cols-2">
-              {quickBenefits.map((item) => (
-                <div key={item} className="border-t border-[#D7D3CA] pt-3 text-sm leading-6 text-[#151515]">
-                  {item}
-                </div>
-              ))}
             </div>
           </FadeIn>
 
           <FadeIn delayMs={120}>
-            <div className="grid gap-6">
-              <div className="border border-[#D7D3CA] bg-[#ECE8DF] p-4 md:p-6">
-                <div className="flex items-center justify-between border-b border-[#D7D3CA] pb-4">
-                  <div className="font-mono text-xs uppercase tracking-[0.24em] text-[#62625E]">Journey / technical view</div>
-                  <div className="h-2.5 w-2.5 rounded-full bg-[#B8F34A]" />
-                </div>
-                <div className="divide-y divide-[#D7D3CA]">
-                  {roadmap.slice(0, 7).map((step, index) => (
-                    <div key={step.title} className="grid grid-cols-[44px,1fr] gap-4 py-4 md:grid-cols-[56px,1fr,0.9fr]">
-                      <div className="font-mono text-lg text-[#295CFF]">{String(index + 1).padStart(2, "0")}</div>
-                      <div>
-                        <div className="text-xl font-semibold text-[#151515]">{step.tech ?? step.title}</div>
-                        <div className="mt-1 text-sm text-[#62625E]">{step.title}</div>
-                      </div>
-                      <div className="hidden text-sm leading-6 text-[#62625E] md:block">{step.description}</div>
-                    </div>
-                  ))}
-                </div>
+            <div className="grid gap-5">
+              <div className="overflow-hidden border border-[#D7D3CA] bg-[#ECE8DF]">
+                <Image src="/plugando-ia-hero.svg" alt="Visual tecnico da Formacao Full Stack + IA" width={1600} height={960} priority className="h-auto w-full" />
               </div>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <StatLine label="Checkout" value="Direto para a oferta" />
-                <StatLine label="Formato" value="Do codigo ao deploy" />
-                <StatLine label="Foco" value="Base, sistema e IA" />
+              <div className="border border-[#D7D3CA] bg-[#ECE8DF] p-6">
+                <div className="text-[1.7rem] font-black leading-tight tracking-[-0.04em]">Voce nao precisa aprender tudo de uma vez.</div>
+                <div className="mt-4 space-y-3 text-base leading-7 text-[#62625E]">
+                  <p>Quando voce comeca a pesquisar programacao, parece que existe uma lista infinita de coisas para estudar.</p>
+                  <p>C# ou JavaScript? Frontend ou backend? Banco de dados? API? Cloud? Arquitetura? E agora Inteligencia Artificial?</p>
+                  <p>O problema nao e encontrar conteudo. O dificil e saber o que aprender primeiro e o que vem depois.</p>
+                  <p>Foi por isso que esta formacao foi organizada como uma trilha.</p>
+                </div>
               </div>
             </div>
           </FadeIn>
         </div>
       </section>
 
-      <section className="border-b border-[#D7D3CA] bg-[#ECE8DF]">
-        <div className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-20">
-          <FadeIn>
-            <SectionHeading
-              eyebrow="02 / O PROBLEMA"
-              title={
-                <>
-                  Voce nao esta sem conteudo.
-                  <br />
-                  Esta sem um caminho.
-                </>
-              }
-              description="Quando tudo parece importante ao mesmo tempo, voce acumula cursos, troca de stack cedo demais e continua sem enxergar como software real e construido."
-            />
-            <div className="mt-12 grid border border-[#D7D3CA] md:grid-cols-2">
-              {problemCards.map((item, index) => (
-                <div
-                  key={item.title}
-                  className={`grid gap-3 border-[#D7D3CA] p-6 md:p-8 ${index % 2 === 0 ? "md:border-r" : ""} ${
-                    index < 2 ? "border-b" : ""
-                  }`}
-                >
-                  <div className="font-mono text-sm uppercase tracking-[0.24em] text-[#295CFF]">
-                    {String(index + 1).padStart(2, "0")}
-                  </div>
-                  <div className="text-[1.6rem] font-bold leading-tight tracking-[-0.03em] text-[#151515]">
-                    {item.title.toUpperCase()}.
-                  </div>
-                  <p className="max-w-md text-base leading-7 text-[#62625E]">{item.description}</p>
-                </div>
-              ))}
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      <section id="roadmap" className="border-b border-[#D7D3CA]">
+      <section id="journey" className="border-b border-[#D7D3CA]">
         <div className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24">
           <FadeIn>
-            <SectionHeading
-              eyebrow="03 / O CAMINHO"
-              title={
-                <>
-                  Existe uma ordem
-                  <br />
-                  para aprender.
-                </>
-              }
-              description="A trilha conecta fundamentos, backend, arquitetura, Full Stack, cloud, automacao, IA, agentes e SaaS sem virar um catalogo solto de modulos."
-            />
-            <div className="mt-12 divide-y divide-[#D7D3CA] border-y border-[#D7D3CA]">
-              {roadmap.map((step, index) => (
-                <div key={step.title} className="grid gap-4 py-6 md:grid-cols-[90px,1fr,0.9fr] md:items-start">
-                  <div className="font-mono text-2xl text-[#295CFF]">{String(index + 1).padStart(2, "0")}</div>
+            <SectionTitle eyebrow="O caminho" title={<>Comece pelo basico. Evolua projeto por projeto.</>} description="Voce comeca construindo sua base e avanca gradualmente para projetos cada vez mais completos." />
+          </FadeIn>
+          <div className="mt-14 divide-y divide-[#D7D3CA] border-y border-[#D7D3CA]">
+            {journeyItems.map((item, index) => (
+              <FadeIn key={item.number} delayMs={index * 60}>
+                <div className="grid gap-5 py-8 md:grid-cols-[90px,1fr,0.9fr]">
+                  <div className="font-mono text-2xl text-[#295CFF]">{item.number}</div>
                   <div>
-                    <div className="text-[1.7rem] font-bold leading-tight tracking-[-0.03em] text-[#151515]">{step.title}</div>
-                    {step.tech ? <div className="mt-2 font-mono text-xs uppercase tracking-[0.24em] text-[#62625E]">{step.tech}</div> : null}
+                    <h3 className="text-[1.9rem] font-black leading-tight tracking-[-0.04em]">{item.title}</h3>
+                    <div className="mt-4 font-mono text-xs uppercase tracking-[0.22em] text-[#295CFF]">{item.stack}</div>
                   </div>
-                  <p className="max-w-xl text-base leading-7 text-[#62625E]">{step.description}</p>
+                  <p className="text-base leading-7 text-[#62625E]">{item.description}</p>
                 </div>
-              ))}
+              </FadeIn>
+            ))}
+          </div>
+          <FadeIn delayMs={120}>
+            <div className="mt-12 max-w-4xl text-[1.6rem] font-black leading-tight tracking-[-0.04em] text-[#151515]">
+              O objetivo e chegar ao ponto em que voce consegue olhar para uma ideia e comecar a entender como transforma-la em software.
             </div>
           </FadeIn>
         </div>
       </section>
 
-      <section id="architecture" className="border-b border-[#2D2D2D] bg-[#171717]">
+      <section id="projects" className="border-b border-[#D7D3CA] bg-[#ECE8DF]">
         <div className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24">
           <FadeIn>
-            <SectionHeading
-              eyebrow="04 / ARQUITETURA"
-              title={
-                <>
-                  Nao basta fazer funcionar.
-                  <br />
-                  Entenda por que funciona assim.
-                </>
-              }
-              description="Aprenda os fundamentos que ajudam voce a tomar melhores decisoes ao construir software."
-              dark
-            />
-
-            <div className="mt-12 grid gap-10 lg:grid-cols-[1.15fr,0.85fr]">
-              <div className="border border-[#2D2D2D] p-6">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-4">
-                    {["REQUISITOS", "DESIGN", "MODULOS"].map((item) => (
-                      <div key={item} className="border border-[#2D2D2D] px-4 py-3 font-mono text-xs tracking-[0.24em] text-[#F6F3EC]">
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-center">
-                    <div className="relative flex h-48 w-48 items-center justify-center rounded-full border border-[#295CFF] text-center">
-                      <div className="font-mono text-xs uppercase tracking-[0.24em] text-[#B8F34A]">CORE</div>
-                      <div className="absolute top-[5.6rem] text-3xl font-black tracking-[-0.04em] text-[#F6F3EC]">SOFTWARE</div>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    {["DADOS", "INTEGRACOES", "INFRAESTRUTURA"].map((item) => (
-                      <div key={item} className="border border-[#2D2D2D] px-4 py-3 font-mono text-xs tracking-[0.24em] text-[#F6F3EC]">
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="mt-6 grid gap-3 md:grid-cols-3">
-                  {["SOLID", "COESAO", "ACOPLAMENTO", "ESCALABILIDADE", "SEGURANCA", "MANUTENIBILIDADE"].map((item) => (
-                    <div key={item} className="border border-[#2D2D2D] px-4 py-3 text-sm text-[#C9C4B8]">
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="border border-[#2D2D2D]">
-                  <div className="border-b border-[#2D2D2D] px-5 py-4 font-mono text-xs uppercase tracking-[0.24em] text-[#B8F34A]">
-                    Solid / principios
-                  </div>
-                  {[
-                    ["SRP", "Single Responsibility"],
-                    ["OCP", "Open/Closed"],
-                    ["LSP", "Liskov Substitution"],
-                    ["ISP", "Interface Segregation"],
-                    ["DIP", "Dependency Inversion"],
-                  ].map(([abbr, label]) => (
-                    <div key={abbr} className="grid grid-cols-[80px,1fr] border-b border-[#2D2D2D] px-5 py-4 last:border-b-0">
-                      <div className="font-mono text-sm text-[#B8F34A]">{abbr}</div>
-                      <div className="text-sm text-[#F6F3EC]">{label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid gap-4">
-                  {architectureTopics.slice(0, 3).map((topic) => (
-                    <div key={topic.title} className="border border-[#2D2D2D] p-5">
-                      <div className="text-lg font-semibold text-[#F6F3EC]">{topic.title}</div>
-                      <ul className="mt-3 space-y-2 text-sm leading-6 text-[#C9C4B8]">
-                        {topic.items.slice(0, 2).map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      <section id="projects" className="border-b border-[#D7D3CA]">
-        <div className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24">
-          <FadeIn>
-            <SectionHeading
-              eyebrow="05 / CONSTRUCAO"
-              title={
-                <>
-                  Menos tutorial.
-                  <br />
-                  Mais coisa funcionando.
-                </>
-              }
-              description="A formacao aproxima tecnologia de contexto. Cada projeto mostra onde backend, interface, dados, cloud e IA se conectam."
+            <SectionTitle
+              eyebrow="Projetos"
+              title={<>Voce nao vai ficar apenas na teoria.</>}
+              description="Ao longo da formacao, voce acompanha a construcao de projetos que mostram como as tecnologias funcionam juntas."
             />
           </FadeIn>
-
-          <div className="mt-14 grid gap-16">
-            {projects.slice(0, 3).map((project, index) => {
-              const image = proofItems[index % proofItems.length];
-              const reversed = index % 2 === 1;
-
+          <div className="mt-14 grid gap-10">
+            {projectItems.map((project, index) => {
+              const reverse = index % 2 === 1;
               return (
-                <FadeIn key={project.title} delayMs={index * 80}>
-                  <div className={`grid gap-8 lg:grid-cols-2 lg:items-center ${reversed ? "lg:[&>*:first-child]:order-2" : ""}`}>
-                    <div className="overflow-hidden border border-[#D7D3CA] bg-[#ECE8DF]">
-                      <Image src={image.image} alt={project.title} width={1600} height={960} className="h-auto w-full" />
+                <FadeIn key={project.title} delayMs={index * 60}>
+                  <div className={`grid gap-8 lg:grid-cols-2 lg:items-center ${reverse ? "lg:[&>*:first-child]:order-2" : ""}`}>
+                    <div className="overflow-hidden border border-[#D7D3CA] bg-[#F4F1EA]">
+                      <Image src={project.image} alt={project.title} width={1600} height={960} className="h-auto w-full" />
                     </div>
                     <div>
-                      <div className="font-mono text-xs uppercase tracking-[0.26em] text-[#62625E]">
-                        Project / {String(index + 1).padStart(2, "0")}
-                      </div>
-                      <h3 className="mt-3 text-[2rem] font-black leading-tight tracking-[-0.04em] text-[#151515] md:text-[2.8rem]">
-                        {project.title}
-                      </h3>
-                      <p className="mt-4 max-w-xl text-base leading-7 text-[#62625E]">{project.description}</p>
-                      <div className="mt-6 border-t border-[#D7D3CA] pt-4 font-mono text-xs uppercase tracking-[0.22em] text-[#295CFF]">
-                        {project.badges.join(" / ")}
-                      </div>
+                      <div className="font-mono text-xs uppercase tracking-[0.22em] text-[#62625E]">Aprender fazendo</div>
+                      <h3 className="mt-3 text-[2rem] font-black leading-tight tracking-[-0.04em] md:text-[2.8rem]">{project.title}</h3>
+                      <p className="mt-4 text-base leading-7 text-[#62625E]">{project.description}</p>
+                      <div className="mt-5 border-t border-[#D7D3CA] pt-4 font-mono text-xs uppercase tracking-[0.22em] text-[#295CFF]">{project.stack}</div>
                     </div>
                   </div>
                 </FadeIn>
@@ -596,191 +578,179 @@ export default async function CursoCompletoPage() {
         </div>
       </section>
 
-      <section className="border-b border-[#264DE0] bg-[#295CFF] text-white">
-        <div className="mx-auto grid max-w-7xl gap-10 px-5 py-16 md:grid-cols-[1fr,0.9fr] md:px-8 md:py-24">
+      <section id="curriculum" className="border-b border-[#2D2D2D] bg-[#171717]">
+        <div className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24">
           <FadeIn>
-            <Eyebrow>06 / CLOUD</Eyebrow>
-            <h2 className="mt-4 max-w-4xl text-balance text-[2.3rem] font-black leading-[0.98] tracking-[-0.04em] md:text-[4rem]">
-              Seu codigo nao termina no localhost.
-            </h2>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-white/80">
-              Aprenda como aplicacoes chegam a infraestrutura real e quais pecas importam quando voce quer publicar com clareza.
-            </p>
+            <SectionTitle eyebrow="A formacao" title={<>Tudo comeca pela base.</>} light />
           </FadeIn>
-
-          <FadeIn delayMs={100}>
-            <div className="border border-white/25 bg-white/5 p-6">
-              <div className="space-y-4">
-                {["USUARIO", "API", "EC2 / BEANSTALK", "RDS", "S3"].map((item, index) => (
-                  <div key={item}>
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 border border-white/30 bg-white/10 text-center font-mono text-xs leading-[2.4rem]">
-                        {String(index + 1).padStart(2, "0")}
+          <div className="mt-14 grid gap-6">
+            {curriculumSections.map((section, index) => (
+              <FadeIn key={section.number} delayMs={index * 50}>
+                <div className="border border-[#2D2D2D] p-6 md:p-8">
+                  <div className="font-mono text-xs uppercase tracking-[0.24em] text-[#B8F34A]">{section.number}</div>
+                  <h3 className="mt-3 text-[1.9rem] font-black leading-tight tracking-[-0.04em] text-[#F6F3EC]">{section.title}</h3>
+                  <div className="mt-2 text-base font-semibold text-[#C9C4B8]">{section.subtitle}</div>
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {section.items.map((item) => (
+                      <div key={item} className="border-t border-[#2D2D2D] pt-3 text-sm leading-6 text-[#F6F3EC]">
+                        ✓ {item}
                       </div>
-                      <div className="border border-white/20 px-4 py-3 font-mono text-sm uppercase tracking-[0.18em]">{item}</div>
-                    </div>
-                    {index < 4 ? <div className="ml-5 h-8 w-px bg-white/30" /> : null}
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                {["VPC", "IAM", "LAMBDA"].map((item) => (
-                  <div key={item} className="border border-white/20 px-4 py-3 text-center font-mono text-xs uppercase tracking-[0.22em] text-white/88">
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      <section className="border-b border-[#2D2D2D] bg-[#171717]">
-        <div className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24">
-          <FadeIn>
-            <SectionHeading
-              eyebrow="07 / INTELIGENCIA ARTIFICIAL"
-              title={
-                <>
-                  IA nao substitui sua base.
-                  <br />
-                  Amplifica o que voce sabe fazer.
-                </>
-              }
-              description="A proposta nao e pular fundamentos. E chegar na IA com repertorio suficiente para entender, corrigir, adaptar e evoluir o que esta sendo construido."
-              dark
-            />
-          </FadeIn>
-
-          <div className="mt-12 grid gap-8 lg:grid-cols-[0.95fr,1.05fr]">
-            <FadeIn delayMs={100}>
-              <div className="border border-[#2D2D2D] p-8">
-                <div className="grid gap-6 text-center">
-                  <div className="font-mono text-sm uppercase tracking-[0.24em] text-[#F6F3EC]">VOCE</div>
-                  <div className="text-[#B8F34A]">+</div>
-                  <div className="font-mono text-sm uppercase tracking-[0.24em] text-[#F6F3EC]">FUNDAMENTOS</div>
-                  <div className="text-[#B8F34A]">+</div>
-                  <div className="font-mono text-sm uppercase tracking-[0.24em] text-[#F6F3EC]">IA</div>
-                  <div className="mx-auto h-10 w-px bg-[#295CFF]" />
-                  <div className="text-3xl font-black tracking-[-0.04em] text-[#F6F3EC]">SOFTWARE</div>
+                  {section.number === "04" ? (
+                    <p className="mt-6 max-w-4xl text-sm leading-7 text-[#C9C4B8]">
+                      E esta trilha continuara recebendo novos conteudos, avancando posteriormente para temas relacionados a Arquitetura em Cloud.
+                    </p>
+                  ) : null}
                 </div>
-              </div>
-            </FadeIn>
-
-            <div className="grid gap-4">
-              {aiPillars.map((item, index) => (
-                <FadeIn key={item.title} delayMs={index * 80}>
-                  <div className="border border-[#2D2D2D] p-6">
-                    <div className="font-mono text-xs uppercase tracking-[0.22em] text-[#B8F34A]">
-                      {String(index + 1).padStart(2, "0")}
-                    </div>
-                    <div className="mt-3 text-2xl font-bold tracking-[-0.03em] text-[#F6F3EC]">{item.title}</div>
-                    <p className="mt-3 text-base leading-7 text-[#C9C4B8]">{item.description}</p>
-                  </div>
-                </FadeIn>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b border-[#D7D3CA]">
-        <div className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24">
-          <FadeIn>
-            <SectionHeading
-              eyebrow="08 / CURRICULO"
-              title={
-                <>
-                  Conteudo organizado.
-                  <br />
-                  Sem catalogo solto.
-                </>
-              }
-              description="Voce enxerga a trilha inteira e entende o que ja esta pronto, o que esta crescendo e o que faz parte da evolucao da formacao."
-            />
-          </FadeIn>
-          <div className="mt-12">
-            {curriculumEntries.map((entry) => (
-              <CurriculumAccordion
-                key={entry.number}
-                {...entry}
-                pageKey={config.pageKey}
-                pagePath={config.pagePath}
-                pageTitle={config.pageTitle}
-              />
+              </FadeIn>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="border-b border-[#D64E2E] bg-[#FF5A36]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-5 py-16 md:grid-cols-[0.95fr,1.05fr] md:px-8 md:py-20">
+      <section className="border-b border-[#D7D3CA]">
+        <div className="mx-auto grid max-w-7xl gap-10 px-5 py-16 md:grid-cols-[1fr,0.95fr] md:px-8 md:py-24">
           <FadeIn>
-            <Eyebrow tone="orange">Lancamento / 31.08.2026</Eyebrow>
-            <h2 className="mt-4 max-w-3xl text-balance text-[2.3rem] font-black leading-[0.98] tracking-[-0.04em] text-[#151515] md:text-[4rem]">
-              Entre agora.
-              <br />
-              A formacao esta crescendo.
-            </h2>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-[#151515]/80">
-              O valor de lancamento existe porque esta e a fase de consolidacao da trilha completa em uma unica formacao.
-              Voce entra na etapa fundadora enquanto o conteudo continua evoluindo.
-            </p>
+            <SectionTitle
+              eyebrow="Programacao + Inteligencia Artificial"
+              title={<>A IA pode escrever codigo. Mas alguem ainda precisa saber o que fazer com ele.</>}
+              description="Ferramentas de Inteligencia Artificial podem acelerar muito o desenvolvimento. Mas existe uma grande diferenca entre receber um codigo pronto e conseguir entender se aquele codigo esta correto, adaptar uma regra, encontrar um problema ou transformar aquilo em uma aplicacao completa."
+            />
+            <div className="mt-6 text-lg font-semibold text-[#151515]">Por isso, a formacao nao comeca pela IA. Comeca pela programacao.</div>
+            <div className="mt-4 text-base leading-7 text-[#62625E]">
+              Voce constroi sua base, aprende como aplicacoes funcionam e entao passa a utilizar IA como uma ferramenta para acelerar o que ja sabe construir.
+            </div>
           </FadeIn>
-          <FadeIn delayMs={80}>
-            {config.launchActive ? (
-              <LaunchCountdown
-                endDate={config.launchEndDate}
-                itemClassName="rounded-none border-[#151515]/20 bg-[#151515]/6"
-                valueClassName="text-[#151515] text-4xl md:text-5xl"
-                labelClassName="text-[#151515]/70"
-              />
-            ) : (
-              <div className="border border-[#151515]/20 bg-[#151515]/6 p-6 text-base leading-7 text-[#151515]/80">
-                O periodo de lancamento termina em 31 de agosto de 2026, as 23:59:59, no horario de Sao Paulo.
+          <FadeIn delayMs={100}>
+            <div className="border border-[#D7D3CA] bg-[#ECE8DF] p-8">
+              <div className="space-y-6">
+                <div className="text-[2rem] font-black leading-tight tracking-[-0.04em]">Aprenda a programar.</div>
+                <div className="h-px bg-[#D7D3CA]" />
+                <div className="text-[2rem] font-black leading-tight tracking-[-0.04em]">Aprenda a construir.</div>
+                <div className="h-px bg-[#D7D3CA]" />
+                <div className="text-[2rem] font-black leading-tight tracking-[-0.04em] text-[#295CFF]">Use IA para ir alem.</div>
               </div>
-            )}
+            </div>
           </FadeIn>
         </div>
       </section>
 
-      <section id="offer" className="border-b border-[#2D2D2D] bg-[#171717]">
+      <section className="border-b border-[#D7D3CA] bg-[#ECE8DF]">
+        <div className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24">
+          <FadeIn>
+            <SectionTitle eyebrow="Para quem e" title={<>Esta formacao e para voce que...</>} />
+          </FadeIn>
+          <div className="mt-12 grid gap-3 sm:grid-cols-2">
+            {audienceItems.map((item) => (
+              <div key={item} className="border-t border-[#D7D3CA] pt-3 text-sm leading-6 text-[#151515]">
+                ✓ {item}
+              </div>
+            ))}
+          </div>
+          <FadeIn delayMs={120}>
+            <div className="mt-12 text-[1.8rem] font-black leading-tight tracking-[-0.04em]">Voce nao precisa chegar sabendo.</div>
+            <div className="mt-2 text-lg font-semibold text-[#151515]">Voce entra para aprender.</div>
+          </FadeIn>
+        </div>
+      </section>
+
+      <section className="border-b border-[#D7D3CA]">
+        <div className="mx-auto grid max-w-7xl gap-10 px-5 py-16 md:grid-cols-[0.95fr,1.05fr] md:px-8 md:py-24">
+          <FadeIn>
+            <div className="overflow-hidden border border-[#D7D3CA] bg-[#ECE8DF]">
+              <Image src="/imersao-ia-tech-stack.svg" alt="Ecossistema tecnico Plugando IA" width={1600} height={960} className="h-auto w-full" />
+            </div>
+          </FadeIn>
+          <FadeIn delayMs={100}>
+            <SectionTitle
+              eyebrow="Sobre o professor"
+              title={<>Quem vai te acompanhar durante a formacao</>}
+              description="Eu criei esta formacao pensando principalmente em quem olha para o desenvolvimento atual e nao sabe mais por onde comecar."
+            />
+            <div className="mt-6 space-y-4 text-base leading-7 text-[#62625E]">
+              <p>Hoje voce encontra C#, JavaScript, frameworks, Cloud, automacoes e Inteligencia Artificial disputando sua atencao ao mesmo tempo.</p>
+              <p>Minha proposta e diferente: comecar pela base e conectar as pecas aos poucos.</p>
+              <p>Em vez de aprender ferramentas isoladas, quero mostrar como elas aparecem na construcao de aplicacoes reais.</p>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      <section className="border-b border-[#D64E2E] bg-[#FF5A36]">
+        <div className="mx-auto grid max-w-7xl gap-10 px-5 py-16 md:grid-cols-[0.95fr,1.05fr] md:px-8 md:py-24">
+          <FadeIn>
+            <div className="font-mono text-xs uppercase tracking-[0.28em] text-[#151515]">Nova formacao 2026</div>
+            <h2 className="mt-4 max-w-4xl text-balance text-[2.4rem] font-black leading-[0.98] tracking-[-0.04em] text-[#151515] md:text-[4rem]">
+              A formacao cresceu. E esta e a condicao de lancamento.
+            </h2>
+            <div className="mt-5 max-w-3xl space-y-4 text-base leading-7 text-[#151515]/80">
+              <p>Os conteudos que antes estavam separados agora fazem parte de uma formacao organizada para acompanhar sua evolucao desde os fundamentos.</p>
+              <p>E essa formacao esta crescendo.</p>
+              <p>A nova trilha de Fundamentos de Arquitetura de Software ja comecou a ser adicionada e continuara evoluindo com novos conteudos.</p>
+              <p>Por isso, durante este lancamento, voce pode entrar por uma condicao especial.</p>
+            </div>
+          </FadeIn>
+          <FadeIn delayMs={100}>
+            <div className="border border-[#151515]/20 bg-[#151515]/5 p-8">
+              <div className="text-sm text-[#151515]/70">Preco oficial</div>
+              <div className="mt-2 text-xl line-through text-[#151515]/75">R$ {config.regularPrice.toFixed(0)}</div>
+              <div className="mt-6 text-sm text-[#151515]/70">Preco de lancamento</div>
+              <div className="mt-2 text-[3.4rem] font-black leading-none tracking-[-0.05em] text-[#151515] md:text-[4.8rem]">{priceLabel}</div>
+              <div className="mt-3 text-sm font-semibold text-[#151515]">Condicao valida ate 31/08/2026 as 23:59.</div>
+              <div className="mt-8">
+                {config.launchActive ? (
+                  <LaunchCountdown
+                    endDate={config.launchEndDate}
+                    itemClassName="rounded-none border-[#151515]/20 bg-[#151515]/6"
+                    valueClassName="text-[#151515] text-3xl md:text-4xl"
+                    labelClassName="text-[#151515]/70"
+                  />
+                ) : null}
+              </div>
+              <div className="mt-8">
+                <TrackedCheckoutButton
+                  href={config.checkoutUrl}
+                  label="QUERO ENTRAR NA FORMACAO →"
+                  pageKey={config.pageKey}
+                  pagePath={config.pagePath}
+                  pageTitle={config.pageTitle}
+                  value={config.activePrice}
+                  currency="BRL"
+                  customEvent="launch_cta_click"
+                  eventData={eventData}
+                  hideGlow
+                  className="w-full rounded-[8px] border border-[#151515] bg-[#151515] px-6 py-4 text-sm font-semibold uppercase tracking-[0.08em] text-[#F4F1EA] shadow-none hover:bg-black"
+                />
+              </div>
+              <div className="mt-3 text-sm text-[#151515]/75">Acesso online • Estude no seu ritmo</div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      <section id="pricing" className="border-b border-[#2D2D2D] bg-[#171717]">
         <div className="mx-auto grid max-w-7xl gap-12 px-5 py-16 md:grid-cols-[1fr,0.95fr] md:px-8 md:py-24">
           <FadeIn>
-            <SectionHeading
-              eyebrow="09 / OFERTA"
-              title="Tudo em uma unica formacao."
-              description="Uma jornada para sair da confusao inicial, construir software com mais criterio e chegar a backend, Full Stack, cloud, automacoes e IA dentro da mesma visao."
-              dark
-            />
+            <SectionTitle eyebrow="O que voce recebe" title={<>Uma formacao. Uma sequencia completa.</>} description="Ao entrar, voce tera acesso aos conteudos disponibilizados na formacao." light />
             <div className="mt-10 grid gap-3 sm:grid-cols-2">
-              {offerChecklist.map((item) => (
-                <div key={item} className="border border-[#2D2D2D] px-4 py-4 text-sm text-[#F6F3EC]">
-                  {item}
+              {receiveItems.map((item) => (
+                <div key={item} className="border-t border-[#2D2D2D] pt-3 text-sm leading-6 text-[#F6F3EC]">
+                  ✓ {item}
                 </div>
               ))}
             </div>
           </FadeIn>
-
           <FadeIn delayMs={120}>
-            <div id="pricing" className="border border-[#2D2D2D] p-8">
-              <div className="font-mono text-xs uppercase tracking-[0.24em] text-[#B8F34A]">Condicao de lancamento</div>
-              <div className="mt-6 text-sm text-[#8F8A80] line-through">R$ {config.regularPrice.toFixed(0)}</div>
-              <div className="mt-2 text-[3.4rem] font-black leading-none tracking-[-0.05em] text-[#F6F3EC] md:text-[4.8rem]">
-                {priceLabel}
-              </div>
-              <div className="mt-3 text-sm text-[#C9C4B8]">Prazo real ate 31/08/2026. Sem etapas desnecessarias antes do checkout.</div>
-
-              <div className="mt-8 grid gap-3 text-sm leading-7 text-[#C9C4B8]">
-                <div>Comece pelos fundamentos e avance ate aplicacoes completas.</div>
-                <div>Estude no seu ritmo, com acesso online.</div>
-                <div>Entre enquanto a trilha esta em expansao e crescimento.</div>
-              </div>
-
+            <div className="border border-[#2D2D2D] p-8">
+              <div className="text-sm text-[#C9C4B8]">Tudo por</div>
+              <div className="mt-2 text-sm text-[#8F8A80] line-through">R$ {config.regularPrice.toFixed(0)}</div>
+              <div className="mt-2 text-[3.4rem] font-black leading-none tracking-[-0.05em] text-[#F6F3EC] md:text-[4.8rem]">{priceLabel}</div>
+              <div className="mt-3 text-sm text-[#C9C4B8]">no lancamento.</div>
               <div className="mt-8">
                 <TrackedCheckoutButton
                   href={config.checkoutUrl}
-                  label="ENTRAR NA FORMACAO →"
+                  label="QUERO COMECAR AGORA →"
                   pageKey={config.pageKey}
                   pagePath={config.pagePath}
                   pageTitle={config.pageTitle}
@@ -797,80 +767,13 @@ export default async function CursoCompletoPage() {
         </div>
       </section>
 
-      <section className="border-b border-[#D7D3CA]">
-        <div className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24">
-          <FadeIn>
-            <SectionHeading
-              eyebrow="10 / PROVAS"
-              title={
-                <>
-                  O que voce vai construir
-                  <br />
-                  precisa parecer real.
-                </>
-              }
-              description="Em vez de prometer no vazio, a pagina mostra referencias tecnicas, stack e composicoes visuais do ecossistema Plugando IA."
-            />
-          </FadeIn>
-          <div className="mt-12 grid gap-6 lg:grid-cols-2">
-            {proofItems.map((item, index) => (
-              <FadeIn key={item.title} delayMs={index * 80}>
-                <div className="overflow-hidden border border-[#D7D3CA] bg-[#ECE8DF]">
-                  <Image src={item.image} alt={item.title} width={1600} height={960} className="h-auto w-full" />
-                  <div className="border-t border-[#D7D3CA] p-6">
-                    <div className="font-mono text-xs uppercase tracking-[0.22em] text-[#62625E]">
-                      Prova visual / {String(index + 1).padStart(2, "0")}
-                    </div>
-                    <div className="mt-3 text-2xl font-bold tracking-[-0.03em] text-[#151515]">{item.title}</div>
-                    <p className="mt-3 text-base leading-7 text-[#62625E]">{item.description}</p>
-                  </div>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b border-[#D7D3CA] bg-[#ECE8DF]">
-        <div className="mx-auto max-w-5xl px-5 py-16 md:px-8 md:py-20">
-          <FadeIn>
-            <SectionHeading
-              eyebrow="11 / DECISAO"
-              title="As duvidas que costumam travar a entrada."
-              description="Se voce esta comecando, estas costumam ser as perguntas mais comuns antes de assumir uma trilha longa."
-            />
-          </FadeIn>
-          <div className="mt-10 grid gap-4">
-            {objections.slice(0, 4).map((item) => (
-              <TrackedAccordion
-                key={item.question}
-                title={item.question}
-                pageKey={config.pageKey}
-                pagePath={config.pagePath}
-                pageTitle={config.pageTitle}
-                eventName="objection_open"
-                className="rounded-none border-x-0 border-b border-t-0 border-[#D7D3CA] bg-transparent px-0 py-5 open:bg-transparent"
-                titleClassName="text-lg font-semibold text-[#151515]"
-                contentClassName="text-[#62625E] text-base leading-7"
-                iconClassName="h-9 w-9 rounded-none border-[#D7D3CA] bg-transparent text-[#151515]"
-              >
-                {item.answer}
-              </TrackedAccordion>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section id="faq" className="border-b border-[#D7D3CA]">
         <div className="mx-auto max-w-5xl px-5 py-16 md:px-8 md:py-24">
           <FadeIn>
-            <div className="font-mono text-xs uppercase tracking-[0.28em] text-[#295CFF]">FAQ / 09</div>
-            <h2 className="mt-4 text-balance text-[2.3rem] font-black leading-[0.98] tracking-[-0.04em] text-[#151515] md:text-[4rem]">
-              Respostas para decidir com clareza.
-            </h2>
+            <SectionTitle eyebrow="FAQ" title={<>Respostas para decidir com clareza.</>} />
           </FadeIn>
           <div className="mt-12 grid gap-4">
-            {faq.slice(0, 9).map((item) => (
+            {faqItems.map((item) => (
               <TrackedAccordion
                 key={item.question}
                 title={item.question}
@@ -893,21 +796,23 @@ export default async function CursoCompletoPage() {
       <section className="border-b border-[#D7D3CA]">
         <div className="mx-auto max-w-5xl px-5 py-16 text-center md:px-8 md:py-24">
           <FadeIn>
-            <Eyebrow>12 / PROXIMO PASSO</Eyebrow>
-            <h2 className="mt-4 text-balance text-[2.6rem] font-black leading-[0.98] tracking-[-0.05em] text-[#151515] md:text-[4.6rem]">
-              Voce nao precisa dominar tudo hoje.
-              <br />
-              Precisa comecar pela etapa certa.
+            <h2 className="text-balance text-[2.6rem] font-black leading-[0.98] tracking-[-0.05em] text-[#151515] md:text-[4.8rem]">
+              Voce nao precisa aprender tudo hoje.
             </h2>
-            <div className="mt-6 text-sm text-[#62625E] line-through">R$ {config.regularPrice.toFixed(0)}</div>
-            <div className="mt-2 text-[3.2rem] font-black leading-none tracking-[-0.05em] text-[#151515] md:text-[4.8rem]">
-              {priceLabel}
+            <div className="mt-3 text-[1.5rem] font-black leading-tight tracking-[-0.04em] text-[#151515] md:text-[2.2rem]">Precisa comecar pela primeira etapa.</div>
+            <div className="mx-auto mt-8 max-w-3xl space-y-3 text-base leading-7 text-[#62625E]">
+              <p>Comece pelos fundamentos.</p>
+              <p>Construa seu primeiro projeto.</p>
+              <p>Depois o proximo.</p>
+              <p>E continue evoluindo ate entender como aplicacoes modernas, Cloud e Inteligencia Artificial se conectam.</p>
             </div>
-            <div className="mt-2 font-mono text-xs uppercase tracking-[0.24em] text-[#FF5A36]">Ate 31 AGO 2026</div>
+            <div className="mt-8 text-sm text-[#62625E] line-through">R$ {config.regularPrice.toFixed(0)}</div>
+            <div className="mt-2 text-[3.2rem] font-black leading-none tracking-[-0.05em] text-[#151515] md:text-[4.8rem]">{priceLabel}</div>
+            <div className="mt-2 font-mono text-xs uppercase tracking-[0.24em] text-[#FF5A36]">Preco de lancamento ate 31/08</div>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <TrackedCheckoutButton
                 href={config.checkoutUrl}
-                label="QUERO ENTRAR AGORA →"
+                label="QUERO COMECAR MINHA FORMACAO →"
                 pageKey={config.pageKey}
                 pagePath={config.pagePath}
                 pageTitle={config.pageTitle}
@@ -918,8 +823,8 @@ export default async function CursoCompletoPage() {
                 hideGlow
                 className="rounded-[8px] border border-[#295CFF] bg-[#295CFF] px-6 py-4 text-sm font-semibold uppercase tracking-[0.08em] text-white shadow-none hover:bg-[#1E49D6]"
               />
-              <SecondaryLink href="#pricing">REVER A OFERTA</SecondaryLink>
             </div>
+            <div className="mt-4 text-sm text-[#62625E]">Formacao Full Stack + IA — Plugando IA</div>
           </FadeIn>
         </div>
       </section>
