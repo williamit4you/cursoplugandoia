@@ -313,13 +313,13 @@ export const howItWorksItems = [
 
 export const proofItems: CourseProof[] = [
   {
-    title: "Visual de stack e construcao",
-    description: "Asset real do projeto usado para representar a conexao entre codigo, automacao e produto.",
+    title: "Stack, codigo e construcao",
+    description: "Visual real do ecossistema Plugando IA conectando backend, automacao e produto.",
     image: "/plugando-ia-hero.svg",
   },
   {
     title: "Mapa tecnico da jornada",
-    description: "Arte ja presente no repositorio com foco em stack, integracao e evolucao tecnica.",
+    description: "Visao da trilha e das conexoes tecnicas entre fundamentos, software e IA.",
     image: "/imersao-ia-tech-stack.svg",
   },
 ];
@@ -366,15 +366,15 @@ export const faq: CourseFaq[] = [
   },
   {
     question: "Arquitetura ja esta disponivel?",
-    answer: "A pagina apresenta Fundamentos de Arquitetura de Software como conteudo disponivel agora e sinaliza a expansao futura de forma transparente.",
+    answer: "Sim. A formacao ja inclui fundamentos de Arquitetura de Software e continua evoluindo com novos aprofundamentos.",
   },
   {
     question: "Novas aulas serao adicionadas?",
-    answer: "A pagina comunica que a formacao esta em expansao, especialmente na frente de arquitetura e evolucao futura da trilha.",
+    answer: "Sim. A formacao esta crescendo e novas aulas serao adicionadas ao longo da expansao da trilha.",
   },
   {
     question: "Arquitetura Cloud ja esta disponivel?",
-    answer: "Nao. A pagina apresenta isso como a proxima evolucao planejada da trilha, sem tratar como conteudo atual.",
+    answer: "Ainda nao. Essa e uma das proximas evolucoes planejadas para a trilha.",
   },
   {
     question: "Aprendo frontend?",
@@ -410,19 +410,19 @@ export const faq: CourseFaq[] = [
   },
   {
     question: "Como funciona o acesso?",
-    answer: "A pagina informa apenas que o acesso e online e que voce pode estudar no seu ritmo.",
+    answer: "O acesso e online para voce estudar no seu ritmo.",
   },
   {
     question: "Tem suporte?",
-    answer: "Essa informacao nao foi encontrada nas configuracoes atuais da pagina, por isso nao esta sendo prometida aqui.",
+    answer: "Se esse ponto for decisivo para voce, vale confirmar no checkout ou no canal oficial antes de entrar.",
   },
   {
     question: "Tem certificado?",
-    answer: "Essa informacao nao foi encontrada nas configuracoes atuais da pagina, por isso nao esta sendo prometida aqui.",
+    answer: "Se houver certificacao ativa no momento da compra, isso sera informado oficialmente no ambiente comercial.",
   },
   {
     question: "Tem garantia?",
-    answer: "Nenhuma garantia foi confirmada nas configuracoes atuais da pagina, por isso essa secao nao faz promessas comerciais adicionais.",
+    answer: "As condicoes comerciais validas aparecem no momento da compra. Considere sempre o que estiver informado oficialmente no checkout.",
   },
   {
     question: "Qual e o valor?",

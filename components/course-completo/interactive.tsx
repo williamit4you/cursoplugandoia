@@ -51,7 +51,19 @@ async function trackCustomEvent(
   });
 }
 
-export function LaunchCountdown({ endDate }: { endDate: string }) {
+export function LaunchCountdown({
+  endDate,
+  className,
+  itemClassName,
+  valueClassName,
+  labelClassName,
+}: {
+  endDate: string;
+  className?: string;
+  itemClassName?: string;
+  valueClassName?: string;
+  labelClassName?: string;
+}) {
   const target = useMemo(() => new Date(endDate).getTime(), [endDate]);
   const [now, setNow] = useState(() => Date.now());
 
@@ -77,14 +89,18 @@ export function LaunchCountdown({ endDate }: { endDate: string }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className={`grid grid-cols-2 gap-3 sm:grid-cols-4 ${className ?? ""}`}>
       {items.map((item) => (
         <div
           key={item.label}
-          className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-4 text-center shadow-[0_0_0_1px_rgba(255,255,255,0.03)]"
+          className={`rounded-[20px] border border-white/10 bg-white/5 px-4 py-4 text-center shadow-[0_0_0_1px_rgba(255,255,255,0.03)] ${itemClassName ?? ""}`}
         >
-          <div className="text-2xl font-extrabold tracking-tight text-white md:text-3xl">{item.value}</div>
-          <div className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-400">{item.label}</div>
+          <div className={`text-2xl font-extrabold tracking-tight text-white md:text-3xl ${valueClassName ?? ""}`}>
+            {item.value}
+          </div>
+          <div className={`mt-1 text-xs uppercase tracking-[0.18em] text-slate-400 ${labelClassName ?? ""}`}>
+            {item.label}
+          </div>
         </div>
       ))}
     </div>
@@ -102,6 +118,8 @@ type TrackedCheckoutButtonProps = {
   customEvent: string;
   variant?: "primary" | "secondary";
   eventData?: MetaPixelEventData;
+  className?: string;
+  hideGlow?: boolean;
 };
 
 export function TrackedCheckoutButton({
@@ -115,6 +133,8 @@ export function TrackedCheckoutButton({
   customEvent,
   variant = "primary",
   eventData,
+  className,
+  hideGlow,
 }: TrackedCheckoutButtonProps) {
   async function handleClick(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault();
@@ -148,7 +168,16 @@ export function TrackedCheckoutButton({
     }, 150);
   }
 
-  return <CTAButton href={href} label={label} onClick={handleClick} variant={variant} />;
+  return (
+    <CTAButton
+      href={href}
+      label={label}
+      onClick={handleClick}
+      variant={variant}
+      className={className}
+      hideGlow={hideGlow}
+    />
+  );
 }
 
 export function SectionViewTracker({
@@ -206,6 +235,10 @@ export function TrackedAccordion({
   pagePath,
   pageTitle,
   eventName,
+  className,
+  titleClassName,
+  contentClassName,
+  iconClassName,
 }: {
   title: string;
   children: ReactNode;
@@ -213,6 +246,10 @@ export function TrackedAccordion({
   pagePath: string;
   pageTitle: string;
   eventName: string;
+  className?: string;
+  titleClassName?: string;
+  contentClassName?: string;
+  iconClassName?: string;
 }) {
   async function handleToggle(open: boolean) {
     if (!open) {
@@ -226,16 +263,18 @@ export function TrackedAccordion({
 
   return (
     <details
-      className="group rounded-[22px] border border-white/10 bg-white/5 p-6 open:bg-white/[0.07]"
+      className={`group rounded-[22px] border border-white/10 bg-white/5 p-6 open:bg-white/[0.07] ${className ?? ""}`}
       onToggle={(event) => void handleToggle((event.currentTarget as HTMLDetailsElement).open)}
     >
       <summary className="flex cursor-pointer list-none items-start justify-between gap-6">
-        <span className="text-left text-base font-semibold text-white">{title}</span>
-        <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition group-open:rotate-45">
+        <span className={`text-left text-base font-semibold text-white ${titleClassName ?? ""}`}>{title}</span>
+        <span
+          className={`mt-1 flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition group-open:rotate-45 ${iconClassName ?? ""}`}
+        >
           +
         </span>
       </summary>
-      <div className="mt-4 text-sm leading-relaxed text-slate-300">{children}</div>
+      <div className={`mt-4 text-sm leading-relaxed text-slate-300 ${contentClassName ?? ""}`}>{children}</div>
     </details>
   );
 }
@@ -250,6 +289,11 @@ export function MobileStickyCTA({
   pageTitle,
   value,
   currency,
+  className,
+  titleClassName,
+  priceClassName,
+  buttonClassName,
+  hideGlow,
 }: {
   title: string;
   priceLabel: string;
@@ -260,13 +304,20 @@ export function MobileStickyCTA({
   pageTitle: string;
   value: number;
   currency: string;
+  className?: string;
+  titleClassName?: string;
+  priceClassName?: string;
+  buttonClassName?: string;
+  hideGlow?: boolean;
 }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#070b14]/95 px-4 py-3 backdrop-blur md:hidden">
+    <div
+      className={`fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#070b14]/95 px-4 py-3 backdrop-blur md:hidden ${className ?? ""}`}
+    >
       <div className="mx-auto flex max-w-6xl items-center gap-3">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold text-white">{title}</div>
-          <div className="text-xs text-amber-300">{priceLabel}</div>
+          <div className={`truncate text-sm font-semibold text-white ${titleClassName ?? ""}`}>{title}</div>
+          <div className={`text-xs text-amber-300 ${priceClassName ?? ""}`}>{priceLabel}</div>
         </div>
         <div className="shrink-0">
           <TrackedCheckoutButton
@@ -278,6 +329,8 @@ export function MobileStickyCTA({
             value={value}
             currency={currency}
             customEvent="mobile_sticky_cta_click"
+            className={buttonClassName}
+            hideGlow={hideGlow}
             eventData={{
               content_name: title,
               content_category: "Curso",
