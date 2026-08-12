@@ -14,14 +14,14 @@ import { resolveSalesPageMetaPixelId } from "@/lib/salesPagePixel";
 export const metadata = {
   title: "Arquitetura de Software para Iniciantes | Plugando IA",
   description:
-    "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem está começando na programação.",
+    "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem estÃ¡ comeÃ§ando na programaÃ§Ã£o.",
   alternates: {
     canonical: "/curso-completo",
   },
   openGraph: {
     title: "Arquitetura de Software para Iniciantes | Plugando IA",
     description:
-      "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem está começando na programação.",
+      "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem estÃ¡ comeÃ§ando na programaÃ§Ã£o.",
     url: "/curso-completo",
     siteName: "Plugando IA",
     type: "website",
@@ -30,7 +30,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "Arquitetura de Software para Iniciantes | Plugando IA",
     description:
-      "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem está começando na programação.",
+      "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem estÃ¡ comeÃ§ando na programaÃ§Ã£o.",
   },
 };
 
@@ -39,7 +39,7 @@ const tracks = [
     kicker: "TRILHA 01",
     meta: "75 AULAS",
     title: "Fundamentos de C#",
-    description: "Construa uma base forte antes de avançar.",
+    description: "Construa uma base forte antes de avanÃ§ar.",
     items: [
       "Logica, variaveis e estruturas de decisao",
       "Orientacao a objetos e interfaces",
@@ -48,24 +48,24 @@ const tracks = [
     ],
     curriculumTitle: "Aprenda a programar com C#",
     curriculumIntro:
-      "Comece do zero e construa a base necessária para desenvolver aplicações com segurança.",
+      "Comece do zero e construa a base necessÃ¡ria para desenvolver aplicaÃ§Ãµes com seguranÃ§a.",
     curriculumItems: [
-      "Lógica de programação.",
+      "LÃ³gica de programaÃ§Ã£o.",
       "Fundamentos do C# e do .NET.",
-      "Variáveis, condições, repetições e coleções.",
-      "Orientação a objetos.",
-      "Interfaces, herança e abstração.",
-      "Manipulação de dados, arquivos e LINQ.",
+      "VariÃ¡veis, condiÃ§Ãµes, repetiÃ§Ãµes e coleÃ§Ãµes.",
+      "OrientaÃ§Ã£o a objetos.",
+      "Interfaces, heranÃ§a e abstraÃ§Ã£o.",
+      "ManipulaÃ§Ã£o de dados, arquivos e LINQ.",
     ],
     curriculumOutcome:
-      "Resultado da trilha: você entenderá os principais conceitos da programação e estará preparado para construir sua primeira aplicação.",
-    curriculumButton: "Ver os 5 módulos desta trilha",
+      "Resultado da trilha: vocÃª entenderÃ¡ os principais conceitos da programaÃ§Ã£o e estarÃ¡ preparado para construir sua primeira aplicaÃ§Ã£o.",
+    curriculumButton: "Ver os 5 mÃ³dulos desta trilha",
   },
   {
     kicker: "TRILHA 02",
     meta: "PROJETO REAL",
     title: "Web API com .NET",
-    description: "Transforme a base em uma aplicação completa.",
+    description: "Transforme a base em uma aplicaÃ§Ã£o completa.",
     items: [
       "Modelagem e Entity Framework Core",
       "CRUD, relacionamentos e migrations",
@@ -74,25 +74,25 @@ const tracks = [
     ],
     curriculumTitle: "Construa uma Web API completa",
     curriculumIntro:
-      "Transforme seus conhecimentos em uma aplicação real utilizando .NET e banco de dados.",
+      "Transforme seus conhecimentos em uma aplicaÃ§Ã£o real utilizando .NET e banco de dados.",
     curriculumItems: [
-      "Criação e modelagem de uma API.",
+      "CriaÃ§Ã£o e modelagem de uma API.",
       "Entity Framework Core.",
       "PostgreSQL ou SQL Server.",
       "CRUD completo.",
       "Relacionamentos entre entidades.",
-      "Autenticação com JWT e Identity.",
-      "Claims, políticas e autorização.",
+      "AutenticaÃ§Ã£o com JWT e Identity.",
+      "Claims, polÃ­ticas e autorizaÃ§Ã£o.",
     ],
     curriculumOutcome:
-      "Resultado da trilha: você construirá uma API completa, conectada ao banco de dados e protegida por autenticação.",
-    curriculumButton: "Ver os 4 módulos desta trilha",
+      "Resultado da trilha: vocÃª construirÃ¡ uma API completa, conectada ao banco de dados e protegida por autenticaÃ§Ã£o.",
+    curriculumButton: "Ver os 4 mÃ³dulos desta trilha",
   },
   {
     kicker: "TRILHA 03",
     meta: "FORMACAO CENTRAL",
     title: "Arquitetura de Software",
-    description: "Aprenda a tomar decisões e organizar sistemas.",
+    description: "Aprenda a tomar decisÃµes e organizar sistemas.",
     items: [
       "Requisitos, restricoes e atributos de qualidade",
       "Coesao, acoplamento e responsabilidades",
@@ -102,52 +102,52 @@ const tracks = [
     featured: true,
     curriculumTitle: "Entenda Arquitetura de Software",
     curriculumIntro:
-      "Aprenda a organizar sistemas e compreender as decisões existentes por trás de aplicações profissionais.",
+      "Aprenda a organizar sistemas e compreender as decisÃµes existentes por trÃ¡s de aplicaÃ§Ãµes profissionais.",
     curriculumItems: [
       "Fundamentos de arquitetura de software.",
-      "Requisitos e regras de negócio.",
+      "Requisitos e regras de negÃ³cio.",
       "Escalabilidade, disponibilidade e desempenho.",
-      "Alta coesão e baixo acoplamento.",
+      "Alta coesÃ£o e baixo acoplamento.",
       "SOLID, DRY, KISS e YAGNI.",
-      "Arquitetura em camadas e monólitos.",
+      "Arquitetura em camadas e monÃ³litos.",
       "REST, GraphQL, gRPC e Webhooks.",
     ],
     curriculumOutcome:
-      "Resultado da trilha: você deixará de enxergar apenas arquivos e códigos isolados e começará a compreender o sistema como um todo.",
-    curriculumButton: "Ver os 6 módulos desta trilha",
+      "Resultado da trilha: vocÃª deixarÃ¡ de enxergar apenas arquivos e cÃ³digos isolados e comeÃ§arÃ¡ a compreender o sistema como um todo.",
+    curriculumButton: "Ver os 6 mÃ³dulos desta trilha",
   },
   {
     kicker: "TRILHA 04",
     meta: "CLOUD",
     title: "Fundamentos de AWS",
-    description: "Entenda onde suas aplicações vivem e escalam.",
+    description: "Entenda onde suas aplicaÃ§Ãµes vivem e escalam.",
     items: [
       "EC2, redes, volumes e seguranca",
       "VPC, RDS, S3 e IAM",
       "Elastic Beanstalk e Auto Scaling",
       "Serverless com AWS Lambda",
     ],
-    curriculumTitle: "Publique sua aplicação na AWS",
+    curriculumTitle: "Publique sua aplicaÃ§Ã£o na AWS",
     curriculumIntro:
-      "Conheça os principais serviços de nuvem utilizados para hospedar, proteger e escalar aplicações.",
+      "ConheÃ§a os principais serviÃ§os de nuvem utilizados para hospedar, proteger e escalar aplicaÃ§Ãµes.",
     curriculumItems: [
-      "EC2 e modelos de contratação.",
+      "EC2 e modelos de contrataÃ§Ã£o.",
       "Linux, Windows e acesso remoto.",
-      "Redes, VPC e segurança.",
+      "Redes, VPC e seguranÃ§a.",
       "RDS, PostgreSQL e backups.",
       "S3, IAM e SNS.",
       "Elastic Beanstalk e Auto Scaling.",
       "Serverless, Lambda e API Gateway.",
     ],
     curriculumOutcome:
-      "Resultado da trilha: você entenderá como uma aplicação sai do computador e funciona em uma infraestrutura de nuvem.",
-    curriculumButton: "Ver os 4 módulos desta trilha",
+      "Resultado da trilha: vocÃª entenderÃ¡ como uma aplicaÃ§Ã£o sai do computador e funciona em uma infraestrutura de nuvem.",
+    curriculumButton: "Ver os 4 mÃ³dulos desta trilha",
   },
 ];
 
 const architectureGroups = [
   {
-    title: "01. Fundamentos e decisões",
+    title: "01. Fundamentos e decisÃµes",
     items: [
       "O que e arquitetura de software",
       "Tipos de arquiteto",
@@ -155,7 +155,7 @@ const architectureGroups = [
       "O papel do arquiteto",
       "Requisitos funcionais e nao funcionais",
       "Regras de negocio",
-      "Restrições técnicas e financeiras",
+      "RestriÃ§Ãµes tÃ©cnicas e financeiras",
     ],
     open: true,
   },
@@ -164,7 +164,7 @@ const architectureGroups = [
     items: ["Escalabilidade", "Disponibilidade", "Desempenho", "Seguranca", "Manutenibilidade", "Testabilidade"],
   },
   {
-    title: "03. Princípios de bom design",
+    title: "03. PrincÃ­pios de bom design",
     items: [
       "Alta coesao e baixo acoplamento",
       "Separacao de responsabilidades",
@@ -199,46 +199,46 @@ const audienceCards = [
   {
     index: "01",
     title: "Quem esta comecando",
-    description: "Quer aprender programação com uma sequência clara e sem pular fundamentos importantes.",
+    description: "Quer aprender programaÃ§Ã£o com uma sequÃªncia clara e sem pular fundamentos importantes.",
   },
   {
     index: "02",
-    title: "Quem já faz cursos",
-    description: "Conhece comandos isolados, mas ainda não consegue enxergar como um sistema completo e organizado.",
+    title: "Quem jÃ¡ faz cursos",
+    description: "Conhece comandos isolados, mas ainda nÃ£o consegue enxergar como um sistema completo e organizado.",
   },
   {
     index: "03",
-    title: "Dev em evolução",
-    description: "Já cria aplicações e quer melhorar o vocabulário, a organização do código e as decisões técnicas.",
+    title: "Dev em evoluÃ§Ã£o",
+    description: "JÃ¡ cria aplicaÃ§Ãµes e quer melhorar o vocabulÃ¡rio, a organizaÃ§Ã£o do cÃ³digo e as decisÃµes tÃ©cnicas.",
   },
 ];
 
 const methodSteps = [
   {
     title: "Aprenda o conceito",
-    description: "Termos técnicos explicados com linguagem direta.",
+    description: "Termos tÃ©cnicos explicados com linguagem direta.",
   },
   {
-    title: "Veja no código",
-    description: "Exemplos em C# e .NET para ligar teoria e prática.",
+    title: "Veja no cÃ³digo",
+    description: "Exemplos em C# e .NET para ligar teoria e prÃ¡tica.",
   },
   {
-    title: "Conecte as decisões",
-    description: "Entenda como cada escolha afeta manutenção, desempenho e evolução.",
+    title: "Conecte as decisÃµes",
+    description: "Entenda como cada escolha afeta manutenÃ§Ã£o, desempenho e evoluÃ§Ã£o.",
   },
 ];
 
 const bonusCards = [
   {
     tag: "BONUS 01",
-    title: "N8N Básico",
+    title: "N8N BÃ¡sico",
     description:
-      "Workflows, credenciais, triggers, ações, condições, nó Code e requisições HTTP para criar suas primeiras automações.",
+      "Workflows, credenciais, triggers, aÃ§Ãµes, condiÃ§Ãµes, nÃ³ Code e requisiÃ§Ãµes HTTP para criar suas primeiras automaÃ§Ãµes.",
   },
   {
     tag: "BONUS 02",
     title: "Agentes de IA",
-    description: "Fundamentos de agentes, memória, ferramentas e construção prática do seu primeiro agente inteligente.",
+    description: "Fundamentos de agentes, memÃ³ria, ferramentas e construÃ§Ã£o prÃ¡tica do seu primeiro agente inteligente.",
   },
   {
     tag: "BONUS 03",
@@ -248,34 +248,34 @@ const bonusCards = [
   {
     tag: "BONUS 04",
     title: "Next.js",
-    description: "Rotas, layouts, Server e Client Components, cache, middleware, Server Actions, formulários e criação de APIs.",
+    description: "Rotas, layouts, Server e Client Components, cache, middleware, Server Actions, formulÃ¡rios e criaÃ§Ã£o de APIs.",
   },
   {
     tag: "BONUS 05",
     title: "Agentes de IA com Next.js",
-    description: "Crie a interface, conecte-se à OpenAI e desenvolva um ChatClient com contexto e memória utilizando código.",
+    description: "Crie a interface, conecte-se Ã  OpenAI e desenvolva um ChatClient com contexto e memÃ³ria utilizando cÃ³digo.",
   },
   {
     tag: "BONUS 06",
-    title: "Criação de SaaS com IA",
-    description: "Do prompt inicial ao sistema hospedado: banco PostgreSQL, trial, assinaturas, pagamentos, Docker, GitHub e publicação.",
+    title: "CriaÃ§Ã£o de SaaS com IA",
+    description: "Do prompt inicial ao sistema hospedado: banco PostgreSQL, trial, assinaturas, pagamentos, Docker, GitHub e publicaÃ§Ã£o.",
   },
 ];
 
 const premiumBonusTopics = [
   "Fundamentos de Information Retrieval",
-  "Tokenização e OpenAI Tokenizer",
-  "Modelos clássicos de recuperação",
+  "TokenizaÃ§Ã£o e OpenAI Tokenizer",
+  "Modelos clÃ¡ssicos de recuperaÃ§Ã£o",
   "RAG mitigando riscos da IA",
   "Arquitetura Transformers",
   "Large Language Models",
   "Retrieval-Augmented Generation",
   "Vector Databases e embeddings",
-  "Estratégias de indexação",
+  "EstratÃ©gias de indexaÃ§Ã£o",
   "Engenharia de agentes de IA",
   "APIs profissionais com FastAPI",
-  "Avaliação e qualidade em LLMs",
-  "Guardrails, segurança e confiabilidade",
+  "AvaliaÃ§Ã£o e qualidade em LLMs",
+  "Guardrails, seguranÃ§a e confiabilidade",
 ];
 
 const offerItems = [
@@ -283,7 +283,7 @@ const offerItems = [
   "Web API com .NET",
   "Arquitetura de software",
   "Fundamentos de AWS",
-  "7 cursos bônus de IA",
+  "7 cursos bÃ´nus de IA",
   "Mais de 200 aulas",
 ];
 
@@ -291,32 +291,32 @@ const faqItems = [
   {
     question: "Preciso saber programar para acompanhar?",
     answer:
-      "Não. A jornada começa com lógica, linguagem C# e orientação a objetos. Quem já conhece o básico pode avançar diretamente para as trilhas seguintes.",
+      "NÃ£o. A jornada comeÃ§a com lÃ³gica, linguagem C# e orientaÃ§Ã£o a objetos. Quem jÃ¡ conhece o bÃ¡sico pode avanÃ§ar diretamente para as trilhas seguintes.",
   },
   {
-    question: "O curso é apenas sobre teoria?",
+    question: "O curso Ã© apenas sobre teoria?",
     answer:
-      "Não. A teoria de arquitetura é conectada a exemplos em C#, à construção de uma Web API completa com .NET e aos serviços usados para executar aplicações na AWS.",
+      "NÃ£o. A teoria de arquitetura Ã© conectada a exemplos em C#, Ã  construÃ§Ã£o de uma Web API completa com .NET e aos serviÃ§os usados para executar aplicaÃ§Ãµes na AWS.",
   },
   {
-    question: "Arquitetura não é um assunto apenas para desenvolvedores sênior?",
+    question: "Arquitetura nÃ£o Ã© um assunto apenas para desenvolvedores sÃªnior?",
     answer:
-      "Não. Compreender responsabilidades, acoplamento, coesão e organização desde cedo evita vícios e acelera a evolução profissional.",
+      "NÃ£o. Compreender responsabilidades, acoplamento, coesÃ£o e organizaÃ§Ã£o desde cedo evita vÃ­cios e acelera a evoluÃ§Ã£o profissional.",
   },
   {
     question: "O que vou conseguir entender ao final?",
     answer:
-      "Você terá base para explicar as partes de uma aplicação, criar APIs mais organizadas, compreender princípios SOLID, comparar modelos arquiteturais e reconhecer formas de integração entre sistemas.",
+      "VocÃª terÃ¡ base para explicar as partes de uma aplicaÃ§Ã£o, criar APIs mais organizadas, compreender princÃ­pios SOLID, comparar modelos arquiteturais e reconhecer formas de integraÃ§Ã£o entre sistemas.",
   },
   {
-    question: "Posso começar pela trilha de arquitetura?",
+    question: "Posso comeÃ§ar pela trilha de arquitetura?",
     answer:
-      "Sim. A formação foi organizada em uma sequência recomendada, mas você pode usar as trilhas conforme seu nível atual e revisar C# ou Web API quando sentir necessidade.",
+      "Sim. A formaÃ§Ã£o foi organizada em uma sequÃªncia recomendada, mas vocÃª pode usar as trilhas conforme seu nÃ­vel atual e revisar C# ou Web API quando sentir necessidade.",
   },
   {
-    question: "Os cursos de inteligência artificial estão incluídos?",
+    question: "Os cursos de inteligÃªncia artificial estÃ£o incluÃ­dos?",
     answer:
-      "Sim. Neste lote, os cursos de n8n, agentes de IA, site com RAG, Next.js, agentes com código, criação de SaaS e Arquitetando o Futuro com LLMs e RAG entram como bônus gratuitos. O pacote é avaliado separadamente em R$ 200.",
+      "Sim. Neste lote, os cursos de n8n, agentes de IA, site com RAG, Next.js, agentes com cÃ³digo, criaÃ§Ã£o de SaaS e Arquitetando o Futuro com LLMs e RAG entram como bÃ´nus gratuitos. O pacote Ã© avaliado separadamente em R$ 200.",
   },
 ];
 
@@ -361,7 +361,7 @@ export default async function CursoCompletoPage() {
       <SectionViewTracker selectorId="faq" pageKey={config.pageKey} pagePath={config.pagePath} pageTitle={config.pageTitle} eventName="faq_view" />
 
       <div className="course-topbar">
-        ÚLTIMAS VAGAS DO LOTE: de {regularPriceLabel} por {priceLabel} + pacote de bônus gratuito
+        ÃšLTIMAS VAGAS DO LOTE: de {regularPriceLabel} por {priceLabel} + pacote de bÃ´nus gratuito
       </div>
 
       <nav className="course-nav">
@@ -370,7 +370,7 @@ export default async function CursoCompletoPage() {
             Plugando<span>IA</span> / Arquitetura
           </Link>
           <a className="course-nav-link" href="#conteudo">
-            Ver conteúdo do curso
+            Ver conteÃºdo do curso
           </a>
         </div>
       </nav>
@@ -380,16 +380,16 @@ export default async function CursoCompletoPage() {
           <div>
             <Eyebrow>Arquitetura de software para iniciantes</Eyebrow>
             <h1>
-              Comece no código. Aprenda a <em>pensar como profissional.</em>
+              Comece no cÃ³digo. Aprenda a <em>pensar como profissional.</em>
             </h1>
             <p className="course-lead">
               Uma jornada passo a passo para aprender C#, construir APIs reais e entender como sistemas bem organizados
-              são planejados, com um pacote especial de cursos de IA incluído gratuitamente.
+              sÃ£o planejados, com um pacote especial de cursos de IA incluÃ­do gratuitamente.
             </p>
             <div className="course-hero-actions">
               <TrackedCheckoutButton
                 href={config.checkoutUrl}
-                label={`Quero começar por ${priceLabel}`}
+                label={`Quero comeÃ§ar por ${priceLabel}`}
                 pageKey={config.pageKey}
                 pagePath={config.pagePath}
                 pageTitle={config.pageTitle}
@@ -405,13 +405,13 @@ export default async function CursoCompletoPage() {
               </a>
             </div>
             <div className="course-hero-proof">
-              <span>Do básico à arquitetura</span>
+              <span>Do bÃ¡sico Ã  arquitetura</span>
               <span>Exemplos em C# e .NET</span>
-              <span>Mais de 200 aulas com os bônus</span>
+              <span>Mais de 200 aulas com os bÃ´nus</span>
             </div>
           </div>
 
-          <div className="course-code-card" aria-label="Ilustração das camadas de uma arquitetura de software">
+          <div className="course-code-card" aria-label="IlustraÃ§Ã£o das camadas de uma arquitetura de software">
             <div className="course-code-top">
               <i className="course-dot" />
               <i className="course-dot" />
@@ -440,7 +440,7 @@ export default async function CursoCompletoPage() {
               </div>
             </div>
             <div className="course-card-caption">
-              Você não vai apenas copiar código. Vai entender onde cada parte se encaixa.
+              VocÃª nÃ£o vai apenas copiar cÃ³digo. Vai entender onde cada parte se encaixa.
             </div>
           </div>
         </div>
@@ -454,7 +454,7 @@ export default async function CursoCompletoPage() {
           </div>
           <div className="course-stat">
             <strong>200+ aulas</strong>
-            <span>incluindo os cursos bônus</span>
+            <span>incluindo os cursos bÃ´nus</span>
           </div>
           <div className="course-stat">
             <strong>C# + .NET</strong>
@@ -470,28 +470,28 @@ export default async function CursoCompletoPage() {
       <section className="course-section">
         <div className="course-container course-intro-grid">
           <div>
-            <Eyebrow>O problema não é você</Eyebrow>
-            <h2>Arquitetura parece difícil quando explicam pelo final.</h2>
+            <Eyebrow>O problema nÃ£o Ã© vocÃª</Eyebrow>
+            <h2>Arquitetura parece difÃ­cil quando explicam pelo final.</h2>
             <p className="course-copy">
-              Muitos conteúdos começam falando de padrões complexos antes de mostrar o básico. Aqui, você percorre o
-              caminho na ordem certa: linguagem, aplicação, organização e decisões de arquitetura.
+              Muitos conteÃºdos comeÃ§am falando de padrÃµes complexos antes de mostrar o bÃ¡sico. Aqui, vocÃª percorre o
+              caminho na ordem certa: linguagem, aplicaÃ§Ã£o, organizaÃ§Ã£o e decisÃµes de arquitetura.
             </p>
           </div>
           <div className="course-before-after">
             <article className="course-ba-card">
               <small>Antes</small>
               <ul>
-                <li>Copia códigos sem entender a estrutura</li>
-                <li>Não sabe onde colocar cada responsabilidade</li>
+                <li>Copia cÃ³digos sem entender a estrutura</li>
+                <li>NÃ£o sabe onde colocar cada responsabilidade</li>
                 <li>Se perde em termos como SOLID e camadas</li>
-                <li>Acha que arquitetura é só para sênior</li>
+                <li>Acha que arquitetura Ã© sÃ³ para sÃªnior</li>
               </ul>
             </article>
             <article className="course-ba-card course-ba-card-after">
               <small>Depois</small>
               <ul>
-                <li>Entende a função de cada parte do sistema</li>
-                <li>Constrói APIs com mais organização</li>
+                <li>Entende a funÃ§Ã£o de cada parte do sistema</li>
+                <li>ConstrÃ³i APIs com mais organizaÃ§Ã£o</li>
                 <li>Analisa escolhas e seus trade-offs</li>
                 <li>Conversa sobre arquitetura com clareza</li>
               </ul>
@@ -511,7 +511,7 @@ export default async function CursoCompletoPage() {
                 ao sistema completo.
               </h2>
             </div>
-            <p>As aulas que você já recebe foram organizadas como uma formação única. Cada etapa prepara a próxima.</p>
+            <p>As aulas que vocÃª jÃ¡ recebe foram organizadas como uma formaÃ§Ã£o Ãºnica. Cada etapa prepara a prÃ³xima.</p>
           </div>
 
           <div className="course-tracks">
@@ -531,30 +531,6 @@ export default async function CursoCompletoPage() {
               </article>
             ))}
           </div>
-          <div className="course-curriculum-panel">
-            <div className="course-curriculum-heading">Confira a grade completa da formação</div>
-            <div className="course-curriculum-list">
-              {tracks.map((track) => (
-                <details key={`${track.title}-curriculum`} className="course-curriculum-item">
-                  <summary className="course-curriculum-summary">
-                    <span>{track.curriculumButton}</span>
-                  </summary>
-                  <div className="course-curriculum-body">
-                    <div className="course-curriculum-kicker">{track.kicker}</div>
-                    <h3>{track.curriculumTitle}</h3>
-                    <p>{track.curriculumIntro}</p>
-                    <div className="course-curriculum-subtitle">Você aprenderá:</div>
-                    <ul>
-                      {track.curriculumItems.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                    <p className="course-curriculum-outcome">{track.curriculumOutcome}</p>
-                  </div>
-                </details>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
 
@@ -562,9 +538,9 @@ export default async function CursoCompletoPage() {
         <div className="course-container course-architecture-list">
           <div className="course-sticky-copy">
             <Eyebrow>Por dentro da trilha central</Eyebrow>
-            <h2>Arquitetura sem enrolação.</h2>
+            <h2>Arquitetura sem enrolaÃ§Ã£o.</h2>
             <p className="course-copy">
-              Você começa pelo significado das decisões arquiteturais e avança até as formas de comunicação entre
+              VocÃª comeÃ§a pelo significado das decisÃµes arquiteturais e avanÃ§a atÃ© as formas de comunicaÃ§Ã£o entre
               sistemas.
             </p>
           </div>
@@ -588,11 +564,11 @@ export default async function CursoCompletoPage() {
 
       <section className="course-section course-audience">
         <div className="course-container">
-          <Eyebrow>Para quem é</Eyebrow>
+          <Eyebrow>Para quem Ã©</Eyebrow>
           <h2>
-            Você não precisa chegar pronto.
+            VocÃª nÃ£o precisa chegar pronto.
             <br />
-            O curso existe para preparar você.
+            O curso existe para preparar vocÃª.
           </h2>
           <div className="course-audience-grid">
             {audienceCards.map((card) => (
@@ -628,7 +604,7 @@ export default async function CursoCompletoPage() {
               "Arquitetura nao comeca em um diagrama. Comeca quando voce entende por que o codigo foi organizado daquela
               maneira."
             </p>
-            <small>- A ideia que guia esta formação</small>
+            <small>- A ideia que guia esta formaÃ§Ã£o</small>
           </aside>
         </div>
       </section>
@@ -637,21 +613,21 @@ export default async function CursoCompletoPage() {
         <div className="course-container">
           <div className="course-bonus-head">
             <div>
-              <Eyebrow>Bônus especial deste lote</Eyebrow>
+              <Eyebrow>BÃ´nus especial deste lote</Eyebrow>
               <h2>
                 Entre pela arquitetura.
                 <br />
-                Avance também para a IA.
+                Avance tambÃ©m para a IA.
               </h2>
               <p className="course-copy">
-                Além da formação principal, você recebe cursos complementares para criar automações, agentes,
-                aplicações com IA e até um SaaS completo.
+                AlÃ©m da formaÃ§Ã£o principal, vocÃª recebe cursos complementares para criar automaÃ§Ãµes, agentes,
+                aplicaÃ§Ãµes com IA e atÃ© um SaaS completo.
               </p>
             </div>
             <div className="course-bonus-value">
               <s>Valor separado: R$ 200</s>
-              <strong>Hoje: grátis</strong>
-              <span>Incluído na sua matrícula neste lote.</span>
+              <strong>Hoje: grÃ¡tis</strong>
+              <span>IncluÃ­do na sua matrÃ­cula neste lote.</span>
             </div>
           </div>
 
@@ -668,7 +644,7 @@ export default async function CursoCompletoPage() {
               <span className="course-bonus-tag">BONUS PREMIUM</span>
               <h3>Arquitetando o Futuro com LLMs e RAG</h3>
               <p>
-                Uma formação avançada para entender a arquitetura por trás de aplicações modernas com inteligência
+                Uma formaÃ§Ã£o avanÃ§ada para entender a arquitetura por trÃ¡s de aplicaÃ§Ãµes modernas com inteligÃªncia
                 artificial.
               </p>
               <ul className="course-bonus-topics">
@@ -685,11 +661,11 @@ export default async function CursoCompletoPage() {
         <div className="course-container">
           <div className="course-offer-card">
             <div className="course-offer-main">
-              <Eyebrow>Comece sua formação</Eyebrow>
+              <Eyebrow>Comece sua formaÃ§Ã£o</Eyebrow>
               <h2>Uma base completa para construir e compreender software.</h2>
               <p>
-                Você recebe uma jornada que conecta os fundamentos da programação ao raciocínio arquitetural e ainda
-                leva todo o pacote de IA como bônus.
+                VocÃª recebe uma jornada que conecta os fundamentos da programaÃ§Ã£o ao raciocÃ­nio arquitetural e ainda
+                leva todo o pacote de IA como bÃ´nus.
               </p>
               <div className="course-included">
                 {offerItems.map((item) => (
@@ -701,13 +677,13 @@ export default async function CursoCompletoPage() {
             <div className="course-price-box">
               <span className="course-discount-pill">ULTIMAS VAGAS NESTE VALOR</span>
               <div className="course-original-price">
-                Preço original: <s>{regularPriceLabel}</s>
+                PreÃ§o original: <s>{regularPriceLabel}</s>
               </div>
               <div className="course-price">
                 <sup>R$</sup>
                 {config.activePrice.toFixed(2).replace(".", ",")}
               </div>
-              <div className="course-price-note">Pagamento único + R$ 200 em bônus gratuitos</div>
+              <div className="course-price-note">Pagamento Ãºnico + R$ 200 em bÃ´nus gratuitos</div>
               <TrackedCheckoutButton
                 href={config.checkoutUrl}
                 label="Quero entrar para o curso"
@@ -721,7 +697,7 @@ export default async function CursoCompletoPage() {
                 hideGlow
                 className="course-btn course-price-cta"
               />
-              <div className="course-safe-note">Você será direcionado para o ambiente de pagamento.</div>
+              <div className="course-safe-note">VocÃª serÃ¡ direcionado para o ambiente de pagamento.</div>
             </div>
           </div>
         </div>
@@ -729,8 +705,8 @@ export default async function CursoCompletoPage() {
 
       <section className="course-section" id="faq">
         <div className="course-container course-faq">
-          <Eyebrow>Dúvidas frequentes</Eyebrow>
-          <h2>Antes de começar.</h2>
+          <Eyebrow>DÃºvidas frequentes</Eyebrow>
+          <h2>Antes de comeÃ§ar.</h2>
           <div className="course-faq-list">
             {faqItems.map((item) => (
               <TrackedAccordion
@@ -757,7 +733,7 @@ export default async function CursoCompletoPage() {
           <div>
             <strong>Plugando IA</strong>
             <br />
-            Formação em Arquitetura de Software
+            FormaÃ§Ã£o em Arquitetura de Software
           </div>
           <div className="course-footer-links">
             <Link href="/terms">Termos</Link>
@@ -1003,7 +979,7 @@ export default async function CursoCompletoPage() {
           background: rgba(200, 237, 117, 0.14);
           color: var(--course-lime);
           font-weight: 900;
-          content: "✓";
+          content: "âœ“";
         }
 
         .course-code-card {
@@ -1190,7 +1166,7 @@ export default async function CursoCompletoPage() {
 
         .course-ba-card-after li::before {
           color: var(--course-lime);
-          content: "✓";
+          content: "âœ“";
         }
 
         .course-journey {
@@ -1270,569 +1246,6 @@ export default async function CursoCompletoPage() {
 
         .course-track li {
           margin: 8px 0;
-        }
-
-        .course-curriculum-panel {
-          margin-top: 34px;
-          border-top: 1px solid rgba(255, 255, 255, 0.14);
-          padding-top: 28px;
-        }
-
-        .course-curriculum-heading {
-          margin-bottom: 18px;
-          font-size: 1.1rem;
-          font-weight: 800;
-          color: #f8fafc;
-        }
-
-        .course-curriculum-list {
-          display: grid;
-          gap: 12px;
-        }
-
-        .course-curriculum-item {
-          overflow: hidden;
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 18px;
-          background: rgba(255, 255, 255, 0.04);
-        }
-
-        .course-curriculum-summary {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 20px;
-          padding: 18px 22px;
-          cursor: pointer;
-          list-style: none;
-          font-weight: 800;
-          color: #f8fafc;
-        }
-
-        .course-curriculum-summary::-webkit-details-marker {
-          display: none;
-        }
-
-        .course-curriculum-summary::after {
-          color: var(--course-lime);
-          font-size: 1.1rem;
-          content: "+";
-        }
-
-        .course-curriculum-item[open] .course-curriculum-summary::after {
-          content: "-";
-        }
-
-        .course-curriculum-body {
-          padding: 0 22px 22px;
-          color: #dce7e2;
-        }
-
-        .course-curriculum-kicker {
-          margin-bottom: 10px;
-          color: var(--course-lime);
-          font: 800 0.76rem ui-monospace, monospace;
-          letter-spacing: 0.08em;
-        }
-
-        .course-curriculum-body h3 {
-          margin-bottom: 12px;
-          font-size: 1.7rem;
-          color: #ffffff;
-        }
-
-        .course-curriculum-body p {
-          margin-bottom: 14px;
-          line-height: 1.65;
-        }
-
-        .course-curriculum-subtitle {
-          margin-bottom: 10px;
-          font-weight: 800;
-          color: #ffffff;
-        }
-
-        .course-curriculum-body ul {
-          margin: 0 0 14px;
-          padding-left: 20px;
-        }
-
-        .course-curriculum-body li {
-          margin: 7px 0;
-          color: #dce7e2;
-        }
-
-        .course-curriculum-outcome {
-          margin-bottom: 0 !important;
-          color: #ffffff;
-          font-weight: 600;
-        }
-
-        .course-architecture-list {
-          display: grid;
-          grid-template-columns: 0.7fr 1.3fr;
-          gap: 75px;
-          align-items: start;
-        }
-
-        .course-sticky-copy {
-          position: sticky;
-          top: 30px;
-        }
-
-        .course-lesson-groups {
-          display: grid;
-          gap: 13px;
-        }
-
-        .course-details {
-          overflow: hidden;
-          border: 1px solid var(--course-line);
-          border-radius: 15px;
-          background: var(--course-paper);
-        }
-
-        .course-details summary {
-          display: flex;
-          justify-content: space-between;
-          gap: 20px;
-          padding: 21px 22px;
-          cursor: pointer;
-          list-style: none;
-          font-weight: 850;
-        }
-
-        .course-details summary::-webkit-details-marker {
-          display: none;
-        }
-
-        .course-details summary::after {
-          color: var(--course-coral);
-          font-size: 1.3rem;
-          content: "+";
-        }
-
-        .course-details[open] summary::after {
-          content: "-";
-        }
-
-        .course-detail-body {
-          padding: 0 22px 22px;
-          color: var(--course-muted);
-        }
-
-        .course-detail-body ul {
-          columns: 2;
-          padding-left: 20px;
-        }
-
-        .course-detail-body li {
-          margin: 8px 0;
-          break-inside: avoid;
-        }
-
-        .course-audience {
-          background: #e9e1d2;
-        }
-
-        .course-audience-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 17px;
-          margin-top: 45px;
-        }
-
-        .course-person {
-          padding: 28px;
-          border-top: 4px solid var(--course-coral);
-          border-radius: 0 0 17px 17px;
-          background: rgba(255, 255, 255, 0.58);
-        }
-
-        .course-person-icon {
-          margin-bottom: 30px;
-          font-size: 1.7rem;
-        }
-
-        .course-person p {
-          color: var(--course-muted);
-          line-height: 1.6;
-        }
-
-        .course-method-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 80px;
-          align-items: center;
-        }
-
-        .course-steps {
-          counter-reset: steps;
-        }
-
-        .course-step {
-          display: grid;
-          grid-template-columns: 52px 1fr;
-          gap: 18px;
-          padding: 23px 0;
-          border-bottom: 1px solid var(--course-line);
-          counter-increment: steps;
-        }
-
-        .course-step::before {
-          display: grid;
-          place-items: center;
-          width: 48px;
-          height: 48px;
-          border-radius: 50%;
-          background: var(--course-forest);
-          color: var(--course-lime);
-          font: 800 0.86rem ui-monospace, monospace;
-          content: "0" counter(steps);
-        }
-
-        .course-step p {
-          margin: 7px 0 0;
-          color: var(--course-muted);
-          line-height: 1.6;
-        }
-
-        .course-quote-card {
-          padding: 46px;
-          transform: rotate(-1deg);
-          border-radius: var(--course-radius);
-          background: var(--course-lime);
-        }
-
-        .course-quote-card p {
-          font-size: clamp(1.55rem, 3vw, 2.5rem);
-          font-weight: 850;
-          line-height: 1.15;
-          letter-spacing: -0.04em;
-        }
-
-        .course-quote-card small {
-          font-weight: 800;
-        }
-
-        .course-offer {
-          background: var(--course-forest);
-          color: white;
-        }
-
-        .course-bonuses {
-          background: #e9e1d2;
-        }
-
-        .course-bonus-head {
-          display: grid;
-          grid-template-columns: 1fr 0.7fr;
-          gap: 55px;
-          align-items: end;
-          margin-bottom: 45px;
-        }
-
-        .course-bonus-value {
-          justify-self: end;
-          max-width: 340px;
-          padding: 25px;
-          transform: rotate(1deg);
-          border-radius: 18px;
-          background: var(--course-lime);
-        }
-
-        .course-bonus-value s {
-          display: block;
-          color: #526059;
-          font-weight: 800;
-        }
-
-        .course-bonus-value strong {
-          display: block;
-          margin: 8px 0;
-          font-size: 2.25rem;
-          line-height: 1;
-          letter-spacing: -0.05em;
-        }
-
-        .course-bonus-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 16px;
-        }
-
-        .course-bonus-card {
-          display: flex;
-          min-height: 280px;
-          flex-direction: column;
-          padding: 29px;
-          border: 1px solid var(--course-line);
-          border-radius: 21px;
-          background: var(--course-paper);
-        }
-
-        .course-bonus-card.is-special {
-          grid-column: 1 / -1;
-          background: var(--course-forest);
-          color: white;
-        }
-
-        .course-bonus-tag {
-          align-self: flex-start;
-          margin-bottom: 35px;
-          padding: 6px 10px;
-          border-radius: 99px;
-          background: rgba(242, 125, 82, 0.14);
-          color: #b84926;
-          font: 850 0.72rem ui-monospace, monospace;
-          letter-spacing: 0.06em;
-        }
-
-        .course-bonus-card.is-special .course-bonus-tag {
-          background: var(--course-lime);
-          color: var(--course-ink);
-        }
-
-        .course-bonus-card h3 {
-          margin-bottom: 11px;
-          font-size: 1.75rem;
-        }
-
-        .course-bonus-card p {
-          margin-bottom: 0;
-          color: var(--course-muted);
-        }
-
-        .course-bonus-card.is-special p {
-          color: #c8d6d0;
-        }
-
-        .course-bonus-topics {
-          columns: 2;
-          column-gap: 45px;
-          margin: 25px 0 0;
-          padding-left: 20px;
-          color: #e1ebe7;
-        }
-
-        .course-bonus-topics li {
-          margin-bottom: 10px;
-          break-inside: avoid;
-        }
-
-        .course-offer-card {
-          display: grid;
-          grid-template-columns: 1fr 0.75fr;
-          overflow: hidden;
-          border-radius: 30px;
-          background: var(--course-paper);
-          color: var(--course-ink);
-          box-shadow: 0 35px 90px rgba(0, 0, 0, 0.22);
-        }
-
-        .course-offer-main {
-          padding: clamp(32px, 6vw, 70px);
-        }
-
-        .course-included {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px 25px;
-          margin: 30px 0;
-        }
-
-        .course-included span::before {
-          margin-right: 9px;
-          color: #4f7c29;
-          font-weight: 900;
-          content: "✓";
-        }
-
-        .course-price-box {
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          padding: clamp(32px, 5vw, 60px);
-          background: var(--course-coral);
-        }
-
-        .course-discount-pill {
-          align-self: flex-start;
-          padding: 6px 10px;
-          border-radius: 99px;
-          background: var(--course-lime);
-          font-size: 0.78rem;
-          font-weight: 900;
-        }
-
-        .course-original-price {
-          margin-top: 15px;
-          font-weight: 850;
-        }
-
-        .course-original-price s {
-          opacity: 0.68;
-        }
-
-        .course-price {
-          margin: 13px 0;
-          font-size: clamp(3.6rem, 7vw, 6.2rem);
-          font-weight: 950;
-          line-height: 0.95;
-          letter-spacing: -0.075em;
-        }
-
-        .course-price sup {
-          font-size: 0.35em;
-          vertical-align: top;
-          letter-spacing: -0.02em;
-        }
-
-        .course-price-note {
-          margin-bottom: 27px;
-          font-weight: 700;
-        }
-
-        .course-price-cta {
-          background: var(--course-ink) !important;
-          color: white !important;
-        }
-
-        .course-safe-note {
-          margin-top: 14px;
-          text-align: center;
-          font-size: 0.78rem;
-          opacity: 0.76;
-        }
-
-        .course-faq {
-          max-width: 850px;
-        }
-
-        .course-faq-list {
-          display: grid;
-          gap: 10px;
-        }
-
-        .course-faq-item {
-          border: 1px solid var(--course-line) !important;
-          border-radius: 15px !important;
-          background: var(--course-paper) !important;
-          padding: 0 !important;
-        }
-
-        .course-faq-title {
-          color: var(--course-ink) !important;
-          font-size: 1rem;
-          font-weight: 850 !important;
-          padding: 21px 22px 0 22px;
-        }
-
-        .course-faq-content {
-          color: var(--course-muted) !important;
-          padding: 0 22px 22px 22px;
-        }
-
-        .course-faq-icon {
-          margin: 18px 22px 0 0;
-          border: 0 !important;
-          background: transparent !important;
-          color: var(--course-coral) !important;
-        }
-
-        .course-footer {
-          padding: 42px 0;
-          background: var(--course-ink);
-          color: #aebeb7;
-          font-size: 0.86rem;
-        }
-
-        .course-footer-inner {
-          display: flex;
-          justify-content: space-between;
-          gap: 30px;
-        }
-
-        .course-footer-inner strong {
-          color: white;
-        }
-
-        .course-footer-links {
-          display: flex;
-          gap: 18px;
-        }
-
-        .course-mobile-cta {
-          border-top-color: rgba(20, 34, 29, 0.12) !important;
-          background: rgba(255, 253, 248, 0.96) !important;
-        }
-
-        .course-mobile-cta-title {
-          color: var(--course-ink) !important;
-        }
-
-        .course-mobile-cta-price {
-          color: var(--course-coral) !important;
-        }
-
-        .course-mobile-cta-button {
-          min-height: 44px !important;
-          padding: 0 18px !important;
-          border-radius: 12px !important;
-          background: var(--course-ink) !important;
-          color: white !important;
-          font-size: 0.78rem !important;
-          font-weight: 800 !important;
-          text-transform: uppercase;
-        }
-
-        @media (max-width: 900px) {
-          .course-hero {
-            min-height: auto;
-            padding-top: 125px;
-          }
-
-          .course-hero-grid,
-          .course-intro-grid,
-          .course-architecture-list,
-          .course-method-grid,
-          .course-offer-card,
-          .course-bonus-head {
-            grid-template-columns: 1fr;
-          }
-
-          .course-bonus-value {
-            justify-self: start;
-          }
-
-          .course-code-card {
-            max-width: 620px;
-            transform: none;
-          }
-
-          .course-stats-inner {
-            grid-template-columns: 1fr 1fr;
-          }
-
-          .course-stat:nth-child(2) {
-            border-right: 0;
-          }
-
-          .course-stat:nth-child(-n + 2) {
-            border-bottom: 1px solid var(--course-line);
-          }
-
-          .course-section-head {
-            display: block;
-          }
-
-          .course-sticky-copy {
-            position: static;
-          }
-
-          .course-audience-grid {
-            grid-template-columns: 1fr;
-          }
         }
 
         @media (max-width: 650px) {
