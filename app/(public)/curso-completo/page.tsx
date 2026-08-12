@@ -14,14 +14,14 @@ import { resolveSalesPageMetaPixelId } from "@/lib/salesPagePixel";
 export const metadata = {
   title: "Arquitetura de Software para Iniciantes | Plugando IA",
   description:
-    "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem esta comecando na programacao.",
+    "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem está começando na programação.",
   alternates: {
     canonical: "/curso-completo",
   },
   openGraph: {
     title: "Arquitetura de Software para Iniciantes | Plugando IA",
     description:
-      "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem esta comecando na programacao.",
+      "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem está começando na programação.",
     url: "/curso-completo",
     siteName: "Plugando IA",
     type: "website",
@@ -30,7 +30,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "Arquitetura de Software para Iniciantes | Plugando IA",
     description:
-      "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem esta comecando na programacao.",
+      "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem está começando na programação.",
   },
 };
 
@@ -39,7 +39,7 @@ const tracks = [
     kicker: "TRILHA 01",
     meta: "75 AULAS",
     title: "Fundamentos de C#",
-    description: "Construa uma base forte antes de avancar.",
+    description: "Construa uma base forte antes de avançar.",
     items: [
       "Logica, variaveis e estruturas de decisao",
       "Orientacao a objetos e interfaces",
@@ -51,7 +51,7 @@ const tracks = [
     kicker: "TRILHA 02",
     meta: "PROJETO REAL",
     title: "Web API com .NET",
-    description: "Transforme a base em uma aplicacao completa.",
+    description: "Transforme a base em uma aplicação completa.",
     items: [
       "Modelagem e Entity Framework Core",
       "CRUD, relacionamentos e migrations",
@@ -63,7 +63,7 @@ const tracks = [
     kicker: "TRILHA 03",
     meta: "FORMACAO CENTRAL",
     title: "Arquitetura de Software",
-    description: "Aprenda a tomar decisoes e organizar sistemas.",
+    description: "Aprenda a tomar decisões e organizar sistemas.",
     items: [
       "Requisitos, restricoes e atributos de qualidade",
       "Coesao, acoplamento e responsabilidades",
@@ -76,7 +76,7 @@ const tracks = [
     kicker: "TRILHA 04",
     meta: "CLOUD",
     title: "Fundamentos de AWS",
-    description: "Entenda onde suas aplicacoes vivem e escalam.",
+    description: "Entenda onde suas aplicações vivem e escalam.",
     items: [
       "EC2, redes, volumes e seguranca",
       "VPC, RDS, S3 e IAM",
@@ -88,7 +88,7 @@ const tracks = [
 
 const architectureGroups = [
   {
-    title: "01. Fundamentos e decisoes",
+    title: "01. Fundamentos e decisões",
     items: [
       "O que e arquitetura de software",
       "Tipos de arquiteto",
@@ -96,7 +96,7 @@ const architectureGroups = [
       "O papel do arquiteto",
       "Requisitos funcionais e nao funcionais",
       "Regras de negocio",
-      "Restricoes tecnicas e financeiras",
+      "Restrições técnicas e financeiras",
     ],
     open: true,
   },
@@ -105,7 +105,7 @@ const architectureGroups = [
     items: ["Escalabilidade", "Disponibilidade", "Desempenho", "Seguranca", "Manutenibilidade", "Testabilidade"],
   },
   {
-    title: "03. Principios de bom design",
+    title: "03. Princípios de bom design",
     items: [
       "Alta coesao e baixo acoplamento",
       "Separacao de responsabilidades",
@@ -140,46 +140,46 @@ const audienceCards = [
   {
     index: "01",
     title: "Quem esta comecando",
-    description: "Quer aprender programacao com uma sequencia clara e sem pular fundamentos importantes.",
+    description: "Quer aprender programação com uma sequência clara e sem pular fundamentos importantes.",
   },
   {
     index: "02",
-    title: "Quem ja faz cursos",
-    description: "Conhece comandos isolados, mas ainda nao consegue enxergar como um sistema completo e organizado.",
+    title: "Quem já faz cursos",
+    description: "Conhece comandos isolados, mas ainda não consegue enxergar como um sistema completo e organizado.",
   },
   {
     index: "03",
-    title: "Dev em evolucao",
-    description: "Ja cria aplicacoes e quer melhorar o vocabulario, a organizacao do codigo e as decisoes tecnicas.",
+    title: "Dev em evolução",
+    description: "Já cria aplicações e quer melhorar o vocabulário, a organização do código e as decisões técnicas.",
   },
 ];
 
 const methodSteps = [
   {
     title: "Aprenda o conceito",
-    description: "Termos tecnicos explicados com linguagem direta.",
+    description: "Termos técnicos explicados com linguagem direta.",
   },
   {
-    title: "Veja no codigo",
-    description: "Exemplos em C# e .NET para ligar teoria e pratica.",
+    title: "Veja no código",
+    description: "Exemplos em C# e .NET para ligar teoria e prática.",
   },
   {
-    title: "Conecte as decisoes",
-    description: "Entenda como cada escolha afeta manutencao, desempenho e evolucao.",
+    title: "Conecte as decisões",
+    description: "Entenda como cada escolha afeta manutenção, desempenho e evolução.",
   },
 ];
 
 const bonusCards = [
   {
     tag: "BONUS 01",
-    title: "N8N Basico",
+    title: "N8N Básico",
     description:
-      "Workflows, credenciais, triggers, acoes, condicoes, no Code e requisicoes HTTP para criar suas primeiras automacoes.",
+      "Workflows, credenciais, triggers, ações, condições, nó Code e requisições HTTP para criar suas primeiras automações.",
   },
   {
     tag: "BONUS 02",
     title: "Agentes de IA",
-    description: "Fundamentos de agentes, memoria, ferramentas e construcao pratica do seu primeiro agente inteligente.",
+    description: "Fundamentos de agentes, memória, ferramentas e construção prática do seu primeiro agente inteligente.",
   },
   {
     tag: "BONUS 03",
@@ -189,34 +189,34 @@ const bonusCards = [
   {
     tag: "BONUS 04",
     title: "Next.js",
-    description: "Rotas, layouts, Server e Client Components, cache, middleware, Server Actions, formularios e criacao de APIs.",
+    description: "Rotas, layouts, Server e Client Components, cache, middleware, Server Actions, formulários e criação de APIs.",
   },
   {
     tag: "BONUS 05",
     title: "Agentes de IA com Next.js",
-    description: "Crie a interface, conecte-se a OpenAI e desenvolva um ChatClient com contexto e memoria utilizando codigo.",
+    description: "Crie a interface, conecte-se à OpenAI e desenvolva um ChatClient com contexto e memória utilizando código.",
   },
   {
     tag: "BONUS 06",
-    title: "Criacao de SaaS com IA",
-    description: "Do prompt inicial ao sistema hospedado: banco PostgreSQL, trial, assinaturas, pagamentos, Docker, GitHub e publicacao.",
+    title: "Criação de SaaS com IA",
+    description: "Do prompt inicial ao sistema hospedado: banco PostgreSQL, trial, assinaturas, pagamentos, Docker, GitHub e publicação.",
   },
 ];
 
 const premiumBonusTopics = [
   "Fundamentos de Information Retrieval",
-  "Tokenizacao e OpenAI Tokenizer",
-  "Modelos classicos de recuperacao",
+  "Tokenização e OpenAI Tokenizer",
+  "Modelos clássicos de recuperação",
   "RAG mitigando riscos da IA",
   "Arquitetura Transformers",
   "Large Language Models",
   "Retrieval-Augmented Generation",
   "Vector Databases e embeddings",
-  "Estrategias de indexacao",
+  "Estratégias de indexação",
   "Engenharia de agentes de IA",
   "APIs profissionais com FastAPI",
-  "Avaliacao e qualidade em LLMs",
-  "Guardrails, seguranca e confiabilidade",
+  "Avaliação e qualidade em LLMs",
+  "Guardrails, segurança e confiabilidade",
 ];
 
 const offerItems = [
@@ -224,7 +224,7 @@ const offerItems = [
   "Web API com .NET",
   "Arquitetura de software",
   "Fundamentos de AWS",
-  "7 cursos bonus de IA",
+  "7 cursos bônus de IA",
   "Mais de 200 aulas",
 ];
 
@@ -232,32 +232,32 @@ const faqItems = [
   {
     question: "Preciso saber programar para acompanhar?",
     answer:
-      "Nao. A jornada comeca com logica, linguagem C# e orientacao a objetos. Quem ja conhece o basico pode avancar diretamente para as trilhas seguintes.",
+      "Não. A jornada começa com lógica, linguagem C# e orientação a objetos. Quem já conhece o básico pode avançar diretamente para as trilhas seguintes.",
   },
   {
-    question: "O curso e apenas sobre teoria?",
+    question: "O curso é apenas sobre teoria?",
     answer:
-      "Nao. A teoria de arquitetura e conectada a exemplos em C#, a construcao de uma Web API completa com .NET e aos servicos usados para executar aplicacoes na AWS.",
+      "Não. A teoria de arquitetura é conectada a exemplos em C#, à construção de uma Web API completa com .NET e aos serviços usados para executar aplicações na AWS.",
   },
   {
-    question: "Arquitetura nao e um assunto apenas para desenvolvedores senior?",
+    question: "Arquitetura não é um assunto apenas para desenvolvedores sênior?",
     answer:
-      "Nao. Compreender responsabilidades, acoplamento, coesao e organizacao desde cedo evita vicios e acelera a evolucao profissional.",
+      "Não. Compreender responsabilidades, acoplamento, coesão e organização desde cedo evita vícios e acelera a evolução profissional.",
   },
   {
     question: "O que vou conseguir entender ao final?",
     answer:
-      "Voce tera base para explicar as partes de uma aplicacao, criar APIs mais organizadas, compreender principios SOLID, comparar modelos arquiteturais e reconhecer formas de integracao entre sistemas.",
+      "Você terá base para explicar as partes de uma aplicação, criar APIs mais organizadas, compreender princípios SOLID, comparar modelos arquiteturais e reconhecer formas de integração entre sistemas.",
   },
   {
-    question: "Posso comecar pela trilha de arquitetura?",
+    question: "Posso começar pela trilha de arquitetura?",
     answer:
-      "Sim. A formacao foi organizada em uma sequencia recomendada, mas voce pode usar as trilhas conforme seu nivel atual e revisar C# ou Web API quando sentir necessidade.",
+      "Sim. A formação foi organizada em uma sequência recomendada, mas você pode usar as trilhas conforme seu nível atual e revisar C# ou Web API quando sentir necessidade.",
   },
   {
-    question: "Os cursos de inteligencia artificial estao incluidos?",
+    question: "Os cursos de inteligência artificial estão incluídos?",
     answer:
-      "Sim. Neste lote, os cursos de n8n, agentes de IA, site com RAG, Next.js, agentes com codigo, criacao de SaaS e Arquitetando o Futuro com LLMs e RAG entram como bonus gratuitos. O pacote e avaliado separadamente em R$ 200.",
+      "Sim. Neste lote, os cursos de n8n, agentes de IA, site com RAG, Next.js, agentes com código, criação de SaaS e Arquitetando o Futuro com LLMs e RAG entram como bônus gratuitos. O pacote é avaliado separadamente em R$ 200.",
   },
 ];
 
@@ -302,7 +302,7 @@ export default async function CursoCompletoPage() {
       <SectionViewTracker selectorId="faq" pageKey={config.pageKey} pagePath={config.pagePath} pageTitle={config.pageTitle} eventName="faq_view" />
 
       <div className="course-topbar">
-        ULTIMAS VAGAS DO LOTE: de {regularPriceLabel} por {priceLabel} + pacote de bonus gratuito
+        ÚLTIMAS VAGAS DO LOTE: de {regularPriceLabel} por {priceLabel} + pacote de bônus gratuito
       </div>
 
       <nav className="course-nav">
@@ -311,7 +311,7 @@ export default async function CursoCompletoPage() {
             Plugando<span>IA</span> / Arquitetura
           </Link>
           <a className="course-nav-link" href="#conteudo">
-            Ver conteudo do curso
+            Ver conteúdo do curso
           </a>
         </div>
       </nav>
@@ -321,16 +321,16 @@ export default async function CursoCompletoPage() {
           <div>
             <Eyebrow>Arquitetura de software para iniciantes</Eyebrow>
             <h1>
-              Comece no codigo. Aprenda a <em>pensar como profissional.</em>
+              Comece no código. Aprenda a <em>pensar como profissional.</em>
             </h1>
             <p className="course-lead">
               Uma jornada passo a passo para aprender C#, construir APIs reais e entender como sistemas bem organizados
-              sao planejados, com um pacote especial de cursos de IA incluido gratuitamente.
+              são planejados, com um pacote especial de cursos de IA incluído gratuitamente.
             </p>
             <div className="course-hero-actions">
               <TrackedCheckoutButton
                 href={config.checkoutUrl}
-                label={`Quero comecar por ${priceLabel}`}
+                label={`Quero começar por ${priceLabel}`}
                 pageKey={config.pageKey}
                 pagePath={config.pagePath}
                 pageTitle={config.pageTitle}
@@ -346,13 +346,13 @@ export default async function CursoCompletoPage() {
               </a>
             </div>
             <div className="course-hero-proof">
-              <span>Do basico a arquitetura</span>
+              <span>Do básico à arquitetura</span>
               <span>Exemplos em C# e .NET</span>
-              <span>Mais de 200 aulas com os bonus</span>
+              <span>Mais de 200 aulas com os bônus</span>
             </div>
           </div>
 
-          <div className="course-code-card" aria-label="Ilustracao das camadas de uma arquitetura de software">
+          <div className="course-code-card" aria-label="Ilustração das camadas de uma arquitetura de software">
             <div className="course-code-top">
               <i className="course-dot" />
               <i className="course-dot" />
@@ -381,7 +381,7 @@ export default async function CursoCompletoPage() {
               </div>
             </div>
             <div className="course-card-caption">
-              Voce nao vai apenas copiar codigo. Vai entender onde cada parte se encaixa.
+              Você não vai apenas copiar código. Vai entender onde cada parte se encaixa.
             </div>
           </div>
         </div>
@@ -395,7 +395,7 @@ export default async function CursoCompletoPage() {
           </div>
           <div className="course-stat">
             <strong>200+ aulas</strong>
-            <span>incluindo os cursos bonus</span>
+            <span>incluindo os cursos bônus</span>
           </div>
           <div className="course-stat">
             <strong>C# + .NET</strong>
@@ -411,28 +411,28 @@ export default async function CursoCompletoPage() {
       <section className="course-section">
         <div className="course-container course-intro-grid">
           <div>
-            <Eyebrow>O problema nao e voce</Eyebrow>
-            <h2>Arquitetura parece dificil quando explicam pelo final.</h2>
+            <Eyebrow>O problema não é você</Eyebrow>
+            <h2>Arquitetura parece difícil quando explicam pelo final.</h2>
             <p className="course-copy">
-              Muitos conteudos comecam falando de padroes complexos antes de mostrar o basico. Aqui, voce percorre o
-              caminho na ordem certa: linguagem, aplicacao, organizacao e decisoes de arquitetura.
+              Muitos conteúdos começam falando de padrões complexos antes de mostrar o básico. Aqui, você percorre o
+              caminho na ordem certa: linguagem, aplicação, organização e decisões de arquitetura.
             </p>
           </div>
           <div className="course-before-after">
             <article className="course-ba-card">
               <small>Antes</small>
               <ul>
-                <li>Copia codigos sem entender a estrutura</li>
-                <li>Nao sabe onde colocar cada responsabilidade</li>
+                <li>Copia códigos sem entender a estrutura</li>
+                <li>Não sabe onde colocar cada responsabilidade</li>
                 <li>Se perde em termos como SOLID e camadas</li>
-                <li>Acha que arquitetura e so para senior</li>
+                <li>Acha que arquitetura é só para sênior</li>
               </ul>
             </article>
             <article className="course-ba-card course-ba-card-after">
               <small>Depois</small>
               <ul>
-                <li>Entende a funcao de cada parte do sistema</li>
-                <li>Constroi APIs com mais organizacao</li>
+                <li>Entende a função de cada parte do sistema</li>
+                <li>Constrói APIs com mais organização</li>
                 <li>Analisa escolhas e seus trade-offs</li>
                 <li>Conversa sobre arquitetura com clareza</li>
               </ul>
@@ -452,7 +452,7 @@ export default async function CursoCompletoPage() {
                 ao sistema completo.
               </h2>
             </div>
-            <p>As aulas que voce ja recebe foram organizadas como uma formacao unica. Cada etapa prepara a proxima.</p>
+            <p>As aulas que você já recebe foram organizadas como uma formação única. Cada etapa prepara a próxima.</p>
           </div>
 
           <div className="course-tracks">
@@ -479,9 +479,9 @@ export default async function CursoCompletoPage() {
         <div className="course-container course-architecture-list">
           <div className="course-sticky-copy">
             <Eyebrow>Por dentro da trilha central</Eyebrow>
-            <h2>Arquitetura sem enrolacao.</h2>
+            <h2>Arquitetura sem enrolação.</h2>
             <p className="course-copy">
-              Voce comeca pelo significado das decisoes arquiteturais e avanca ate as formas de comunicacao entre
+              Você começa pelo significado das decisões arquiteturais e avança até as formas de comunicação entre
               sistemas.
             </p>
           </div>
@@ -505,11 +505,11 @@ export default async function CursoCompletoPage() {
 
       <section className="course-section course-audience">
         <div className="course-container">
-          <Eyebrow>Para quem e</Eyebrow>
+          <Eyebrow>Para quem é</Eyebrow>
           <h2>
-            Voce nao precisa chegar pronto.
+            Você não precisa chegar pronto.
             <br />
-            O curso existe para preparar voce.
+            O curso existe para preparar você.
           </h2>
           <div className="course-audience-grid">
             {audienceCards.map((card) => (
@@ -545,7 +545,7 @@ export default async function CursoCompletoPage() {
               "Arquitetura nao comeca em um diagrama. Comeca quando voce entende por que o codigo foi organizado daquela
               maneira."
             </p>
-            <small>- A ideia que guia esta formacao</small>
+            <small>- A ideia que guia esta formação</small>
           </aside>
         </div>
       </section>
@@ -554,21 +554,21 @@ export default async function CursoCompletoPage() {
         <div className="course-container">
           <div className="course-bonus-head">
             <div>
-              <Eyebrow>Bonus especial deste lote</Eyebrow>
+              <Eyebrow>Bônus especial deste lote</Eyebrow>
               <h2>
                 Entre pela arquitetura.
                 <br />
-                Avance tambem para a IA.
+                Avance também para a IA.
               </h2>
               <p className="course-copy">
-                Alem da formacao principal, voce recebe cursos complementares para criar automacoes, agentes,
-                aplicacoes com IA e ate um SaaS completo.
+                Além da formação principal, você recebe cursos complementares para criar automações, agentes,
+                aplicações com IA e até um SaaS completo.
               </p>
             </div>
             <div className="course-bonus-value">
               <s>Valor separado: R$ 200</s>
-              <strong>Hoje: gratis</strong>
-              <span>Incluido na sua matricula neste lote.</span>
+              <strong>Hoje: grátis</strong>
+              <span>Incluído na sua matrícula neste lote.</span>
             </div>
           </div>
 
@@ -585,7 +585,7 @@ export default async function CursoCompletoPage() {
               <span className="course-bonus-tag">BONUS PREMIUM</span>
               <h3>Arquitetando o Futuro com LLMs e RAG</h3>
               <p>
-                Uma formacao avancada para entender a arquitetura por tras de aplicacoes modernas com inteligencia
+                Uma formação avançada para entender a arquitetura por trás de aplicações modernas com inteligência
                 artificial.
               </p>
               <ul className="course-bonus-topics">
@@ -602,11 +602,11 @@ export default async function CursoCompletoPage() {
         <div className="course-container">
           <div className="course-offer-card">
             <div className="course-offer-main">
-              <Eyebrow>Comece sua formacao</Eyebrow>
+              <Eyebrow>Comece sua formação</Eyebrow>
               <h2>Uma base completa para construir e compreender software.</h2>
               <p>
-                Voce recebe uma jornada que conecta os fundamentos da programacao ao raciocinio arquitetural e ainda
-                leva todo o pacote de IA como bonus.
+                Você recebe uma jornada que conecta os fundamentos da programação ao raciocínio arquitetural e ainda
+                leva todo o pacote de IA como bônus.
               </p>
               <div className="course-included">
                 {offerItems.map((item) => (
@@ -618,13 +618,13 @@ export default async function CursoCompletoPage() {
             <div className="course-price-box">
               <span className="course-discount-pill">ULTIMAS VAGAS NESTE VALOR</span>
               <div className="course-original-price">
-                Preco original: <s>{regularPriceLabel}</s>
+                Preço original: <s>{regularPriceLabel}</s>
               </div>
               <div className="course-price">
                 <sup>R$</sup>
                 {config.activePrice.toFixed(2).replace(".", ",")}
               </div>
-              <div className="course-price-note">Pagamento unico + R$ 200 em bonus gratuitos</div>
+              <div className="course-price-note">Pagamento único + R$ 200 em bônus gratuitos</div>
               <TrackedCheckoutButton
                 href={config.checkoutUrl}
                 label="Quero entrar para o curso"
@@ -638,7 +638,7 @@ export default async function CursoCompletoPage() {
                 hideGlow
                 className="course-btn course-price-cta"
               />
-              <div className="course-safe-note">Voce sera direcionado para o ambiente de pagamento.</div>
+              <div className="course-safe-note">Você será direcionado para o ambiente de pagamento.</div>
             </div>
           </div>
         </div>
@@ -646,8 +646,8 @@ export default async function CursoCompletoPage() {
 
       <section className="course-section" id="faq">
         <div className="course-container course-faq">
-          <Eyebrow>Duvidas frequentes</Eyebrow>
-          <h2>Antes de comecar.</h2>
+          <Eyebrow>Dúvidas frequentes</Eyebrow>
+          <h2>Antes de começar.</h2>
           <div className="course-faq-list">
             {faqItems.map((item) => (
               <TrackedAccordion
@@ -674,7 +674,7 @@ export default async function CursoCompletoPage() {
           <div>
             <strong>Plugando IA</strong>
             <br />
-            Formacao em Arquitetura de Software
+            Formação em Arquitetura de Software
           </div>
           <div className="course-footer-links">
             <Link href="/terms">Termos</Link>
