@@ -28,7 +28,7 @@ export type CourseProof = {
 
 const CHECKOUT_URL =
   process.env.NEXT_PUBLIC_CHECKOUT_URL ??
-  "https://pay.hotmart.com/M103626951G?off=by19achj&bid=1775680433634";
+  "https://pay.hotmart.com/M103626951G";
 
 export const courseConfig = {
   pageKey: "curso-completo",
@@ -37,9 +37,9 @@ export const courseConfig = {
   name: "Formacao Desenvolvedor Full Stack + IA",
   shortName: "Full Stack + IA",
   brand: "Plugando IA",
-  regularPrice: 699,
-  launchPrice: 149.9,
-  postLaunchPrice: 699,
+  regularPrice: 499.99,
+  launchPrice: 149.99,
+  postLaunchPrice: 499.99,
   launchStartDate: "2026-08-11T00:00:00-03:00",
   launchEndDate: "2026-08-31T23:59:59-03:00",
   checkoutUrl: CHECKOUT_URL,
@@ -426,11 +426,11 @@ export const faq: CourseFaq[] = [
   },
   {
     question: "Qual e o valor?",
-    answer: "Durante o lancamento, a condicao especial e de R$ 149,90. Depois do prazo, a pagina passa a exibir o preco configurado para pos-lancamento.",
+    answer: "Durante o lancamento, a condicao especial e de R$ 149,99. Em 1 de setembro de 2026, a pagina volta para o valor de R$ 499,99.",
   },
   {
     question: "Ate quando vale o preco de lancamento?",
-    answer: "O preco promocional de R$ 149,90 fica disponivel ate 31/08/2026 as 23:59, horario de Brasilia.",
+    answer: "O preco promocional de R$ 149,99 fica disponivel ate 31/08/2026 as 23:59, horario de Brasilia. Em 01/09/2026, o valor volta para R$ 499,99.",
   },
 ];
 

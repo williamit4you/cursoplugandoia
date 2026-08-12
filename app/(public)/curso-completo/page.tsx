@@ -268,6 +268,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 export default async function CursoCompletoPage() {
   const config = getCourseRuntimeConfig();
   const metaPixelId = await resolveSalesPageMetaPixelId(courseConfig.pageKey, { preferEnvFallback: true });
+  const regularPriceLabel = `R$ ${config.regularPrice.toFixed(2).replace(".", ",")}`;
   const priceLabel = `R$ ${config.activePrice.toFixed(2).replace(".", ",")}`;
   const eventData = {
     content_name: config.name,
@@ -301,7 +302,7 @@ export default async function CursoCompletoPage() {
       <SectionViewTracker selectorId="faq" pageKey={config.pageKey} pagePath={config.pagePath} pageTitle={config.pageTitle} eventName="faq_view" />
 
       <div className="course-topbar">
-        ULTIMAS VAGAS DO LOTE: de R$ {config.regularPrice.toFixed(2).replace(".", ",")} por {priceLabel} + pacote de bonus gratuito
+        ULTIMAS VAGAS DO LOTE: de {regularPriceLabel} por {priceLabel} + pacote de bonus gratuito
       </div>
 
       <nav className="course-nav">
@@ -401,7 +402,7 @@ export default async function CursoCompletoPage() {
             <span>tecnologias usadas no mercado</span>
           </div>
           <div className="course-stat">
-            <strong>R$ {config.regularPrice.toFixed(0)}</strong>
+            <strong>{regularPriceLabel}</strong>
             <span>por {priceLabel} neste lote</span>
           </div>
         </div>
@@ -617,7 +618,7 @@ export default async function CursoCompletoPage() {
             <div className="course-price-box">
               <span className="course-discount-pill">ULTIMAS VAGAS NESTE VALOR</span>
               <div className="course-original-price">
-                Preco original: <s>R$ {config.regularPrice.toFixed(2).replace(".", ",")}</s>
+                Preco original: <s>{regularPriceLabel}</s>
               </div>
               <div className="course-price">
                 <sup>R$</sup>
