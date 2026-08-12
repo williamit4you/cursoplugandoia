@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { publishTikTokVideo } from "@/lib/tiktokApi";
+import { cleanupPublishedSocialMediaAssets } from "@/lib/socialMediaAssetCleanup";
 import {
   appendSocialPostLog,
   markSingleAttempt,
@@ -169,7 +170,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, publishId, method });
+    const cleanupResult = await cleanupPublishedSocialMediaAssets(prisma, {
+      socialPostId: targetSocialPostId,
+    }).catch((cleanupError: any) => {
+      console.error("TikTok post-cleanup error:", cleanupError);
+      return { cleaned: false, skipped: true, reason: cleanupError?.message || "cleanup_failed" };
+    });
+
+    return NextResponse.json({ success: true, publishId, method, cleanup: cleanupResult });
   } catch (error: any) {
     console.error("TikTok publishing error:", error);
     const errorMessage = error.message || "Erro ao publicar no TikTok";

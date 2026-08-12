@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
+import { cleanupPublishedSocialMediaAssets } from "@/lib/socialMediaAssetCleanup";
 import { markSocialCronError, markSocialCronFinished, markSocialCronRunning } from "@/lib/socialCronState";
 
 function appendTimestamp(message: string) {
@@ -121,7 +122,16 @@ export async function runSocialCron(params: { baseUrl: string; limit?: number })
     }
   }
 
-  const summary = { checked: posts.length, results, startedAt: startedAt.toISOString() };
+  const cleanup = await cleanupPublishedSocialMediaAssets(prisma, {
+    limit: Math.max(5, limit * 2),
+  }).catch((error: any) => ({
+    scanned: 0,
+    cleanedCount: 0,
+    error: error?.message || "cleanup_failed",
+    results: [],
+  }));
+
+  const summary = { checked: posts.length, results, cleanup, startedAt: startedAt.toISOString() };
   markSocialCronFinished({ ok: true, checked: posts.length, results, finishedAt: new Date() });
   return summary;
 }

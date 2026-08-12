@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { publishYouTubeVideo } from "@/lib/youtubeApi";
+import { cleanupPublishedSocialMediaAssets } from "@/lib/socialMediaAssetCleanup";
 
 export const dynamic = "force-dynamic";
 
@@ -96,7 +97,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, videoId });
+    const cleanupResult = await cleanupPublishedSocialMediaAssets(prisma, {
+      socialPostId: targetSocialPostId,
+    }).catch((cleanupError: any) => {
+      console.error("YouTube post-cleanup error:", cleanupError);
+      return { cleaned: false, skipped: true, reason: cleanupError?.message || "cleanup_failed" };
+    });
+
+    return NextResponse.json({ success: true, videoId, cleanup: cleanupResult });
   } catch (error: any) {
     console.error("YouTube publishing error:", error);
     
