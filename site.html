@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Arquitetura de Software para Iniciantes | Plugando IA</title>
+  <meta name="description" content="Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem está começando na programação." />
+  <style>
+    :root {
+      --ink: #14221d;
+      --forest: #173d32;
+      --cream: #f5f0e6;
+      --paper: #fffdf8;
+      --coral: #f27d52;
+      --lime: #c8ed75;
+      --muted: #64736c;
+      --line: rgba(20, 34, 29, .14);
+      --shadow: 0 24px 70px rgba(20, 34, 29, .12);
+      --radius: 28px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--cream);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    a { color: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    .container { width: min(1160px, calc(100% - 40px)); margin: 0 auto; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 9px;
+      margin: 0 0 18px; font-size: .78rem; font-weight: 800;
+      letter-spacing: .11em; text-transform: uppercase;
+    }
+    .eyebrow::before { content: ""; width: 26px; height: 3px; border-radius: 9px; background: var(--coral); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1, h2, h3 { line-height: 1.04; letter-spacing: -.045em; }
+    h1 { font-size: clamp(3rem, 6vw, 6.25rem); margin-bottom: 26px; max-width: 850px; }
+    h2 { font-size: clamp(2.2rem, 4.6vw, 4.6rem); margin-bottom: 22px; }
+    h3 { font-size: 1.45rem; }
+    .lead { font-size: clamp(1.05rem, 1.7vw, 1.3rem); color: #d5e1dc; max-width: 680px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      min-height: 58px; padding: 0 25px; border-radius: 12px;
+      text-decoration: none; font-weight: 850; border: 1px solid transparent;
+      transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background: var(--coral); color: #1b241f; box-shadow: 0 14px 35px rgba(242, 125, 82, .22); }
+    .btn-primary::after { content: "→"; font-size: 1.25rem; }
+    .btn-light { background: var(--lime); color: var(--ink); }
+    .btn-outline { border-color: rgba(255,255,255,.25); color: white; }
+
+    .topbar { background: var(--lime); color: var(--ink); text-align: center; font-size: .88rem; font-weight: 800; padding: 9px 16px; }
+    nav { position: absolute; z-index: 3; left: 0; right: 0; padding-top: 23px; }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; }
+    .brand { color: white; text-decoration: none; font-size: 1.05rem; font-weight: 900; letter-spacing: -.03em; }
+    .brand span { color: var(--lime); }
+    .nav-link { color: #dce7e2; text-decoration: none; font-size: .92rem; font-weight: 700; }
+
+    .hero { position: relative; overflow: hidden; background: var(--forest); color: white; padding: 155px 0 88px; min-height: 840px; }
+    .hero::before { content: ""; position: absolute; width: 520px; height: 520px; right: -150px; top: 50px; border-radius: 50%; border: 100px solid rgba(200,237,117,.07); }
+    .hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1.2fr .8fr; gap: 65px; align-items: center; }
+    .hero h1 em { color: var(--lime); font-style: normal; }
+    .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 13px; margin: 34px 0 35px; }
+    .hero-proof { display: flex; flex-wrap: wrap; gap: 22px; color: #c7d6d0; font-size: .9rem; }
+    .hero-proof span { display: flex; align-items: center; gap: 8px; }
+    .hero-proof span::before { content: "✓"; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: rgba(200,237,117,.14); color: var(--lime); font-weight: 900; }
+
+    .code-card { position: relative; border-radius: var(--radius); background: #0d1b16; border: 1px solid rgba(255,255,255,.12); box-shadow: 0 35px 80px rgba(0,0,0,.32); overflow: hidden; transform: rotate(1.5deg); }
+    .code-top { display: flex; gap: 7px; padding: 17px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #557068; }
+    .dot:first-child { background: var(--coral); } .dot:nth-child(2) { background: #f3c85f; } .dot:nth-child(3) { background: var(--lime); }
+    .architecture { padding: 28px; }
+    .layer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px; margin-bottom: 11px; border: 1px solid rgba(255,255,255,.12); border-radius: 13px; color: #deebe5; font: 700 .88rem ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .layer b { color: var(--lime); }
+    .layer:nth-child(2) { margin-inline: 16px; } .layer:nth-child(3) { margin-inline: 32px; } .layer:nth-child(4) { margin-inline: 48px; background: rgba(242,125,82,.1); }
+    .card-caption { padding: 0 28px 28px; color: #91a69e; font-size: .86rem; }
+
+    .stats { position: relative; z-index: 2; margin-top: -42px; }
+    .stats-inner { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--paper); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); }
+    .stat { padding: 28px 30px; border-right: 1px solid var(--line); }
+    .stat:last-child { border: 0; }
+    .stat strong { display: block; font-size: 1.8rem; letter-spacing: -.05em; }
+    .stat span { font-size: .86rem; color: var(--muted); }
+
+    section { padding: 105px 0; }
+    .intro-grid { display: grid; grid-template-columns: .86fr 1.14fr; gap: 90px; align-items: start; }
+    .intro-copy { font-size: 1.15rem; color: var(--muted); }
+    .before-after { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .ba-card { background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 26px; }
+    .ba-card.after { background: var(--forest); color: white; }
+    .ba-card small { display: block; margin-bottom: 16px; color: var(--coral); font-weight: 900; text-transform: uppercase; letter-spacing: .09em; }
+    .ba-card.after small { color: var(--lime); }
+    .ba-card ul { padding: 0; margin: 0; list-style: none; }
+    .ba-card li { position: relative; padding: 9px 0 9px 25px; color: var(--muted); }
+    .ba-card.after li { color: #dce7e2; }
+    .ba-card li::before { content: "×"; position: absolute; left: 0; color: var(--coral); font-weight: 900; }
+    .ba-card.after li::before { content: "✓"; color: var(--lime); }
+
+    .journey { background: var(--ink); color: white; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 30px; margin-bottom: 48px; }
+    .section-head p { color: #b5c6bf; max-width: 470px; }
+    .tracks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+    .track { min-height: 380px; border: 1px solid rgba(255,255,255,.12); border-radius: 24px; padding: 31px; background: #1a2a24; transition: transform .25s ease, border-color .25s ease; }
+    .track:hover { transform: translateY(-4px); border-color: rgba(200,237,117,.45); }
+    .track-number { display: flex; justify-content: space-between; margin-bottom: 58px; color: var(--lime); font: 800 .82rem ui-monospace, monospace; }
+    .track h3 { font-size: 2rem; margin-bottom: 13px; }
+    .track p { color: #aebeb7; }
+    .track ul { padding-left: 18px; color: #dce6e2; }
+    .track li { margin: 8px 0; }
+    .track.featured { background: var(--coral); color: var(--ink); }
+    .track.featured .track-number, .track.featured p { color: #4d3026; }
+    .track.featured li { color: var(--ink); }
+
+    .architecture-list { display: grid; grid-template-columns: .7fr 1.3fr; gap: 75px; align-items: start; }
+    .sticky { position: sticky; top: 30px; }
+    .lesson-groups { display: grid; gap: 13px; }
+    details { background: var(--paper); border: 1px solid var(--line); border-radius: 15px; overflow: hidden; }
+    summary { display: flex; justify-content: space-between; gap: 20px; padding: 21px 22px; cursor: pointer; list-style: none; font-weight: 850; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; font-size: 1.3rem; color: var(--coral); }
+    details[open] summary::after { content: "−"; }
+    .detail-body { padding: 0 22px 22px; color: var(--muted); }
+    .detail-body ul { columns: 2; padding-left: 20px; }
+    .detail-body li { break-inside: avoid; margin: 8px 0; }
+
+    .audience { background: #e9e1d2; }
+    .audience-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 17px; margin-top: 45px; }
+    .person { padding: 28px; border-top: 4px solid var(--coral); background: rgba(255,255,255,.58); border-radius: 0 0 17px 17px; }
+    .person-icon { font-size: 1.7rem; margin-bottom: 30px; }
+
+    .method-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+    .steps { counter-reset: steps; }
+    .step { counter-increment: steps; display: grid; grid-template-columns: 52px 1fr; gap: 18px; padding: 23px 0; border-bottom: 1px solid var(--line); }
+    .step::before { content: "0" counter(steps); display: grid; place-items: center; width: 48px; height: 48px; background: var(--forest); color: var(--lime); border-radius: 50%; font: 800 .86rem ui-monospace, monospace; }
+    .step p { margin: 7px 0 0; color: var(--muted); }
+    .quote-card { padding: 46px; background: var(--lime); border-radius: var(--radius); transform: rotate(-1deg); }
+    .quote-card p { font-size: clamp(1.55rem, 3vw, 2.5rem); line-height: 1.15; font-weight: 850; letter-spacing: -.04em; }
+    .quote-card small { font-weight: 800; }
+
+    .offer { background: var(--forest); color: white; }
+    .offer-card { display: grid; grid-template-columns: 1fr .75fr; border-radius: 30px; overflow: hidden; background: var(--paper); color: var(--ink); box-shadow: 0 35px 90px rgba(0,0,0,.22); }
+    .offer-main { padding: clamp(32px, 6vw, 70px); }
+    .offer-main h2 { font-size: clamp(2.3rem, 4vw, 4rem); }
+    .included { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 25px; margin: 30px 0; }
+    .included span::before { content: "✓"; color: #4f7c29; font-weight: 900; margin-right: 9px; }
+    .price-box { display: flex; flex-direction: column; justify-content: center; padding: clamp(32px, 5vw, 60px); background: var(--coral); }
+    .price-box .from { font-weight: 800; opacity: .75; }
+    .price { font-size: clamp(3.6rem, 7vw, 6.2rem); line-height: .95; letter-spacing: -.075em; font-weight: 950; margin: 13px 0; }
+    .price sup { font-size: .35em; vertical-align: top; letter-spacing: -.02em; }
+    .price-note { margin-bottom: 27px; font-weight: 700; }
+    .price-box .btn { background: var(--ink); color: white; }
+    .safe-note { margin-top: 14px; text-align: center; font-size: .78rem; opacity: .76; }
+
+    .faq { max-width: 850px; }
+    .faq details { margin-bottom: 10px; }
+    footer { background: var(--ink); color: #aebeb7; padding: 42px 0; font-size: .86rem; }
+    .footer-inner { display: flex; justify-content: space-between; gap: 30px; }
+    .footer-inner strong { color: white; }
+
+    @media (max-width: 900px) {
+      .hero { min-height: auto; padding-top: 125px; }
+      .hero-grid, .intro-grid, .architecture-list, .method-grid, .offer-card { grid-template-columns: 1fr; }
+      .code-card { max-width: 620px; transform: none; }
+      .stats-inner { grid-template-columns: 1fr 1fr; }
+      .stat:nth-child(2) { border-right: 0; } .stat:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+      .section-head { display: block; }
+      .sticky { position: static; }
+      .audience-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 650px) {
+      .container { width: min(100% - 26px, 1160px); }
+      nav .nav-link { display: none; }
+      .hero { padding-bottom: 78px; }
+      .hero-actions .btn { width: 100%; }
+      .tracks, .before-after, .included { grid-template-columns: 1fr; }
+      .track { min-height: auto; }
+      .track-number { margin-bottom: 35px; }
+      .detail-body ul { columns: 1; }
+      .layer { margin-inline: 0 !important; font-size: .74rem; padding: 13px; }
+      .stats { margin-top: -26px; }
+      .stat { padding: 21px 18px; }
+      section { padding: 78px 0; }
+      .footer-inner { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">Formação completa por R$ 149,90 — feita para quem está começando</div>
+  <nav>
+    <div class="container nav-inner">
+      <a class="brand" href="#">Plugando<span>IA</span> / Arquitetura</a>
+      <a class="nav-link" href="#conteudo">Ver conteúdo do curso ↓</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="container hero-grid">
+      <div>
+        <p class="eyebrow">Arquitetura de software para iniciantes</p>
+        <h1>Comece no código. Aprenda a <em>pensar como profissional.</em></h1>
+        <p class="lead">Uma jornada passo a passo para aprender C#, construir APIs reais e entender como sistemas bem organizados são planejados — mesmo que você esteja começando agora.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#comprar">Quero começar por R$ 149,90</a>
+          <a class="btn btn-outline" href="#conteudo">Explorar as trilhas</a>
+        </div>
+        <div class="hero-proof">
+          <span>Do básico à arquitetura</span>
+          <span>Exemplos em C# e .NET</span>
+          <span>Mais de 180 aulas</span>
+        </div>
+      </div>
+      <div class="code-card" aria-label="Ilustração das camadas de uma arquitetura de software">
+        <div class="code-top"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+        <div class="architecture">
+          <div class="layer"><b>01</b> Presentation <span>API</span></div>
+          <div class="layer"><b>02</b> Application <span>Casos de uso</span></div>
+          <div class="layer"><b>03</b> Domain <span>Regras</span></div>
+          <div class="layer"><b>04</b> Infrastructure <span>Dados</span></div>
+        </div>
+        <div class="card-caption">Você não vai apenas copiar código. Vai entender onde cada parte se encaixa.</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="container stats-inner">
+      <div class="stat"><strong>4 trilhas</strong><span>em uma jornada progressiva</span></div>
+      <div class="stat"><strong>180+ aulas</strong><span>entre fundamentos e prática</span></div>
+      <div class="stat"><strong>C# + .NET</strong><span>tecnologias usadas no mercado</span></div>
+      <div class="stat"><strong>R$ 149,90</strong><span>pagamento único</span></div>
+    </div>
+  </div>
+
+  <main>
+    <section>
+      <div class="container intro-grid">
+        <div>
+          <p class="eyebrow">O problema não é você</p>
+          <h2>Arquitetura parece difícil quando explicam pelo final.</h2>
+          <p class="intro-copy">Muitos conteúdos começam falando de padrões complexos antes de mostrar o básico. Aqui, você percorre o caminho na ordem certa: linguagem, aplicação, organização e decisões de arquitetura.</p>
+        </div>
+        <div class="before-after">
+          <article class="ba-card">
+            <small>Antes</small>
+            <ul>
+              <li>Copia códigos sem entender a estrutura</li>
+              <li>Não sabe onde colocar cada responsabilidade</li>
+              <li>Se perde em termos como SOLID e camadas</li>
+              <li>Acha que arquitetura é só para sênior</li>
+            </ul>
+          </article>
+          <article class="ba-card after">
+            <small>Depois</small>
+            <ul>
+              <li>Entende a função de cada parte do sistema</li>
+              <li>Constrói APIs com mais organização</li>
+              <li>Analisa escolhas e seus trade-offs</li>
+              <li>Conversa sobre arquitetura com clareza</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="journey" id="conteudo">
+      <div class="container">
+        <div class="section-head">
+          <div><p class="eyebrow">Sua rota de aprendizagem</p><h2>Do primeiro conceito<br />ao sistema completo.</h2></div>
+          <p>As aulas que você já recebe foram organizadas como uma formação única. Cada etapa prepara o terreno para a próxima.</p>
+        </div>
+        <div class="tracks">
+          <article class="track">
+            <div class="track-number"><span>TRILHA 01</span><span>75 AULAS</span></div>
+            <h3>Fundamentos de C#</h3>
+            <p>Construa uma base forte antes de avançar.</p>
+            <ul><li>Lógica, variáveis e estruturas de decisão</li><li>Orientação a objetos e interfaces</li><li>Coleções, strings, datas e arquivos</li><li>LINQ e organização de código</li></ul>
+          </article>
+          <article class="track">
+            <div class="track-number"><span>TRILHA 02</span><span>PROJETO REAL</span></div>
+            <h3>Web API com .NET</h3>
+            <p>Transforme a base em uma aplicação completa.</p>
+            <ul><li>Modelagem e Entity Framework Core</li><li>CRUD, relacionamentos e migrations</li><li>Autenticação JWT e Identity</li><li>Claims, políticas e documentação</li></ul>
+          </article>
+          <article class="track featured">
+            <div class="track-number"><span>TRILHA 03</span><span>FORMAÇÃO CENTRAL</span></div>
+            <h3>Arquitetura de Software</h3>
+            <p>Aprenda a tomar decisões e organizar sistemas.</p>
+            <ul><li>Requisitos, restrições e atributos de qualidade</li><li>Coesão, acoplamento e responsabilidades</li><li>SOLID, DRY, KISS e YAGNI</li><li>Camadas, monólito e integração entre sistemas</li></ul>
+          </article>
+          <article class="track">
+            <div class="track-number"><span>TRILHA 04</span><span>CLOUD</span></div>
+            <h3>Fundamentos de AWS</h3>
+            <p>Entenda onde suas aplicações vivem e escalam.</p>
+            <ul><li>EC2, redes, volumes e segurança</li><li>VPC, RDS, S3 e IAM</li><li>Elastic Beanstalk e Auto Scaling</li><li>Serverless com AWS Lambda</li></ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container architecture-list">
+        <div class="sticky">
+          <p class="eyebrow">Por dentro da trilha central</p>
+          <h2>Arquitetura sem enrolação.</h2>
+          <p class="intro-copy">Você começa pelo significado das decisões arquiteturais e avança até as formas de comunicação entre sistemas.</p>
+        </div>
+        <div class="lesson-groups">
+          <details open><summary>01. Fundamentos e decisões</summary><div class="detail-body"><ul><li>O que é arquitetura de software</li><li>Tipos de arquiteto</li><li>Arquitetura x design de código</li><li>O papel do arquiteto</li><li>Requisitos funcionais e não funcionais</li><li>Regras de negócio</li><li>Restrições técnicas e financeiras</li></ul></div></details>
+          <details><summary>02. Atributos de qualidade</summary><div class="detail-body"><ul><li>Escalabilidade</li><li>Disponibilidade</li><li>Desempenho</li><li>Segurança</li><li>Manutenibilidade</li><li>Testabilidade</li></ul></div></details>
+          <details><summary>03. Princípios de bom design</summary><div class="detail-body"><ul><li>Alta coesão e baixo acoplamento</li><li>Separação de responsabilidades</li><li>Encapsulamento</li><li>Composição</li><li>Modularidade</li><li>Dependência e abstração</li><li>DRY, KISS e YAGNI</li></ul></div></details>
+          <details><summary>04. SOLID completo</summary><div class="detail-body"><ul><li>Single Responsibility</li><li>Open/Closed</li><li>Liskov Substitution</li><li>Interface Segregation</li><li>Dependency Inversion</li></ul></div></details>
+          <details><summary>05. Modelos arquiteturais</summary><div class="detail-body"><ul><li>10 modelos para estudar</li><li>Arquitetura em camadas</li><li>Monólito tradicional</li></ul></div></details>
+          <details><summary>06. Integração entre sistemas</summary><div class="detail-body"><ul><li>API RESTful</li><li>GraphQL</li><li>gRPC</li><li>Webhooks</li></ul></div></details>
+        </div>
+      </div>
+    </section>
+
+    <section class="audience">
+      <div class="container">
+        <p class="eyebrow">Para quem é</p>
+        <h2>Você não precisa chegar pronto.<br />O curso existe para preparar você.</h2>
+        <div class="audience-grid">
+          <article class="person"><div class="person-icon">01</div><h3>Quem está começando</h3><p>Quer aprender programação com uma sequência clara e sem pular fundamentos importantes.</p></article>
+          <article class="person"><div class="person-icon">02</div><h3>Quem já faz cursos</h3><p>Conhece comandos isolados, mas ainda não consegue enxergar como um sistema completo é organizado.</p></article>
+          <article class="person"><div class="person-icon">03</div><h3>Dev em evolução</h3><p>Já cria aplicações e quer melhorar o vocabulário, a organização do código e as decisões técnicas.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container method-grid">
+        <div>
+          <p class="eyebrow">Aprendizado progressivo</p>
+          <h2>Entender antes de decorar.</h2>
+          <div class="steps">
+            <div class="step"><div><h3>Aprenda o conceito</h3><p>Termos técnicos explicados com linguagem direta.</p></div></div>
+            <div class="step"><div><h3>Veja no código</h3><p>Exemplos em C# e .NET para ligar teoria e prática.</p></div></div>
+            <div class="step"><div><h3>Conecte as decisões</h3><p>Entenda como cada escolha afeta manutenção, desempenho e evolução.</p></div></div>
+          </div>
+        </div>
+        <aside class="quote-card">
+          <p>“Arquitetura não começa em um diagrama. Começa quando você entende por que o código foi organizado daquela maneira.”</p>
+          <small>— A ideia que guia esta formação</small>
+        </aside>
+      </div>
+    </section>
+
+    <section class="offer" id="comprar">
+      <div class="container">
+        <div class="offer-card">
+          <div class="offer-main">
+            <p class="eyebrow">Comece sua formação</p>
+            <h2>Uma base completa para construir e compreender software.</h2>
+            <p>Você recebe uma jornada que conecta os fundamentos da programação ao raciocínio arquitetural.</p>
+            <div class="included"><span>Fundamentos de C#</span><span>Web API com .NET</span><span>Arquitetura de software</span><span>Fundamentos de AWS</span><span>Mais de 180 aulas</span><span>Conteúdo para iniciantes</span></div>
+          </div>
+          <div class="price-box">
+            <span class="from">Investimento atual</span>
+            <div class="price"><sup>R$</sup>149<sup>,90</sup></div>
+            <div class="price-note">Pagamento único</div>
+            <!-- Substitua o endereço abaixo pelo link real do seu checkout. -->
+            <a class="btn" href="SEU_LINK_DE_CHECKOUT_AQUI">Quero entrar para o curso →</a>
+            <div class="safe-note">Você será direcionado para o ambiente de pagamento.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container faq">
+        <p class="eyebrow">Dúvidas frequentes</p>
+        <h2>Antes de começar.</h2>
+        <details><summary>Preciso saber programar para acompanhar?</summary><div class="detail-body">Não. A jornada começa com lógica, linguagem C# e orientação a objetos. Quem já conhece o básico pode avançar diretamente para as trilhas seguintes.</div></details>
+        <details><summary>O curso é apenas sobre teoria?</summary><div class="detail-body">Não. A teoria de arquitetura é conectada a exemplos em C#, à construção de uma Web API completa com .NET e aos serviços usados para executar aplicações na AWS.</div></details>
+        <details><summary>Arquitetura não é um assunto apenas para desenvolvedores seniores?</summary><div class="detail-body">Não. Ninguém precisa começar projetando sistemas gigantes, mas compreender responsabilidades, acoplamento, coesão e organização desde cedo evita muitos vícios e acelera a evolução profissional.</div></details>
+        <details><summary>O que vou conseguir entender ao final?</summary><div class="detail-body">Você terá base para explicar as partes de uma aplicação, criar APIs mais organizadas, compreender os princípios SOLID, comparar modelos arquiteturais e reconhecer diferentes formas de integração entre sistemas.</div></details>
+        <details><summary>Posso começar pela trilha de arquitetura?</summary><div class="detail-body">Sim. A formação foi organizada em uma sequência recomendada, mas você pode usar as trilhas conforme seu nível atual e revisar C# ou Web API quando sentir necessidade.</div></details>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner"><div><strong>Plugando IA</strong><br />Formação em Arquitetura de Software</div><div>Conteúdo educacional em programação e tecnologia.</div></div>
+  </footer>
+</body>
+</html>

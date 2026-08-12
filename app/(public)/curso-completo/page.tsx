@@ -1,11 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { MetaPixelScript } from "@/components/MetaPixelScript";
 import { MetaPixelViewContent } from "@/components/MetaPixelViewContent";
 import { SalesPageTracker, SalesViewContentTracker } from "@/components/SalesPageTracker";
-import { FadeIn } from "@/components/motion/fade-in";
 import {
-  LaunchCountdown,
   MobileStickyCTA,
   SectionViewTracker,
   TrackedAccordion,
@@ -15,376 +12,257 @@ import { courseConfig, getCourseRuntimeConfig } from "@/lib/courseCompletoConfig
 import { resolveSalesPageMetaPixelId } from "@/lib/salesPagePixel";
 
 export const metadata = {
-  title: "Formação Desenvolvedor Full Stack + IA | Plugando IA",
+  title: "Arquitetura de Software para Iniciantes | Plugando IA",
   description:
-    "Aprenda programação construindo projetos de verdade. Comece do zero com C# e evolua para .NET, Next.js, AWS, automações e Inteligência Artificial.",
+    "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem esta comecando na programacao.",
   alternates: {
     canonical: "/curso-completo",
   },
   openGraph: {
-    title: "Formação Desenvolvedor Full Stack + IA | Plugando IA",
+    title: "Arquitetura de Software para Iniciantes | Plugando IA",
     description:
-      "Aprenda programação construindo projetos de verdade. Comece do zero com C# e evolua para .NET, Next.js, AWS, automações e Inteligência Artificial.",
+      "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem esta comecando na programacao.",
     url: "/curso-completo",
     siteName: "Plugando IA",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Formação Desenvolvedor Full Stack + IA | Plugando IA",
+    title: "Arquitetura de Software para Iniciantes | Plugando IA",
     description:
-      "Aprenda programação construindo projetos de verdade. Comece do zero com C# e evolua para .NET, Next.js, AWS, automações e Inteligência Artificial.",
+      "Aprenda C#, APIs, arquitetura de software e fundamentos de cloud em uma jornada criada para quem esta comecando na programacao.",
   },
 };
 
-const journeyItems = [
+const tracks = [
   {
-    number: "01",
-    title: "Fundamentos",
-    description:
-      "Comece entendendo lógica, variáveis, condições, funções, orientação a objetos e os conceitos essenciais da programação usando C#.",
-    stack: "C# • Lógica • POO • LINQ",
+    kicker: "TRILHA 01",
+    meta: "75 AULAS",
+    title: "Fundamentos de C#",
+    description: "Construa uma base forte antes de avancar.",
+    items: [
+      "Logica, variaveis e estruturas de decisao",
+      "Orientacao a objetos e interfaces",
+      "Colecoes, strings, datas e arquivos",
+      "LINQ e organizacao de codigo",
+    ],
   },
   {
-    number: "02",
-    title: "Backend",
-    description:
-      "Aprenda como construir APIs, salvar informações em banco de dados, criar autenticação e desenvolver a parte que fica por trás das aplicações.",
-    stack: ".NET • Web API • EF Core • JWT",
+    kicker: "TRILHA 02",
+    meta: "PROJETO REAL",
+    title: "Web API com .NET",
+    description: "Transforme a base em uma aplicacao completa.",
+    items: [
+      "Modelagem e Entity Framework Core",
+      "CRUD, relacionamentos e migrations",
+      "Autenticacao JWT e Identity",
+      "Claims, politicas e documentacao",
+    ],
   },
   {
-    number: "03",
-    title: "Full Stack",
-    description: "Avance para aplicações web e entenda como interface, servidor e dados trabalham juntos.",
-    stack: "Next.js • APIs • Server Actions",
+    kicker: "TRILHA 03",
+    meta: "FORMACAO CENTRAL",
+    title: "Arquitetura de Software",
+    description: "Aprenda a tomar decisoes e organizar sistemas.",
+    items: [
+      "Requisitos, restricoes e atributos de qualidade",
+      "Coesao, acoplamento e responsabilidades",
+      "SOLID, DRY, KISS e YAGNI",
+      "Camadas, monolito e integracao entre sistemas",
+    ],
+    featured: true,
   },
   {
-    number: "04",
-    title: "Arquitetura",
-    description:
-      "Conforme seus projetos crescem, aprenda princípios para organizar melhor o código e tomar decisões melhores na construção de software.",
-    stack: "SOLID • Coesão • Acoplamento • Arquitetura",
-  },
-  {
-    number: "05",
-    title: "Cloud",
-    description:
-      "Tire seus projetos da sua máquina e conheça serviços utilizados para colocar aplicações e bancos de dados na nuvem.",
-    stack: "AWS • EC2 • RDS • S3 • Lambda",
-  },
-  {
-    number: "06",
-    title: "Automação e IA",
-    description:
-      "Conecte sistemas, automatize processos e comece a integrar Inteligência Artificial às suas aplicações.",
-    stack: "n8n • APIs • IA • RAG • Agentes",
-  },
-  {
-    number: "07",
-    title: "SaaS",
-    description: "Veja todas essas peças se encontrando na construção de um software completo.",
-    stack: "Sistema • Banco • Pagamentos • Assinatura • Deploy",
+    kicker: "TRILHA 04",
+    meta: "CLOUD",
+    title: "Fundamentos de AWS",
+    description: "Entenda onde suas aplicacoes vivem e escalam.",
+    items: [
+      "EC2, redes, volumes e seguranca",
+      "VPC, RDS, S3 e IAM",
+      "Elastic Beanstalk e Auto Scaling",
+      "Serverless com AWS Lambda",
+    ],
   },
 ];
 
-const projectItems = [
+const architectureGroups = [
   {
-    title: "API completa com .NET",
-    description:
-      "Crie uma API com cadastro de clientes, serviços e agendamentos, banco de dados, relacionamentos, autenticação e autorização.",
-    stack: "C# • .NET • EF Core • JWT",
-    image: "/plugando-ia-hero.svg",
-  },
-  {
-    title: "Aplicação Full Stack",
-    description: "Aprenda a criar aplicações web modernas e conectar interface, rotas, APIs e dados.",
-    stack: "Next.js • Server Components • Server Actions • APIs",
-    image: "/imersao-ia-tech-stack.svg",
-  },
-  {
-    title: "Aplicação na AWS",
-    description:
-      "Entenda como publicar aplicações e trabalhar com infraestrutura, servidores, bancos de dados e serviços em Cloud.",
-    stack: "EC2 • RDS • S3 • Elastic Beanstalk • Lambda",
-    image: "/plugando-ia-hero.svg",
-  },
-  {
-    title: "Automações com n8n",
-    description: "Crie fluxos que recebem informações, executam regras, chamam APIs e automatizam processos.",
-    stack: "n8n • HTTP Request • APIs • Workflows",
-    image: "/imersao-ia-tech-stack.svg",
-  },
-  {
-    title: "Aplicação com RAG",
-    description:
-      "Aprenda como uma aplicação pode consultar informações próprias para fornecer contexto a uma Inteligência Artificial.",
-    stack: "IA • RAG • PostgreSQL • Banco vetorial",
-    image: "/plugando-ia-hero.svg",
-  },
-  {
-    title: "Agente de IA",
-    description: "Construa uma aplicação que conversa com modelos de IA utilizando contexto e memória.",
-    stack: "Next.js • IA • Contexto • Memória",
-    image: "/imersao-ia-tech-stack.svg",
-  },
-  {
-    title: "SaaS completo",
-    description:
-      "Acompanhe a construção de um sistema com usuários, clientes, produtos, serviços, banco de dados, trial, pagamentos, assinatura e deploy.",
-    stack: "SaaS • PostgreSQL • Pagamentos • Docker • Deploy",
-    image: "/plugando-ia-hero.svg",
-  },
-];
-
-const curriculumSections = [
-  {
-    number: "01",
-    title: "Fundamentos da Linguagem C#",
-    subtitle: "Para quem está começando.",
+    title: "01. Fundamentos e decisoes",
     items: [
-      "Lógica de programação",
-      "Variáveis e tipos de dados",
-      "Operadores",
-      "Condicionais",
-      "Loops",
-      "Métodos",
-      "Arrays e listas",
-      "Dictionary, Queue e Stack",
-      "Classes e objetos",
-      "Orientação a objetos",
-      "Herança",
-      "Interfaces",
-      "Records",
-      "Manipulação de strings",
-      "Datas",
-      "Arquivos",
-      "LINQ",
+      "O que e arquitetura de software",
+      "Tipos de arquiteto",
+      "Arquitetura x design de codigo",
+      "O papel do arquiteto",
+      "Requisitos funcionais e nao funcionais",
+      "Regras de negocio",
+      "Restricoes tecnicas e financeiras",
     ],
+    open: true,
   },
   {
-    number: "02",
-    title: "Backend com .NET Web API",
-    subtitle: "Comece a construir aplicações de verdade.",
-    items: [
-      "APIs REST",
-      "Controllers",
-      "Modelagem de dados",
-      "Entity Framework Core",
-      "Migrations",
-      "CRUD",
-      "Relacionamentos",
-      "Banco de dados",
-      "JWT",
-      "Identity",
-      "Login",
-      "Autenticação",
-      "Autorização",
-      "Claims",
-    ],
+    title: "02. Atributos de qualidade",
+    items: ["Escalabilidade", "Disponibilidade", "Desempenho", "Seguranca", "Manutenibilidade", "Testabilidade"],
   },
   {
-    number: "03",
-    title: "Desenvolvimento com Next.js",
-    subtitle: "Entenda como construir aplicações web modernas.",
+    title: "03. Principios de bom design",
     items: [
-      "Rotas",
-      "Layouts",
-      "Rotas dinâmicas",
-      "Server Components",
-      "Client Components",
-      "Navegação",
-      "APIs",
-      "Cache",
-      "Middleware",
-      "Server Actions",
-      "Formulários",
-    ],
-  },
-  {
-    number: "04",
-    title: "Fundamentos de Arquitetura de Software",
-    subtitle: "Aprenda a organizar melhor o que você constrói.",
-    items: [
-      "Requisitos funcionais e não funcionais",
-      "Regras de negócio",
-      "Escalabilidade",
-      "Disponibilidade",
-      "Desempenho",
-      "Segurança",
-      "Manutenibilidade",
-      "Alta coesão e baixo acoplamento",
-      "Separação de responsabilidades",
+      "Alta coesao e baixo acoplamento",
+      "Separacao de responsabilidades",
       "Encapsulamento",
+      "Composicao",
       "Modularidade",
-      "Abstração",
-      "SOLID",
+      "Dependencia e abstracao",
       "DRY, KISS e YAGNI",
-      "Arquitetura em camadas",
-      "Monólitos",
-      "REST",
-      "GraphQL",
-      "gRPC",
-      "WebSockets",
     ],
   },
   {
-    number: "05",
-    title: "AWS",
-    subtitle: "Aprenda como seus projetos chegam à nuvem.",
+    title: "04. SOLID completo",
     items: [
-      "EC2",
-      "Linux e Windows na AWS",
-      "IAM",
-      "VPC",
-      "Subnets",
-      "Elastic IP",
-      "RDS",
-      "PostgreSQL",
-      "S3",
-      "SNS",
-      "Elastic Beanstalk",
-      "Auto Scaling",
-      "Lambda",
-      "API Gateway",
+      "Single Responsibility",
+      "Open/Closed",
+      "Liskov Substitution",
+      "Interface Segregation",
+      "Dependency Inversion",
     ],
   },
   {
-    number: "06",
-    title: "Automação com n8n",
-    subtitle: "Faça sistemas conversarem entre si.",
-    items: ["Workflows", "Triggers", "Credenciais", "Condições", "Filtros", "Code Node", "HTTP Request", "APIs", "Integrações"],
+    title: "05. Modelos arquiteturais",
+    items: ["10 modelos para estudar", "Arquitetura em camadas", "Monolito tradicional"],
   },
   {
-    number: "07",
-    title: "Inteligência Artificial e Agentes",
-    subtitle: "Use IA dentro das aplicações que você constrói.",
-    items: ["Integração com modelos de IA", "APIs de IA", "Chat", "Contexto", "Memória", "Agentes", "RAG", "Banco vetorial"],
-  },
-  {
-    number: "08",
-    title: "Construção de SaaS",
-    subtitle: "Veja como uma aplicação pode evoluir para um produto.",
-    items: [
-      "Cadastro",
-      "Login",
-      "Banco PostgreSQL",
-      "Clientes",
-      "Produtos e serviços",
-      "Importação de dados",
-      "Ordens de serviço",
-      "Trial",
-      "Pagamentos",
-      "Assinaturas",
-      "Docker",
-      "Deploy",
-    ],
+    title: "06. Integracao entre sistemas",
+    items: ["API RESTful", "GraphQL", "gRPC", "Webhooks"],
   },
 ];
 
-const audienceItems = [
-  "Nunca programou e quer começar",
-  "Já começou outros cursos, mas continua perdido",
-  "Quer aprender seguindo uma sequência",
-  "Quer construir projetos em vez de apenas assistir aulas",
-  "Quer aprender backend e frontend",
-  "Quer entender banco de dados",
-  "Quer aprender Cloud",
-  "Quer conhecer Arquitetura de Software",
-  "Quer entender como IA entra em aplicações reais",
-  "Tem vontade de construir seu próprio sistema ou SaaS",
+const audienceCards = [
+  {
+    index: "01",
+    title: "Quem esta comecando",
+    description: "Quer aprender programacao com uma sequencia clara e sem pular fundamentos importantes.",
+  },
+  {
+    index: "02",
+    title: "Quem ja faz cursos",
+    description: "Conhece comandos isolados, mas ainda nao consegue enxergar como um sistema completo e organizado.",
+  },
+  {
+    index: "03",
+    title: "Dev em evolucao",
+    description: "Ja cria aplicacoes e quer melhorar o vocabulario, a organizacao do codigo e as decisoes tecnicas.",
+  },
 ];
 
-const receiveItems = [
+const methodSteps = [
+  {
+    title: "Aprenda o conceito",
+    description: "Termos tecnicos explicados com linguagem direta.",
+  },
+  {
+    title: "Veja no codigo",
+    description: "Exemplos em C# e .NET para ligar teoria e pratica.",
+  },
+  {
+    title: "Conecte as decisoes",
+    description: "Entenda como cada escolha afeta manutencao, desempenho e evolucao.",
+  },
+];
+
+const bonusCards = [
+  {
+    tag: "BONUS 01",
+    title: "N8N Basico",
+    description:
+      "Workflows, credenciais, triggers, acoes, condicoes, no Code e requisicoes HTTP para criar suas primeiras automacoes.",
+  },
+  {
+    tag: "BONUS 02",
+    title: "Agentes de IA",
+    description: "Fundamentos de agentes, memoria, ferramentas e construcao pratica do seu primeiro agente inteligente.",
+  },
+  {
+    tag: "BONUS 03",
+    title: "Site para advocacia com IA",
+    description: "Site, chatbot, envio de e-mails, PostgreSQL, banco vetorial, metadados e agente com RAG em um projeto aplicado.",
+  },
+  {
+    tag: "BONUS 04",
+    title: "Next.js",
+    description: "Rotas, layouts, Server e Client Components, cache, middleware, Server Actions, formularios e criacao de APIs.",
+  },
+  {
+    tag: "BONUS 05",
+    title: "Agentes de IA com Next.js",
+    description: "Crie a interface, conecte-se a OpenAI e desenvolva um ChatClient com contexto e memoria utilizando codigo.",
+  },
+  {
+    tag: "BONUS 06",
+    title: "Criacao de SaaS com IA",
+    description: "Do prompt inicial ao sistema hospedado: banco PostgreSQL, trial, assinaturas, pagamentos, Docker, GitHub e publicacao.",
+  },
+];
+
+const premiumBonusTopics = [
+  "Fundamentos de Information Retrieval",
+  "Tokenizacao e OpenAI Tokenizer",
+  "Modelos classicos de recuperacao",
+  "RAG mitigando riscos da IA",
+  "Arquitetura Transformers",
+  "Large Language Models",
+  "Retrieval-Augmented Generation",
+  "Vector Databases e embeddings",
+  "Estrategias de indexacao",
+  "Engenharia de agentes de IA",
+  "APIs profissionais com FastAPI",
+  "Avaliacao e qualidade em LLMs",
+  "Guardrails, seguranca e confiabilidade",
+];
+
+const offerItems = [
   "Fundamentos de C#",
-  "Backend com .NET",
-  "Entity Framework Core",
-  "APIs REST",
-  "Autenticação JWT",
-  "Next.js",
-  "Fundamentos de Arquitetura",
-  "AWS",
-  "n8n",
-  "Inteligência Artificial",
-  "Agentes de IA",
-  "RAG",
-  "Projeto SaaS",
-  "Projetos práticos",
+  "Web API com .NET",
+  "Arquitetura de software",
+  "Fundamentos de AWS",
+  "7 cursos bonus de IA",
+  "Mais de 200 aulas",
 ];
 
 const faqItems = [
   {
-    question: "Preciso saber programar antes?",
+    question: "Preciso saber programar para acompanhar?",
     answer:
-      "Não. A formação começa pelos fundamentos de programação utilizando C# e avança gradualmente para os demais conteúdos.",
+      "Nao. A jornada comeca com logica, linguagem C# e orientacao a objetos. Quem ja conhece o basico pode avancar diretamente para as trilhas seguintes.",
   },
   {
-    question: "Por onde devo começar?",
-    answer: "Se você está começando do zero, comece pela trilha de Fundamentos de C# e siga a sequência recomendada da formação.",
-  },
-  {
-    question: "Preciso estudar tudo ao mesmo tempo?",
+    question: "O curso e apenas sobre teoria?",
     answer:
-      "Não. Justamente o contrário. A proposta é que você avance por etapas e construa sua base antes de chegar aos assuntos mais avançados.",
+      "Nao. A teoria de arquitetura e conectada a exemplos em C#, a construcao de uma Web API completa com .NET e aos servicos usados para executar aplicacoes na AWS.",
   },
   {
-    question: "Vou aprender frontend e backend?",
-    answer: "Sim. O backend é trabalhado principalmente com C# e .NET, enquanto Next.js é utilizado na construção das aplicações web.",
-  },
-  {
-    question: "Tem banco de dados?",
-    answer: "Sim. Banco de dados aparece em diferentes projetos, incluindo Entity Framework Core e PostgreSQL.",
-  },
-  {
-    question: "Tem AWS?",
+    question: "Arquitetura nao e um assunto apenas para desenvolvedores senior?",
     answer:
-      "Sim. A formação possui uma trilha dedicada à AWS, passando por serviços como EC2, RDS, S3, VPC, Elastic Beanstalk, Lambda e outros.",
+      "Nao. Compreender responsabilidades, acoplamento, coesao e organizacao desde cedo evita vicios e acelera a evolucao profissional.",
   },
   {
-    question: "Arquitetura de Software já está disponível?",
-    answer: "A trilha de Fundamentos de Arquitetura está sendo adicionada à formação e continuará recebendo novas aulas.",
+    question: "O que vou conseguir entender ao final?",
+    answer:
+      "Voce tera base para explicar as partes de uma aplicacao, criar APIs mais organizadas, compreender principios SOLID, comparar modelos arquiteturais e reconhecer formas de integracao entre sistemas.",
   },
   {
-    question: "Vou aprender Inteligência Artificial?",
-    answer: "Sim. A formação avança para aplicações que integram modelos de IA, agentes, contexto, memória e RAG.",
+    question: "Posso comecar pela trilha de arquitetura?",
+    answer:
+      "Sim. A formacao foi organizada em uma sequencia recomendada, mas voce pode usar as trilhas conforme seu nivel atual e revisar C# ou Web API quando sentir necessidade.",
   },
   {
-    question: "Tem projetos práticos?",
-    answer: "Sim. A formação acompanha projetos envolvendo APIs, aplicações web, Cloud, automações, agentes, RAG e SaaS.",
-  },
-  {
-    question: "Até quando vale o preço de lançamento?",
-    answer: "O valor de R$ 149,90 é a condição de lançamento até 31 de agosto de 2026, às 23:59.",
+    question: "Os cursos de inteligencia artificial estao incluidos?",
+    answer:
+      "Sim. Neste lote, os cursos de n8n, agentes de IA, site com RAG, Next.js, agentes com codigo, criacao de SaaS e Arquitetando o Futuro com LLMs e RAG entram como bonus gratuitos. O pacote e avaliado separadamente em R$ 200.",
   },
 ];
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
-  return <div className="font-mono text-xs uppercase tracking-[0.28em] text-[#295CFF]">{children}</div>;
-}
-
-function SectionTitle({
-  eyebrow,
-  title,
-  description,
-  light = false,
-}: {
-  eyebrow: string;
-  title: React.ReactNode;
-  description?: React.ReactNode;
-  light?: boolean;
-}) {
-  return (
-    <div className="max-w-4xl">
-      <div className={`font-mono text-xs uppercase tracking-[0.28em] ${light ? "text-[#B8F34A]" : "text-[#295CFF]"}`}>{eyebrow}</div>
-      <h2
-        className={`mt-4 text-balance text-[2.2rem] font-black leading-[0.98] tracking-[-0.04em] md:text-[4rem] ${
-          light ? "text-[#F6F3EC]" : "text-[#151515]"
-        }`}
-      >
-        {title}
-      </h2>
-      {description ? <p className={`mt-5 max-w-3xl text-lg leading-8 ${light ? "text-[#C9C4B8]" : "text-[#62625E]"}`}>{description}</p> : null}
-    </div>
-  );
+  return <p className="course-eyebrow">{children}</p>;
 }
 
 export default async function CursoCompletoPage() {
@@ -400,7 +278,7 @@ export default async function CursoCompletoPage() {
   };
 
   return (
-    <main className="bg-[#F4F1EA] text-[#151515]">
+    <main className="course-page">
       <MetaPixelScript pixelId={metaPixelId || undefined} />
       <SalesPageTracker
         pageKey={config.pageKey}
@@ -417,362 +295,359 @@ export default async function CursoCompletoPage() {
         metadata={{ contentName: config.name, contentType: "course" }}
       />
       <MetaPixelViewContent data={eventData} />
-      <SectionViewTracker selectorId="journey" pageKey={config.pageKey} pagePath={config.pagePath} pageTitle={config.pageTitle} eventName="journey_view" />
-      <SectionViewTracker selectorId="projects" pageKey={config.pageKey} pagePath={config.pagePath} pageTitle={config.pageTitle} eventName="projects_view" />
-      <SectionViewTracker selectorId="pricing" pageKey={config.pageKey} pagePath={config.pagePath} pageTitle={config.pageTitle} eventName="pricing_view" />
+      <SectionViewTracker selectorId="conteudo" pageKey={config.pageKey} pagePath={config.pagePath} pageTitle={config.pageTitle} eventName="content_view" />
+      <SectionViewTracker selectorId="bonus" pageKey={config.pageKey} pagePath={config.pagePath} pageTitle={config.pageTitle} eventName="bonus_view" />
+      <SectionViewTracker selectorId="comprar" pageKey={config.pageKey} pagePath={config.pagePath} pageTitle={config.pageTitle} eventName="offer_view" />
+      <SectionViewTracker selectorId="faq" pageKey={config.pageKey} pagePath={config.pagePath} pageTitle={config.pageTitle} eventName="faq_view" />
 
-      <header className="sticky top-0 z-40 border-b border-[#D7D3CA] bg-[#F4F1EA]/94 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-5 py-4 md:px-8">
-          <Link href="/curso-completo" className="font-mono text-xs uppercase tracking-[0.28em] text-[#151515]">
-            Formação Full Stack + IA
+      <div className="course-topbar">
+        ULTIMAS VAGAS DO LOTE: de R$ {config.regularPrice.toFixed(2).replace(".", ",")} por {priceLabel} + pacote de bonus gratuito
+      </div>
+
+      <nav className="course-nav">
+        <div className="course-container course-nav-inner">
+          <Link href="/curso-completo" className="course-brand">
+            Plugando<span>IA</span> / Arquitetura
           </Link>
-          <nav className="hidden items-center gap-8 md:flex">
-            <a href="#journey" className="text-sm text-[#62625E] transition hover:text-[#151515]">
-              O caminho
-            </a>
-            <a href="#projects" className="text-sm text-[#62625E] transition hover:text-[#151515]">
-              Projetos
-            </a>
-            <a href="#curriculum" className="text-sm text-[#62625E] transition hover:text-[#151515]">
-              Formação
-            </a>
-            <a href="#pricing" className="text-sm text-[#62625E] transition hover:text-[#151515]">
-              Oferta
-            </a>
-            <a href="#faq" className="text-sm text-[#62625E] transition hover:text-[#151515]">
-              FAQ
-            </a>
-          </nav>
-          <TrackedCheckoutButton
-            href={config.checkoutUrl}
-            label="QUERO COMEÇAR AGORA →"
-            pageKey={config.pageKey}
-            pagePath={config.pagePath}
-            pageTitle={config.pageTitle}
-            value={config.activePrice}
-            currency="BRL"
-            customEvent="header_cta_click"
-            eventData={eventData}
-            hideGlow
-            className="hidden rounded-[8px] border border-[#295CFF] bg-[#295CFF] px-5 py-3 text-sm font-semibold text-white shadow-none hover:bg-[#1E49D6] md:inline-flex"
-          />
+          <a className="course-nav-link" href="#conteudo">
+            Ver conteudo do curso
+          </a>
+        </div>
+      </nav>
+
+      <header className="course-hero">
+        <div className="course-container course-hero-grid">
+          <div>
+            <Eyebrow>Arquitetura de software para iniciantes</Eyebrow>
+            <h1>
+              Comece no codigo. Aprenda a <em>pensar como profissional.</em>
+            </h1>
+            <p className="course-lead">
+              Uma jornada passo a passo para aprender C#, construir APIs reais e entender como sistemas bem organizados
+              sao planejados, com um pacote especial de cursos de IA incluido gratuitamente.
+            </p>
+            <div className="course-hero-actions">
+              <TrackedCheckoutButton
+                href={config.checkoutUrl}
+                label={`Quero comecar por ${priceLabel}`}
+                pageKey={config.pageKey}
+                pagePath={config.pagePath}
+                pageTitle={config.pageTitle}
+                value={config.activePrice}
+                currency="BRL"
+                customEvent="hero_cta_click"
+                eventData={eventData}
+                hideGlow
+                className="course-btn course-btn-primary"
+              />
+              <a className="course-btn course-btn-outline" href="#conteudo">
+                Explorar as trilhas
+              </a>
+            </div>
+            <div className="course-hero-proof">
+              <span>Do basico a arquitetura</span>
+              <span>Exemplos em C# e .NET</span>
+              <span>Mais de 200 aulas com os bonus</span>
+            </div>
+          </div>
+
+          <div className="course-code-card" aria-label="Ilustracao das camadas de uma arquitetura de software">
+            <div className="course-code-top">
+              <i className="course-dot" />
+              <i className="course-dot" />
+              <i className="course-dot" />
+            </div>
+            <div className="course-architecture">
+              <div className="course-layer">
+                <b>01</b>
+                Presentation
+                <span>API</span>
+              </div>
+              <div className="course-layer">
+                <b>02</b>
+                Application
+                <span>Casos de uso</span>
+              </div>
+              <div className="course-layer">
+                <b>03</b>
+                Domain
+                <span>Regras</span>
+              </div>
+              <div className="course-layer">
+                <b>04</b>
+                Infrastructure
+                <span>Dados</span>
+              </div>
+            </div>
+            <div className="course-card-caption">
+              Voce nao vai apenas copiar codigo. Vai entender onde cada parte se encaixa.
+            </div>
+          </div>
         </div>
       </header>
 
-      <section className="border-b border-[#D7D3CA]">
-        <div className="mx-auto grid max-w-7xl gap-12 px-5 py-16 md:grid-cols-[1.05fr,0.95fr] md:px-8 md:py-24">
-          <FadeIn>
-            <Eyebrow>Formação Full Stack + IA • Nova turma 2026</Eyebrow>
-            <h1 className="mt-5 max-w-5xl text-balance text-[3rem] font-black leading-[0.94] tracking-[-0.05em] md:text-[5.4rem]">
-              Aprenda programação construindo projetos de verdade.
-            </h1>
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-[#62625E] md:text-xl">
-              Comece do zero com C# e evolua passo a passo para APIs com .NET, aplicações com Next.js, Cloud com AWS, automações e projetos com Inteligência Artificial.
+      <div className="course-stats">
+        <div className="course-container course-stats-inner">
+          <div className="course-stat">
+            <strong>4 trilhas</strong>
+            <span>em uma jornada progressiva</span>
+          </div>
+          <div className="course-stat">
+            <strong>200+ aulas</strong>
+            <span>incluindo os cursos bonus</span>
+          </div>
+          <div className="course-stat">
+            <strong>C# + .NET</strong>
+            <span>tecnologias usadas no mercado</span>
+          </div>
+          <div className="course-stat">
+            <strong>R$ {config.regularPrice.toFixed(0)}</strong>
+            <span>por {priceLabel} neste lote</span>
+          </div>
+        </div>
+      </div>
+
+      <section className="course-section">
+        <div className="course-container course-intro-grid">
+          <div>
+            <Eyebrow>O problema nao e voce</Eyebrow>
+            <h2>Arquitetura parece dificil quando explicam pelo final.</h2>
+            <p className="course-copy">
+              Muitos conteudos comecam falando de padroes complexos antes de mostrar o basico. Aqui, voce percorre o
+              caminho na ordem certa: linguagem, aplicacao, organizacao e decisoes de arquitetura.
             </p>
-            <div className="mt-8 space-y-3 text-base font-semibold text-[#151515]">
-              <div>✓ Comece mesmo sem experiência em programação</div>
-              <div>✓ Aprenda seguindo uma sequência clara</div>
-              <div>✓ Construa projetos enquanto evolui</div>
-            </div>
-            <div className="mt-10 grid gap-5 border-t border-[#D7D3CA] pt-8 md:max-w-2xl md:grid-cols-[1fr,0.9fr]">
-              <div>
-                <div className="font-mono text-xs uppercase tracking-[0.25em] text-[#FF5A36]">Preço especial de lançamento</div>
-                <div className="mt-4 text-sm text-[#62625E] line-through">R$ {config.regularPrice.toFixed(0)}</div>
-                <div className="mt-2 text-[3.3rem] font-black leading-none tracking-[-0.05em] md:text-[4.8rem]">{priceLabel}</div>
-                <div className="mt-2 text-sm font-semibold text-[#FF5A36]">até 31 de agosto</div>
-              </div>
-              <div className="grid gap-3">
-                <TrackedCheckoutButton
-                  href={config.checkoutUrl}
-                  label="QUERO COMEÇAR AGORA →"
-                  pageKey={config.pageKey}
-                  pagePath={config.pagePath}
-                  pageTitle={config.pageTitle}
-                  value={config.activePrice}
-                  currency="BRL"
-                  customEvent="hero_cta_click"
-                  eventData={eventData}
-                  hideGlow
-                  className="w-full rounded-[8px] border border-[#295CFF] bg-[#295CFF] px-6 py-4 text-sm font-semibold uppercase tracking-[0.08em] text-white shadow-none hover:bg-[#1E49D6]"
-                />
-                <div className="text-sm text-[#62625E]">Acesso online • Estude no seu ritmo</div>
-              </div>
-            </div>
-          </FadeIn>
-
-          <FadeIn delayMs={120}>
-            <div className="grid gap-5">
-              <div className="overflow-hidden border border-[#D7D3CA] bg-[#ECE8DF]">
-                <Image src="/plugando-ia-hero.svg" alt="Visual técnico da Formação Full Stack + IA" width={1600} height={960} priority className="h-auto w-full" />
-              </div>
-              <div className="border border-[#D7D3CA] bg-[#ECE8DF] p-6">
-                <div className="text-[1.7rem] font-black leading-tight tracking-[-0.04em]">Você não precisa aprender tudo de uma vez.</div>
-                <div className="mt-4 space-y-3 text-base leading-7 text-[#62625E]">
-                  <p>Quando você começa a pesquisar programação, parece que existe uma lista infinita de coisas para estudar.</p>
-                  <p>C# ou JavaScript? Frontend ou backend? Banco de dados? API? Cloud? Arquitetura? E agora Inteligência Artificial?</p>
-                  <p>O problema não é encontrar conteúdo. O difícil é saber o que aprender primeiro e o que vem depois.</p>
-                  <p>Foi por isso que esta formação foi organizada como uma trilha.</p>
-                </div>
-              </div>
-            </div>
-          </FadeIn>
+          </div>
+          <div className="course-before-after">
+            <article className="course-ba-card">
+              <small>Antes</small>
+              <ul>
+                <li>Copia codigos sem entender a estrutura</li>
+                <li>Nao sabe onde colocar cada responsabilidade</li>
+                <li>Se perde em termos como SOLID e camadas</li>
+                <li>Acha que arquitetura e so para senior</li>
+              </ul>
+            </article>
+            <article className="course-ba-card course-ba-card-after">
+              <small>Depois</small>
+              <ul>
+                <li>Entende a funcao de cada parte do sistema</li>
+                <li>Constroi APIs com mais organizacao</li>
+                <li>Analisa escolhas e seus trade-offs</li>
+                <li>Conversa sobre arquitetura com clareza</li>
+              </ul>
+            </article>
+          </div>
         </div>
       </section>
 
-      <section id="journey" className="border-b border-[#D7D3CA]">
-        <div className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24">
-          <FadeIn>
-            <SectionTitle eyebrow="O caminho" title={<>Comece pelo básico. Evolua projeto por projeto.</>} description="Você começa construindo sua base e avança gradualmente para projetos cada vez mais completos." />
-          </FadeIn>
-          <div className="mt-14 divide-y divide-[#D7D3CA] border-y border-[#D7D3CA]">
-            {journeyItems.map((item, index) => (
-              <FadeIn key={item.number} delayMs={index * 60}>
-                <div className="grid gap-5 py-8 md:grid-cols-[90px,1fr,0.9fr]">
-                  <div className="font-mono text-2xl text-[#295CFF]">{item.number}</div>
-                  <div>
-                    <h3 className="text-[1.9rem] font-black leading-tight tracking-[-0.04em]">{item.title}</h3>
-                    <div className="mt-4 font-mono text-xs uppercase tracking-[0.22em] text-[#295CFF]">{item.stack}</div>
-                  </div>
-                  <p className="text-base leading-7 text-[#62625E]">{item.description}</p>
+      <section className="course-section course-journey" id="conteudo">
+        <div className="course-container">
+          <div className="course-section-head">
+            <div>
+              <Eyebrow>Sua rota de aprendizagem</Eyebrow>
+              <h2>
+                Do primeiro conceito
+                <br />
+                ao sistema completo.
+              </h2>
+            </div>
+            <p>As aulas que voce ja recebe foram organizadas como uma formacao unica. Cada etapa prepara a proxima.</p>
+          </div>
+
+          <div className="course-tracks">
+            {tracks.map((track) => (
+              <article key={track.title} className={`course-track${track.featured ? " is-featured" : ""}`}>
+                <div className="course-track-number">
+                  <span>{track.kicker}</span>
+                  <span>{track.meta}</span>
                 </div>
-              </FadeIn>
+                <h3>{track.title}</h3>
+                <p>{track.description}</p>
+                <ul>
+                  {track.items.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </article>
             ))}
           </div>
-          <FadeIn delayMs={120}>
-            <div className="mt-12 max-w-4xl text-[1.6rem] font-black leading-tight tracking-[-0.04em] text-[#151515]">
-              O objetivo é chegar ao ponto em que você consegue olhar para uma ideia e começar a entender como transformá-la em software.
-            </div>
-          </FadeIn>
         </div>
       </section>
 
-      <section id="projects" className="border-b border-[#D7D3CA] bg-[#ECE8DF]">
-        <div className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24">
-          <FadeIn>
-            <SectionTitle
-              eyebrow="Projetos"
-              title={<>Você não vai ficar apenas na teoria.</>}
-              description="Ao longo da formação, você acompanha a construção de projetos que mostram como as tecnologias funcionam juntas."
-            />
-          </FadeIn>
-          <div className="mt-14 grid gap-10">
-            {projectItems.map((project, index) => {
-              const reverse = index % 2 === 1;
-              return (
-                <FadeIn key={project.title} delayMs={index * 60}>
-                  <div className={`grid gap-8 lg:grid-cols-2 lg:items-center ${reverse ? "lg:[&>*:first-child]:order-2" : ""}`}>
-                    <div className="overflow-hidden border border-[#D7D3CA] bg-[#F4F1EA]">
-                      <Image src={project.image} alt={project.title} width={1600} height={960} className="h-auto w-full" />
-                    </div>
-                    <div>
-                      <div className="font-mono text-xs uppercase tracking-[0.22em] text-[#62625E]">Aprender fazendo</div>
-                      <h3 className="mt-3 text-[2rem] font-black leading-tight tracking-[-0.04em] md:text-[2.8rem]">{project.title}</h3>
-                      <p className="mt-4 text-base leading-7 text-[#62625E]">{project.description}</p>
-                      <div className="mt-5 border-t border-[#D7D3CA] pt-4 font-mono text-xs uppercase tracking-[0.22em] text-[#295CFF]">{project.stack}</div>
-                    </div>
-                  </div>
-                </FadeIn>
-              );
-            })}
+      <section className="course-section">
+        <div className="course-container course-architecture-list">
+          <div className="course-sticky-copy">
+            <Eyebrow>Por dentro da trilha central</Eyebrow>
+            <h2>Arquitetura sem enrolacao.</h2>
+            <p className="course-copy">
+              Voce comeca pelo significado das decisoes arquiteturais e avanca ate as formas de comunicacao entre
+              sistemas.
+            </p>
           </div>
-        </div>
-      </section>
 
-      <section id="curriculum" className="border-b border-[#2D2D2D] bg-[#171717]">
-        <div className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24">
-          <FadeIn>
-            <SectionTitle eyebrow="A formação" title={<>Tudo começa pela base.</>} light />
-          </FadeIn>
-          <div className="mt-14 grid gap-6">
-            {curriculumSections.map((section, index) => (
-              <FadeIn key={section.number} delayMs={index * 50}>
-                <div className="border border-[#2D2D2D] p-6 md:p-8">
-                  <div className="font-mono text-xs uppercase tracking-[0.24em] text-[#B8F34A]">{section.number}</div>
-                  <h3 className="mt-3 text-[1.9rem] font-black leading-tight tracking-[-0.04em] text-[#F6F3EC]">{section.title}</h3>
-                  <div className="mt-2 text-base font-semibold text-[#C9C4B8]">{section.subtitle}</div>
-                  <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {section.items.map((item) => (
-                      <div key={item} className="border-t border-[#2D2D2D] pt-3 text-sm leading-6 text-[#F6F3EC]">
-                        ✓ {item}
-                      </div>
+          <div className="course-lesson-groups">
+            {architectureGroups.map((group) => (
+              <details key={group.title} className="course-details" open={group.open}>
+                <summary>{group.title}</summary>
+                <div className="course-detail-body">
+                  <ul>
+                    {group.items.map((item) => (
+                      <li key={item}>{item}</li>
                     ))}
-                  </div>
-                  {section.number === "04" ? (
-                    <p className="mt-6 max-w-4xl text-sm leading-7 text-[#C9C4B8]">
-                      E esta trilha continuará recebendo novos conteúdos, avançando posteriormente para temas relacionados à Arquitetura em Cloud.
-                    </p>
-                  ) : null}
+                  </ul>
                 </div>
-              </FadeIn>
+              </details>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="border-b border-[#D7D3CA]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-5 py-16 md:grid-cols-[1fr,0.95fr] md:px-8 md:py-24">
-          <FadeIn>
-            <SectionTitle
-              eyebrow="Programação + Inteligência Artificial"
-              title={<>A IA pode escrever código. Mas alguém ainda precisa saber o que fazer com ele.</>}
-              description="Ferramentas de Inteligência Artificial podem acelerar muito o desenvolvimento. Mas existe uma grande diferença entre receber um código pronto e conseguir entender se aquele código está correto, adaptar uma regra, encontrar um problema ou transformar aquilo em uma aplicação completa."
-            />
-            <div className="mt-6 text-lg font-semibold text-[#151515]">Por isso, a formação não começa pela IA. Começa pela programação.</div>
-            <div className="mt-4 text-base leading-7 text-[#62625E]">
-              Você constrói sua base, aprende como aplicações funcionam e então passa a utilizar IA como uma ferramenta para acelerar o que já sabe construir.
-            </div>
-          </FadeIn>
-          <FadeIn delayMs={100}>
-            <div className="border border-[#D7D3CA] bg-[#ECE8DF] p-8">
-              <div className="space-y-6">
-                <div className="text-[2rem] font-black leading-tight tracking-[-0.04em]">Aprenda a programar.</div>
-                <div className="h-px bg-[#D7D3CA]" />
-                <div className="text-[2rem] font-black leading-tight tracking-[-0.04em]">Aprenda a construir.</div>
-                <div className="h-px bg-[#D7D3CA]" />
-                <div className="text-[2rem] font-black leading-tight tracking-[-0.04em] text-[#295CFF]">Use IA para ir além.</div>
-              </div>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      <section className="border-b border-[#D7D3CA] bg-[#ECE8DF]">
-        <div className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24">
-          <FadeIn>
-            <SectionTitle eyebrow="Para quem é" title={<>Esta formação é para você que...</>} />
-          </FadeIn>
-          <div className="mt-12 grid gap-3 sm:grid-cols-2">
-            {audienceItems.map((item) => (
-              <div key={item} className="border-t border-[#D7D3CA] pt-3 text-sm leading-6 text-[#151515]">
-                ✓ {item}
-              </div>
+      <section className="course-section course-audience">
+        <div className="course-container">
+          <Eyebrow>Para quem e</Eyebrow>
+          <h2>
+            Voce nao precisa chegar pronto.
+            <br />
+            O curso existe para preparar voce.
+          </h2>
+          <div className="course-audience-grid">
+            {audienceCards.map((card) => (
+              <article key={card.index} className="course-person">
+                <div className="course-person-icon">{card.index}</div>
+                <h3>{card.title}</h3>
+                <p>{card.description}</p>
+              </article>
             ))}
           </div>
-          <FadeIn delayMs={120}>
-            <div className="mt-12 text-[1.8rem] font-black leading-tight tracking-[-0.04em]">Você não precisa chegar sabendo.</div>
-            <div className="mt-2 text-lg font-semibold text-[#151515]">Você entra para aprender.</div>
-          </FadeIn>
         </div>
       </section>
 
-      <section className="border-b border-[#D7D3CA]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-5 py-16 md:grid-cols-[0.95fr,1.05fr] md:px-8 md:py-24">
-          <FadeIn>
-            <div className="overflow-hidden border border-[#D7D3CA] bg-[#ECE8DF]">
-              <Image src="/imersao-ia-tech-stack.svg" alt="Ecossistema técnico Plugando IA" width={1600} height={960} className="h-auto w-full" />
-            </div>
-          </FadeIn>
-          <FadeIn delayMs={100}>
-            <SectionTitle
-              eyebrow="Sobre o professor"
-              title={<>Quem vai te acompanhar durante a formação</>}
-              description="Eu criei esta formação pensando principalmente em quem olha para o desenvolvimento atual e não sabe mais por onde começar."
-            />
-            <div className="mt-6 space-y-4 text-base leading-7 text-[#62625E]">
-              <p>Hoje você encontra C#, JavaScript, frameworks, Cloud, automações e Inteligência Artificial disputando sua atenção ao mesmo tempo.</p>
-              <p>Minha proposta é diferente: começar pela base e conectar as peças aos poucos.</p>
-              <p>Em vez de aprender ferramentas isoladas, quero mostrar como elas aparecem na construção de aplicações reais.</p>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      <section className="border-b border-[#D64E2E] bg-[#FF5A36]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-5 py-16 md:grid-cols-[0.95fr,1.05fr] md:px-8 md:py-24">
-          <FadeIn>
-            <div className="font-mono text-xs uppercase tracking-[0.28em] text-[#151515]">Nova formação 2026</div>
-            <h2 className="mt-4 max-w-4xl text-balance text-[2.4rem] font-black leading-[0.98] tracking-[-0.04em] text-[#151515] md:text-[4rem]">
-              A formação cresceu. E esta é a condição de lançamento.
-            </h2>
-            <div className="mt-5 max-w-3xl space-y-4 text-base leading-7 text-[#151515]/80">
-              <p>Os conteúdos que antes estavam separados agora fazem parte de uma formação organizada para acompanhar sua evolução desde os fundamentos.</p>
-              <p>E essa formação está crescendo.</p>
-              <p>A nova trilha de Fundamentos de Arquitetura de Software já começou a ser adicionada e continuará evoluindo com novos conteúdos.</p>
-              <p>Por isso, durante este lançamento, você pode entrar por uma condição especial.</p>
-            </div>
-          </FadeIn>
-          <FadeIn delayMs={100}>
-            <div className="border border-[#151515]/20 bg-[#151515]/5 p-8">
-              <div className="text-sm text-[#151515]/70">Preço oficial</div>
-              <div className="mt-2 text-xl line-through text-[#151515]/75">R$ {config.regularPrice.toFixed(0)}</div>
-              <div className="mt-6 text-sm text-[#151515]/70">Preço de lançamento</div>
-              <div className="mt-2 text-[3.4rem] font-black leading-none tracking-[-0.05em] text-[#151515] md:text-[4.8rem]">{priceLabel}</div>
-              <div className="mt-3 text-sm font-semibold text-[#151515]">Condição válida até 31/08/2026 às 23:59.</div>
-              <div className="mt-8">
-                {config.launchActive ? (
-                  <LaunchCountdown
-                    endDate={config.launchEndDate}
-                    itemClassName="rounded-none border-[#151515]/20 bg-[#151515]/6"
-                    valueClassName="text-[#151515] text-3xl md:text-4xl"
-                    labelClassName="text-[#151515]/70"
-                  />
-                ) : null}
-              </div>
-              <div className="mt-8">
-                <TrackedCheckoutButton
-                  href={config.checkoutUrl}
-                  label="QUERO ENTRAR NA FORMAÇÃO →"
-                  pageKey={config.pageKey}
-                  pagePath={config.pagePath}
-                  pageTitle={config.pageTitle}
-                  value={config.activePrice}
-                  currency="BRL"
-                  customEvent="launch_cta_click"
-                  eventData={eventData}
-                  hideGlow
-                  className="w-full rounded-[8px] border border-[#151515] bg-[#151515] px-6 py-4 text-sm font-semibold uppercase tracking-[0.08em] text-[#F4F1EA] shadow-none hover:bg-black"
-                />
-              </div>
-              <div className="mt-3 text-sm text-[#151515]/75">Acesso online • Estude no seu ritmo</div>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      <section id="pricing" className="border-b border-[#2D2D2D] bg-[#171717]">
-        <div className="mx-auto grid max-w-7xl gap-12 px-5 py-16 md:grid-cols-[1fr,0.95fr] md:px-8 md:py-24">
-          <FadeIn>
-            <SectionTitle eyebrow="O que você recebe" title={<>Uma formação. Uma sequência completa.</>} description="Ao entrar, você terá acesso aos conteúdos disponibilizados na formação." light />
-            <div className="mt-10 grid gap-3 sm:grid-cols-2">
-              {receiveItems.map((item) => (
-                <div key={item} className="border-t border-[#2D2D2D] pt-3 text-sm leading-6 text-[#F6F3EC]">
-                  ✓ {item}
+      <section className="course-section">
+        <div className="course-container course-method-grid">
+          <div>
+            <Eyebrow>Aprendizado progressivo</Eyebrow>
+            <h2>Entender antes de decorar.</h2>
+            <div className="course-steps">
+              {methodSteps.map((step) => (
+                <div key={step.title} className="course-step">
+                  <div>
+                    <h3>{step.title}</h3>
+                    <p>{step.description}</p>
+                  </div>
                 </div>
               ))}
             </div>
-          </FadeIn>
-          <FadeIn delayMs={120}>
-            <div className="border border-[#2D2D2D] p-8">
-              <div className="text-sm text-[#C9C4B8]">Tudo por</div>
-              <div className="mt-2 text-sm text-[#8F8A80] line-through">R$ {config.regularPrice.toFixed(0)}</div>
-              <div className="mt-2 text-[3.4rem] font-black leading-none tracking-[-0.05em] text-[#F6F3EC] md:text-[4.8rem]">{priceLabel}</div>
-              <div className="mt-3 text-sm text-[#C9C4B8]">no lançamento.</div>
-              <div className="mt-8">
-                <TrackedCheckoutButton
-                  href={config.checkoutUrl}
-                  label="QUERO COMEÇAR AGORA →"
-                  pageKey={config.pageKey}
-                  pagePath={config.pagePath}
-                  pageTitle={config.pageTitle}
-                  value={config.activePrice}
-                  currency="BRL"
-                  customEvent="pricing_cta_click"
-                  eventData={eventData}
-                  hideGlow
-                  className="w-full rounded-[8px] border border-[#295CFF] bg-[#295CFF] px-6 py-4 text-sm font-semibold uppercase tracking-[0.08em] text-white shadow-none hover:bg-[#1E49D6]"
-                />
-              </div>
-            </div>
-          </FadeIn>
+          </div>
+
+          <aside className="course-quote-card">
+            <p>
+              "Arquitetura nao comeca em um diagrama. Comeca quando voce entende por que o codigo foi organizado daquela
+              maneira."
+            </p>
+            <small>- A ideia que guia esta formacao</small>
+          </aside>
         </div>
       </section>
 
-      <section id="faq" className="border-b border-[#D7D3CA]">
-        <div className="mx-auto max-w-5xl px-5 py-16 md:px-8 md:py-24">
-          <FadeIn>
-            <SectionTitle eyebrow="FAQ" title={<>Respostas para decidir com clareza.</>} />
-          </FadeIn>
-          <div className="mt-12 grid gap-4">
+      <section className="course-section course-bonuses" id="bonus">
+        <div className="course-container">
+          <div className="course-bonus-head">
+            <div>
+              <Eyebrow>Bonus especial deste lote</Eyebrow>
+              <h2>
+                Entre pela arquitetura.
+                <br />
+                Avance tambem para a IA.
+              </h2>
+              <p className="course-copy">
+                Alem da formacao principal, voce recebe cursos complementares para criar automacoes, agentes,
+                aplicacoes com IA e ate um SaaS completo.
+              </p>
+            </div>
+            <div className="course-bonus-value">
+              <s>Valor separado: R$ 200</s>
+              <strong>Hoje: gratis</strong>
+              <span>Incluido na sua matricula neste lote.</span>
+            </div>
+          </div>
+
+          <div className="course-bonus-grid">
+            {bonusCards.map((bonus) => (
+              <article key={bonus.tag} className="course-bonus-card">
+                <span className="course-bonus-tag">{bonus.tag}</span>
+                <h3>{bonus.title}</h3>
+                <p>{bonus.description}</p>
+              </article>
+            ))}
+
+            <article className="course-bonus-card is-special">
+              <span className="course-bonus-tag">BONUS PREMIUM</span>
+              <h3>Arquitetando o Futuro com LLMs e RAG</h3>
+              <p>
+                Uma formacao avancada para entender a arquitetura por tras de aplicacoes modernas com inteligencia
+                artificial.
+              </p>
+              <ul className="course-bonus-topics">
+                {premiumBonusTopics.map((topic) => (
+                  <li key={topic}>{topic}</li>
+                ))}
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="course-section course-offer" id="comprar">
+        <div className="course-container">
+          <div className="course-offer-card">
+            <div className="course-offer-main">
+              <Eyebrow>Comece sua formacao</Eyebrow>
+              <h2>Uma base completa para construir e compreender software.</h2>
+              <p>
+                Voce recebe uma jornada que conecta os fundamentos da programacao ao raciocinio arquitetural e ainda
+                leva todo o pacote de IA como bonus.
+              </p>
+              <div className="course-included">
+                {offerItems.map((item) => (
+                  <span key={item}>{item}</span>
+                ))}
+              </div>
+            </div>
+
+            <div className="course-price-box">
+              <span className="course-discount-pill">ULTIMAS VAGAS NESTE VALOR</span>
+              <div className="course-original-price">
+                Preco original: <s>R$ {config.regularPrice.toFixed(2).replace(".", ",")}</s>
+              </div>
+              <div className="course-price">
+                <sup>R$</sup>
+                {config.activePrice.toFixed(2).replace(".", ",")}
+              </div>
+              <div className="course-price-note">Pagamento unico + R$ 200 em bonus gratuitos</div>
+              <TrackedCheckoutButton
+                href={config.checkoutUrl}
+                label="Quero entrar para o curso"
+                pageKey={config.pageKey}
+                pagePath={config.pagePath}
+                pageTitle={config.pageTitle}
+                value={config.activePrice}
+                currency="BRL"
+                customEvent="offer_cta_click"
+                eventData={eventData}
+                hideGlow
+                className="course-btn course-price-cta"
+              />
+              <div className="course-safe-note">Voce sera direcionado para o ambiente de pagamento.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="course-section" id="faq">
+        <div className="course-container course-faq">
+          <Eyebrow>Duvidas frequentes</Eyebrow>
+          <h2>Antes de comecar.</h2>
+          <div className="course-faq-list">
             {faqItems.map((item) => (
               <TrackedAccordion
                 key={item.question}
@@ -781,10 +656,10 @@ export default async function CursoCompletoPage() {
                 pagePath={config.pagePath}
                 pageTitle={config.pageTitle}
                 eventName="faq_open"
-                className="rounded-none border-x-0 border-b border-t-0 border-[#D7D3CA] bg-[#F4F1EA] px-0 py-5 open:bg-[#F4F1EA]"
-                titleClassName="text-lg font-semibold !text-[#151515]"
-                contentClassName="text-base leading-7 !text-[#62625E]"
-                iconClassName="h-9 w-9 rounded-none border-[#D7D3CA] bg-[#F4F1EA] !text-[#151515]"
+                className="course-faq-item"
+                titleClassName="course-faq-title"
+                contentClassName="course-faq-content"
+                iconClassName="course-faq-icon"
               >
                 {item.answer}
               </TrackedAccordion>
@@ -793,58 +668,16 @@ export default async function CursoCompletoPage() {
         </div>
       </section>
 
-      <section className="border-b border-[#D7D3CA]">
-        <div className="mx-auto max-w-5xl px-5 py-16 text-center md:px-8 md:py-24">
-          <FadeIn>
-            <h2 className="text-balance text-[2.6rem] font-black leading-[0.98] tracking-[-0.05em] text-[#151515] md:text-[4.8rem]">
-              Você não precisa aprender tudo hoje.
-            </h2>
-            <div className="mt-3 text-[1.5rem] font-black leading-tight tracking-[-0.04em] text-[#151515] md:text-[2.2rem]">Precisa começar pela primeira etapa.</div>
-            <div className="mx-auto mt-8 max-w-3xl space-y-3 text-base leading-7 text-[#62625E]">
-              <p>Comece pelos fundamentos.</p>
-              <p>Construa seu primeiro projeto.</p>
-              <p>Depois o próximo.</p>
-              <p>E continue evoluindo até entender como aplicações modernas, Cloud e Inteligência Artificial se conectam.</p>
-            </div>
-            <div className="mt-8 text-sm text-[#62625E] line-through">R$ {config.regularPrice.toFixed(0)}</div>
-            <div className="mt-2 text-[3.2rem] font-black leading-none tracking-[-0.05em] text-[#151515] md:text-[4.8rem]">{priceLabel}</div>
-            <div className="mt-2 font-mono text-xs uppercase tracking-[0.24em] text-[#FF5A36]">Preço de lançamento até 31/08</div>
-            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-              <TrackedCheckoutButton
-                href={config.checkoutUrl}
-                label="QUERO COMEÇAR MINHA FORMAÇÃO →"
-                pageKey={config.pageKey}
-                pagePath={config.pagePath}
-                pageTitle={config.pageTitle}
-                value={config.activePrice}
-                currency="BRL"
-                customEvent="final_cta_click"
-                eventData={eventData}
-                hideGlow
-                className="rounded-[8px] border border-[#295CFF] bg-[#295CFF] px-6 py-4 text-sm font-semibold uppercase tracking-[0.08em] text-white shadow-none hover:bg-[#1E49D6]"
-              />
-            </div>
-            <div className="mt-4 text-sm text-[#62625E]">Formação Full Stack + IA — Plugando IA</div>
-          </FadeIn>
-        </div>
-      </section>
-
-      <footer className="bg-[#151515]">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-12 md:flex-row md:items-end md:justify-between md:px-8">
+      <footer className="course-footer">
+        <div className="course-container course-footer-inner">
           <div>
-            <div className="text-3xl font-black tracking-[-0.05em] text-[#F6F3EC] md:text-5xl">PLUGANDO IA</div>
-            <div className="mt-3 text-sm text-[#C9C4B8]">Formação Desenvolvedor Full Stack + IA</div>
+            <strong>Plugando IA</strong>
+            <br />
+            Formacao em Arquitetura de Software
           </div>
-          <div className="flex flex-wrap gap-5 font-mono text-xs uppercase tracking-[0.22em] text-[#C9C4B8]">
-            <Link href="/terms" className="transition hover:text-white">
-              Termos
-            </Link>
-            <Link href="/privacy" className="transition hover:text-white">
-              Privacidade
-            </Link>
-            <a href="#faq" className="transition hover:text-white">
-              FAQ
-            </a>
+          <div className="course-footer-links">
+            <Link href="/terms">Termos</Link>
+            <Link href="/privacy">Privacidade</Link>
           </div>
         </div>
       </footer>
@@ -853,18 +686,1047 @@ export default async function CursoCompletoPage() {
         title={config.shortName}
         priceLabel={priceLabel}
         href={config.checkoutUrl}
-        label="ENTRAR →"
+        label="Entrar"
         pageKey={config.pageKey}
         pagePath={config.pagePath}
         pageTitle={config.pageTitle}
         value={config.activePrice}
         currency="BRL"
-        className="border-[#D7D3CA] bg-[#F4F1EA]/96"
-        titleClassName="text-[#151515]"
-        priceClassName="text-[#FF5A36]"
-        buttonClassName="rounded-[8px] border border-[#295CFF] bg-[#295CFF] px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-white shadow-none hover:bg-[#1E49D6]"
+        className="course-mobile-cta"
+        titleClassName="course-mobile-cta-title"
+        priceClassName="course-mobile-cta-price"
+        buttonClassName="course-mobile-cta-button"
         hideGlow
       />
+
+      <style>{`
+        :root {
+          --course-ink: #14221d;
+          --course-forest: #173d32;
+          --course-cream: #f5f0e6;
+          --course-paper: #fffdf8;
+          --course-coral: #f27d52;
+          --course-lime: #c8ed75;
+          --course-muted: #64736c;
+          --course-line: rgba(20, 34, 29, 0.14);
+          --course-shadow: 0 24px 70px rgba(20, 34, 29, 0.12);
+          --course-radius: 28px;
+        }
+
+        .course-page {
+          background: var(--course-cream);
+          color: var(--course-ink);
+        }
+
+        .course-page * {
+          box-sizing: border-box;
+        }
+
+        .course-page a {
+          color: inherit;
+          text-decoration: none;
+        }
+
+        .course-page h1,
+        .course-page h2,
+        .course-page h3,
+        .course-page p {
+          margin-top: 0;
+        }
+
+        .course-page h1,
+        .course-page h2,
+        .course-page h3 {
+          line-height: 1.04;
+          letter-spacing: -0.045em;
+        }
+
+        .course-page h1 {
+          margin-bottom: 26px;
+          max-width: 850px;
+          font-size: clamp(3rem, 6vw, 6.25rem);
+        }
+
+        .course-page h2 {
+          margin-bottom: 22px;
+          font-size: clamp(2.2rem, 4.6vw, 4.6rem);
+        }
+
+        .course-page h3 {
+          font-size: 1.45rem;
+        }
+
+        .course-container {
+          margin: 0 auto;
+          width: min(1160px, calc(100% - 40px));
+        }
+
+        .course-topbar {
+          padding: 9px 16px;
+          background: var(--course-lime);
+          color: var(--course-ink);
+          text-align: center;
+          font-size: 0.88rem;
+          font-weight: 800;
+        }
+
+        .course-nav {
+          position: absolute;
+          left: 0;
+          right: 0;
+          z-index: 3;
+          padding-top: 23px;
+        }
+
+        .course-nav-inner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 24px;
+        }
+
+        .course-brand {
+          color: white;
+          font-size: 1.05rem;
+          font-weight: 900;
+          letter-spacing: -0.03em;
+        }
+
+        .course-brand span {
+          color: var(--course-lime);
+        }
+
+        .course-nav-link {
+          color: #dce7e2;
+          font-size: 0.92rem;
+          font-weight: 700;
+        }
+
+        .course-hero {
+          position: relative;
+          overflow: hidden;
+          min-height: 840px;
+          padding: 155px 0 88px;
+          background: var(--course-forest);
+          color: white;
+        }
+
+        .course-hero::before {
+          position: absolute;
+          top: 50px;
+          right: -150px;
+          width: 520px;
+          height: 520px;
+          border: 100px solid rgba(200, 237, 117, 0.07);
+          border-radius: 50%;
+          content: "";
+        }
+
+        .course-hero-grid {
+          position: relative;
+          z-index: 1;
+          display: grid;
+          grid-template-columns: 1.2fr 0.8fr;
+          gap: 65px;
+          align-items: center;
+        }
+
+        .course-hero h1 em {
+          color: var(--course-lime);
+          font-style: normal;
+        }
+
+        .course-eyebrow {
+          display: inline-flex;
+          align-items: center;
+          gap: 9px;
+          margin: 0 0 18px;
+          font-size: 0.78rem;
+          font-weight: 800;
+          letter-spacing: 0.11em;
+          text-transform: uppercase;
+        }
+
+        .course-eyebrow::before {
+          width: 26px;
+          height: 3px;
+          border-radius: 9px;
+          background: var(--course-coral);
+          content: "";
+        }
+
+        .course-lead {
+          max-width: 680px;
+          color: #d5e1dc;
+          font-size: clamp(1.05rem, 1.7vw, 1.3rem);
+          line-height: 1.55;
+        }
+
+        .course-btn {
+          display: inline-flex !important;
+          align-items: center;
+          justify-content: center;
+          min-height: 58px;
+          padding: 0 25px !important;
+          border-radius: 12px !important;
+          border: 1px solid transparent !important;
+          font-weight: 850 !important;
+          transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .course-btn:hover {
+          transform: translateY(-2px);
+        }
+
+        .course-btn-primary {
+          background: var(--course-coral) !important;
+          color: #1b241f !important;
+          box-shadow: 0 14px 35px rgba(242, 125, 82, 0.22);
+        }
+
+        .course-btn-outline {
+          border-color: rgba(255, 255, 255, 0.25);
+          color: white;
+        }
+
+        .course-hero-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 13px;
+          margin: 34px 0 35px;
+        }
+
+        .course-hero-proof {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 22px;
+          color: #c7d6d0;
+          font-size: 0.9rem;
+        }
+
+        .course-hero-proof span {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .course-hero-proof span::before {
+          display: grid;
+          place-items: center;
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          background: rgba(200, 237, 117, 0.14);
+          color: var(--course-lime);
+          font-weight: 900;
+          content: "✓";
+        }
+
+        .course-code-card {
+          overflow: hidden;
+          transform: rotate(1.5deg);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: var(--course-radius);
+          background: #0d1b16;
+          box-shadow: 0 35px 80px rgba(0, 0, 0, 0.32);
+        }
+
+        .course-code-top {
+          display: flex;
+          gap: 7px;
+          padding: 17px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .course-dot {
+          width: 9px;
+          height: 9px;
+          border-radius: 50%;
+          background: #557068;
+        }
+
+        .course-dot:first-child {
+          background: var(--course-coral);
+        }
+
+        .course-dot:nth-child(2) {
+          background: #f3c85f;
+        }
+
+        .course-dot:nth-child(3) {
+          background: var(--course-lime);
+        }
+
+        .course-architecture {
+          padding: 28px;
+        }
+
+        .course-layer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 11px;
+          padding: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 13px;
+          color: #deebe5;
+          font: 700 0.88rem ui-monospace, SFMono-Regular, Menlo, monospace;
+        }
+
+        .course-layer b {
+          color: var(--course-lime);
+        }
+
+        .course-layer:nth-child(2) {
+          margin-inline: 16px;
+        }
+
+        .course-layer:nth-child(3) {
+          margin-inline: 32px;
+        }
+
+        .course-layer:nth-child(4) {
+          margin-inline: 48px;
+          background: rgba(242, 125, 82, 0.1);
+        }
+
+        .course-card-caption {
+          padding: 0 28px 28px;
+          color: #91a69e;
+          font-size: 0.86rem;
+        }
+
+        .course-stats {
+          position: relative;
+          z-index: 2;
+          margin-top: -42px;
+        }
+
+        .course-stats-inner {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          border: 1px solid var(--course-line);
+          border-radius: 20px;
+          background: var(--course-paper);
+          box-shadow: var(--course-shadow);
+        }
+
+        .course-stat {
+          padding: 28px 30px;
+          border-right: 1px solid var(--course-line);
+        }
+
+        .course-stat:last-child {
+          border-right: 0;
+        }
+
+        .course-stat strong {
+          display: block;
+          font-size: 1.8rem;
+          letter-spacing: -0.05em;
+        }
+
+        .course-stat span {
+          color: var(--course-muted);
+          font-size: 0.86rem;
+        }
+
+        .course-section {
+          padding: 105px 0;
+        }
+
+        .course-intro-grid {
+          display: grid;
+          grid-template-columns: 0.86fr 1.14fr;
+          gap: 90px;
+          align-items: start;
+        }
+
+        .course-copy {
+          color: var(--course-muted);
+          font-size: 1.15rem;
+          line-height: 1.6;
+        }
+
+        .course-before-after {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 18px;
+        }
+
+        .course-ba-card {
+          padding: 26px;
+          border: 1px solid var(--course-line);
+          border-radius: 20px;
+          background: var(--course-paper);
+        }
+
+        .course-ba-card-after {
+          background: var(--course-forest);
+          color: white;
+        }
+
+        .course-ba-card small {
+          display: block;
+          margin-bottom: 16px;
+          color: var(--course-coral);
+          font-weight: 900;
+          letter-spacing: 0.09em;
+          text-transform: uppercase;
+        }
+
+        .course-ba-card-after small {
+          color: var(--course-lime);
+        }
+
+        .course-ba-card ul {
+          margin: 0;
+          padding: 0;
+          list-style: none;
+        }
+
+        .course-ba-card li {
+          position: relative;
+          padding: 9px 0 9px 25px;
+          color: var(--course-muted);
+        }
+
+        .course-ba-card li::before {
+          position: absolute;
+          left: 0;
+          color: var(--course-coral);
+          font-weight: 900;
+          content: "x";
+        }
+
+        .course-ba-card-after li {
+          color: #dce7e2;
+        }
+
+        .course-ba-card-after li::before {
+          color: var(--course-lime);
+          content: "✓";
+        }
+
+        .course-journey {
+          background: var(--course-ink);
+          color: white;
+        }
+
+        .course-section-head {
+          display: flex;
+          align-items: end;
+          justify-content: space-between;
+          gap: 30px;
+          margin-bottom: 48px;
+        }
+
+        .course-section-head p {
+          max-width: 470px;
+          color: #b5c6bf;
+          line-height: 1.6;
+        }
+
+        .course-tracks {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 18px;
+        }
+
+        .course-track {
+          min-height: 380px;
+          padding: 31px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 24px;
+          background: #1a2a24;
+          transition: transform 0.25s ease, border-color 0.25s ease;
+        }
+
+        .course-track:hover {
+          transform: translateY(-4px);
+          border-color: rgba(200, 237, 117, 0.45);
+        }
+
+        .course-track.is-featured {
+          background: var(--course-coral);
+          color: var(--course-ink);
+        }
+
+        .course-track.is-featured .course-track-number,
+        .course-track.is-featured p {
+          color: #4d3026;
+        }
+
+        .course-track.is-featured li {
+          color: var(--course-ink);
+        }
+
+        .course-track-number {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 58px;
+          color: var(--course-lime);
+          font: 800 0.82rem ui-monospace, monospace;
+        }
+
+        .course-track h3 {
+          margin-bottom: 13px;
+          font-size: 2rem;
+        }
+
+        .course-track p {
+          color: #aebeb7;
+        }
+
+        .course-track ul {
+          padding-left: 18px;
+          color: #dce6e2;
+        }
+
+        .course-track li {
+          margin: 8px 0;
+        }
+
+        .course-architecture-list {
+          display: grid;
+          grid-template-columns: 0.7fr 1.3fr;
+          gap: 75px;
+          align-items: start;
+        }
+
+        .course-sticky-copy {
+          position: sticky;
+          top: 30px;
+        }
+
+        .course-lesson-groups {
+          display: grid;
+          gap: 13px;
+        }
+
+        .course-details {
+          overflow: hidden;
+          border: 1px solid var(--course-line);
+          border-radius: 15px;
+          background: var(--course-paper);
+        }
+
+        .course-details summary {
+          display: flex;
+          justify-content: space-between;
+          gap: 20px;
+          padding: 21px 22px;
+          cursor: pointer;
+          list-style: none;
+          font-weight: 850;
+        }
+
+        .course-details summary::-webkit-details-marker {
+          display: none;
+        }
+
+        .course-details summary::after {
+          color: var(--course-coral);
+          font-size: 1.3rem;
+          content: "+";
+        }
+
+        .course-details[open] summary::after {
+          content: "-";
+        }
+
+        .course-detail-body {
+          padding: 0 22px 22px;
+          color: var(--course-muted);
+        }
+
+        .course-detail-body ul {
+          columns: 2;
+          padding-left: 20px;
+        }
+
+        .course-detail-body li {
+          margin: 8px 0;
+          break-inside: avoid;
+        }
+
+        .course-audience {
+          background: #e9e1d2;
+        }
+
+        .course-audience-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 17px;
+          margin-top: 45px;
+        }
+
+        .course-person {
+          padding: 28px;
+          border-top: 4px solid var(--course-coral);
+          border-radius: 0 0 17px 17px;
+          background: rgba(255, 255, 255, 0.58);
+        }
+
+        .course-person-icon {
+          margin-bottom: 30px;
+          font-size: 1.7rem;
+        }
+
+        .course-person p {
+          color: var(--course-muted);
+          line-height: 1.6;
+        }
+
+        .course-method-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 80px;
+          align-items: center;
+        }
+
+        .course-steps {
+          counter-reset: steps;
+        }
+
+        .course-step {
+          display: grid;
+          grid-template-columns: 52px 1fr;
+          gap: 18px;
+          padding: 23px 0;
+          border-bottom: 1px solid var(--course-line);
+          counter-increment: steps;
+        }
+
+        .course-step::before {
+          display: grid;
+          place-items: center;
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: var(--course-forest);
+          color: var(--course-lime);
+          font: 800 0.86rem ui-monospace, monospace;
+          content: "0" counter(steps);
+        }
+
+        .course-step p {
+          margin: 7px 0 0;
+          color: var(--course-muted);
+          line-height: 1.6;
+        }
+
+        .course-quote-card {
+          padding: 46px;
+          transform: rotate(-1deg);
+          border-radius: var(--course-radius);
+          background: var(--course-lime);
+        }
+
+        .course-quote-card p {
+          font-size: clamp(1.55rem, 3vw, 2.5rem);
+          font-weight: 850;
+          line-height: 1.15;
+          letter-spacing: -0.04em;
+        }
+
+        .course-quote-card small {
+          font-weight: 800;
+        }
+
+        .course-offer {
+          background: var(--course-forest);
+          color: white;
+        }
+
+        .course-bonuses {
+          background: #e9e1d2;
+        }
+
+        .course-bonus-head {
+          display: grid;
+          grid-template-columns: 1fr 0.7fr;
+          gap: 55px;
+          align-items: end;
+          margin-bottom: 45px;
+        }
+
+        .course-bonus-value {
+          justify-self: end;
+          max-width: 340px;
+          padding: 25px;
+          transform: rotate(1deg);
+          border-radius: 18px;
+          background: var(--course-lime);
+        }
+
+        .course-bonus-value s {
+          display: block;
+          color: #526059;
+          font-weight: 800;
+        }
+
+        .course-bonus-value strong {
+          display: block;
+          margin: 8px 0;
+          font-size: 2.25rem;
+          line-height: 1;
+          letter-spacing: -0.05em;
+        }
+
+        .course-bonus-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 16px;
+        }
+
+        .course-bonus-card {
+          display: flex;
+          min-height: 280px;
+          flex-direction: column;
+          padding: 29px;
+          border: 1px solid var(--course-line);
+          border-radius: 21px;
+          background: var(--course-paper);
+        }
+
+        .course-bonus-card.is-special {
+          grid-column: 1 / -1;
+          background: var(--course-forest);
+          color: white;
+        }
+
+        .course-bonus-tag {
+          align-self: flex-start;
+          margin-bottom: 35px;
+          padding: 6px 10px;
+          border-radius: 99px;
+          background: rgba(242, 125, 82, 0.14);
+          color: #b84926;
+          font: 850 0.72rem ui-monospace, monospace;
+          letter-spacing: 0.06em;
+        }
+
+        .course-bonus-card.is-special .course-bonus-tag {
+          background: var(--course-lime);
+          color: var(--course-ink);
+        }
+
+        .course-bonus-card h3 {
+          margin-bottom: 11px;
+          font-size: 1.75rem;
+        }
+
+        .course-bonus-card p {
+          margin-bottom: 0;
+          color: var(--course-muted);
+        }
+
+        .course-bonus-card.is-special p {
+          color: #c8d6d0;
+        }
+
+        .course-bonus-topics {
+          columns: 2;
+          column-gap: 45px;
+          margin: 25px 0 0;
+          padding-left: 20px;
+          color: #e1ebe7;
+        }
+
+        .course-bonus-topics li {
+          margin-bottom: 10px;
+          break-inside: avoid;
+        }
+
+        .course-offer-card {
+          display: grid;
+          grid-template-columns: 1fr 0.75fr;
+          overflow: hidden;
+          border-radius: 30px;
+          background: var(--course-paper);
+          color: var(--course-ink);
+          box-shadow: 0 35px 90px rgba(0, 0, 0, 0.22);
+        }
+
+        .course-offer-main {
+          padding: clamp(32px, 6vw, 70px);
+        }
+
+        .course-included {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px 25px;
+          margin: 30px 0;
+        }
+
+        .course-included span::before {
+          margin-right: 9px;
+          color: #4f7c29;
+          font-weight: 900;
+          content: "✓";
+        }
+
+        .course-price-box {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding: clamp(32px, 5vw, 60px);
+          background: var(--course-coral);
+        }
+
+        .course-discount-pill {
+          align-self: flex-start;
+          padding: 6px 10px;
+          border-radius: 99px;
+          background: var(--course-lime);
+          font-size: 0.78rem;
+          font-weight: 900;
+        }
+
+        .course-original-price {
+          margin-top: 15px;
+          font-weight: 850;
+        }
+
+        .course-original-price s {
+          opacity: 0.68;
+        }
+
+        .course-price {
+          margin: 13px 0;
+          font-size: clamp(3.6rem, 7vw, 6.2rem);
+          font-weight: 950;
+          line-height: 0.95;
+          letter-spacing: -0.075em;
+        }
+
+        .course-price sup {
+          font-size: 0.35em;
+          vertical-align: top;
+          letter-spacing: -0.02em;
+        }
+
+        .course-price-note {
+          margin-bottom: 27px;
+          font-weight: 700;
+        }
+
+        .course-price-cta {
+          background: var(--course-ink) !important;
+          color: white !important;
+        }
+
+        .course-safe-note {
+          margin-top: 14px;
+          text-align: center;
+          font-size: 0.78rem;
+          opacity: 0.76;
+        }
+
+        .course-faq {
+          max-width: 850px;
+        }
+
+        .course-faq-list {
+          display: grid;
+          gap: 10px;
+        }
+
+        .course-faq-item {
+          border: 1px solid var(--course-line) !important;
+          border-radius: 15px !important;
+          background: var(--course-paper) !important;
+          padding: 0 !important;
+        }
+
+        .course-faq-title {
+          color: var(--course-ink) !important;
+          font-size: 1rem;
+          font-weight: 850 !important;
+          padding: 21px 22px 0 22px;
+        }
+
+        .course-faq-content {
+          color: var(--course-muted) !important;
+          padding: 0 22px 22px 22px;
+        }
+
+        .course-faq-icon {
+          margin: 18px 22px 0 0;
+          border: 0 !important;
+          background: transparent !important;
+          color: var(--course-coral) !important;
+        }
+
+        .course-footer {
+          padding: 42px 0;
+          background: var(--course-ink);
+          color: #aebeb7;
+          font-size: 0.86rem;
+        }
+
+        .course-footer-inner {
+          display: flex;
+          justify-content: space-between;
+          gap: 30px;
+        }
+
+        .course-footer-inner strong {
+          color: white;
+        }
+
+        .course-footer-links {
+          display: flex;
+          gap: 18px;
+        }
+
+        .course-mobile-cta {
+          border-top-color: rgba(20, 34, 29, 0.12) !important;
+          background: rgba(255, 253, 248, 0.96) !important;
+        }
+
+        .course-mobile-cta-title {
+          color: var(--course-ink) !important;
+        }
+
+        .course-mobile-cta-price {
+          color: var(--course-coral) !important;
+        }
+
+        .course-mobile-cta-button {
+          min-height: 44px !important;
+          padding: 0 18px !important;
+          border-radius: 12px !important;
+          background: var(--course-ink) !important;
+          color: white !important;
+          font-size: 0.78rem !important;
+          font-weight: 800 !important;
+          text-transform: uppercase;
+        }
+
+        @media (max-width: 900px) {
+          .course-hero {
+            min-height: auto;
+            padding-top: 125px;
+          }
+
+          .course-hero-grid,
+          .course-intro-grid,
+          .course-architecture-list,
+          .course-method-grid,
+          .course-offer-card,
+          .course-bonus-head {
+            grid-template-columns: 1fr;
+          }
+
+          .course-bonus-value {
+            justify-self: start;
+          }
+
+          .course-code-card {
+            max-width: 620px;
+            transform: none;
+          }
+
+          .course-stats-inner {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .course-stat:nth-child(2) {
+            border-right: 0;
+          }
+
+          .course-stat:nth-child(-n + 2) {
+            border-bottom: 1px solid var(--course-line);
+          }
+
+          .course-section-head {
+            display: block;
+          }
+
+          .course-sticky-copy {
+            position: static;
+          }
+
+          .course-audience-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 650px) {
+          .course-container {
+            width: min(100% - 26px, 1160px);
+          }
+
+          .course-nav-link {
+            display: none;
+          }
+
+          .course-hero {
+            padding-bottom: 78px;
+          }
+
+          .course-hero-actions .course-btn,
+          .course-hero-actions a {
+            width: 100%;
+          }
+
+          .course-tracks,
+          .course-before-after,
+          .course-included,
+          .course-bonus-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .course-bonus-card.is-special {
+            grid-column: auto;
+          }
+
+          .course-bonus-topics {
+            columns: 1;
+          }
+
+          .course-track {
+            min-height: auto;
+          }
+
+          .course-track-number {
+            margin-bottom: 35px;
+          }
+
+          .course-detail-body ul {
+            columns: 1;
+          }
+
+          .course-layer {
+            margin-inline: 0 !important;
+            padding: 13px;
+            font-size: 0.74rem;
+          }
+
+          .course-stats {
+            margin-top: -26px;
+          }
+
+          .course-stat {
+            padding: 21px 18px;
+          }
+
+          .course-section {
+            padding: 78px 0;
+          }
+
+          .course-footer-inner {
+            display: block;
+          }
+
+          .course-footer-links {
+            margin-top: 16px;
+          }
+        }
+      `}</style>
     </main>
   );
 }
