@@ -46,6 +46,20 @@ const tracks = [
       "Colecoes, strings, datas e arquivos",
       "LINQ e organizacao de codigo",
     ],
+    curriculumTitle: "Aprenda a programar com C#",
+    curriculumIntro:
+      "Comece do zero e construa a base necessária para desenvolver aplicações com segurança.",
+    curriculumItems: [
+      "Lógica de programação.",
+      "Fundamentos do C# e do .NET.",
+      "Variáveis, condições, repetições e coleções.",
+      "Orientação a objetos.",
+      "Interfaces, herança e abstração.",
+      "Manipulação de dados, arquivos e LINQ.",
+    ],
+    curriculumOutcome:
+      "Resultado da trilha: você entenderá os principais conceitos da programação e estará preparado para construir sua primeira aplicação.",
+    curriculumButton: "Ver os 5 módulos desta trilha",
   },
   {
     kicker: "TRILHA 02",
@@ -58,6 +72,21 @@ const tracks = [
       "Autenticacao JWT e Identity",
       "Claims, politicas e documentacao",
     ],
+    curriculumTitle: "Construa uma Web API completa",
+    curriculumIntro:
+      "Transforme seus conhecimentos em uma aplicação real utilizando .NET e banco de dados.",
+    curriculumItems: [
+      "Criação e modelagem de uma API.",
+      "Entity Framework Core.",
+      "PostgreSQL ou SQL Server.",
+      "CRUD completo.",
+      "Relacionamentos entre entidades.",
+      "Autenticação com JWT e Identity.",
+      "Claims, políticas e autorização.",
+    ],
+    curriculumOutcome:
+      "Resultado da trilha: você construirá uma API completa, conectada ao banco de dados e protegida por autenticação.",
+    curriculumButton: "Ver os 4 módulos desta trilha",
   },
   {
     kicker: "TRILHA 03",
@@ -71,6 +100,21 @@ const tracks = [
       "Camadas, monolito e integracao entre sistemas",
     ],
     featured: true,
+    curriculumTitle: "Entenda Arquitetura de Software",
+    curriculumIntro:
+      "Aprenda a organizar sistemas e compreender as decisões existentes por trás de aplicações profissionais.",
+    curriculumItems: [
+      "Fundamentos de arquitetura de software.",
+      "Requisitos e regras de negócio.",
+      "Escalabilidade, disponibilidade e desempenho.",
+      "Alta coesão e baixo acoplamento.",
+      "SOLID, DRY, KISS e YAGNI.",
+      "Arquitetura em camadas e monólitos.",
+      "REST, GraphQL, gRPC e Webhooks.",
+    ],
+    curriculumOutcome:
+      "Resultado da trilha: você deixará de enxergar apenas arquivos e códigos isolados e começará a compreender o sistema como um todo.",
+    curriculumButton: "Ver os 6 módulos desta trilha",
   },
   {
     kicker: "TRILHA 04",
@@ -83,6 +127,21 @@ const tracks = [
       "Elastic Beanstalk e Auto Scaling",
       "Serverless com AWS Lambda",
     ],
+    curriculumTitle: "Publique sua aplicação na AWS",
+    curriculumIntro:
+      "Conheça os principais serviços de nuvem utilizados para hospedar, proteger e escalar aplicações.",
+    curriculumItems: [
+      "EC2 e modelos de contratação.",
+      "Linux, Windows e acesso remoto.",
+      "Redes, VPC e segurança.",
+      "RDS, PostgreSQL e backups.",
+      "S3, IAM e SNS.",
+      "Elastic Beanstalk e Auto Scaling.",
+      "Serverless, Lambda e API Gateway.",
+    ],
+    curriculumOutcome:
+      "Resultado da trilha: você entenderá como uma aplicação sai do computador e funciona em uma infraestrutura de nuvem.",
+    curriculumButton: "Ver os 4 módulos desta trilha",
   },
 ];
 
@@ -471,6 +530,30 @@ export default async function CursoCompletoPage() {
                 </ul>
               </article>
             ))}
+          </div>
+          <div className="course-curriculum-panel">
+            <div className="course-curriculum-heading">Confira a grade completa da formação</div>
+            <div className="course-curriculum-list">
+              {tracks.map((track) => (
+                <details key={`${track.title}-curriculum`} className="course-curriculum-item">
+                  <summary className="course-curriculum-summary">
+                    <span>{track.curriculumButton}</span>
+                  </summary>
+                  <div className="course-curriculum-body">
+                    <div className="course-curriculum-kicker">{track.kicker}</div>
+                    <h3>{track.curriculumTitle}</h3>
+                    <p>{track.curriculumIntro}</p>
+                    <div className="course-curriculum-subtitle">Você aprenderá:</div>
+                    <ul>
+                      {track.curriculumItems.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                    <p className="course-curriculum-outcome">{track.curriculumOutcome}</p>
+                  </div>
+                </details>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -1187,6 +1270,102 @@ export default async function CursoCompletoPage() {
 
         .course-track li {
           margin: 8px 0;
+        }
+
+        .course-curriculum-panel {
+          margin-top: 34px;
+          border-top: 1px solid rgba(255, 255, 255, 0.14);
+          padding-top: 28px;
+        }
+
+        .course-curriculum-heading {
+          margin-bottom: 18px;
+          font-size: 1.1rem;
+          font-weight: 800;
+          color: #f8fafc;
+        }
+
+        .course-curriculum-list {
+          display: grid;
+          gap: 12px;
+        }
+
+        .course-curriculum-item {
+          overflow: hidden;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.04);
+        }
+
+        .course-curriculum-summary {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          padding: 18px 22px;
+          cursor: pointer;
+          list-style: none;
+          font-weight: 800;
+          color: #f8fafc;
+        }
+
+        .course-curriculum-summary::-webkit-details-marker {
+          display: none;
+        }
+
+        .course-curriculum-summary::after {
+          color: var(--course-lime);
+          font-size: 1.1rem;
+          content: "+";
+        }
+
+        .course-curriculum-item[open] .course-curriculum-summary::after {
+          content: "-";
+        }
+
+        .course-curriculum-body {
+          padding: 0 22px 22px;
+          color: #dce7e2;
+        }
+
+        .course-curriculum-kicker {
+          margin-bottom: 10px;
+          color: var(--course-lime);
+          font: 800 0.76rem ui-monospace, monospace;
+          letter-spacing: 0.08em;
+        }
+
+        .course-curriculum-body h3 {
+          margin-bottom: 12px;
+          font-size: 1.7rem;
+          color: #ffffff;
+        }
+
+        .course-curriculum-body p {
+          margin-bottom: 14px;
+          line-height: 1.65;
+        }
+
+        .course-curriculum-subtitle {
+          margin-bottom: 10px;
+          font-weight: 800;
+          color: #ffffff;
+        }
+
+        .course-curriculum-body ul {
+          margin: 0 0 14px;
+          padding-left: 20px;
+        }
+
+        .course-curriculum-body li {
+          margin: 7px 0;
+          color: #dce7e2;
+        }
+
+        .course-curriculum-outcome {
+          margin-bottom: 0 !important;
+          color: #ffffff;
+          font-weight: 600;
         }
 
         .course-architecture-list {
