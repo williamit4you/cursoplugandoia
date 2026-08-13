@@ -1253,6 +1253,14 @@ export default async function CursoCompletoPage() {
             width: min(100% - 26px, 1160px);
           }
 
+          .course-hero-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .course-code-card {
+            display: none;
+          }
+
           .course-nav-link {
             display: none;
           }
