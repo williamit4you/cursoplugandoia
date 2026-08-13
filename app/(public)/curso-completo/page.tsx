@@ -1249,8 +1249,13 @@ export default async function CursoCompletoPage() {
         }
 
         @media (max-width: 650px) {
+          .course-page {
+            overflow-x: hidden;
+          }
+
           .course-container {
-            width: min(100% - 26px, 1160px);
+            width: calc(100% - 32px);
+            max-width: 1160px;
           }
 
           .course-hero-grid {
@@ -1266,7 +1271,73 @@ export default async function CursoCompletoPage() {
           }
 
           .course-hero {
-            padding-bottom: 78px;
+            min-height: auto;
+            padding: 126px 0 68px;
+          }
+
+          .course-hero h1 {
+            max-width: none;
+            margin-bottom: 20px;
+            font-size: clamp(2.45rem, 11vw, 3.5rem);
+            line-height: 1.02;
+          }
+
+          .course-lead {
+            font-size: 1rem;
+            line-height: 1.5;
+          }
+
+          .course-hero-actions {
+            gap: 10px;
+            margin: 26px 0 28px;
+          }
+
+          .course-hero-proof {
+            display: grid;
+            gap: 12px;
+            font-size: 0.82rem;
+          }
+
+          .course-stats-inner {
+            grid-template-columns: 1fr;
+            border-radius: 16px;
+          }
+
+          .course-stat,
+          .course-stat:last-child {
+            padding: 17px 18px;
+            border-right: 0;
+            border-bottom: 1px solid var(--course-line);
+          }
+
+          .course-stat:last-child {
+            border-bottom: 0;
+          }
+
+          .course-stat strong {
+            font-size: 1.45rem;
+          }
+
+          .course-section-head {
+            display: block;
+            margin-bottom: 32px;
+          }
+
+          .course-section-head p {
+            margin-top: 20px;
+          }
+
+          .course-page h2 {
+            font-size: clamp(2rem, 9vw, 2.8rem);
+          }
+
+          .course-copy {
+            font-size: 1rem;
+          }
+
+          .course-intro-grid {
+            grid-template-columns: 1fr;
+            gap: 34px;
           }
 
           .course-hero-actions .course-btn,
@@ -1305,6 +1376,19 @@ export default async function CursoCompletoPage() {
             margin-inline: 0 !important;
             padding: 13px;
             font-size: 0.74rem;
+          }
+
+          .course-architecture {
+            padding: 20px 16px;
+          }
+
+          .course-card-caption {
+            padding: 0 20px 22px;
+          }
+
+          .course-ba-card,
+          .course-track {
+            padding: 22px;
           }
 
           .course-stats {
