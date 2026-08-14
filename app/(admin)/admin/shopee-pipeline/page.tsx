@@ -1362,7 +1362,7 @@ export default function ShopeePipelinePage() {
                 <div className="flex flex-col gap-2">
                   <div className="font-extrabold">Como funciona</div>
                   <div className="text-sm">
-                    Este pipeline executa <b>1 etapa por ciclo</b> (por cron ou por "Rodar agora"). Se a proxima etapa depende de servicos externos, ela pode virar{" "}
+              Este pipeline executa <b>1 etapa por ciclo</b> (por cron ou por &quot;Rodar agora&quot;). Se a proxima etapa depende de servicos externos, ela pode virar{" "}
                     <b>RETRY_SCHEDULED</b> e agendar <b>nextRunAt</b>.
                   </div>
                   <div className="text-sm text-slate-700">
@@ -1849,7 +1849,7 @@ export default function ShopeePipelinePage() {
                     Controle manual
                   </Typography>
                   <Typography variant="caption" className="text-slate-400 block mt-1">
-                    Use "Continuar agora" para deixar o item elegivel no proximo ciclo, destravar e retomar do ponto mais proximo possivel com base nos artefatos ja gerados.
+              Use &quot;Continuar agora&quot; para deixar o item elegivel no proximo ciclo, destravar e retomar do ponto mais proximo possivel com base nos artefatos ja gerados.
                   </Typography>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <Button size="small" variant="contained" startIcon={<BoltIcon />} onClick={() => continueNow(selected)}>
@@ -1989,7 +1989,7 @@ export default function ShopeePipelinePage() {
           ) : (
             <Box className="space-y-3">
               <Typography variant="body2" className="text-slate-300">
-                "Rodar agora" roda <b>1 item elegivel</b> por clique (independente do cron).
+              &quot;Rodar agora&quot; roda <b>1 item elegivel</b> por clique (independente do cron).
               </Typography>
 
               <div className="grid grid-cols-3 gap-3">

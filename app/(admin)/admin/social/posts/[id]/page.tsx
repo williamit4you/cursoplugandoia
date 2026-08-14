@@ -441,7 +441,7 @@ export default function SocialPostEditorPage() {
               </button>
             </div>
             <div className="mt-2 text-[10px] text-slate-500">
-              As copias usam o mesmo video/legenda e o mesmo "Agendar para".
+          As copias usam o mesmo video/legenda e o mesmo &quot;Agendar para&quot;.
             </div>
           </div>
 

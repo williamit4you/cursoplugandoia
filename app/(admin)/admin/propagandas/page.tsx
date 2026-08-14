@@ -109,7 +109,7 @@ export default async function PropagandasPage({
             Estes são vídeos curtos com foco comercial criados para promover links de afiliados. 
           </p>
           <p className="text-xs text-slate-500 leading-relaxed mt-1">
-            Eles podem ser criados de forma <strong>Manual</strong> (no botão "Criar propaganda") ou ser gerados <strong>Automaticamente</strong> pelos robôs de scraping e automação de ofertas da <Link href="/admin/shopee-pipeline" className="text-emerald-700 font-bold hover:underline">Shopee</Link> e do <Link href="/admin/mercado-livre-pipeline" className="text-emerald-700 font-bold hover:underline">Mercado Livre</Link>. Uma vez prontos, os vídeos gerados são automaticamente programados e agendados na <Link href="/admin/social" className="text-emerald-700 font-bold hover:underline">Fila Social</Link> para postagem.
+          Eles podem ser criados de forma <strong>Manual</strong> (no botão &quot;Criar propaganda&quot;) ou ser gerados <strong>Automaticamente</strong> pelos robôs de scraping e automação de ofertas da <Link href="/admin/shopee-pipeline" className="text-emerald-700 font-bold hover:underline">Shopee</Link> e do <Link href="/admin/mercado-livre-pipeline" className="text-emerald-700 font-bold hover:underline">Mercado Livre</Link>. Uma vez prontos, os vídeos gerados são automaticamente programados e agendados na <Link href="/admin/social" className="text-emerald-700 font-bold hover:underline">Fila Social</Link> para postagem.
           </p>
         </div>
       </div>

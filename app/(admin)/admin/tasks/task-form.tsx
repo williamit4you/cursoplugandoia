@@ -480,7 +480,7 @@ export default function TaskForm({ taskId }: { taskId?: string }) {
                     <Chip key={term} label={term} onDelete={() => removeSearchTerm(term)} />
                   ))}
                   {(guidedSource.searchTerms || []).length === 0 ? (
-                    <Typography sx={{ opacity: 0.6, fontSize: 13 }}>Nenhum termo. Se vazio, usamos "ofertas".</Typography>
+          <Typography sx={{ opacity: 0.6, fontSize: 13 }}>Nenhum termo. Se vazio, usamos &quot;ofertas&quot;.</Typography>
                   ) : null}
                 </Box>
 

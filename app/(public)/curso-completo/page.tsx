@@ -607,8 +607,8 @@ export default async function CursoCompletoPage() {
 
           <aside className="course-quote-card">
             <p>
-              "Arquitetura nao comeca em um diagrama. Comeca quando voce entende por que o codigo foi organizado daquela
-              maneira."
+                  &quot;Arquitetura nao comeca em um diagrama. Comeca quando voce entende por que o codigo foi organizado daquela
+                  maneira.&quot;
             </p>
             <small>- A ideia que guia esta formação</small>
           </aside>

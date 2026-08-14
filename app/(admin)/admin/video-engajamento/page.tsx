@@ -1005,7 +1005,7 @@ export default function VideoEngajamentoPage() {
                   <div className="mt-3 text-sm font-semibold text-slate-700">{selectedStageLabel}</div>
                   <div className="mt-3 flex items-center gap-3 text-xs text-slate-500">
                     <span>Progresso estimado: {selectedProgress}%</span>
-                    <span>Próximo ciclo depende do cron interno/externo ou de "Rodar agora".</span>
+          <span>Próximo ciclo depende do cron interno/externo ou de &quot;Rodar agora&quot;.</span>
                   </div>
                 </div>
               </div>

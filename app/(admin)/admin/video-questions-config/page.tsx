@@ -161,7 +161,7 @@ export default function VideoQuestionsConfigPage() {
             Configure as regras de automação e estilo dos vídeos de Q&A processados pelo robô em background:
           </p>
           <ul className="list-disc pl-4 space-y-1 text-slate-500 font-medium">
-            <li><strong>Agendamento:</strong> Habilita ou desabilita o processamento em lote da fila. Se desabilitado, os vídeos de perguntas só serão criados se você clicar em "Gerar Vídeo Agora" manualmente na tabela.</li>
+            <li><strong>Agendamento:</strong> Habilita ou desabilita o processamento em lote da fila. Se desabilitado, os vídeos de perguntas só serão criados se você clicar em &quot;Gerar Vídeo Agora&quot; manualmente na tabela.</li>
             <li><strong>Estilo e TTS:</strong> Ajuste a voz padrão (Microsoft TTS), a velocidade de fala (ex: +5% para fala mais rápida) e o formato do vídeo (vertical 9:16 para Reels/Shorts/TikTok).</li>
             <li><strong>Auto-Publicação:</strong> Selecione em quais plataformas a IA deve programar a postagem na Fila Social de forma totalmente autônoma, logo após o término da renderização do MP4.</li>
           </ul>
