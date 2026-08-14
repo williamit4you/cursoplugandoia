@@ -736,10 +736,10 @@ export default async function CursoCompletoPage() {
                 pagePath={config.pagePath}
                 pageTitle={config.pageTitle}
                 eventName="faq_open"
-                className="course-faq-item"
-                titleClassName="course-faq-title"
-                contentClassName="course-faq-content"
-                iconClassName="course-faq-icon"
+                className="course-faq-item !border-[#d8d1c4] !bg-[#fffdf8]"
+                titleClassName="course-faq-title !text-[#14221d]"
+                contentClassName="course-faq-content !text-[#64736c]"
+                iconClassName="course-faq-icon !border-[#d8d1c4] !bg-[#f5f0e6] !text-[#173d32]"
               >
                 {item.answer}
               </TrackedAccordion>
