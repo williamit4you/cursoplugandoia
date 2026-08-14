@@ -230,32 +230,38 @@ const methodSteps = [
 
 const bonusCards = [
   {
+    number: "01",
     tag: "BONUS 01",
     title: "N8N Básico",
     description:
       "Workflows, credenciais, triggers, ações, condições, nó Code e requisições HTTP para criar suas primeiras automações.",
   },
   {
+    number: "02",
     tag: "BONUS 02",
     title: "Agentes de IA",
     description: "Fundamentos de agentes, memória, ferramentas e construção prática do seu primeiro agente inteligente.",
   },
   {
+    number: "03",
     tag: "BONUS 03",
     title: "Site para advocacia com IA",
     description: "Site, chatbot, envio de e-mails, PostgreSQL, banco vetorial, metadados e agente com RAG em um projeto aplicado.",
   },
   {
+    number: "04",
     tag: "BONUS 04",
     title: "Next.js",
     description: "Rotas, layouts, Server e Client Components, cache, middleware, Server Actions, formulários e criação de APIs.",
   },
   {
+    number: "05",
     tag: "BONUS 05",
     title: "Agentes de IA com Next.js",
     description: "Crie a interface, conecte-se à OpenAI e desenvolva um ChatClient com contexto e memória utilizando código.",
   },
   {
+    number: "06",
     tag: "BONUS 06",
     title: "Criação de SaaS com IA",
     description: "Do prompt inicial ao sistema hospedado: banco PostgreSQL, trial, assinaturas, pagamentos, Docker, GitHub e publicação.",
@@ -623,6 +629,10 @@ export default async function CursoCompletoPage() {
                 Além da formação principal, você recebe cursos complementares para criar automações, agentes,
                 aplicações com IA e até um SaaS completo.
               </p>
+              <div className="course-bonus-summary" aria-label="Resumo dos bônus">
+                <strong>+7</strong>
+                <span>cursos extras<br />incluídos</span>
+              </div>
             </div>
             <div className="course-bonus-value">
               <s>Valor separado: R$ 200</s>
@@ -634,24 +644,34 @@ export default async function CursoCompletoPage() {
           <div className="course-bonus-grid">
             {bonusCards.map((bonus) => (
               <article key={bonus.tag} className="course-bonus-card">
-                <span className="course-bonus-tag">{bonus.tag}</span>
-                <h3>{bonus.title}</h3>
-                <p>{bonus.description}</p>
+                <div className="course-bonus-card-top">
+                  <span className="course-bonus-number">{bonus.number}</span>
+                  <span className="course-bonus-tag">{bonus.tag}</span>
+                </div>
+                <div className="course-bonus-card-body">
+                  <h3>{bonus.title}</h3>
+                  <p>{bonus.description}</p>
+                </div>
               </article>
             ))}
 
             <article className="course-bonus-card is-special">
-              <span className="course-bonus-tag">BONUS PREMIUM</span>
-              <h3>Arquitetando o Futuro com LLMs e RAG</h3>
-              <p>
-                Uma formação avançada para entender a arquitetura por trás de aplicações modernas com inteligência
-                artificial.
-              </p>
-              <ul className="course-bonus-topics">
-                {premiumBonusTopics.map((topic) => (
-                  <li key={topic}>{topic}</li>
-                ))}
-              </ul>
+              <div className="course-premium-copy">
+                <span className="course-bonus-tag">BONUS PREMIUM</span>
+                <h3>Arquitetando o Futuro com LLMs e RAG</h3>
+                <p>
+                  Uma formação avançada para entender a arquitetura por trás de aplicações modernas com inteligência
+                  artificial.
+                </p>
+              </div>
+              <div className="course-premium-topics-wrap">
+                <span className="course-premium-label">O que você vai dominar</span>
+                <ul className="course-bonus-topics">
+                  {premiumBonusTopics.map((topic) => (
+                    <li key={topic}>{topic}</li>
+                  ))}
+                </ul>
+              </div>
             </article>
           </div>
         </div>
@@ -1248,6 +1268,250 @@ export default async function CursoCompletoPage() {
           margin: 8px 0;
         }
 
+        .course-bonuses {
+          background: var(--course-paper);
+        }
+
+        .course-bonus-head {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: end;
+          gap: 48px;
+          margin-bottom: 48px;
+        }
+
+        .course-bonus-head h2 {
+          max-width: 720px;
+        }
+
+        .course-bonus-summary {
+          display: inline-flex;
+          align-items: center;
+          gap: 12px;
+          margin-top: 26px;
+          padding: 10px 14px 10px 0;
+          color: var(--course-muted);
+          font-size: 0.82rem;
+          line-height: 1.15;
+        }
+
+        .course-bonus-summary strong {
+          color: var(--course-coral);
+          font-size: 2.2rem;
+          letter-spacing: -0.08em;
+        }
+
+        .course-bonus-value {
+          display: grid;
+          gap: 6px;
+          min-width: 190px;
+          padding: 20px 22px;
+          border: 1px solid var(--course-line);
+          border-radius: 18px;
+          background: var(--course-cream);
+        }
+
+        .course-bonus-value s,
+        .course-bonus-value span {
+          color: var(--course-muted);
+          font-size: 0.88rem;
+        }
+
+        .course-bonus-value strong {
+          color: var(--course-forest);
+          font-size: 1.45rem;
+        }
+
+        .course-bonus-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 18px;
+        }
+
+        .course-bonus-card {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          padding: 26px;
+          border: 1px solid var(--course-line);
+          border-radius: 22px;
+          background: var(--course-cream);
+          transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+        }
+
+        .course-bonus-card:not(.is-special):hover {
+          transform: translateY(-5px);
+          border-color: rgba(242, 125, 82, 0.5);
+          box-shadow: 0 18px 35px rgba(20, 34, 29, 0.08);
+        }
+
+        .course-bonus-card-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding-bottom: 22px;
+          border-bottom: 1px solid var(--course-line);
+        }
+
+        .course-bonus-number {
+          color: rgba(20, 34, 29, 0.23);
+          font: 800 1.7rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+          letter-spacing: -0.08em;
+        }
+
+        .course-bonus-card-body {
+          padding-top: 20px;
+        }
+
+        .course-bonus-card h3 {
+          margin: 12px 0 10px;
+          font-size: 1.55rem;
+          line-height: 1.08;
+        }
+
+        .course-bonus-card p {
+          margin-bottom: 0;
+          color: var(--course-muted);
+          line-height: 1.55;
+        }
+
+        .course-bonus-tag {
+          color: var(--course-coral);
+          font-size: 0.76rem;
+          font-weight: 900;
+          letter-spacing: 0.1em;
+        }
+
+        .course-bonus-card.is-special {
+          grid-column: span 3;
+          display: grid;
+          grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+          gap: 48px;
+          align-items: start;
+          background: var(--course-forest);
+          color: white;
+        }
+
+        .course-bonus-card.is-special p {
+          color: #d5e1dc;
+        }
+
+        .course-bonus-card.is-special .course-bonus-tag {
+          color: var(--course-lime);
+        }
+
+        .course-premium-label {
+          display: block;
+          margin-bottom: 14px;
+          color: #a8c4b8;
+          font-size: 0.76rem;
+          font-weight: 800;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+        }
+
+        .course-bonus-topics {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px 24px;
+          margin: 22px 0 0;
+          padding: 18px 0 0 18px;
+          border-top: 1px solid rgba(255, 255, 255, 0.14);
+          color: #d5e1dc;
+          line-height: 1.4;
+        }
+
+        .course-bonus-topics li::marker {
+          color: var(--course-lime);
+        }
+
+        .course-faq {
+          max-width: 980px;
+        }
+
+        .course-faq-list {
+          display: grid;
+          gap: 12px;
+          margin-top: 38px;
+        }
+
+        .course-faq-item {
+          padding: 0 !important;
+          overflow: hidden;
+          border: 1px solid rgba(20, 34, 29, 0.12) !important;
+          border-radius: 18px !important;
+          background: var(--course-paper) !important;
+          box-shadow: 0 8px 24px rgba(20, 34, 29, 0.04);
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .course-faq-item[open] {
+          border-color: rgba(242, 125, 82, 0.55) !important;
+          box-shadow: 0 12px 28px rgba(20, 34, 29, 0.08);
+        }
+
+        .course-faq-item summary {
+          align-items: center !important;
+          min-height: 76px;
+          padding: 22px 24px;
+          list-style: none;
+        }
+
+        .course-faq-item summary::-webkit-details-marker {
+          display: none;
+        }
+
+        .course-faq-title {
+          color: var(--course-ink) !important;
+          font-size: 1.02rem !important;
+          line-height: 1.35;
+        }
+
+        .course-faq-icon {
+          flex: 0 0 auto;
+          border-color: rgba(20, 34, 29, 0.14) !important;
+          background: var(--course-cream) !important;
+          color: var(--course-forest) !important;
+        }
+
+        .course-faq-content {
+          margin: 0 !important;
+          padding: 0 24px 24px;
+          color: var(--course-muted) !important;
+          font-size: 0.98rem !important;
+          line-height: 1.65 !important;
+        }
+
+        .course-footer {
+          padding: 42px 0 56px;
+          background: var(--course-ink);
+          color: #dce7e2;
+        }
+
+        .course-footer-inner {
+          display: flex;
+          align-items: start;
+          justify-content: space-between;
+          gap: 24px;
+          font-size: 0.9rem;
+          line-height: 1.7;
+        }
+
+        .course-footer strong {
+          color: white;
+        }
+
+        .course-footer-links {
+          display: flex;
+          gap: 20px;
+          color: #a9bbb3;
+        }
+
+        .course-footer-links a:hover {
+          color: var(--course-lime);
+        }
+
         @media (max-width: 650px) {
           .course-page {
             overflow-x: hidden;
@@ -1325,6 +1589,70 @@ export default async function CursoCompletoPage() {
 
           .course-section-head p {
             margin-top: 20px;
+          }
+
+          .course-bonuses {
+            padding-top: 68px;
+            padding-bottom: 68px;
+          }
+
+          .course-bonus-head {
+            display: block;
+            margin-bottom: 30px;
+          }
+
+          .course-bonus-head h2 {
+            margin-bottom: 18px;
+          }
+
+          .course-bonus-summary {
+            margin-top: 14px;
+          }
+
+          .course-bonus-value {
+            min-width: 0;
+            margin-top: 24px;
+            padding: 16px 18px;
+          }
+
+          .course-bonus-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+          }
+
+          .course-bonus-card,
+          .course-bonus-card.is-special {
+            grid-column: auto;
+            padding: 22px 20px;
+            border-radius: 18px;
+          }
+
+          .course-bonus-card.is-special {
+            display: block;
+          }
+
+          .course-premium-topics-wrap {
+            margin-top: 28px;
+          }
+
+          .course-bonus-card h3 {
+            margin-top: 9px;
+            font-size: 1.45rem;
+          }
+
+          .course-bonus-card p {
+            font-size: 0.98rem;
+            line-height: 1.5;
+          }
+
+          .course-bonus-topics {
+            grid-template-columns: 1fr;
+            gap: 7px;
+            margin-top: 18px;
+            padding-top: 16px;
+            padding-left: 18px;
+            font-size: 0.92rem;
           }
 
           .course-page h2 {
