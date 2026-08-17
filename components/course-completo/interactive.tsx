@@ -239,6 +239,7 @@ export function TrackedAccordion({
   titleClassName,
   contentClassName,
   iconClassName,
+  variant = "default",
 }: {
   title: string;
   children: ReactNode;
@@ -250,6 +251,7 @@ export function TrackedAccordion({
   titleClassName?: string;
   contentClassName?: string;
   iconClassName?: string;
+  variant?: "default" | "light";
 }) {
   async function handleToggle(open: boolean) {
     if (!open) {
@@ -263,18 +265,38 @@ export function TrackedAccordion({
 
   return (
     <details
-      className={`group rounded-[22px] border border-white/10 bg-white/5 p-6 open:bg-white/[0.07] ${className ?? ""}`}
+      className={`group rounded-[22px] border p-6 ${
+        variant === "light"
+          ? "border-[#d8d1c4] bg-[#fffdf8] open:border-[#f27d52] open:bg-[#fffdf8]"
+          : "border-white/10 bg-white/5 open:bg-white/[0.07]"
+      } ${className ?? ""}`}
       onToggle={(event) => void handleToggle((event.currentTarget as HTMLDetailsElement).open)}
     >
       <summary className="flex cursor-pointer list-none items-start justify-between gap-6">
-        <span className={`text-left text-base font-semibold text-white ${titleClassName ?? ""}`}>{title}</span>
         <span
-          className={`mt-1 flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition group-open:rotate-45 ${iconClassName ?? ""}`}
+          className={`text-left text-base font-semibold ${
+            variant === "light" ? "text-[#14221d]" : "text-white"
+          } ${titleClassName ?? ""}`}
+        >
+          {title}
+        </span>
+        <span
+          className={`mt-1 flex h-8 w-8 items-center justify-center rounded-xl border transition group-open:rotate-45 ${
+            variant === "light"
+              ? "border-[#d8d1c4] bg-[#f5f0e6] text-[#173d32]"
+              : "border-white/10 bg-white/5 text-white/70"
+          } ${iconClassName ?? ""}`}
         >
           +
         </span>
       </summary>
-      <div className={`mt-4 text-sm leading-relaxed text-slate-300 ${contentClassName ?? ""}`}>{children}</div>
+      <div
+        className={`mt-4 text-sm leading-relaxed ${
+          variant === "light" ? "text-[#64736c]" : "text-slate-300"
+        } ${contentClassName ?? ""}`}
+      >
+        {children}
+      </div>
     </details>
   );
 }

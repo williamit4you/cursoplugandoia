@@ -736,6 +736,7 @@ export default async function CursoCompletoPage() {
                 pagePath={config.pagePath}
                 pageTitle={config.pageTitle}
                 eventName="faq_open"
+                variant="light"
                 className="course-faq-item !border-[#d8d1c4] !bg-[#fffdf8]"
                 titleClassName="course-faq-title !text-[#14221d]"
                 contentClassName="course-faq-content !text-[#64736c]"
