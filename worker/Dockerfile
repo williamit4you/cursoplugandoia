@@ -20,7 +20,11 @@ WORKDIR /app
 
 # 2. PyTorch CPU-only primeiro (evita baixar 2.5GB da versão CUDA)
 COPY requirements.txt .
-RUN pip install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir \
+      torch==2.5.1+cpu \
+      torchaudio==2.5.1+cpu \
+      --index-url https://download.pytorch.org/whl/cpu
 
 # 3. Restante das libs do Python
 RUN pip install --no-cache-dir -r requirements.txt \
@@ -33,4 +37,4 @@ COPY . .
 RUN mkdir -p temp_uploads temp_outputs
 
 # 6. Inicia o servidor de vídeo (porta 80) + aguarda 10s + inicia o scraper daemon
-CMD uvicorn video:app --host 0.0.0.0 --port 80 & sleep 10 && python scraper.py
+CMD ["sh", "-c", "uvicorn video:app --host 0.0.0.0 --port 80 & sleep 10 && python scraper.py"]

@@ -21,7 +21,7 @@ type SocialPostRecord = {
   tiktokPostUrl?: string | null;
 };
 
-const PUBLISH_PLATFORMS = new Set(["YOUTUBE", "TIKTOK"]);
+const PUBLISH_PLATFORMS = new Set(["YOUTUBE", "TIKTOK", "META", "LINKEDIN"]);
 
 function normalizeUrl(value: unknown) {
   return String(value || "").trim();
@@ -267,7 +267,7 @@ export async function cleanupPublishedSocialMediaAssets(
   const candidates = (await db.socialPost.findMany({
     where: {
       status: "POSTED",
-      platform: { in: ["YOUTUBE", "TIKTOK"] },
+      platform: { in: ["YOUTUBE", "TIKTOK", "META", "LINKEDIN"] },
       videoUrl: { not: "" },
     },
     orderBy: [{ updatedAt: "asc" }, { createdAt: "asc" }],

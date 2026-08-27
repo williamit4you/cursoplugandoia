@@ -108,6 +108,24 @@ function isNewsArticlePayload(body: any) {
   );
 }
 
+function newsDayRangeInBrazil(now = new Date()) {
+  const fields = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const value = (type: string) => Number(fields.find((part) => part.type === type)?.value || 0);
+  // Brazil is UTC-03:00 and no longer observes daylight saving time.
+  const start = new Date(Date.UTC(value("year"), value("month") - 1, value("day"), 3, 0, 0));
+  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
+}
+
+function newsDailyLimit() {
+  const configured = Number(process.env.NEWS_DAILY_POST_LIMIT || 3);
+  return Number.isFinite(configured) ? Math.max(1, Math.floor(configured)) : 3;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -133,6 +151,26 @@ export async function POST(req: NextRequest) {
         },
         { status: 409 }
       );
+    }
+
+    const { start, end } = newsDayRangeInBrazil();
+    const dailyLimit = newsDailyLimit();
+    const postsCreatedToday = await prisma.post.count({
+      where: {
+        sourceUrl: { not: null },
+        createdAt: { gte: start, lt: end },
+      },
+    });
+
+    if (postsCreatedToday >= dailyLimit) {
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        reason: "news_daily_limit_reached",
+        message: `Limite diario de ${dailyLimit} noticias atingido. A coleta retoma no proximo dia.`,
+        dailyLimit,
+        postsCreatedToday,
+      });
     }
 
     const baseSlug =

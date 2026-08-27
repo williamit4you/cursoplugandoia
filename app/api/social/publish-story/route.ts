@@ -13,6 +13,7 @@ import {
   markSingleAttempt,
   reservePublicationIdentity,
 } from "@/lib/socialPublicationGuard";
+import { cleanupPublishedSocialMediaAssets } from "@/lib/socialMediaAssetCleanup";
 
 export const dynamic = "force-dynamic";
 
@@ -210,7 +211,15 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: finalStatus === "POSTED", igId, fbId, errors, phase: 2 });
+    const cleanup = finalStatus === "POSTED"
+      ? await cleanupPublishedSocialMediaAssets(prisma, { socialPostId: targetSocialPostId }).catch((cleanupError: any) => ({
+          cleaned: false,
+          skipped: true,
+          reason: cleanupError?.message || "cleanup_failed",
+        }))
+      : null;
+
+    return NextResponse.json({ success: finalStatus === "POSTED", igId, fbId, errors, phase: 2, cleanup });
   } catch (error: any) {
     console.error("Story publishing error:", error);
     const errorMessage = error.message || "Erro interno";
