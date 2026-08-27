@@ -367,7 +367,7 @@ export default async function CursoCompletoPage() {
       <SectionViewTracker selectorId="faq" pageKey={config.pageKey} pagePath={config.pagePath} pageTitle={config.pageTitle} eventName="faq_view" />
 
       <div className="course-topbar">
-        ?LTIMAS VAGAS DO LOTE: de {regularPriceLabel} por {priceLabel} + pacote de b?nus gratuito
+        ÚLTIMAS VAGAS DO LOTE: de {regularPriceLabel} por {priceLabel} + pacote de bônus gratuito
       </div>
 
       <nav className="course-nav">
@@ -1000,7 +1000,7 @@ export default async function CursoCompletoPage() {
           background: rgba(200, 237, 117, 0.14);
           color: var(--course-lime);
           font-weight: 900;
-          content: "?";
+          content: "✓";
         }
 
         .course-code-card {
@@ -1187,7 +1187,7 @@ export default async function CursoCompletoPage() {
 
         .course-ba-card-after li::before {
           color: var(--course-lime);
-          content: "?";
+          content: "✓";
         }
 
         .course-journey {
