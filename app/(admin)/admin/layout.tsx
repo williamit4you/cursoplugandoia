@@ -75,6 +75,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "YT Analytics", icon: <YouTubeIcon />, path: "/admin/youtube-analytics" },
     { text: "Config. Scraper", icon: <SettingsIcon />, path: "/admin/scraper-config" },
     { text: "Config. Perguntas", icon: <SettingsIcon />, path: "/admin/video-questions-config" },
+    { text: "Armazenamento Worker", icon: <InsightsIcon className="text-rose-500" />, path: "/admin/worker-storage" },
     { text: "Shopee", icon: <StorefrontIcon />, path: "/admin/shopee" },
     { text: "Coleta Shopee", icon: <StorefrontIcon />, path: "/admin/coleta-shopee" },
     { text: "Shopee Pipeline", icon: <StorefrontIcon />, path: "/admin/shopee-pipeline" },
@@ -97,7 +98,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
   ];
 
   const growthPaths = new Set(["/admin/youtube-analytics", "/admin/bio-analytics", "/admin/whatsapp-promocoes", "/admin/sales-analytics", "/admin/compra-esperta", "/admin/operations/NEWS_CONTENT", "/admin/editorial-commerce", "/admin/programas-afiliados", "/admin/seo-pet-cobasi", "/admin/comparativos", "/admin/propagandas"]);
-  const systemPaths = new Set(["/admin/integrations", "/admin/scraper-config", "/admin/video-questions-config", "/admin/tasks", "/admin/task-runs", "/admin/schedules"]);
+  const systemPaths = new Set(["/admin/integrations", "/admin/scraper-config", "/admin/video-questions-config", "/admin/worker-storage", "/admin/tasks", "/admin/task-runs", "/admin/schedules"]);
   const menuGroups = [
     { label: "Operacao", items: menuItems.filter((item) => !growthPaths.has(item.path) && !systemPaths.has(item.path)) },
     { label: "Crescimento", items: menuItems.filter((item) => growthPaths.has(item.path)) },

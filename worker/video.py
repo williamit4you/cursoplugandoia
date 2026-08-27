@@ -4,13 +4,15 @@ import platform
 import json
 import math
 import time
+import asyncio
 import requests
 import os
 import subprocess
 from typing import List, Optional
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Header
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.background import BackgroundTask
 import pdfplumber
 import edge_tts
 import whisper
@@ -45,6 +47,121 @@ UPLOAD_DIR = "temp_uploads"
 OUTPUT_DIR = "temp_outputs"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+TEMP_ARTIFACT_MAX_AGE_SECONDS = int(os.getenv("TEMP_ARTIFACT_MAX_AGE_SECONDS", "86400"))
+TEMP_ARTIFACT_CLEANUP_INTERVAL_SECONDS = int(os.getenv("TEMP_ARTIFACT_CLEANUP_INTERVAL_SECONDS", "3600"))
+
+def remove_temporary_files(*paths):
+    """Remove artefatos de um job, sem mascarar a resposta HTTP."""
+    for path in paths:
+        if not path:
+            continue
+        try:
+            if os.path.exists(path):
+                os.remove(path)
+        except OSError:
+            pass
+
+def remove_stale_temporary_artifacts():
+    """Recupera arquivos de jobs interrompidos sem remover jobs recentes."""
+    cutoff = time.time() - max(60, TEMP_ARTIFACT_MAX_AGE_SECONDS)
+    for directory in (UPLOAD_DIR, OUTPUT_DIR):
+        try:
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    try:
+                        if entry.stat(follow_symlinks=False).st_mtime >= cutoff:
+                            continue
+                        if entry.is_dir(follow_symlinks=False):
+                            shutil.rmtree(entry.path, ignore_errors=True)
+                        else:
+                            os.remove(entry.path)
+                    except OSError:
+                        pass
+        except OSError:
+            pass
+
+def temporary_directory_stats(directory):
+    total_bytes = 0
+    file_count = 0
+    oldest_mtime = None
+    newest_mtime = None
+    try:
+        for root, _, files in os.walk(directory):
+            for name in files:
+                path = os.path.join(root, name)
+                try:
+                    stat = os.stat(path)
+                except OSError:
+                    continue
+                total_bytes += stat.st_size
+                file_count += 1
+                oldest_mtime = stat.st_mtime if oldest_mtime is None else min(oldest_mtime, stat.st_mtime)
+                newest_mtime = stat.st_mtime if newest_mtime is None else max(newest_mtime, stat.st_mtime)
+    except OSError:
+        pass
+    return {
+        "path": directory,
+        "bytes": total_bytes,
+        "files": file_count,
+        "oldestMtime": oldest_mtime,
+        "newestMtime": newest_mtime,
+    }
+
+def require_maintenance_secret(x_worker_maintenance_secret: Optional[str] = Header(None)):
+    expected = os.getenv("WORKER_MAINTENANCE_SECRET", "").strip()
+    if expected and x_worker_maintenance_secret != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized maintenance request")
+
+def temporary_storage_payload():
+    uploads = temporary_directory_stats(UPLOAD_DIR)
+    outputs = temporary_directory_stats(OUTPUT_DIR)
+    return {
+        "directories": [uploads, outputs],
+        "totalBytes": uploads["bytes"] + outputs["bytes"],
+        "cleanupMaxAgeSeconds": TEMP_ARTIFACT_MAX_AGE_SECONDS,
+    }
+
+async def periodic_temporary_artifact_cleanup():
+    while True:
+        await asyncio.sleep(max(60, TEMP_ARTIFACT_CLEANUP_INTERVAL_SECONDS))
+        remove_stale_temporary_artifacts()
+
+@app.on_event("startup")
+async def start_temporary_artifact_cleanup():
+    remove_stale_temporary_artifacts()
+    asyncio.create_task(periodic_temporary_artifact_cleanup())
+
+@app.get("/maintenance/temp-storage")
+async def maintenance_temp_storage(x_worker_maintenance_secret: Optional[str] = Header(None)):
+    require_maintenance_secret(x_worker_maintenance_secret)
+    return temporary_storage_payload()
+
+@app.post("/maintenance/temp-storage/cleanup")
+async def maintenance_temp_storage_cleanup(
+    mode: str = Form("older-than-24h"),
+    x_worker_maintenance_secret: Optional[str] = Header(None),
+):
+    require_maintenance_secret(x_worker_maintenance_secret)
+    normalized_mode = str(mode or "").strip().lower()
+    if normalized_mode not in {"older-than-24h", "all"}:
+        raise HTTPException(status_code=400, detail="Invalid cleanup mode")
+
+    before = temporary_storage_payload()
+    if normalized_mode == "all":
+        for directory in (UPLOAD_DIR, OUTPUT_DIR):
+            try:
+                with os.scandir(directory) as entries:
+                    for entry in entries:
+                        if entry.is_dir(follow_symlinks=False):
+                            shutil.rmtree(entry.path, ignore_errors=True)
+                        else:
+                            remove_temporary_files(entry.path)
+            except OSError:
+                pass
+    else:
+        remove_stale_temporary_artifacts()
+    after = temporary_storage_payload()
+    return {"mode": normalized_mode, "before": before, "after": after, "freedBytes": before["totalBytes"] - after["totalBytes"]}
 
 if platform.system() == "Windows":
     change_settings({"IMAGEMAGICK_BINARY": r"magick"})
@@ -585,6 +702,7 @@ def create_cleanup_video(
 
 @app.post("/transcrever-palavras")
 async def transcrever_palavras(file: UploadFile = File(...)):
+    audio_path = None
     try:
         audio_path = os.path.join(UPLOAD_DIR, f"transc_{os.urandom(4).hex()}_{file.filename}")
         with open(audio_path, "wb") as buffer:
@@ -594,9 +712,12 @@ async def transcrever_palavras(file: UploadFile = File(...)):
         return JSONResponse({"words": words})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+    finally:
+        remove_temporary_files(audio_path)
 
 @app.post("/extrair-texto")
 async def extrair_texto_endpoint(file: UploadFile = File(...)):
+    pdf_path = None
     try:
         pdf_path = os.path.join(UPLOAD_DIR, f"extract_{file.filename}")
         with open(pdf_path, "wb") as buffer:
@@ -611,6 +732,8 @@ async def extrair_texto_endpoint(file: UploadFile = File(...)):
         })
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+    finally:
+        remove_temporary_files(pdf_path)
 
 @app.post("/gerar-audio")
 async def gerar_audio_endpoint(
@@ -618,12 +741,19 @@ async def gerar_audio_endpoint(
     voice: str = Form("pt-BR-AntonioNeural"),
     speed: str = Form("+0%")
 ):
+    audio_path = None
     try:
         base_name = f"audio_{os.urandom(4).hex()}"
         audio_path = os.path.join(OUTPUT_DIR, f"{base_name}.mp3")
         await generate_audio(text, audio_path, voice, speed)
-        return FileResponse(audio_path, media_type="audio/mpeg", filename=f"{base_name}.mp3")
+        return FileResponse(
+            audio_path,
+            media_type="audio/mpeg",
+            filename=f"{base_name}.mp3",
+            background=BackgroundTask(remove_temporary_files, audio_path),
+        )
     except Exception as e:
+        remove_temporary_files(audio_path)
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/gerar-video")
@@ -640,6 +770,7 @@ async def gerar_video_endpoint(
     image_config: str = Form("{}")
 ):
     working_text = ""
+    pdf_path = None
     if text:
         working_text = text
     elif file:
@@ -683,8 +814,20 @@ async def gerar_video_endpoint(
             video_format=video_format,
             image_config=img_conf
         )
-        return FileResponse(video_path, media_type="video/mp4", filename=f"{base_name}.mp4")
+        return FileResponse(
+            video_path,
+            media_type="video/mp4",
+            filename=f"{base_name}.mp4",
+            background=BackgroundTask(
+                remove_temporary_files,
+                audio_path,
+                video_path,
+                pdf_path,
+                *saved_images,
+            ),
+        )
     except Exception as e:
+        remove_temporary_files(audio_path, video_path, pdf_path, *saved_images)
         import traceback
         traceback.print_exc()
         return JSONResponse({"error": str(e)}, status_code=500)
