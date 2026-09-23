@@ -1,26 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  ArrowRight,
-  BadgeCheck,
-  Box,
-  Check,
-  ChevronRight,
-  CircleDot,
-  Clock3,
-  Code2,
-  Container,
-  GitBranch,
-  Layers3,
-  MessageSquareMore,
-  Rabbit,
-  RefreshCcw,
-  Route,
-  ShieldCheck,
-  Users,
-  X,
-  Zap,
-} from "lucide-react";
+import { ArrowDown, ArrowRight, Check, Code2, Rabbit } from "lucide-react";
 import { MetaPixelScript } from "@/components/MetaPixelScript";
 import { MetaPixelViewContent } from "@/components/MetaPixelViewContent";
 import { SalesPageTracker, SalesViewContentTracker } from "@/components/SalesPageTracker";
@@ -41,61 +21,19 @@ export const metadata: Metadata = {
   title: "Curso de RabbitMQ com .NET — do zero a DLQ e Retry | Plugando IA",
   description: "Aprenda RabbitMQ na prática com C# e .NET: exchanges, filas, ACK, concorrência, TTL, Dead Letter e Retry em 51 aulas.",
   alternates: { canonical: "/curso-rabbitmq" },
-  openGraph: {
-    title: "RabbitMQ com .NET: mensageria sem mistério",
-    description: "51 aulas para dominar mensageria, processamento resiliente, DLQ e Retry com C# e .NET.",
-    url: "/curso-rabbitmq",
-    siteName: "Plugando IA",
-    type: "website",
-  },
+  openGraph: { title: "RabbitMQ com .NET: mensageria sem mistério", description: "51 aulas para dominar mensageria, processamento resiliente, DLQ e Retry com C# e .NET.", url: "/curso-rabbitmq", siteName: "Plugando IA", type: "website" },
 };
 
 const modules = [
-  {
-    title: "Fundamentos da mensageria",
-    summary: "Entenda por que mensageria existe e onde RabbitMQ se encaixa.",
-    lessons: ["O problema que a mensageria resolve", "Comunicação síncrona x assíncrona", "O que é um Message Broker", "História e o que é RabbitMQ", "RabbitMQ x Kafka: diferença conceitual"],
-  },
-  {
-    title: "Arquitetura e roteamento",
-    summary: "Visualize o fluxo e aprenda a escolher a estratégia de roteamento.",
-    lessons: ["Arquitetura e fluxo básico do RabbitMQ", "Como o RabbitMQ roteia mensagens", "Exchange tipo Fanout", "Exchange tipo Direct", "Exchange tipo Topic"],
-  },
-  {
-    title: "Preparando o ambiente",
-    summary: "Suba o RabbitMQ com Docker e explore os principais tipos de Exchange.",
-    lessons: ["Download do Docker", "Instalando o Docker", "Docker Compose e RabbitMQ", "Exchange Fanout no RabbitMQ", "Exchange Direct no RabbitMQ", "Exchange Topic no RabbitMQ"],
-  },
-  {
-    title: "Primeira aplicação .NET com RabbitMQ",
-    summary: "Crie Producer e Consumer e acompanhe a mensagem de ponta a ponta.",
-    lessons: ["Criando os projetos Producer e Consumer", "Instalando o RabbitMQ.Client nos projetos", "Criando a publicação da mensagem", "Criando a Exchange, fila e binding", "Criando o Consumer", "Publicando e consumindo a mensagem"],
-  },
-  {
-    title: "Fanout na prática",
-    summary: "Distribua o mesmo evento para múltiplas filas e consumidores.",
-    lessons: ["Exchange e Queue Fanout — prática", "Producer Fanout — prática", "Criando o Consumer das três filas — prática", "Publicando e chamando o Consumer para ver a mensagem"],
-  },
-  {
-    title: "Topic na prática",
-    summary: "Roteie eventos por padrões e routing keys.",
-    lessons: ["Criando a Exchange tipo Topic — prática", "Criando o Consumer Topic", "Criando o Consumer Topic — prática", "Publicando e consumindo filas com binding Topic"],
-  },
-  {
-    title: "Confirmação e rejeição no Consumer",
-    summary: "Tenha controle sobre sucesso, falha e mensagens problemáticas.",
-    lessons: ["O que é ACK (Acknowledgement)", "ACK false: consumindo manualmente as mensagens", "ACK: processamento em lote e multiple: true", "BasicReject e BasicNack — teoria", "BasicReject e BasicNack — prática", "Poison Message — teoria"],
-  },
-  {
-    title: "Distribuição e concorrência",
-    summary: "Escale o consumo com múltiplas instâncias e processamento justo.",
-    lessons: ["Múltiplos Consumers, Competing Consumers e Round-robin", "Consumindo a fila com várias instâncias — prática", "Prefetch, QoS e Fair Dispatch", "Prefetch, QoS e Fair Dispatch — prática", "Concorrência no Consumer .NET — teoria e prática"],
-  },
-  {
-    title: "Falhas, expiração, Dead Letter e Retry",
-    summary: "Construa fluxos resilientes para quando o processamento não sair como planejado.",
-    lessons: ["Tratamento de exceções no Consumer", "Verificando as possibilidades de Retry", "DeliveryTag", "TTL: mensagens e filas", "Fila cuja mensagem expira", "Criando uma fila com expiração", "Dead Letter, DLX e DLQ", "Criando Exchange, fila e binding com código e simulando DLX e DLQ", "Retry e quantidade de tentativas: fila de espera", "Implementando Retry com Delay usando TTL e Dead Letter — prática"],
-  },
+  { title: "Fundamentos da mensageria", summary: "Entenda por que mensageria existe e onde RabbitMQ se encaixa.", lessons: ["O problema que a mensageria resolve", "Comunicação síncrona x assíncrona", "O que é um Message Broker", "História e o que é RabbitMQ", "RabbitMQ x Kafka: diferença conceitual"] },
+  { title: "Arquitetura e roteamento", summary: "Visualize o fluxo e aprenda a escolher a estratégia de roteamento.", lessons: ["Arquitetura e fluxo básico do RabbitMQ", "Como o RabbitMQ roteia mensagens", "Exchange tipo Fanout", "Exchange tipo Direct", "Exchange tipo Topic"] },
+  { title: "Preparando o ambiente", summary: "Suba o RabbitMQ com Docker e explore os principais tipos de Exchange.", lessons: ["Download do Docker", "Instalando o Docker", "Docker Compose e RabbitMQ", "Exchange Fanout no RabbitMQ", "Exchange Direct no RabbitMQ", "Exchange Topic no RabbitMQ"] },
+  { title: "Primeira aplicação .NET com RabbitMQ", summary: "Crie Producer e Consumer e acompanhe a mensagem de ponta a ponta.", lessons: ["Criando os projetos Producer e Consumer", "Instalando o RabbitMQ.Client nos projetos", "Criando a publicação da mensagem", "Criando a Exchange, fila e binding", "Criando o Consumer", "Publicando e consumindo a mensagem"] },
+  { title: "Fanout na prática", summary: "Distribua o mesmo evento para múltiplas filas e consumidores.", lessons: ["Exchange e Queue Fanout — prática", "Producer Fanout — prática", "Criando o Consumer das três filas — prática", "Publicando e chamando o Consumer para ver a mensagem"] },
+  { title: "Topic na prática", summary: "Roteie eventos por padrões e routing keys.", lessons: ["Criando a Exchange tipo Topic — prática", "Criando o Consumer Topic", "Criando o Consumer Topic — prática", "Publicando e consumindo filas com binding Topic"] },
+  { title: "Confirmação e rejeição no Consumer", summary: "Tenha controle sobre sucesso, falha e mensagens problemáticas.", lessons: ["O que é ACK (Acknowledgement)", "ACK false: consumindo manualmente as mensagens", "ACK: processamento em lote e multiple: true", "BasicReject e BasicNack — teoria", "BasicReject e BasicNack — prática", "Poison Message — teoria"] },
+  { title: "Distribuição e concorrência", summary: "Escale o consumo com múltiplas instâncias e processamento justo.", lessons: ["Múltiplos Consumers, Competing Consumers e Round-robin", "Consumindo a fila com várias instâncias — prática", "Prefetch, QoS e Fair Dispatch", "Prefetch, QoS e Fair Dispatch — prática", "Concorrência no Consumer .NET — teoria e prática"] },
+  { title: "Falhas, expiração, Dead Letter e Retry", summary: "Construa fluxos resilientes para quando o processamento não sair como planejado.", lessons: ["Tratamento de exceções no Consumer", "Verificando as possibilidades de Retry", "DeliveryTag", "TTL: mensagens e filas", "Fila cuja mensagem expira", "Criando uma fila com expiração", "Dead Letter, DLX e DLQ", "Criando Exchange, fila e binding com código e simulando DLX e DLQ", "Retry e quantidade de tentativas: fila de espera", "Implementando Retry com Delay usando TTL e Dead Letter — prática"] },
 ];
 
 const faq = [
@@ -108,15 +46,31 @@ const faq = [
 
 const eventData = { content_name: course.name, content_category: "Curso", content_type: "product", value: course.launchPrice, currency: "BRL" };
 
-function Cta({ label = "Quero dominar RabbitMQ por R$ 29,90", className = "" }: { label?: string; className?: string }) {
-  return <TrackedCheckoutButton href={course.checkoutUrl} label={label} pageKey={course.pageKey} pagePath={course.pagePath} pageTitle={course.pageTitle} value={course.launchPrice} currency="BRL" customEvent="rabbitmq_checkout_click" eventData={eventData} hideGlow className={`!rounded-xl !bg-[#ff7a1a] !text-[#160b03] hover:!bg-[#ff984f] ${className}`} />;
+function Cta({ label = "Quero entrar na primeira turma", tone = "dark", className = "" }: { label?: string; tone?: "dark" | "orange"; className?: string }) {
+  const palette = tone === "orange" ? "!bg-[#ff5c20] !text-[#171717] hover:!bg-white" : "!bg-[#171717] !text-white hover:!bg-[#ff5c20] hover:!text-[#171717]";
+  return <TrackedCheckoutButton href={course.checkoutUrl} label={label} pageKey={course.pageKey} pagePath={course.pagePath} pageTitle={course.pageTitle} value={course.launchPrice} currency="BRL" customEvent="rabbitmq_checkout_click" eventData={eventData} hideGlow className={`!rounded-none !bg-none !px-6 !py-4 !font-black ${palette} ${className}`} />;
+}
+
+function FlowDiagram() {
+  return (
+    <div className="border-2 border-[#171717] bg-[#fffaf0]">
+      <div className="flex items-center justify-between border-b-2 border-[#171717] px-4 py-3 font-mono text-[10px] font-black uppercase tracking-[.16em]"><span>Diagrama 01 / Fluxo básico</span><span>RabbitMQ</span></div>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 p-5 md:p-7">
+        <div className="border-2 border-[#171717] bg-[#c7e9ff] p-4 text-center"><Code2 className="mx-auto h-5 w-5" /><strong className="mt-2 block font-mono text-xs">PRODUCER</strong></div>
+        <ArrowRight className="h-5 w-5" />
+        <div className="border-2 border-[#171717] bg-[#ff5c20] p-4 text-center"><strong className="font-mono text-xs">EXCHANGE</strong><div className="mt-1 font-mono text-[9px]">topic</div></div>
+      </div>
+      <div className="mx-auto h-10 w-px bg-[#171717]" />
+      <div className="grid grid-cols-3 gap-2 px-5 pb-5 md:px-7 md:pb-7">{["pedidos", "emails", "retry"].map((item) => <div key={item} className="border-2 border-[#171717] bg-[#f7dd4c] p-3 text-center font-mono text-[9px] font-black uppercase">{item}<br />queue</div>)}</div>
+      <div className="border-t-2 border-[#171717] bg-[#171717] px-4 py-3 font-mono text-[10px] text-white">STATUS: MESSAGE ACKNOWLEDGED ✓</div>
+    </div>
+  );
 }
 
 export default async function CursoRabbitmqPage() {
   const metaPixelId = await resolveSalesPageMetaPixelId(course.pageKey, { preferEnvFallback: true });
-
   return (
-    <main className="min-h-screen overflow-hidden bg-[#080b0f] text-white selection:bg-orange-400 selection:text-black">
+    <main className="min-h-screen bg-[#f2efe5] text-[#171717] selection:bg-[#f7dd4c]">
       <MetaPixelScript pixelId={metaPixelId || undefined} />
       <MetaPixelViewContent data={eventData} />
       <SalesPageTracker pageKey={course.pageKey} pagePath={course.pagePath} pageTitle={course.pageTitle} metadata={{ offerPrice: course.launchPrice, currency: "BRL", offerName: course.name }} />
@@ -124,75 +78,24 @@ export default async function CursoRabbitmqPage() {
       <SectionViewTracker selectorId="conteudo" pageKey={course.pageKey} pagePath={course.pagePath} pageTitle={course.pageTitle} eventName="curriculum_view" />
       <SectionViewTracker selectorId="oferta" pageKey={course.pageKey} pagePath={course.pagePath} pageTitle={course.pageTitle} eventName="offer_view" />
 
-      <header className="relative z-20 border-b border-white/10 bg-[#080b0f]/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/cursos" className="flex items-center gap-3 text-sm font-black tracking-tight"><span className="grid h-9 w-9 place-items-center rounded-xl bg-orange-500 text-black"><Code2 className="h-5 w-5" /></span>Plugando IA</Link>
-          <Link href="/cursos" className="flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-white">Ver todos os cursos <ChevronRight className="h-4 w-4" /></Link>
-        </div>
-      </header>
+      <header className="border-b-2 border-[#171717]"><div className="mx-auto flex max-w-[1440px] items-center justify-between px-5 py-4 md:px-10"><Link href="/cursos" className="flex items-center gap-3 font-black tracking-[-.03em]"><span className="grid h-9 w-9 place-items-center bg-[#ff5c20]"><Code2 className="h-5 w-5" /></span>PLUGANDO IA</Link><Link href="/cursos" className="font-mono text-[10px] font-black uppercase tracking-[.16em] underline decoration-2 underline-offset-4">Todos os cursos</Link></div></header>
 
-      <section className="relative border-b border-white/10">
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.025)_1px,transparent_1px)] bg-[size:40px_40px]" />
-        <div className="absolute right-[-150px] top-[-120px] h-[520px] w-[520px] rounded-full bg-orange-500/15 blur-[120px]" />
-        <div className="relative mx-auto grid max-w-7xl gap-14 px-6 py-16 md:py-24 lg:grid-cols-[1.08fr,.92fr] lg:items-center">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/25 bg-orange-400/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-orange-200"><CircleDot className="h-3.5 w-3.5 fill-orange-400 text-orange-400" /> Nova turma • primeiros 30 alunos</div>
-            <h1 className="mt-6 max-w-3xl text-balance text-5xl font-black leading-[0.94] tracking-[-0.055em] md:text-7xl">Pare de perder mensagens. <span className="text-orange-400">Construa sistemas resilientes.</span></h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">Aprenda RabbitMQ do fundamento ao código e domine o fluxo completo de uma mensagem com <strong className="text-white">C#, .NET e Docker</strong> — incluindo ACK, concorrência, Dead Letter e Retry.</p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center"><Cta /><a href="#conteudo" className="rounded-xl border border-white/15 px-6 py-3 text-center text-sm font-bold text-white transition hover:bg-white/5">Ver as 51 aulas</a></div>
-            <div className="mt-7 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-400"><span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-400" />Do zero ao avançado</span><span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-400" />Exemplos em .NET</span><span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-400" />Acesso online</span></div>
-          </div>
+      <section className="border-b-2 border-[#171717]"><div className="mx-auto grid max-w-[1440px] lg:grid-cols-[1.15fr_.85fr]"><div className="px-5 py-14 md:px-10 md:py-20 lg:border-r-2 lg:border-[#171717] lg:py-24"><div className="flex flex-wrap items-center gap-3 font-mono text-[10px] font-black uppercase tracking-[.16em]"><span className="bg-[#ff5c20] px-3 py-2">Curso 01 / Nova turma</span><span>Primeiros 30 alunos</span></div><h1 className="mt-8 max-w-4xl font-serif text-[3.7rem] font-bold leading-[.9] tracking-[-.06em] sm:text-7xl xl:text-[6.4rem]">Mensageria que você entende. E sabe colocar em produção.</h1><p className="mt-8 max-w-2xl text-lg leading-8 text-[#55534d]">RabbitMQ do fundamento ao código com <strong className="text-[#171717]">C#, .NET e Docker</strong>. Aprenda o fluxo completo — inclusive o que fazer quando a mensagem falha.</p><div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center"><Cta /><a href="#conteudo" className="flex items-center justify-center gap-2 border-2 border-[#171717] px-6 py-3.5 text-sm font-black">CONHECER O PROGRAMA <ArrowDown className="h-4 w-4" /></a></div></div>
+        <aside className="grid border-t-2 border-[#171717] lg:border-t-0"><div className="bg-[#ff5c20] p-6 md:p-9"><div className="flex items-start justify-between"><span className="font-mono text-[10px] font-black uppercase tracking-[.18em]">RabbitMQ<br />com .NET</span><Rabbit className="h-12 w-12" /></div><div className="mt-20 font-serif text-5xl font-bold leading-[.92] tracking-[-.05em] md:text-6xl">Do primeiro publish ao Retry.</div><div className="mt-12 flex justify-between border-t-2 border-[#171717] pt-4 font-mono text-[10px] font-black uppercase"><span>9 módulos</span><span>51 aulas</span><span>Online</span></div></div><div className="grid grid-cols-2 border-t-2 border-[#171717]"><div className="border-r-2 border-[#171717] bg-[#f7dd4c] p-6"><span className="font-mono text-[9px] font-black uppercase">De</span><strong className="mt-6 block text-2xl line-through">R$ 99,99</strong></div><div className="bg-[#fffaf0] p-6"><span className="font-mono text-[9px] font-black uppercase">Lançamento</span><strong className="mt-3 block text-4xl font-black tracking-[-.06em]">R$ 29,90</strong></div></div></aside></div></section>
 
-          <div className="relative">
-            <div className="absolute inset-8 rounded-full bg-orange-500/20 blur-3xl" />
-            <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[#10151b] p-5 shadow-2xl shadow-black/50">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4"><div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-red-400" /><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /></div><span className="font-mono text-[10px] uppercase tracking-[.2em] text-slate-500">message-flow.dev</span></div>
-              <div className="mt-8 grid grid-cols-[1fr,auto,1fr] items-center gap-3 text-center">
-                <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4"><Code2 className="mx-auto h-6 w-6 text-cyan-300" /><div className="mt-2 text-sm font-bold">Producer</div><div className="text-[10px] text-slate-500">.NET</div></div>
-                <ArrowRight className="h-5 w-5 text-orange-400" />
-                <div className="rounded-2xl border border-orange-400/25 bg-orange-400/10 p-4"><Route className="mx-auto h-6 w-6 text-orange-300" /><div className="mt-2 text-sm font-bold">Exchange</div><div className="text-[10px] text-slate-500">routing</div></div>
-              </div>
-              <div className="mx-auto my-3 h-8 w-px bg-gradient-to-b from-orange-400 to-violet-400" />
-              <div className="grid grid-cols-3 gap-2">{["pedidos", "emails", "retry"].map((queue) => <div key={queue} className="rounded-xl border border-violet-400/20 bg-violet-400/10 p-3 text-center"><Layers3 className="mx-auto h-5 w-5 text-violet-300" /><div className="mt-2 font-mono text-[10px] text-violet-100">{queue}.queue</div></div>)}</div>
-              <div className="mt-3 flex items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3"><div className="flex items-center gap-2 text-sm font-bold text-emerald-200"><ShieldCheck className="h-5 w-5" />Consumer processou</div><span className="rounded-md bg-emerald-400/20 px-2 py-1 font-mono text-[10px] text-emerald-200">ACK ✓</span></div>
-              <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-5"><div><div className="text-xs text-slate-500 line-through">De R$ 99,99</div><div className="text-3xl font-black text-white">R$ 29,90</div></div><Rabbit className="h-14 w-14 text-orange-400" /></div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <section className="mx-auto max-w-[1440px] px-5 py-16 md:px-10 md:py-24"><div className="grid gap-12 lg:grid-cols-[.75fr_1.25fr] lg:items-start"><div><span className="font-mono text-[10px] font-black uppercase tracking-[.2em] text-[#d43d08]">01 / Por que este curso existe</span><h2 className="mt-5 font-serif text-4xl font-bold leading-tight tracking-[-.045em] md:text-5xl">Enviar a mensagem é fácil. Projetar o que acontece depois é engenharia.</h2></div><div className="grid gap-8 md:grid-cols-2"><p className="text-xl leading-8 text-[#3f3d38]">Quando um serviço fica lento, uma mensagem falha ou o volume cresce, copiar uma configuração não basta. Você precisa entender o fluxo.</p><p className="leading-7 text-[#69655d]">Este curso foi organizado para ligar conceito e implementação. Você aprende por que cada componente existe, vê o comportamento no RabbitMQ e escreve o fluxo em .NET.</p><div className="md:col-span-2"><FlowDiagram /></div></div></div></section>
 
-      <section className="mx-auto max-w-7xl px-6 py-20 md:py-28">
-        <div className="mx-auto max-w-3xl text-center"><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">O problema não é publicar</p><h2 className="mt-4 text-balance text-4xl font-black tracking-[-.04em] md:text-5xl">O desafio começa quando algo dá errado.</h2><p className="mt-5 text-lg leading-8 text-slate-400">Uma demo envia mensagens em minutos. Um sistema real precisa saber o que fazer com falhas, picos de demanda e mensagens que não podem ser processadas.</p></div>
-        <div className="mt-12 grid gap-4 md:grid-cols-3">
-          {[[X, "Acoplamento que trava", "Uma chamada lenta ou indisponível paralisa o restante do fluxo."], [RefreshCcw, "Retry sem controle", "Tentar de novo sem estratégia cria loops, sobrecarga e mensagens duplicadas."], [Users, "Escala desigual", "Mais Consumers não resolvem tudo sem prefetch, concorrência e distribuição correta."]].map(([Icon, title, desc]) => { const ItemIcon = Icon as typeof X; return <article key={String(title)} className="rounded-3xl border border-white/10 bg-white/[.035] p-7"><ItemIcon className="h-7 w-7 text-orange-400" /><h3 className="mt-8 text-xl font-black">{String(title)}</h3><p className="mt-3 leading-7 text-slate-400">{String(desc)}</p></article>; })}
-        </div>
-      </section>
+      <section className="border-y-2 border-[#171717] bg-[#171717] text-white"><div className="mx-auto max-w-[1440px] px-5 py-16 md:px-10 md:py-24"><div className="grid gap-10 md:grid-cols-2"><div><span className="font-mono text-[10px] font-black uppercase tracking-[.2em] text-[#ff7544]">02 / O que muda</span><h2 className="mt-5 max-w-2xl font-serif text-4xl font-bold tracking-[-.045em] md:text-5xl">Você deixa de decorar termos e começa a tomar decisões.</h2></div><p className="max-w-xl self-end text-lg leading-8 text-white/65">Fanout, Direct, Topic, ACK, QoS e DLQ passam a fazer parte de um modelo mental claro — não de uma lista de configurações soltas.</p></div><div className="mt-14 grid border-l border-t border-white/30 sm:grid-cols-2 lg:grid-cols-4">{[["01", "Rotear", "Escolha a Exchange e o binding de acordo com o fluxo."], ["02", "Confirmar", "Controle ACK, Nack, Reject e mensagens problemáticas."], ["03", "Distribuir", "Use concorrência, prefetch e múltiplos Consumers."], ["04", "Recuperar", "Projete TTL, Dead Letter e Retry com delay."]].map(([number, title, text]) => <article key={number} className="min-h-60 border-b border-r border-white/30 p-6"><span className="font-mono text-xs text-[#ff7544]">{number}</span><h3 className="mt-16 font-serif text-3xl font-bold">{title}</h3><p className="mt-3 text-sm leading-6 text-white/55">{text}</p></article>)}</div></div></section>
 
-      <section className="border-y border-white/10 bg-[#0d1117]">
-        <div className="mx-auto max-w-7xl px-6 py-20 md:py-24">
-          <div className="grid gap-12 lg:grid-cols-[.8fr,1.2fr] lg:items-start"><div className="lg:sticky lg:top-8"><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">Ao final do curso</p><h2 className="mt-4 text-4xl font-black tracking-[-.04em]">Você vai enxergar a mensagem de ponta a ponta.</h2><p className="mt-5 leading-7 text-slate-400">Não apenas copiar configurações. Você vai entender o papel de cada componente e tomar decisões mais seguras.</p></div><div className="grid gap-4 sm:grid-cols-2">{[[GitBranch, "Escolher o roteamento", "Use Fanout, Direct ou Topic de acordo com o fluxo."], [BadgeCheck, "Controlar a entrega", "Trabalhe com ACK, Nack, Reject e Poison Messages."], [Zap, "Escalar Consumers", "Aplique round-robin, QoS, prefetch e concorrência."], [ShieldCheck, "Tratar falhas", "Implemente TTL, DLQ e Retry com delay de forma consciente."], [Container, "Subir o ambiente", "Execute RabbitMQ com Docker Compose."], [Code2, "Integrar com .NET", "Crie Producers e Consumers com RabbitMQ.Client."]].map(([Icon, title, desc]) => { const ItemIcon = Icon as typeof Box; return <article key={String(title)} className="rounded-2xl border border-white/10 bg-[#080b0f] p-6"><ItemIcon className="h-6 w-6 text-orange-400" /><h3 className="mt-5 font-black">{String(title)}</h3><p className="mt-2 text-sm leading-6 text-slate-400">{String(desc)}</p></article>; })}</div></div>
-        </div>
-      </section>
+      <section id="conteudo" className="mx-auto max-w-[1200px] scroll-mt-4 px-5 py-16 md:px-10 md:py-24"><div className="grid gap-8 border-b-2 border-[#171717] pb-8 md:grid-cols-2 md:items-end"><div><span className="font-mono text-[10px] font-black uppercase tracking-[.2em] text-[#d43d08]">03 / Programa do curso</span><h2 className="mt-5 font-serif text-5xl font-bold tracking-[-.05em]">51 aulas.<br />Sem buracos no caminho.</h2></div><p className="max-w-lg justify-self-end leading-7 text-[#69655d]">Do problema que a mensageria resolve até uma estratégia completa de Retry usando TTL e Dead Letter.</p></div><div className="mt-8 border-x-2 border-t-2 border-[#171717]">{modules.map((module, moduleIndex) => <TrackedAccordion key={module.title} title={`${String(moduleIndex + 1).padStart(2, "0")} / ${module.title}`} pageKey={course.pageKey} pagePath={course.pagePath} pageTitle={course.pageTitle} eventName={`module_${moduleIndex + 1}_open`} variant="light" className="!rounded-none !border-x-0 !border-t-0 !border-b-2 !border-[#171717] !bg-[#fffaf0] !p-5 md:!p-7" titleClassName="!font-serif !text-xl !font-bold md:!text-2xl" contentClassName="!text-[#5d5a52]" iconClassName="!rounded-none !border-2 !border-[#171717] !bg-transparent"><p className="mb-5 max-w-2xl text-base">{module.summary}</p><ol className="border-t border-[#b8b2a4]">{module.lessons.map((lesson, lessonIndex) => { const previous = modules.slice(0, moduleIndex).reduce((sum, item) => sum + item.lessons.length, 0); return <li key={lesson} className="grid grid-cols-[42px_1fr] border-b border-[#d5d0c4] py-3"><span className="font-mono text-[10px] font-black text-[#d43d08]">{String(previous + lessonIndex + 1).padStart(2, "0")}</span><span>{lesson}</span></li>; })}</ol></TrackedAccordion>)}</div></section>
 
-      <section id="conteudo" className="mx-auto max-w-5xl scroll-mt-8 px-6 py-20 md:py-28">
-        <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">Conteúdo completo</p><h2 className="mt-4 text-4xl font-black tracking-[-.04em] md:text-5xl">9 módulos. 51 aulas.<br />Uma evolução clara.</h2></div><div className="flex gap-6 text-sm"><div><strong className="block text-2xl text-white">51</strong><span className="text-slate-500">aulas</span></div><div><strong className="block text-2xl text-white">9</strong><span className="text-slate-500">módulos</span></div><div><strong className="block text-2xl text-white">100%</strong><span className="text-slate-500">online</span></div></div></div>
-        <div className="mt-12 space-y-3">{modules.map((module, moduleIndex) => <TrackedAccordion key={module.title} title={`${String(moduleIndex + 1).padStart(2, "0")} — ${module.title}`} pageKey={course.pageKey} pagePath={course.pagePath} pageTitle={course.pageTitle} eventName={`module_${moduleIndex + 1}_open`} className="!rounded-2xl !border-white/10 !bg-[#10141a]" titleClassName="!text-lg" contentClassName="!text-slate-400"><p className="mb-5 text-slate-300">{module.summary}</p><ol className="space-y-3">{module.lessons.map((lesson, lessonIndex) => { const previousLessons = modules.slice(0, moduleIndex).reduce((sum, item) => sum + item.lessons.length, 0); return <li key={lesson} className="flex gap-3 border-t border-white/[.06] pt-3"><span className="w-7 shrink-0 font-mono text-xs text-orange-400">{String(previousLessons + lessonIndex + 1).padStart(2, "0")}</span><span>{lesson}</span></li>; })}</ol></TrackedAccordion>)}</div>
-      </section>
+      <section id="oferta" className="scroll-mt-4 border-y-2 border-[#171717] bg-[#ff5c20]"><div className="mx-auto grid max-w-[1440px] lg:grid-cols-[1.2fr_.8fr]"><div className="border-[#171717] px-5 py-16 md:px-10 md:py-24 lg:border-r-2"><span className="font-mono text-[10px] font-black uppercase tracking-[.2em]">04 / Convite para a primeira turma</span><h2 className="mt-6 max-w-4xl font-serif text-5xl font-bold leading-[.94] tracking-[-.055em] md:text-7xl">Aprenda agora. Use no próximo sistema.</h2><p className="mt-7 max-w-2xl text-lg leading-8">O preço de lançamento está limitado aos <strong>primeiros 30 alunos</strong>. Depois, o curso retorna ao valor normal de R$ 99,99.</p><div className="mt-10 grid gap-3 sm:grid-cols-2">{["51 aulas em sequência", "Prática com C# e .NET", "Ambiente com Docker", "Fanout, Direct e Topic", "ACK, QoS e concorrência", "TTL, DLQ e Retry"].map((item) => <div key={item} className="flex items-center gap-3 border-t border-[#171717]/40 pt-3 text-sm font-bold"><Check className="h-4 w-4" />{item}</div>)}</div></div><aside className="flex flex-col justify-between bg-[#f7dd4c] p-6 md:p-10"><div><div className="flex justify-between font-mono text-[10px] font-black uppercase tracking-[.16em]"><span>Inscrição individual</span><span>BRL</span></div><div className="mt-16 text-sm">Preço normal</div><div className="text-2xl line-through">R$ 99,99</div><div className="mt-7 text-sm font-bold">Preço de lançamento</div><div className="mt-1 text-7xl font-black tracking-[-.075em]">29<span className="text-3xl">,90</span></div><p className="mt-2 font-mono text-[10px] font-bold uppercase">Pagamento único</p></div><div className="mt-16"><Cta label="Garantir minha vaga" className="w-full" /><p className="mt-4 text-center font-mono text-[9px] font-bold uppercase tracking-wider">Condição válida para os primeiros 30 alunos</p></div></aside></div></section>
 
-      <section id="oferta" className="relative scroll-mt-8 border-y border-orange-400/20 bg-[#100c08]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(249,115,22,.2),transparent_55%)]" />
-        <div className="relative mx-auto grid max-w-6xl gap-12 px-6 py-20 md:py-28 lg:grid-cols-[1fr,.8fr] lg:items-center">
-          <div><div className="inline-flex items-center gap-2 rounded-full border border-orange-400/25 bg-orange-400/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[.16em] text-orange-200"><Clock3 className="h-4 w-4" /> Oferta de lançamento</div><h2 className="mt-6 text-balance text-4xl font-black leading-tight tracking-[-.045em] md:text-6xl">Entre agora e transforme mensageria em uma habilidade real.</h2><p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">A condição especial vale somente para os <strong className="text-white">primeiros 30 alunos</strong>. Ao atingir esse limite, o curso retorna ao preço normal.</p><ul className="mt-8 grid gap-3 sm:grid-cols-2">{["51 aulas organizadas", "Do fundamento à resiliência", "Prática com .NET", "Ambiente com Docker", "Fanout, Direct e Topic", "ACK, DLQ, TTL e Retry"].map((item) => <li key={item} className="flex items-center gap-3 text-sm text-slate-300"><span className="grid h-6 w-6 place-items-center rounded-full bg-emerald-400/10"><Check className="h-3.5 w-3.5 text-emerald-400" /></span>{item}</li>)}</ul></div>
-          <div className="rounded-[30px] border border-orange-400/25 bg-[#15110d] p-7 shadow-2xl shadow-orange-950/40 md:p-9"><p className="text-sm font-bold uppercase tracking-[.18em] text-orange-300">Acesso ao curso completo</p><div className="mt-8 border-b border-white/10 pb-7"><div className="text-sm text-slate-500">Preço normal</div><div className="text-xl text-slate-400 line-through">R$ 99,99</div><div className="mt-4 text-sm text-slate-400">Hoje, no lançamento:</div><div className="mt-1 text-6xl font-black tracking-[-.06em] text-white">R$ 29<span className="text-3xl">,90</span></div><div className="mt-2 text-sm text-slate-500">pagamento único</div></div><Cta label="Garantir minha vaga" className="mt-7 w-full !py-4 !text-base" /><p className="mt-4 text-center text-xs leading-5 text-slate-500">Preço exclusivo para os primeiros 30 alunos.</p></div>
-        </div>
-      </section>
+      <section className="mx-auto max-w-[1000px] px-5 py-16 md:px-10 md:py-24"><div className="grid gap-8 md:grid-cols-[.6fr_1.4fr]"><div><span className="font-mono text-[10px] font-black uppercase tracking-[.2em] text-[#d43d08]">05 / Dúvidas</span><h2 className="mt-4 font-serif text-4xl font-bold tracking-[-.04em]">Antes de começar.</h2></div><div className="border-x-2 border-t-2 border-[#171717]">{faq.map(([question, answer], index) => <TrackedAccordion key={question} title={question} pageKey={course.pageKey} pagePath={course.pagePath} pageTitle={course.pageTitle} eventName={`faq_${index + 1}_open`} variant="light" className="!rounded-none !border-x-0 !border-t-0 !border-b-2 !border-[#171717] !bg-[#fffaf0] !p-5" titleClassName="!font-serif !text-lg !font-bold" contentClassName="!text-[#5d5a52]" iconClassName="!rounded-none !border-2 !border-[#171717] !bg-transparent"><p>{answer}</p></TrackedAccordion>)}</div></div></section>
 
-      <section className="mx-auto max-w-4xl px-6 py-20 md:py-28"><div className="text-center"><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">Perguntas frequentes</p><h2 className="mt-4 text-4xl font-black tracking-[-.04em]">Antes de entrar, tire suas dúvidas.</h2></div><div className="mt-10 space-y-3">{faq.map(([question, answer], index) => <TrackedAccordion key={question} title={question} pageKey={course.pageKey} pagePath={course.pagePath} pageTitle={course.pageTitle} eventName={`faq_${index + 1}_open`} className="!rounded-2xl !bg-white/[.035]"><p>{answer}</p></TrackedAccordion>)}</div></section>
-
-      <section className="border-t border-white/10 bg-[#0d1117]"><div className="mx-auto max-w-5xl px-6 py-16 text-center"><Rabbit className="mx-auto h-10 w-10 text-orange-400" /><h2 className="mt-5 text-3xl font-black tracking-tight">Sua próxima mensagem pode ser processada do jeito certo.</h2><p className="mx-auto mt-3 max-w-2xl leading-7 text-slate-400">Aprenda o que acontece entre o Producer e o Consumer — inclusive quando o caminho não sai como esperado.</p><Cta label="Começar agora por R$ 29,90" className="mt-7" /></div></section>
-      <footer className="border-t border-white/10 px-6 py-8 text-center text-sm text-slate-600">© {new Date().getFullYear()} Plugando IA • <Link href="/cursos" className="hover:text-slate-300">Ver todos os cursos</Link></footer>
-
-      <MobileStickyCTA title={course.name} priceLabel="Lançamento: R$ 29,90" href={course.checkoutUrl} label="Garantir vaga" pageKey={course.pageKey} pagePath={course.pagePath} pageTitle={course.pageTitle} value={course.launchPrice} currency="BRL" className="!bg-[#0b0d10]/95" buttonClassName="!bg-[#ff7a1a] !text-black" hideGlow />
+      <section className="border-t-2 border-[#171717] bg-[#171717] text-white"><div className="mx-auto flex max-w-[1440px] flex-col gap-8 px-5 py-14 md:flex-row md:items-center md:justify-between md:px-10"><div><Rabbit className="h-8 w-8 text-[#ff5c20]" /><h2 className="mt-4 font-serif text-3xl font-bold">Entenda cada mensagem. Inclusive a que falha.</h2></div><Cta label="Começar por R$ 29,90" tone="orange" /></div></section>
+      <footer className="mx-auto flex max-w-[1440px] flex-col gap-3 px-5 py-8 font-mono text-[10px] font-bold uppercase tracking-[.14em] text-[#666258] md:flex-row md:justify-between md:px-10"><span>© {new Date().getFullYear()} Plugando IA</span><Link href="/cursos" className="underline underline-offset-4">Voltar ao catálogo</Link></footer>
+      <MobileStickyCTA title={course.name} priceLabel="Lançamento: R$ 29,90" href={course.checkoutUrl} label="Garantir vaga" pageKey={course.pageKey} pagePath={course.pagePath} pageTitle={course.pageTitle} value={course.launchPrice} currency="BRL" className="!border-[#171717] !bg-[#f7dd4c]" titleClassName="!text-[#171717]" priceClassName="!text-[#171717]" buttonClassName="!rounded-none !bg-none !bg-[#171717] !text-white" hideGlow />
     </main>
   );
 }

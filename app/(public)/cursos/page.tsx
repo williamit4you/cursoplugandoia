@@ -1,102 +1,76 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Boxes, Check, Code2, Layers3, MessageSquareMore, Sparkles } from "lucide-react";
+import { ArrowUpRight, Check, Code2 } from "lucide-react";
 import { SalesPageTracker } from "@/components/SalesPageTracker";
 import { courseCatalog, type CourseCatalogItem } from "@/lib/courseCatalog";
 
 export const metadata: Metadata = {
-  title: "Cursos de programação, arquitetura e IA | Plugando IA",
-  description: "Escolha sua próxima habilidade: RabbitMQ, arquitetura de software, APIs .NET, SaaS com IA ou a formação completa.",
+  title: "Cursos de tecnologia para quem constrói | Plugando IA",
+  description: "Formações em programação, arquitetura, APIs, SaaS e mensageria, com fundamentos e projetos aplicados.",
   alternates: { canonical: "/cursos" },
-  openGraph: { title: "Cursos Plugando IA | Aprenda construindo", description: "Cursos objetivos para transformar tecnologia em projetos reais.", url: "/cursos", siteName: "Plugando IA", type: "website" },
+  openGraph: { title: "Plugando IA — Escola de tecnologia aplicada", description: "Cursos para entender melhor, construir melhor e avançar com consistência.", url: "/cursos", siteName: "Plugando IA", type: "website" },
 };
 
-const accentClasses: Record<CourseCatalogItem["accent"], { line: string; glow: string; pill: string }> = {
-  orange: { line: "bg-orange-400", glow: "from-orange-500/25", pill: "text-orange-200 border-orange-400/25 bg-orange-400/10" },
-  cyan: { line: "bg-cyan-400", glow: "from-cyan-500/25", pill: "text-cyan-200 border-cyan-400/25 bg-cyan-400/10" },
-  violet: { line: "bg-violet-400", glow: "from-violet-500/25", pill: "text-violet-200 border-violet-400/25 bg-violet-400/10" },
-  emerald: { line: "bg-emerald-400", glow: "from-emerald-500/25", pill: "text-emerald-200 border-emerald-400/25 bg-emerald-400/10" },
-  amber: { line: "bg-amber-300", glow: "from-amber-500/25", pill: "text-amber-100 border-amber-300/25 bg-amber-300/10" },
+const visualTheme: Record<CourseCatalogItem["accent"], { bg: string; ink: string; mark: string }> = {
+  orange: { bg: "bg-[#ff6933]", ink: "text-[#171717]", mark: "border-[#171717]" },
+  cyan: { bg: "bg-[#c6e8ff]", ink: "text-[#102033]", mark: "border-[#236ea5]" },
+  violet: { bg: "bg-[#d8ceff]", ink: "text-[#21183e]", mark: "border-[#5537aa]" },
+  emerald: { bg: "bg-[#bde7ce]", ink: "text-[#10271a]", mark: "border-[#24714a]" },
+  amber: { bg: "bg-[#f7dd4c]", ink: "text-[#171717]", mark: "border-[#171717]" },
 };
 
-function formatPrice(value: number) {
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+function price(value: number) { return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
+
+function CourseArtwork({ course, index }: { course: CourseCatalogItem; index: number }) {
+  const theme = visualTheme[course.accent];
+  const code = ["MQ", "ARQ", "SaaS", "API", "FULL"][index];
+  return (
+    <div className={`relative aspect-[4/3] overflow-hidden ${theme.bg} ${theme.ink}`}>
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between border-b border-current/30 px-5 py-4 font-mono text-[10px] font-bold uppercase tracking-[.18em]"><span>Plugando IA / Curso {String(index + 1).padStart(2, "0")}</span><span>Ed. 2026</span></div>
+      {index === 0 ? (
+        <div className="absolute inset-x-5 bottom-6 top-16 grid grid-cols-[1fr,auto,1fr] items-center gap-3"><div className={`border-2 ${theme.mark} p-4 text-center font-mono text-xs font-bold`}>PUB</div><span className="text-xl">→</span><div className="space-y-2">{[1, 2, 3].map((item) => <div key={item} className={`border-2 ${theme.mark} px-3 py-2 font-mono text-[10px]`}>QUEUE_{item}</div>)}</div></div>
+      ) : index === 1 ? (
+        <div className="absolute inset-x-6 bottom-7 top-20"><div className={`h-full border-2 ${theme.mark} p-4`}><div className={`grid h-full grid-cols-2 gap-3 border-2 ${theme.mark} p-3`}><div className={`border-2 ${theme.mark}`} /><div className="grid gap-3"><div className={`border-2 ${theme.mark}`} /><div className={`border-2 ${theme.mark}`} /></div></div></div></div>
+      ) : index === 2 ? (
+        <div className="absolute inset-x-6 bottom-7 top-20 flex items-end gap-3">{[44, 70, 100].map((height, item) => <div key={height} className={`flex-1 border-2 ${theme.mark}`} style={{ height: `${height}%` }}><span className="block border-b border-current/40 p-2 font-mono text-[9px]">0{item + 1}</span></div>)}</div>
+      ) : index === 3 ? (
+        <div className="absolute inset-x-6 bottom-7 top-20 flex flex-col justify-between font-mono text-[10px] font-bold">{["GET /agenda", "POST /clientes", "AUTH /token"].map((item, itemIndex) => <div key={item} className={`flex items-center justify-between border-2 ${theme.mark} p-3`}><span>{item}</span><span>{itemIndex === 2 ? "201" : "200"}</span></div>)}</div>
+      ) : (
+        <div className="absolute inset-x-5 bottom-6 top-16 grid grid-cols-3 grid-rows-2 gap-2">{["C#", "API", "ARQ", "AWS", "IA", "SaaS"].map((item) => <div key={item} className={`grid place-items-center border-2 ${theme.mark} font-mono text-xs font-black`}>{item}</div>)}</div>
+      )}
+      <span className="absolute bottom-4 right-5 text-5xl font-black tracking-[-.08em] opacity-15">{code}</span>
+    </div>
+  );
 }
 
-function CourseCard({ course, index }: { course: CourseCatalogItem; index: number }) {
-  const accent = accentClasses[course.accent];
+function CourseItem({ course, index }: { course: CourseCatalogItem; index: number }) {
   const content = (
-    <article className="group relative flex h-full min-h-[430px] flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#11151c] p-6 transition duration-300 hover:-translate-y-1 hover:border-white/20 md:p-7">
-      <div className={`pointer-events-none absolute inset-x-0 top-0 h-48 bg-gradient-to-b ${accent.glow} to-transparent opacity-70`} />
-      <div className={`absolute left-6 top-0 h-1 w-20 rounded-b-full ${accent.line}`} />
-      <div className="relative flex items-start justify-between gap-3">
-        <span className="font-mono text-xs text-white/35">0{index + 1}</span>
-        {course.badge ? <span className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${accent.pill}`}>{course.badge}</span> : null}
-      </div>
-      <div className="relative mt-12">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/45">{course.eyebrow}</p>
-        <h2 className="mt-3 text-2xl font-black leading-tight tracking-[-0.03em] text-white">{course.title}</h2>
-        <p className="mt-4 leading-7 text-slate-400">{course.description}</p>
-      </div>
-      <div className="relative mt-6 flex flex-wrap gap-2">
-        {course.tags.map((tag) => <span key={tag} className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-medium text-slate-300">{tag}</span>)}
-      </div>
-      <div className="relative mt-auto border-t border-white/10 pt-5">
-        <div className="flex items-center gap-2 text-sm text-slate-300"><Check className="h-4 w-4 text-emerald-400" />{course.outcome}</div>
-        <div className="mt-5 flex items-end justify-between gap-4">
-          <div>
-            {course.price ? <>{course.regularPrice ? <div className="text-xs text-slate-500 line-through">{formatPrice(course.regularPrice)}</div> : null}<div className="text-2xl font-black text-white">{formatPrice(course.price)}</div></> : <div className="text-sm font-semibold text-slate-400">Detalhes em breve</div>}
-          </div>
-          <span className={`flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-bold ${course.available ? "bg-white text-slate-950 group-hover:bg-orange-300" : "border border-white/10 bg-white/5 text-slate-400"}`}>
-            {course.available ? "Conhecer" : "Em breve"}{course.available ? <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /> : null}
-          </span>
-        </div>
+    <article className={`group grid h-full overflow-hidden border-2 border-[#171717] bg-[#fffdf5] ${course.available ? "transition hover:-translate-y-1 hover:shadow-[8px_8px_0_#171717]" : "opacity-75"}`}>
+      <CourseArtwork course={course} index={index} />
+      <div className="flex flex-col p-6 md:p-7">
+        <div className="flex items-start justify-between gap-4"><p className="font-mono text-[10px] font-black uppercase tracking-[.18em] text-[#55534d]">{course.eyebrow}</p><span className="border border-[#171717] px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wider">{course.badge}</span></div>
+        <h2 className="mt-5 font-serif text-3xl font-bold leading-[1.02] tracking-[-.035em] text-[#171717]">{course.title}</h2>
+        <p className="mt-4 leading-7 text-[#5d5a52]">{course.description}</p>
+        <div className="mt-5 flex flex-wrap gap-2">{course.tags.map((tag) => <span key={tag} className="border border-[#c8c4b7] px-2.5 py-1 font-mono text-[10px] font-bold uppercase text-[#55534d]">{tag}</span>)}</div>
+        <div className="mt-auto pt-8"><div className="flex items-center gap-2 border-t border-[#d8d3c5] pt-4 text-sm font-medium text-[#3c3a35]"><Check className="h-4 w-4" />{course.outcome}</div><div className="mt-6 flex items-end justify-between gap-3"><div>{course.price ? <>{course.regularPrice ? <div className="text-xs text-[#767269] line-through">{price(course.regularPrice)}</div> : null}<div className="text-2xl font-black text-[#171717]">{price(course.price)}</div></> : <span className="font-mono text-xs font-bold uppercase text-[#767269]">Novas turmas em breve</span>}</div><span className={`grid h-12 w-12 place-items-center border-2 border-[#171717] ${course.available ? "bg-[#171717] text-white transition group-hover:bg-[#2349d8]" : "text-[#171717]"}`}><ArrowUpRight className="h-5 w-5" /></span></div></div>
       </div>
     </article>
   );
-  return course.available ? <Link href={course.href}>{content}</Link> : <div aria-label={`${course.title} — em breve`}>{content}</div>;
+  return course.available ? <Link href={course.href}>{content}</Link> : <div>{content}</div>;
 }
 
 export default function CursosPage() {
-  const categoryItems = [
-    { Icon: MessageSquareMore, label: "Mensageria" },
-    { Icon: Layers3, label: "Arquitetura" },
-    { Icon: Boxes, label: "Backend" },
-    { Icon: Sparkles, label: "IA & SaaS" },
-  ];
-
   return (
-    <main className="min-h-screen bg-[#090b0f] text-white">
+    <main className="min-h-screen bg-[#f2efe5] text-[#171717]">
       <SalesPageTracker pageKey="cursos" pagePath="/cursos" pageTitle="Cursos Plugando IA" />
-      <header className="border-b border-white/10">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <Link href="/cursos" className="flex items-center gap-3 font-black tracking-tight"><span className="grid h-9 w-9 place-items-center rounded-xl bg-orange-400 text-slate-950"><Code2 className="h-5 w-5" /></span>Plugando IA</Link>
-          <Link href="/curso-completo" className="hidden text-sm font-semibold text-slate-300 transition hover:text-white sm:block">Ver formação completa <span aria-hidden>→</span></Link>
-        </div>
-      </header>
+      <header className="border-b-2 border-[#171717]"><div className="mx-auto flex max-w-[1440px] items-center justify-between px-5 py-4 md:px-10"><Link href="/cursos" className="flex items-center gap-3 font-black tracking-[-.03em]"><span className="grid h-9 w-9 place-items-center bg-[#2349d8] text-white"><Code2 className="h-5 w-5" /></span>PLUGANDO IA</Link><div className="hidden items-center gap-8 font-mono text-[10px] font-bold uppercase tracking-[.16em] md:flex"><span>Escola de tecnologia aplicada</span><Link href="#catalogo" className="underline decoration-2 underline-offset-4">Explorar cursos</Link></div></div></header>
 
-      <section className="relative overflow-hidden border-b border-white/10">
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.025)_1px,transparent_1px)] bg-[size:42px_42px]" />
-        <div className="absolute left-1/2 top-[-200px] h-[480px] w-[760px] -translate-x-1/2 rounded-full bg-orange-500/15 blur-[120px]" />
-        <div className="relative mx-auto max-w-7xl px-6 py-20 md:py-28">
-          <div className="max-w-4xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-orange-200"><Sparkles className="h-3.5 w-3.5" /> Conhecimento que vira projeto</div>
-            <h1 className="mt-6 text-balance text-5xl font-black leading-[0.95] tracking-[-0.055em] md:text-7xl">Escolha o próximo nível da sua carreira.</h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-400 md:text-xl">Cursos diretos ao ponto para você entender os fundamentos, escrever código melhor e construir sistemas que funcionam no mundo real.</p>
-          </div>
-          <div className="mt-12 grid max-w-3xl grid-cols-2 gap-3 md:grid-cols-4">
-            {categoryItems.map(({ Icon, label }) => <div key={label} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm font-semibold text-slate-300"><Icon className="h-4 w-4 text-orange-300" />{label}</div>)}
-          </div>
-        </div>
-      </section>
+      <section className="border-b-2 border-[#171717]"><div className="mx-auto grid max-w-[1440px] md:grid-cols-[1.45fr_.55fr]"><div className="border-[#171717] px-5 py-16 md:border-r-2 md:px-10 md:py-24 lg:py-28"><p className="font-mono text-xs font-black uppercase tracking-[.22em] text-[#2349d8]">Catálogo 2026 / Cursos online</p><h1 className="mt-8 max-w-5xl font-serif text-[3.5rem] font-bold leading-[.92] tracking-[-.055em] sm:text-7xl lg:text-[6.8rem]">Aprenda tecnologia com profundidade. E propósito.</h1><p className="mt-8 max-w-2xl text-lg leading-8 text-[#55534d] md:text-xl">Cursos para quem não quer apenas acompanhar ferramentas, mas entender decisões, construir sistemas e fazer um trabalho melhor.</p></div><aside className="grid grid-cols-2 border-t-2 border-[#171717] md:grid-cols-1 md:border-t-0"><div className="flex flex-col justify-between border-r-2 border-[#171717] bg-[#f7dd4c] p-6 md:border-b-2 md:border-r-0 md:p-8"><span className="font-mono text-[10px] font-black uppercase tracking-[.18em]">Nosso compromisso</span><p className="mt-16 font-serif text-2xl font-bold leading-tight md:text-3xl">Menos atalhos.<br />Mais entendimento.</p></div><div className="flex flex-col justify-between bg-[#2349d8] p-6 text-white md:p-8"><span className="font-mono text-[10px] font-black uppercase tracking-[.18em]">Trilhas disponíveis</span><strong className="mt-16 text-6xl font-black tracking-[-.08em]">05</strong></div></aside></div></section>
 
-      <section className="mx-auto max-w-7xl px-6 py-16 md:py-24">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-300">Catálogo</p><h2 className="mt-3 text-3xl font-black tracking-tight md:text-4xl">Encontre o curso certo para agora.</h2></div><p className="max-w-sm text-sm leading-6 text-slate-500">Comece por uma habilidade específica ou escolha o combo para seguir a jornada completa.</p></div>
-        <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{courseCatalog.map((course, index) => <CourseCard key={course.slug} course={course} index={index} />)}</div>
-      </section>
+      <section id="catalogo" className="mx-auto max-w-[1440px] scroll-mt-4 px-5 py-16 md:px-10 md:py-24"><div className="grid gap-8 border-b-2 border-[#171717] pb-8 md:grid-cols-2 md:items-end"><div><span className="font-mono text-[10px] font-black uppercase tracking-[.2em] text-[#2349d8]">01 / Escolha seu caminho</span><h2 className="mt-4 font-serif text-4xl font-bold tracking-[-.04em] md:text-5xl">Uma escola. Diferentes pontos de partida.</h2></div><p className="max-w-xl justify-self-end leading-7 text-[#5d5a52]">Estude um tema específico no seu tempo ou escolha a formação completa para seguir uma sequência estruturada.</p></div><div className="mt-10 grid gap-8 md:grid-cols-2 xl:grid-cols-3">{courseCatalog.map((course, index) => <CourseItem key={course.slug} course={course} index={index} />)}</div></section>
 
-      <section className="border-t border-white/10 bg-[#0d1015]"><div className="mx-auto grid max-w-7xl gap-8 px-6 py-16 md:grid-cols-[1fr,auto] md:items-center"><div><p className="text-sm font-bold text-orange-300">Não sabe qual escolher?</p><h2 className="mt-2 text-3xl font-black tracking-tight">A formação completa organiza o caminho por você.</h2><p className="mt-3 max-w-2xl leading-7 text-slate-400">Fundamentos, backend, arquitetura, cloud, automação e IA em uma sequência pensada para evolução.</p></div><Link href="/curso-completo?utm_source=vitrine&utm_medium=site&utm_campaign=catalogo_cursos" className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-400 px-6 py-4 font-black text-slate-950 transition hover:bg-orange-300">Conhecer o combo <ArrowRight className="h-5 w-5" /></Link></div></section>
-      <footer className="border-t border-white/10 px-6 py-8 text-center text-sm text-slate-600">© {new Date().getFullYear()} Plugando IA. Aprenda. Construa. Evolua.</footer>
+      <section className="border-y-2 border-[#171717] bg-[#171717] text-white"><div className="mx-auto grid max-w-[1440px] md:grid-cols-[1fr_auto] md:items-center"><div className="px-5 py-14 md:px-10 md:py-16"><p className="font-mono text-[10px] font-black uppercase tracking-[.2em] text-[#f7dd4c]">Formação completa</p><h2 className="mt-4 max-w-3xl font-serif text-4xl font-bold leading-tight tracking-[-.04em] md:text-5xl">Se você ainda não sabe qual curso escolher, comece pelo caminho.</h2><p className="mt-4 max-w-2xl leading-7 text-white/65">A formação conecta fundamentos, backend, arquitetura, cloud, automação e IA em uma evolução coerente.</p></div><Link href="/curso-completo?utm_source=vitrine&utm_medium=site&utm_campaign=catalogo_cursos" className="group flex h-full min-h-32 items-center gap-8 border-t-2 border-white bg-[#f7dd4c] px-8 font-black text-[#171717] md:min-h-64 md:border-l-2 md:border-t-0"><span>CONHECER O COMBO</span><ArrowUpRight className="h-7 w-7 transition group-hover:translate-x-1 group-hover:-translate-y-1" /></Link></div></section>
+      <footer className="mx-auto flex max-w-[1440px] flex-col gap-3 px-5 py-8 font-mono text-[10px] font-bold uppercase tracking-[.14em] text-[#666258] md:flex-row md:justify-between md:px-10"><span>© {new Date().getFullYear()} Plugando IA</span><span>Aprenda / Construa / Evolua</span></footer>
     </main>
   );
 }
