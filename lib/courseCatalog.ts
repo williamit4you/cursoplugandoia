@@ -48,11 +48,11 @@ export const courseCatalog: CourseCatalogItem[] = [
     eyebrow: "Produto na prática",
     title: "Criando SaaS com Antigravity",
     description:
-      "Saia da ideia e construa um produto digital completo, conectando aplicação, IA, pagamento e deploy.",
-    outcome: "Do projeto ao produto publicado",
-    tags: ["SaaS", "IA", "Next.js"],
+      "Construa um SaaS completo com Antigravity e Next.js, do prompt ao banco, trial, pagamento e deploy.",
+    outcome: "8 cursos • 85 aulas • projeto publicado",
+    tags: ["Antigravity", "Next.js", "SaaS"],
     accent: "cyan",
-    badge: "Curso individual",
+    badge: "Curso + 7 bônus",
     available: true,
   },
   {
@@ -82,4 +82,3 @@ export const courseCatalog: CourseCatalogItem[] = [
     available: true,
   },
 ];
-
