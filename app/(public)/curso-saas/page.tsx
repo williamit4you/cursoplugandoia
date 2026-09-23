@@ -5,8 +5,8 @@ import { resolveSalesPageMetaPixelId } from "@/lib/salesPagePixel";
 const pageKey = "curso-saas";
 const pagePath = "/curso-saas";
 const pageTitle = "Curso SaaS com IA, Antigravity e Next.js | Plugando IA";
-const price = Number(process.env.NEXT_PUBLIC_SAAS_PRICE ?? 0);
-const checkoutUrl = process.env.NEXT_PUBLIC_SAAS_CHECKOUT_URL ?? "#conteudo";
+const price = Number(process.env.NEXT_PUBLIC_SAAS_PRICE ?? 29.9);
+const checkoutUrl = process.env.NEXT_PUBLIC_SAAS_CHECKOUT_URL ?? "https://pay.hotmart.com/L107741495H?bid=1790201782816";
 const offerAvailable = price > 0 && /^https?:\/\//.test(checkoutUrl);
 
 export const metadata: Metadata = {
@@ -57,7 +57,7 @@ export default async function CursoSaasPage() {
     checkoutUrl={checkoutUrl}
     price={price || undefined}
     offerAvailable={offerAvailable}
-    stats={[{ value: "8", label: "cursos no pacote" }, { value: "85", label: "aulas organizadas" }, { value: "17", label: "aulas no projeto SaaS" }, { value: "1", label: "produto publicado" }]}
+    stats={[{ value: "8", label: "cursos no pacote" }, { value: "85", label: "aulas organizadas" }, { value: "9x R$ 3,93", label: "parcelamento disponível" }, { value: "R$ 29,90", label: "à vista" }]}
     heroPoints={["Projeto do início ao deploy", "Curso completo de Next.js", "7 cursos complementares"]}
     problemTitle="Gerar código é rápido. Transformar esse código em produto exige método."
     problemDescription="Um SaaS precisa de muito mais do que uma tela bonita: dados, acesso, regras, cobrança, infraestrutura e validação precisam funcionar juntos."

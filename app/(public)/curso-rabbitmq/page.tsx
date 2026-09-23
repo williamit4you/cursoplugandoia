@@ -5,7 +5,7 @@ import { resolveSalesPageMetaPixelId } from "@/lib/salesPagePixel";
 const pageKey = "curso-rabbitmq";
 const pagePath = "/curso-rabbitmq";
 const pageTitle = "Curso de RabbitMQ com .NET | Plugando IA";
-const checkoutUrl = process.env.NEXT_PUBLIC_RABBITMQ_CHECKOUT_URL ?? "#conteudo";
+const checkoutUrl = process.env.NEXT_PUBLIC_RABBITMQ_CHECKOUT_URL ?? "https://pay.hotmart.com/V107737859J?bid=1790201856849";
 const price = 29.9;
 
 export const metadata: Metadata = {
@@ -42,7 +42,7 @@ export default async function CursoRabbitmqPage() {
     checkoutUrl={checkoutUrl}
     price={price}
     offerAvailable={/^https?:\/\//.test(checkoutUrl)}
-    stats={[{ value: "51", label: "aulas" }, { value: "9", label: "módulos" }, { value: "C#", label: "exemplos em .NET" }, { value: "R$ 29,90", label: "lançamento" }]}
+    stats={[{ value: "51", label: "aulas" }, { value: "9", label: "módulos" }, { value: "9x R$ 3,93", label: "parcelamento disponível" }, { value: "R$ 29,90", label: "à vista" }]}
     heroPoints={["Do fundamento à prática", "Ambiente com Docker", "Projeto em C# e .NET"]}
     problemTitle="Enviar uma mensagem é simples. Garantir que ela seja processada é o desafio."
     problemDescription="Sistemas reais enfrentam indisponibilidade, picos de volume, mensagens inválidas e Consumers lentos. O curso ensina como projetar o fluxo para esses cenários."

@@ -20,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         { url: `${siteUrl}/cursos`, changeFrequency: "weekly", priority: 0.95 },
         { url: `${siteUrl}/curso-rabbitmq`, changeFrequency: "weekly", priority: 0.9 },
         { url: `${siteUrl}/curso-saas`, changeFrequency: "monthly", priority: 0.9 },
-        { url: `${siteUrl}/curso-completo`, changeFrequency: "weekly", priority: 0.9 },
+        { url: `${siteUrl}/curso-arquitetura-software`, changeFrequency: "weekly", priority: 0.9 },
         { url: `${siteUrl}/curso-programacao`, changeFrequency: "weekly", priority: 0.9 },
         { url: `${siteUrl}/guia-programacao/aprender-programacao-do-zero`, changeFrequency: "monthly", priority: 0.8 },
         { url: `${siteUrl}/guia-programacao/logica-de-programacao`, changeFrequency: "monthly", priority: 0.8 },
