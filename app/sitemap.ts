@@ -17,6 +17,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         { url: `${siteUrl}/comparativo`, changeFrequency: "weekly", priority: 0.8 },
       ]
     : [
+        { url: `${siteUrl}/cursos`, changeFrequency: "weekly", priority: 0.95 },
+        { url: `${siteUrl}/curso-rabbitmq`, changeFrequency: "weekly", priority: 0.9 },
         { url: `${siteUrl}/curso-saas`, changeFrequency: "monthly", priority: 0.9 },
         { url: `${siteUrl}/curso-completo`, changeFrequency: "weekly", priority: 0.9 },
         { url: `${siteUrl}/curso-programacao`, changeFrequency: "weekly", priority: 0.9 },
