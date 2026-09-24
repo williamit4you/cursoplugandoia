@@ -8,7 +8,7 @@ export const COURSE_ANALYTICS_PAGES = [
   { pageKey: "curso-saas", path: "/curso-saas", title: "SaaS com IA" },
 ] as const;
 
-const COURSE_BY_KEY = new Map(COURSE_ANALYTICS_PAGES.map((course) => [course.pageKey, course]));
+const COURSE_BY_KEY = new Map<string, (typeof COURSE_ANALYTICS_PAGES)[number]>(COURSE_ANALYTICS_PAGES.map((course) => [course.pageKey, course]));
 
 type Range = { from: Date; to: Date };
 

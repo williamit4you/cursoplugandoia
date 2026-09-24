@@ -244,9 +244,49 @@ model Post {
   categories            PostNewsCategory[]
   codeVideoProjects     CodeVideoProject[]
   dailyNewsEditionItems DailyNewsEditionItem[]
+  technicalContentTopic TechnicalContentTopic?
 
   @@index([status, publishedAt])
   @@index([featured, publishedAt])
+}
+
+model TechnicalContentTopic {
+  id            String   @id @default(cuid())
+  funnel        String   // TOP | MIDDLE | BOTTOM
+  keyword       String
+  title          String
+  searchIntent  String
+  angle          String?
+  priority       Int      @default(100)
+  status         String   @default("QUEUED") // QUEUED | GENERATING | PUBLISHED | FAILED | SKIPPED
+  scheduledAt    DateTime?
+  publishedAt    DateTime?
+  lastError      String?
+  postId         String?  @unique
+  post           Post?    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([funnel, keyword])
+  @@index([funnel, status, priority])
+  @@index([status, scheduledAt])
+}
+
+model TechnicalContentConfig {
+  id              String   @id @default("default")
+  enabled         Boolean  @default(true)
+  timezone        String   @default("America/Sao_Paulo")
+  model           String   @default("gpt-4o-mini")
+  autoPublish     Boolean  @default(true)
+  minWords        Int      @default(900)
+  topHour         Int      @default(7)
+  middleHour      Int      @default(12)
+  bottomHour      Int      @default(18)
+  lastTopRunAt    DateTime?
+  lastMiddleRunAt DateTime?
+  lastBottomRunAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model NewsCategory {

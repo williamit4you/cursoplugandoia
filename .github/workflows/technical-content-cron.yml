@@ -1,0 +1,32 @@
+name: Technical content publishing
+
+on:
+  schedule:
+    # GitHub Actions usa UTC. Horários equivalentes a 07:00, 12:00 e 18:00 em America/Sao_Paulo (UTC-3).
+    - cron: "0 10 * * *"
+    - cron: "0 15 * * *"
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+    inputs:
+      funnel:
+        description: "TOP, MIDDLE ou BOTTOM (vazio executa os funis que estiverem no horário)"
+        required: false
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run technical-content automation
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          FUNNEL: ${{ inputs.funnel }}
+        run: |
+          if [ -z "$SITE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "SITE_URL e CRON_SECRET precisam estar configurados nos Secrets do repositório."
+            exit 1
+          fi
+          URL="${SITE_URL%/}/api/technical-content/cron?secret=${CRON_SECRET}"
+          if [ -n "$FUNNEL" ]; then URL="${URL}&funnel=${FUNNEL}&force=true"; fi
+          curl --fail --silent --show-error "$URL"

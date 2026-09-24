@@ -72,6 +72,7 @@ export async function GET(req: NextRequest) {
     const affiliatePrograms = await callJson(`${origin}/api/affiliate-programs/cron${encodedSecret}`);
 
     const whatsappPromos = await callJson(`${origin}/api/whatsapp-promos/cron${encodedSecret}`);
+    const technicalContent = await callJson(`${origin}/api/technical-content/cron${encodedSecret}`);
 
     const allOk =
       taskRuns.ok &&
@@ -85,7 +86,8 @@ export async function GET(req: NextRequest) {
       videoQuestions.ok &&
       commerceEditorial.ok &&
       affiliatePrograms.ok &&
-      whatsappPromos.ok;
+      whatsappPromos.ok &&
+      technicalContent.ok;
 
     console.log("[api/automation/cron] Results:", {
       taskRuns: { ok: taskRuns.ok, status: taskRuns.status },
@@ -100,6 +102,7 @@ export async function GET(req: NextRequest) {
       commerceEditorial: { ok: commerceEditorial.ok, status: commerceEditorial.status },
       affiliatePrograms: { ok: affiliatePrograms.ok, status: affiliatePrograms.status },
       whatsappPromos: { ok: whatsappPromos.ok, status: whatsappPromos.status },
+      technicalContent: { ok: technicalContent.ok, status: technicalContent.status },
     });
 
     return NextResponse.json({
@@ -116,6 +119,7 @@ export async function GET(req: NextRequest) {
       commerceEditorial,
       affiliatePrograms,
       whatsappPromos,
+      technicalContent,
     });
   } catch (error: any) {
     console.error("[api/automation/cron GET]", error);
