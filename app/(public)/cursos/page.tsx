@@ -31,19 +31,19 @@ export default function CursosPage() {
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.14em] text-blue-700">Escola de tecnologia aplicada</p>
             <h1 className="mt-5 max-w-4xl text-4xl font-extrabold leading-[1.05] tracking-[-0.045em] text-[#0b1f3a] md:text-6xl">Cursos para aprender melhor e construir com confiança.</h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">Escolha uma habilidade específica ou siga uma formação completa. Conteúdo organizado, aplicação prática e clareza sobre o que você será capaz de fazer.</p>
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">Escolha a habilidade que faz sentido para o seu momento. Conteúdo organizado, aplicação prática e clareza sobre o que você será capaz de fazer.</p>
             <a href="#catalogo" className="mt-8 inline-flex items-center justify-center rounded-lg bg-blue-700 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-blue-800">Explorar cursos <ArrowRight className="ml-2 h-4 w-4" /></a>
           </div>
           <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-6 md:p-8">
-            <p className="text-sm font-semibold text-blue-700">Quer uma base mais completa?</p>
-            <h2 className="mt-3 text-2xl font-bold tracking-tight text-[#0b1f3a]">Arquitetura de Software com C#, API .NET e AWS como bônus.</h2>
-            <p className="mt-4 leading-7 text-slate-600">São quatro cursos e mais de 200 aulas por R$ 39,99 à vista.</p>
-            <Link href="/curso-arquitetura-software?utm_source=vitrine&utm_medium=site&utm_campaign=catalogo_cursos" className="mt-6 inline-flex items-center text-sm font-bold text-blue-700 hover:text-blue-800">Conhecer a oferta <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            <p className="text-sm font-semibold text-blue-700">Curso em destaque</p>
+            <h2 className="mt-3 text-2xl font-bold tracking-tight text-[#0b1f3a]">Arquitetura de Software com C#.</h2>
+            <p className="mt-4 leading-7 text-slate-600">O curso aberto agora inclui C#, API RESTful com .NET e AWS como bônus. R$ 39,99 à vista.</p>
+            <Link href="/curso-arquitetura-software?utm_source=vitrine&utm_medium=site&utm_campaign=destaque_arquitetura" className="mt-6 inline-flex items-center text-sm font-bold text-blue-700 hover:text-blue-800">Conhecer o curso de Arquitetura <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </aside>
         </div>
       </section>
 
-      <section className="border-b border-slate-200 bg-slate-50"><div className="mx-auto grid max-w-7xl grid-cols-2 px-5 md:grid-cols-4 md:px-8">{[["Cursos individuais", "Aprenda o que precisa agora"], ["Projetos reais", "Veja a tecnologia funcionando"], ["Conteúdo objetivo", "Sem aulas apenas para preencher"], ["Formação completa", "Uma sequência para evoluir"]].map(([title, text]) => <div key={title} className="border-r border-slate-200 px-4 py-7 last:border-r-0 md:px-8"><strong className="block text-base font-bold text-[#0b1f3a]">{title}</strong><span className="mt-1 block text-xs leading-5 text-slate-500">{text}</span></div>)}</div></section>
+      <section className="border-b border-slate-200 bg-slate-50"><div className="mx-auto grid max-w-7xl grid-cols-2 px-5 md:grid-cols-4 md:px-8">{[["Cursos individuais", "Aprenda o que precisa agora"], ["Projetos reais", "Veja a tecnologia funcionando"], ["Conteúdo objetivo", "Sem aulas apenas para preencher"], ["Bônus relevantes", "Materiais que ampliam sua base"]].map(([title, text]) => <div key={title} className="border-r border-slate-200 px-4 py-7 last:border-r-0 md:px-8"><strong className="block text-base font-bold text-[#0b1f3a]">{title}</strong><span className="mt-1 block text-xs leading-5 text-slate-500">{text}</span></div>)}</div></section>
 
       <section id="catalogo" className="mx-auto max-w-7xl scroll-mt-6 px-5 py-20 md:px-8 md:py-24">
         <div className="max-w-3xl"><p className="text-sm font-bold uppercase tracking-[0.14em] text-blue-700">Catálogo de cursos</p><h2 className="mt-3 text-3xl font-bold tracking-[-0.03em] text-[#0b1f3a] md:text-4xl">Escolha o curso certo para o seu momento</h2><p className="mt-4 text-lg leading-8 text-slate-600">Cada página mostra conteúdo, resultado esperado e condição comercial antes da matrícula.</p></div>
@@ -65,7 +65,7 @@ export default function CursosPage() {
         </div>
       </section>
 
-      <section className="border-y border-blue-200 bg-blue-50"><div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-14 md:flex-row md:items-center md:justify-between md:px-8"><div><h2 className="text-3xl font-bold tracking-[-0.03em] text-[#0b1f3a]">Comece por Arquitetura de Software</h2><p className="mt-3 max-w-2xl leading-7 text-slate-600">Além do curso principal, você recebe C#, API RESTful com .NET e AWS como bônus.</p></div><Link href="/curso-arquitetura-software?utm_source=vitrine&utm_medium=site&utm_campaign=rodape_catalogo" className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-700 px-6 py-3.5 text-sm font-bold text-white hover:bg-blue-800">Ver os 4 cursos <ArrowRight className="ml-2 h-4 w-4" /></Link></div></section>
+      <section className="border-y border-blue-200 bg-blue-50"><div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-14 md:flex-row md:items-center md:justify-between md:px-8"><div><h2 className="text-3xl font-bold tracking-[-0.03em] text-[#0b1f3a]">Comece por Arquitetura de Software</h2><p className="mt-3 max-w-2xl leading-7 text-slate-600">O curso de Arquitetura está aberto e inclui C#, API RESTful com .NET e AWS como bônus.</p></div><Link href="/curso-arquitetura-software?utm_source=vitrine&utm_medium=site&utm_campaign=rodape_arquitetura" className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-700 px-6 py-3.5 text-sm font-bold text-white hover:bg-blue-800">Ver curso de Arquitetura <ArrowRight className="ml-2 h-4 w-4" /></Link></div></section>
       <footer className="border-t border-slate-200"><div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-slate-500 md:flex-row md:justify-between md:px-8"><strong className="text-[#0b1f3a]">Plugando IA</strong><span>Programação, arquitetura, produto e Inteligência Artificial.</span></div></footer>
     </main>
   );

@@ -90,6 +90,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "Agendamentos", icon: <EventIcon />, path: "/admin/schedules" },
     { text: "Comparativos", icon: <CompareArrowsIcon />, path: "/admin/comparativos" },
     { text: "Sales Analytics", icon: <InsightsIcon className="text-cyan-500" />, path: "/admin/sales-analytics" },
+    { text: "Acessos dos Cursos", icon: <InsightsIcon className="text-blue-600" />, path: "/admin/course-analytics" },
     { text: "Compra Esperta", icon: <InsightsIcon className="text-emerald-500" />, path: "/admin/compra-esperta" },
     { text: "Noticias Analytics", icon: <InsightsIcon className="text-indigo-500" />, path: "/admin/operations/NEWS_CONTENT" },
     { text: "Agentes SEO", icon: <ArticleIcon className="text-emerald-600" />, path: "/admin/editorial-commerce" },
@@ -97,7 +98,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { text: "SEO Pet - Cobasi", icon: <ArticleIcon className="text-green-700" />, path: "/admin/seo-pet-cobasi" },
   ];
 
-  const growthPaths = new Set(["/admin/youtube-analytics", "/admin/bio-analytics", "/admin/whatsapp-promocoes", "/admin/sales-analytics", "/admin/compra-esperta", "/admin/operations/NEWS_CONTENT", "/admin/editorial-commerce", "/admin/programas-afiliados", "/admin/seo-pet-cobasi", "/admin/comparativos", "/admin/propagandas"]);
+  const growthPaths = new Set(["/admin/youtube-analytics", "/admin/bio-analytics", "/admin/whatsapp-promocoes", "/admin/sales-analytics", "/admin/course-analytics", "/admin/compra-esperta", "/admin/operations/NEWS_CONTENT", "/admin/editorial-commerce", "/admin/programas-afiliados", "/admin/seo-pet-cobasi", "/admin/comparativos", "/admin/propagandas"]);
   const systemPaths = new Set(["/admin/integrations", "/admin/scraper-config", "/admin/video-questions-config", "/admin/worker-storage", "/admin/tasks", "/admin/task-runs", "/admin/schedules"]);
   const menuGroups = [
     { label: "Operacao", items: menuItems.filter((item) => !growthPaths.has(item.path) && !systemPaths.has(item.path)) },
