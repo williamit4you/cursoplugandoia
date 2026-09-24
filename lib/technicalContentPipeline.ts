@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { TechnicalFunnel } from "@/lib/technicalContentTopics";
+import { TechnicalFunnel, technicalContentTopics } from "@/lib/technicalContentTopics";
 import { recordContentMetric, recordProviderFailure, recordProviderSuccess } from "@/lib/operationsControl";
 
 const funnelMeta: Record<TechnicalFunnel, { label: string; courseUrl: string; courseName: string }> = {
@@ -23,6 +23,24 @@ function brazilHour(date = new Date()) {
 
 function words(value: string) { return value.trim().split(/\s+/).filter(Boolean).length; }
 
+/**
+ * Makes the technical-content program ready on a fresh database.  The topic
+ * catalog lives in source control, so relying on a manually run seed left the
+ * generation button with an empty queue after deployment.
+ */
+async function ensureTechnicalContentTopics() {
+  const storedTopics = await prisma.technicalContentTopic.findMany({
+    select: { funnel: true, keyword: true },
+  });
+  const storedKeys = new Set(storedTopics.map((topic) => `${topic.funnel}:${topic.keyword}`));
+  const missingTopics = technicalContentTopics.filter((topic) => !storedKeys.has(`${topic.funnel}:${topic.keyword}`));
+
+  if (missingTopics.length) {
+    // The unique database constraint makes simultaneous cron/manual requests safe.
+    await prisma.technicalContentTopic.createMany({ data: missingTopics, skipDuplicates: true });
+  }
+}
+
 async function generateArticle(input: { title: string; keyword: string; funnel: TechnicalFunnel; minWords: number; model: string }) {
   const key = String(process.env.OPENAI_API_KEY || "").trim();
   if (!key) throw new Error("OPENAI_API_KEY não configurada para a automação de artigos técnicos.");
@@ -44,6 +62,7 @@ O conteúdo deve resolver a dúvida de alguém, não ser feito para manipular ra
 
 export async function runTechnicalContentFunnel(funnel: TechnicalFunnel, options: { force?: boolean } = {}) {
   const config = await prisma.technicalContentConfig.upsert({ where: { id: "default" }, update: {}, create: { id: "default" } });
+  await ensureTechnicalContentTopics();
   if (!config.enabled && !options.force) return { skipped: true, reason: "automation_disabled" };
   const field = funnel === "TOP" ? "lastTopRunAt" : funnel === "MIDDLE" ? "lastMiddleRunAt" : "lastBottomRunAt";
   const targetHour = funnel === "TOP" ? config.topHour : funnel === "MIDDLE" ? config.middleHour : config.bottomHour;
