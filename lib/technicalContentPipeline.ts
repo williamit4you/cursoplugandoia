@@ -49,15 +49,33 @@ async function generateArticle(input: { title: string; keyword: string; funnel: 
 
 Entregue JSON válido com title, summary, metaDescription e markdown. O markdown deve ter pelo menos ${input.minWords} palavras, uma resposta clara já no início, H2/H3 úteis, exemplos concretos, limitações quando existirem, checklist prático e FAQ de 3 perguntas. Não invente estatísticas, salários, datas, funcionalidades ou fontes. Não prometa emprego, renda ou resultado. Não use linguagem de venda agressiva. Inclua apenas uma chamada final natural para ${meta.courseName}, com link interno ${meta.courseUrl}?utm_source=artigos_tecnicos&utm_medium=organic&utm_campaign=${input.funnel.toLowerCase()}.
 O conteúdo deve resolver a dúvida de alguém, não ser feito para manipular rankings.`;
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ model: input.model, temperature: 0.45, max_tokens: 5000, response_format: { type: "json_object" }, messages: [{ role: "system", content: "Responda somente JSON válido." }, { role: "user", content: prompt }] }),
-  });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload?.error?.message || "Falha ao gerar artigo com IA.");
-  const parsed = JSON.parse(payload?.choices?.[0]?.message?.content || "{}");
-  if (!parsed.title || !parsed.summary || !parsed.metaDescription || !parsed.markdown || words(parsed.markdown) < input.minWords) throw new Error("O artigo gerado não atingiu o padrão mínimo de qualidade.");
-  return { title: String(parsed.title).slice(0, 180), summary: String(parsed.summary).slice(0, 500), metaDescription: String(parsed.metaDescription).slice(0, 160), markdown: String(parsed.markdown) };
+  let lastQualityError = "O artigo gerado não atingiu o padrão mínimo de qualidade.";
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const retryInstruction = attempt === 1
+      ? ""
+      : `\nA tentativa anterior não foi aceita por estar curta ou incompleta. Produza agora um markdown completo com pelo menos ${input.minWords + 150} palavras. Antes de responder, confira a contagem aproximada de palavras e mantenha todos os campos do JSON preenchidos.`;
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ model: input.model, temperature: 0.45, max_tokens: 7000, response_format: { type: "json_object" }, messages: [{ role: "system", content: "Responda somente JSON válido." }, { role: "user", content: `${prompt}${retryInstruction}` }] }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload?.error?.message || "Falha ao gerar artigo com IA.");
+
+    try {
+      const parsed = JSON.parse(payload?.choices?.[0]?.message?.content || "{}");
+      const markdown = String(parsed.markdown || "");
+      if (!parsed.title || !parsed.summary || !parsed.metaDescription || words(markdown) < input.minWords) {
+        lastQualityError = "O artigo gerado não atingiu o padrão mínimo de qualidade.";
+        continue;
+      }
+      return { title: String(parsed.title).slice(0, 180), summary: String(parsed.summary).slice(0, 500), metaDescription: String(parsed.metaDescription).slice(0, 160), markdown };
+    } catch {
+      lastQualityError = "A IA retornou um JSON de artigo inválido.";
+    }
+  }
+
+  throw new Error(lastQualityError);
 }
 
 export async function runTechnicalContentFunnel(funnel: TechnicalFunnel, options: { force?: boolean } = {}) {
