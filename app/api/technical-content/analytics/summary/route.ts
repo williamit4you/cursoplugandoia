@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
     const topics = await prisma.technicalContentTopic.groupBy({ by: ["funnel", "status"], _count: { _all: true } });
     const topPosts = posts.map((post) => ({ ...post, visits: events.filter((event) => event.postId === post.id).length })).sort((a, b) => b.visits - a.visits).slice(0, 30);
     const sources = Array.from(events.reduce((map, event) => { const key = event.source || "Direto / não identificado"; map.set(key, (map.get(key) || 0) + 1); return map; }, new Map<string, number>()), ([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
-    return NextResponse.json({ summary: { published: posts.filter((post) => post.status === "PUBLISHED").length, visits: events.length, sessions: new Set(events.map((event) => event.sessionId).filter(Boolean)).size, totalStoredViews: posts.reduce((sum, post) => sum + post.views, 0) }, topics, topPosts, sources, days });
+    const config = await prisma.technicalContentConfig.findUnique({ where: { id: "default" } });
+    return NextResponse.json({ summary: { published: posts.filter((post) => post.status === "PUBLISHED").length, visits: events.length, sessions: new Set(events.map((event) => event.sessionId).filter(Boolean)).size, totalStoredViews: posts.reduce((sum, post) => sum + post.views, 0) }, topics, topPosts, sources, schedule: config ? { timezone: config.timezone, topHour: config.topHour, middleHour: config.middleHour, bottomHour: config.bottomHour, lastTopRunAt: config.lastTopRunAt, lastMiddleRunAt: config.lastMiddleRunAt, lastBottomRunAt: config.lastBottomRunAt } : null, days });
   } catch (error: any) { return NextResponse.json({ error: error?.message || "Falha ao carregar analytics." }, { status: 500 }); }
 }
