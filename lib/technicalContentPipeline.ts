@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { TechnicalFunnel, technicalContentTopics } from "@/lib/technicalContentTopics";
 import { recordContentMetric, recordProviderFailure, recordProviderSuccess } from "@/lib/operationsControl";
+import { htmlToPlainText, sanitizeTechnicalArticleHtml } from "@/lib/technicalContentHtml";
 
 const funnelMeta: Record<TechnicalFunnel, { label: string; courseUrl: string; courseName: string }> = {
   TOP: { label: "Topo de funil", courseUrl: "/cursos", courseName: "catálogo de cursos" },
@@ -21,7 +22,7 @@ function brazilHour(date = new Date()) {
   return Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", hour: "2-digit", hour12: false }).format(date));
 }
 
-function words(value: string) { return value.trim().split(/\s+/).filter(Boolean).length; }
+function words(value: string) { return htmlToPlainText(value).split(/\s+/).filter(Boolean).length; }
 
 /**
  * Makes the technical-content program ready on a fresh database.  The topic
@@ -47,14 +48,14 @@ async function generateArticle(input: { title: string; keyword: string; funnel: 
   const meta = funnelMeta[input.funnel];
   const prompt = `Você é um educador técnico brasileiro e redator responsável da Plugando IA. Escreva um artigo original, didático e people-first em português brasileiro. Tema: ${input.title}. Palavra-chave principal: ${input.keyword}. Etapa: ${meta.label}.
 
-Entregue JSON válido com title, summary, metaDescription e markdown. O markdown deve ter pelo menos ${input.minWords} palavras, uma resposta clara já no início, H2/H3 úteis, exemplos concretos, limitações quando existirem, checklist prático e FAQ de 3 perguntas. Não invente estatísticas, salários, datas, funcionalidades ou fontes. Não prometa emprego, renda ou resultado. Não use linguagem de venda agressiva. Inclua apenas uma chamada final natural para ${meta.courseName}, com link interno ${meta.courseUrl}?utm_source=artigos_tecnicos&utm_medium=organic&utm_campaign=${input.funnel.toLowerCase()}.
+Entregue JSON válido com title, summary, metaDescription e html. O campo html deve ser um fragmento HTML semântico, nunca Markdown: use somente <p>, <h2>, <h3>, <ul>, <ol>, <li>, <strong>, <em>, <a>, <blockquote>, <pre> e <code>. Não use H1, pois o título principal já é exibido pela página; não use estilos inline, classes, tabelas, imagens, scripts, iframes nem URLs externas. O HTML deve ter pelo menos ${input.minWords} palavras, abrir com uma resposta direta à intenção de busca, usar uma única hierarquia lógica de H2/H3, incluir exemplos concretos quando úteis, limitações, checklist prático e uma FAQ de 3 perguntas. Use a palavra-chave principal naturalmente no título SEO, na introdução e em pelo menos um H2, sem repetição artificial. Inclua uma única chamada final natural com link interno <a href="${meta.courseUrl}?utm_source=artigos_tecnicos&utm_medium=organic&utm_campaign=${input.funnel.toLowerCase()}">${meta.courseName}</a>. Não invente estatísticas, salários, datas, funcionalidades ou fontes. Não prometa emprego, renda ou resultado. Não use linguagem de venda agressiva.
 O conteúdo deve resolver a dúvida de alguém, não ser feito para manipular rankings.`;
   let lastQualityError = "O artigo gerado não atingiu o padrão mínimo de qualidade.";
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     const retryInstruction = attempt === 1
       ? ""
-      : `\nA tentativa anterior não foi aceita por estar curta ou incompleta. Produza agora um markdown completo com pelo menos ${input.minWords + 150} palavras. Antes de responder, confira a contagem aproximada de palavras e mantenha todos os campos do JSON preenchidos.`;
+      : `\nA tentativa anterior não foi aceita por estar curta ou incompleta. Produza agora um fragmento HTML completo com pelo menos ${input.minWords + 150} palavras. Antes de responder, confira a contagem aproximada de palavras e mantenha todos os campos do JSON preenchidos.`;
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({ model: input.model, temperature: 0.45, max_tokens: 7000, response_format: { type: "json_object" }, messages: [{ role: "system", content: "Responda somente JSON válido." }, { role: "user", content: `${prompt}${retryInstruction}` }] }),
@@ -64,12 +65,12 @@ O conteúdo deve resolver a dúvida de alguém, não ser feito para manipular ra
 
     try {
       const parsed = JSON.parse(payload?.choices?.[0]?.message?.content || "{}");
-      const markdown = String(parsed.markdown || "");
-      if (!parsed.title || !parsed.summary || !parsed.metaDescription || words(markdown) < input.minWords) {
+      const html = sanitizeTechnicalArticleHtml(String(parsed.html || ""));
+      if (!parsed.title || !parsed.summary || !parsed.metaDescription || !html.includes("<h2>") || words(html) < input.minWords) {
         lastQualityError = "O artigo gerado não atingiu o padrão mínimo de qualidade.";
         continue;
       }
-      return { title: String(parsed.title).slice(0, 180), summary: String(parsed.summary).slice(0, 500), metaDescription: String(parsed.metaDescription).slice(0, 160), markdown };
+      return { title: String(parsed.title).slice(0, 180), summary: String(parsed.summary).slice(0, 500), metaDescription: String(parsed.metaDescription).slice(0, 160), html };
     } catch {
       lastQualityError = "A IA retornou um JSON de artigo inválido.";
     }
@@ -95,7 +96,7 @@ export async function runTechnicalContentFunnel(funnel: TechnicalFunnel, options
     const article = await generateArticle({ title: topic.title, keyword: topic.keyword, funnel, minWords: config.minWords, model: config.model });
     const slugBase = slugify(article.title);
     const slug = `${slugBase}-${topic.id.slice(-6)}`;
-    const post = await prisma.post.create({ data: { title: article.title, slug, summary: article.summary, content: article.markdown, status: config.autoPublish ? "PUBLISHED" : "DRAFT", publishedAt: config.autoPublish ? new Date() : null, seoTitle: article.title, metaDescription: article.metaDescription, origin: `TECHNICAL_${funnel}` } });
+    const post = await prisma.post.create({ data: { title: article.title, slug, summary: article.summary, content: article.html, status: config.autoPublish ? "PUBLISHED" : "DRAFT", publishedAt: config.autoPublish ? new Date() : null, seoTitle: article.title, metaDescription: article.metaDescription, origin: `TECHNICAL_${funnel}` } });
     await prisma.technicalContentTopic.update({ where: { id: topic.id }, data: { status: config.autoPublish ? "PUBLISHED" : "GENERATED", postId: post.id, publishedAt: config.autoPublish ? new Date() : null, lastError: null } });
     await prisma.technicalContentConfig.update({ where: { id: "default" }, data: { [field]: new Date() } });
     await recordProviderSuccess("OPENAI_TECHNICAL_CONTENT");
