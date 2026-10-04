@@ -11,9 +11,6 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
 
-ARG NEXTAUTH_SECRET
-ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
-
 ARG NEXTAUTH_URL
 ENV NEXTAUTH_URL=$NEXTAUTH_URL
 
@@ -35,17 +32,8 @@ ENV WORKER_FASTAPI_BASE_URL=$WORKER_FASTAPI_BASE_URL
 ARG ADMIN_EMAIL
 ENV ADMIN_EMAIL=$ADMIN_EMAIL
 
-ARG ADMIN_PASSWORD
-ENV ADMIN_PASSWORD=$ADMIN_PASSWORD
-
 ARG MINIO_ENDPOINT
 ENV MINIO_ENDPOINT=$MINIO_ENDPOINT
-
-ARG MINIO_ACCESS_KEY
-ENV MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY
-
-ARG MINIO_SECRET_KEY
-ENV MINIO_SECRET_KEY=$MINIO_SECRET_KEY
 
 ARG MINIO_BUCKET_NAME
 ENV MINIO_BUCKET_NAME=$MINIO_BUCKET_NAME
@@ -85,11 +73,13 @@ ENV WORKER_FASTAPI_BASE_URL=$WORKER_FASTAPI_BASE_URL
 
 ARG INSTALL_CHROMIUM=0
 ARG INSTALL_TIKTOK_UPLOADER=1
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV TIKTOK_UPLOADER_VENV=/opt/tiktok-uploader-venv
-RUN if [ "$INSTALL_CHROMIUM" = "1" ] || [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; then \
-      apt-get update && \
-      apt-get install -y --no-install-recommends \
+RUN rm -rf /var/lib/apt/lists/* \
+    && apt-get -o Acquire::Retries=5 update \
+    && apt-get -o Acquire::Retries=5 install -y --no-install-recommends \
+      ca-certificates \
+    && if [ "$INSTALL_CHROMIUM" = "1" ] || [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; then \
+      apt-get -o Acquire::Retries=5 install -y --no-install-recommends \
         python3 \
         python3-venv \
         python3-pip \
@@ -99,20 +89,13 @@ RUN if [ "$INSTALL_CHROMIUM" = "1" ] || [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; th
         libnss3 \
         libfreetype6 \
         libharfbuzz0b \
-        ca-certificates \
         fonts-freefont-ttf ; \
-    else \
-      apt-get update && \
-      apt-get install -y --no-install-recommends \
-        ca-certificates ; \
     fi \
     && rm -rf /var/lib/apt/lists/* \
     && if [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; then \
       python3 -m venv "$TIKTOK_UPLOADER_VENV" && \
       "$TIKTOK_UPLOADER_VENV/bin/pip" install --no-cache-dir --upgrade pip && \
-      "$TIKTOK_UPLOADER_VENV/bin/pip" install --no-cache-dir tiktok-uploader playwright && \
-      "$TIKTOK_UPLOADER_VENV/bin/python" -m playwright install chromium && \
-      chmod -R a+rX /ms-playwright ; \
+      "$TIKTOK_UPLOADER_VENV/bin/pip" install --no-cache-dir tiktok-uploader playwright ; \
     fi
 
 ENV NODE_ENV=production
@@ -121,6 +104,7 @@ ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 ENV REMOTION_CHROME_BIN=/usr/bin/chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV TIKTOK_UPLOADER_BROWSER=chromium
+ENV TIKTOK_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PATH="/opt/tiktok-uploader-venv/bin:${PATH}"
 ENV HOME=/home/nextjs
 ENV XDG_CONFIG_HOME=/home/nextjs/.config
