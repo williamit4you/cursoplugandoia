@@ -16,6 +16,20 @@ export type CourseCatalogItem = {
 
 export const courseCatalog: CourseCatalogItem[] = [
   {
+    slug: "fundamentos-ia",
+    href: "/fundamentos-ia",
+    eyebrow: "IA Generativa na prática",
+    title: "Fundamentos de IA Generativa",
+    description: "Entenda LLMs e prompts e aprenda a integrar IA, Tools e dados reais em uma aplicação web completa.",
+    outcome: "7 módulos • projeto completo de barbearia com IA",
+    tags: ["IA Generativa", "LLMs", "Tools", "Aplicação web"],
+    accent: "amber",
+    price: 29.9,
+    installments: "9x de R$ 3,93",
+    badge: "Novo curso",
+    available: true,
+  },
+  {
     slug: "arquitetura-software",
     href: "/curso-arquitetura-software",
     eyebrow: "Arquitetura + 3 bônus",
