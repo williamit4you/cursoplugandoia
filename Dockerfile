@@ -42,8 +42,6 @@ ARG MINIO_PUBLIC_URL
 ENV MINIO_PUBLIC_URL=$MINIO_PUBLIC_URL
 
 COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci
-
 COPY app ./app
 COPY components ./components
 COPY lib ./lib
@@ -58,12 +56,20 @@ COPY prisma.config.ts ./prisma.config.ts
 COPY tailwind.config.ts ./tailwind.config.ts
 COPY tsconfig.json ./tsconfig.json
 
-RUN npx prisma generate
-
-RUN npm run build
+RUN npm ci --no-audit --no-fund \
+    && npx prisma generate \
+    && npm run build \
+    && npm cache clean --force \
+    && rm -rf node_modules /root/.npm
 
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
+
+# A dependência explícita do estágio builder evita que Chromium e npm ci
+# consumam espaço em disco simultaneamente durante o build.
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=1001:1001 /app/.next/standalone ./
+COPY --from=builder --chown=1001:1001 /app/.next/static ./.next/static
 
 ARG FASTAPI_URL
 ENV FASTAPI_URL=$FASTAPI_URL
@@ -110,10 +116,6 @@ RUN adduser --system --uid 1001 nextjs
 RUN mkdir -p /home/nextjs/.config /home/nextjs/.cache /tmp/runtime-nextjs \
     && chown -R nextjs:nodejs /home/nextjs /tmp/runtime-nextjs \
     && chmod 700 /tmp/runtime-nextjs
-
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Evita embutir segredos do build dentro da imagem (o "standalone" pode conter `.env`)
 RUN rm -f .env
