@@ -36,7 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         { url: `${siteUrl}/guia-programacao/api-rest-para-iniciantes`, changeFrequency: "monthly", priority: 0.78 },
         { url: `${siteUrl}/guia-programacao/roadmap-desenvolvedor-iniciante`, changeFrequency: "monthly", priority: 0.8 },
         { url: `${siteUrl}/guia-programacao/quanto-tempo-para-aprender-programacao`, changeFrequency: "monthly", priority: 0.72 },
-        { url: `${siteUrl}/curso-fundamentos-ia`, changeFrequency: "monthly", priority: 0.8 },
+        { url: `${siteUrl}/fundamentos-ia`, changeFrequency: "weekly", priority: 0.9 },
         { url: `${siteUrl}/noticias`, changeFrequency: "daily", priority: 0.9 },
         { url: `${siteUrl}/solucoes-ia`, changeFrequency: "monthly", priority: 0.7 },
       ];
