@@ -82,20 +82,14 @@ RUN rm -rf /var/lib/apt/lists/* \
       apt-get -o Acquire::Retries=5 install -y --no-install-recommends \
         python3 \
         python3-venv \
-        python3-pip \
-        chromium \
-        xvfb \
-        xauth \
-        libnss3 \
-        libfreetype6 \
-        libharfbuzz0b \
-        fonts-freefont-ttf ; \
+        chromium ; \
     fi \
-    && rm -rf /var/lib/apt/lists/* \
-    && if [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; then \
-      python3 -m venv "$TIKTOK_UPLOADER_VENV" && \
-      "$TIKTOK_UPLOADER_VENV/bin/pip" install --no-cache-dir --upgrade pip && \
-      "$TIKTOK_UPLOADER_VENV/bin/pip" install --no-cache-dir tiktok-uploader playwright ; \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN if [ "$INSTALL_TIKTOK_UPLOADER" = "1" ]; then \
+      python3 -m venv "$TIKTOK_UPLOADER_VENV" \
+      && "$TIKTOK_UPLOADER_VENV/bin/pip" install --no-cache-dir --upgrade pip \
+      && "$TIKTOK_UPLOADER_VENV/bin/pip" install --no-cache-dir "tiktok-uploader==1.2.0" ; \
     fi
 
 ENV NODE_ENV=production
