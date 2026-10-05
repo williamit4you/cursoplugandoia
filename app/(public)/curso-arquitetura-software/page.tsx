@@ -5,7 +5,7 @@ import { resolveSalesPageMetaPixelId } from "@/lib/salesPagePixel";
 const pageKey = "curso-arquitetura-software";
 const pagePath = "/curso-arquitetura-software";
 const pageTitle = "Arquitetura de Software para Iniciantes com C# | Plugando IA";
-const price = 39.99;
+const price = 79.9;
 const checkoutUrl = process.env.NEXT_PUBLIC_ARCHITECTURE_CHECKOUT_URL ?? "https://pay.hotmart.com/M103626951G?bid=1790202574487";
 const offerAvailable = /^https?:\/\//.test(checkoutUrl);
 
@@ -93,11 +93,11 @@ export default async function CursoArquiteturaSoftwarePage() {
     headline="Aprenda a enxergar o sistema além do código."
     description="Entenda como aplicações profissionais são organizadas, quais decisões influenciam qualidade e como escolher estruturas mais fáceis de manter, integrar e evoluir."
     notice="Oferta atual: curso de Arquitetura + 3 cursos bônus"
-    ctaLabel={offerAvailable ? "Quero os 4 cursos por R$ 39,99" : "Ver conteúdo e bônus"}
+    ctaLabel={offerAvailable ? "Quero este curso por R$ 79,90" : "Ver conteúdo e bônus"}
     checkoutUrl={checkoutUrl}
     price={price}
     offerAvailable={offerAvailable}
-    stats={[{ value: "4", label: "cursos no pacote" }, { value: "200+", label: "aulas disponíveis" }, { value: "6x R$ 6,67", label: "parcelamento" }, { value: "R$ 39,99", label: "à vista" }]}
+    stats={[{ value: "4", label: "cursos no pacote" }, { value: "200+", label: "aulas disponíveis" }, { value: "Vitalício", label: "acesso ao conteúdo" }, { value: "R$ 79,90", label: "pagamento único" }]}
     heroPoints={["Comece mesmo sendo iniciante", "Exemplos conectados ao .NET", "C#, API e AWS como bônus"]}
     problemTitle="O código funciona, mas você ainda não sabe se o sistema está bem organizado?"
     problemDescription="Arquitetura parece abstrata quando é ensinada apenas com diagramas. Aqui, os conceitos são ligados a responsabilidades, integração, qualidade e decisões que aparecem em aplicações reais."
@@ -123,7 +123,7 @@ export default async function CursoArquiteturaSoftwarePage() {
     fitTitle="Para quem quer deixar de apenas escrever código e começar a compreender sistemas"
     fitItems={["Quem está começando e quer aprender boas bases", "Desenvolvedores C# e .NET em evolução", "Quem já cria APIs, mas tem dúvidas de organização", "Profissionais se preparando para responsabilidades maiores", "Quem quer entender SOLID sem definições decoradas", "Quem deseja conectar código, integração e infraestrutura"]}
     offerTitle="Leve Arquitetura de Software e mais três cursos completos"
-    offerDescription="Por R$ 39,99 à vista, você recebe o curso principal e os treinamentos de C#, API RESTful com .NET e AWS. Uma base com mais de 200 aulas para acompanhar diferentes fases da sua evolução."
+    offerDescription="Por R$ 79,90, você recebe o curso principal e os treinamentos de C#, API RESTful com .NET e AWS. Uma base com mais de 200 aulas para acompanhar diferentes fases da sua evolução."
     offerItems={["Arquitetura de Software", "75 aulas de C#", "51 aulas de API .NET", "Curso completo de AWS", "Mais de 200 aulas", "4 cursos em uma matrícula"]}
     offerNote={offerAvailable ? "Você será direcionado ao checkout para conferir as condições antes de concluir." : "O conteúdo e o preço já estão definidos. O botão de compra será liberado assim que o checkout da Hotmart for informado."}
     faq={[
@@ -131,7 +131,7 @@ export default async function CursoArquiteturaSoftwarePage() {
       ["Arquitetura não é apenas para desenvolvedores sênior?", "Não. Aprender responsabilidades, qualidade e integração desde cedo evita vícios e acelera a evolução profissional."],
       ["Os três bônus estão incluídos?", "Sim. C#, API RESTful com .NET e AWS acompanham o curso de Arquitetura nesta oferta."],
       ["O curso trabalha exemplos práticos?", "Sim. Os bônus conectam a teoria de arquitetura a código, API, banco de dados, autenticação e infraestrutura."],
-      ["Qual é o investimento?", "O valor informado é 6 parcelas de R$ 6,67 ou R$ 39,99 à vista."],
+      ["Qual é o investimento?", "O investimento atual é de R$ 79,90."],
       ["Já posso comprar?", offerAvailable ? "Sim. Use qualquer botão de inscrição da página para acessar o checkout." : "O checkout será liberado nesta página assim que o link da Hotmart estiver disponível."],
     ]}
   />;

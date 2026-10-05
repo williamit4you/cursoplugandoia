@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "Aprenda IA Generativa do zero e construa uma aplicação real com API de IA, contexto, Tools, Prisma, SQLite e agendamentos.",
   keywords: ["Fundamentos de IA Generativa", "curso de Inteligência Artificial", "curso IA Generativa", "aprender Inteligência Artificial", "aplicações com IA"],
   alternates: { canonical: "/fundamentos-ia" },
-  openGraph: { title: "Do zero à sua primeira aplicação com Inteligência Artificial", description: "Fundamentos, prática e uma aplicação real com IA por R$ 29,90.", type: "website", url: "/fundamentos-ia" },
+  openGraph: { title: "Do zero à sua primeira aplicação com Inteligência Artificial", description: "Fundamentos, prática e uma aplicação real com IA por R$ 79,90.", type: "website", url: "/fundamentos-ia" },
 };
 
 export default async function FundamentosIaPage() {

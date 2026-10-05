@@ -22,7 +22,7 @@ export default function CursosPage() {
       <header className="border-b border-slate-200">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           <Link href="/cursos" className="flex items-center gap-3 text-lg font-extrabold tracking-[-0.03em] text-[#0b1f3a]"><span className="grid h-9 w-9 place-items-center rounded-lg bg-blue-700 text-white"><Code2 className="h-5 w-5" /></span>Plugando IA</Link>
-          <Link href="/curso-arquitetura-software" className="text-sm font-semibold text-blue-700 hover:text-blue-800">Ver curso de Arquitetura</Link>
+          <Link href="/formacao-completa" className="text-sm font-semibold text-blue-700 hover:text-blue-800">Ver formação completa</Link>
         </div>
       </header>
 
@@ -35,10 +35,10 @@ export default function CursosPage() {
             <a href="#catalogo" className="mt-8 inline-flex items-center justify-center rounded-lg bg-blue-700 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-blue-800">Explorar cursos <ArrowRight className="ml-2 h-4 w-4" /></a>
           </div>
           <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-6 md:p-8">
-            <p className="text-sm font-semibold text-blue-700">Curso em destaque</p>
-            <h2 className="mt-3 text-2xl font-bold tracking-tight text-[#0b1f3a]">Arquitetura de Software com C#.</h2>
-            <p className="mt-4 leading-7 text-slate-600">O curso aberto agora inclui C#, API RESTful com .NET e AWS como bônus. R$ 39,99 à vista.</p>
-            <Link href="/curso-arquitetura-software?utm_source=vitrine&utm_medium=site&utm_campaign=destaque_arquitetura" className="mt-6 inline-flex items-center text-sm font-bold text-blue-700 hover:text-blue-800">Conhecer o curso de Arquitetura <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            <p className="text-sm font-semibold text-blue-700">Melhor custo-benefício</p>
+            <h2 className="mt-3 text-2xl font-bold tracking-tight text-[#0b1f3a]">Formação Completa Plugando IA.</h2>
+            <p className="mt-4 leading-7 text-slate-600">Os quatro cursos, acesso vitalício e futuras atualizações por R$ 149,90. Separadamente, custariam R$ 319,60.</p>
+            <Link href="/formacao-completa?utm_source=vitrine&utm_medium=site&utm_campaign=destaque_formacao" className="mt-6 inline-flex items-center text-sm font-bold text-blue-700 hover:text-blue-800">Conhecer a formação completa <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </aside>
         </div>
       </section>
@@ -65,7 +65,7 @@ export default function CursosPage() {
         </div>
       </section>
 
-      <section className="border-y border-blue-200 bg-blue-50"><div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-14 md:flex-row md:items-center md:justify-between md:px-8"><div><h2 className="text-3xl font-bold tracking-[-0.03em] text-[#0b1f3a]">Comece por Arquitetura de Software</h2><p className="mt-3 max-w-2xl leading-7 text-slate-600">O curso de Arquitetura está aberto e inclui C#, API RESTful com .NET e AWS como bônus.</p></div><Link href="/curso-arquitetura-software?utm_source=vitrine&utm_medium=site&utm_campaign=rodape_arquitetura" className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-700 px-6 py-3.5 text-sm font-bold text-white hover:bg-blue-800">Ver curso de Arquitetura <ArrowRight className="ml-2 h-4 w-4" /></Link></div></section>
+      <section className="border-y border-blue-200 bg-blue-50"><div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-14 md:flex-row md:items-center md:justify-between md:px-8"><div><h2 className="text-3xl font-bold tracking-[-0.03em] text-[#0b1f3a]">Leve a formação completa por R$ 149,90</h2><p className="mt-3 max-w-2xl leading-7 text-slate-600">Arquitetura, RabbitMQ, IA Generativa e SaaS com acesso vitalício e futuras atualizações.</p></div><Link href="/formacao-completa?utm_source=vitrine&utm_medium=site&utm_campaign=rodape_formacao" className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-700 px-6 py-3.5 text-sm font-bold text-white hover:bg-blue-800">Ver formação completa <ArrowRight className="ml-2 h-4 w-4" /></Link></div></section>
       <footer className="border-t border-slate-200"><div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-slate-500 md:flex-row md:justify-between md:px-8"><strong className="text-[#0b1f3a]">Plugando IA</strong><span>Programação, arquitetura, produto e Inteligência Artificial.</span></div></footer>
     </main>
   );
