@@ -1,5 +1,6 @@
 import { Providers } from "@/components/Providers";
 import CommerceAnalyticsTracker from "@/components/CommerceAnalyticsTracker";
+import { MetaPixelScript } from "@/components/MetaPixelScript";
 import { hostnameFromSiteUrl, getCommerceSiteUrl } from "@/lib/siteUrls";
 import "./../globals.css";
 
@@ -15,6 +16,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <body className="theme-dark bg-[#0b0c10] text-gray-100 antialiased min-h-screen">
         <Providers>
           <CommerceAnalyticsTracker commerceHostname={commerceHostname} />
+          <MetaPixelScript pixelId={process.env.NEXT_PUBLIC_META_PIXEL_ID} />
           {children}
         </Providers>
       </body>
