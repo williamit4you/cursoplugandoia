@@ -19,6 +19,6 @@ export const metadata: Metadata = {
 
 export default async function VibeCodePage() {
   const metaPixelId = await resolveSalesPageMetaPixelId(pageKey, { preferEnvFallback: true });
-  const checkoutUrl = process.env.NEXT_PUBLIC_VIBECODE_CHECKOUT_URL?.trim() || "https://pay.hotmart.com/W107908356O";
+  const checkoutUrl = process.env.NEXT_PUBLIC_VIBECODE_CHECKOUT_URL?.trim() || "https://pay.hotmart.com/W107908356O?checkoutMode=10";
   return <VibeCodeLanding checkoutUrl={checkoutUrl} metaPixelId={metaPixelId || undefined} />;
 }

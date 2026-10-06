@@ -5,7 +5,7 @@ import { resolveSalesPageMetaPixelId } from "@/lib/salesPagePixel";
 const pageKey = "curso-rabbitmq";
 const checkoutUrl =
   process.env.NEXT_PUBLIC_RABBITMQ_CHECKOUT_URL ??
-  "https://pay.hotmart.com/V107737859J?bid=1790201856849";
+  "https://pay.hotmart.com/V107737859J?checkoutMode=10";
 
 // O ID padrão abaixo corresponde a https://youtu.be/Y_JYPX30DVM.
 // A variável de ambiente permite substituir o vídeo futuramente sem alterar o código.

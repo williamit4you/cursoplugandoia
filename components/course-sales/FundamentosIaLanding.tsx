@@ -7,14 +7,15 @@ import { MobileStickyCTA, SectionViewTracker, TrackedAccordion, TrackedCheckoutB
 
 // Troque somente estas duas constantes quando os links estiverem disponíveis.
 export const SALES_VIDEO_URL = "https://youtu.be/eeW4Oz2en_k";
-export const CHECKOUT_URL = "https://pay.hotmart.com/V107883519Y?bid=1791087410314";
+export const CHECKOUT_URL = "https://pay.hotmart.com/V107883519Y?checkoutMode=10";
 
 // Mantém a chave histórica para preservar a configuração e os relatórios existentes.
 const PAGE_KEY = "curso-fundamentos-ia";
 const PAGE_PATH = "/fundamentos-ia";
-const PAGE_TITLE = "Fundamentos de IA Generativa | Curso prático da Plugando IA";
+const COURSE_NAME = "Fundamentos de IA Generativa (com projeto de Agente de IA)";
+const PAGE_TITLE = `${COURSE_NAME} | Plugando IA`;
 const PRICE = 79.9;
-const eventData = { content_name: "Fundamentos de IA Generativa", content_category: "Curso", content_type: "product", value: PRICE, currency: "BRL" };
+const eventData = { content_name: COURSE_NAME, content_category: "Curso", content_type: "product", value: PRICE, currency: "BRL" };
 
 const journey = ["Entender IA", "Aprender LLMs", "Criar bons prompts", "Conectar uma API de IA", "Fornecer contexto", "Usar Tools", "Consultar dados", "Executar ações", "Construir uma aplicação real"];
 
@@ -68,8 +69,8 @@ export function FundamentosIaLanding({ metaPixelId }: { metaPixelId?: string }) 
   const checkoutReady = CHECKOUT_URL.startsWith("http");
   return <main className="min-h-screen overflow-hidden bg-[#07090d] pb-24 text-white md:pb-0">
     <MetaPixelScript pixelId={metaPixelId} /><MetaPixelViewContent data={eventData} />
-    <SalesPageTracker pageKey={PAGE_KEY} pagePath={PAGE_PATH} pageTitle={PAGE_TITLE} metadata={{ offerPrice: PRICE, currency: "BRL", offerName: "Fundamentos de IA Generativa" }} />
-    <SalesViewContentTracker pageKey={PAGE_KEY} pagePath={PAGE_PATH} pageTitle={PAGE_TITLE} currency="BRL" value={PRICE} metadata={{ contentName: "Fundamentos de IA Generativa", contentType: "course" }} />
+    <SalesPageTracker pageKey={PAGE_KEY} pagePath={PAGE_PATH} pageTitle={PAGE_TITLE} metadata={{ offerPrice: PRICE, currency: "BRL", offerName: COURSE_NAME }} />
+    <SalesViewContentTracker pageKey={PAGE_KEY} pagePath={PAGE_PATH} pageTitle={PAGE_TITLE} currency="BRL" value={PRICE} metadata={{ contentName: COURSE_NAME, contentType: "course" }} />
     <SectionViewTracker selectorId="conteudo" pageKey={PAGE_KEY} pagePath={PAGE_PATH} pageTitle={PAGE_TITLE} eventName="curriculum_view" /><SectionViewTracker selectorId="projeto" pageKey={PAGE_KEY} pagePath={PAGE_PATH} pageTitle={PAGE_TITLE} eventName="project_view" /><SectionViewTracker selectorId="oferta" pageKey={PAGE_KEY} pagePath={PAGE_PATH} pageTitle={PAGE_TITLE} eventName="offer_view" />
 
     <header className="relative z-40 border-b border-white/10 bg-[#07090d]/90 backdrop-blur-xl"><div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8"><Link href="/cursos" className="flex items-center gap-2 text-lg font-black tracking-[-0.04em] text-white"><span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-300 text-slate-950"><Zap className="h-4 w-4 fill-current" /></span>Plugando IA</Link><nav aria-label="Navegação da página" className="hidden items-center gap-7 lg:flex"><a href="#conteudo" className="text-sm text-slate-400 hover:text-white">O que você aprende</a><a href="#projeto" className="text-sm text-slate-400 hover:text-white">Projeto</a><a href="#para-quem" className="text-sm text-slate-400 hover:text-white">Para quem é</a><a href="#faq" className="text-sm text-slate-400 hover:text-white">FAQ</a></nav><CheckoutButton label="Começar agora" eventName="header_checkout_click" className="!min-h-0 !px-4 !py-2.5 !text-xs" /></div></header>

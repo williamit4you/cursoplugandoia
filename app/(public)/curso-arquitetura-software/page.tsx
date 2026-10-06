@@ -6,7 +6,7 @@ const pageKey = "curso-arquitetura-software";
 const pagePath = "/curso-arquitetura-software";
 const pageTitle = "Arquitetura de Software para Iniciantes com C# | Plugando IA";
 const price = 79.9;
-const checkoutUrl = process.env.NEXT_PUBLIC_ARCHITECTURE_CHECKOUT_URL ?? "https://pay.hotmart.com/M103626951G?bid=1790202574487";
+const checkoutUrl = process.env.NEXT_PUBLIC_ARCHITECTURE_CHECKOUT_URL ?? "https://pay.hotmart.com/M103626951G?checkoutMode=10";
 const offerAvailable = /^https?:\/\//.test(checkoutUrl);
 
 export const metadata: Metadata = {

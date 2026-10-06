@@ -6,7 +6,7 @@ const pageKey = "curso-saas";
 const pagePath = "/curso-saas";
 const pageTitle = "Curso SaaS com IA, Antigravity e Next.js | Plugando IA";
 const price = Number(process.env.NEXT_PUBLIC_SAAS_PRICE ?? 79.9);
-const checkoutUrl = process.env.NEXT_PUBLIC_SAAS_CHECKOUT_URL ?? "https://pay.hotmart.com/L107741495H?bid=1790201782816";
+const checkoutUrl = process.env.NEXT_PUBLIC_SAAS_CHECKOUT_URL ?? "https://pay.hotmart.com/L107741495H?checkoutMode=10";
 const offerAvailable = price > 0 && /^https?:\/\//.test(checkoutUrl);
 
 export const metadata: Metadata = {
