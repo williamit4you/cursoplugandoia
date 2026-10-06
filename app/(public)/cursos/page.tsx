@@ -37,7 +37,7 @@ export default function CursosPage() {
           <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-6 md:p-8">
             <p className="text-sm font-semibold text-blue-700">Melhor custo-benefício</p>
             <h2 className="mt-3 text-2xl font-bold tracking-tight text-[#0b1f3a]">Formação Completa Plugando IA.</h2>
-            <p className="mt-4 leading-7 text-slate-600">Os quatro cursos, acesso vitalício e futuras atualizações por R$ 149,90. Separadamente, custariam R$ 319,60.</p>
+            <p className="mt-4 leading-7 text-slate-600">Os cinco cursos, acesso vitalício e futuras atualizações por R$ 149,90. Separadamente, custariam R$ 399,50.</p>
             <Link href="/formacao-completa?utm_source=vitrine&utm_medium=site&utm_campaign=destaque_formacao" className="mt-6 inline-flex items-center text-sm font-bold text-blue-700 hover:text-blue-800">Conhecer a formação completa <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </aside>
         </div>
@@ -65,7 +65,7 @@ export default function CursosPage() {
         </div>
       </section>
 
-      <section className="border-y border-blue-200 bg-blue-50"><div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-14 md:flex-row md:items-center md:justify-between md:px-8"><div><h2 className="text-3xl font-bold tracking-[-0.03em] text-[#0b1f3a]">Leve a formação completa por R$ 149,90</h2><p className="mt-3 max-w-2xl leading-7 text-slate-600">Arquitetura, RabbitMQ, IA Generativa e SaaS com acesso vitalício e futuras atualizações.</p></div><Link href="/formacao-completa?utm_source=vitrine&utm_medium=site&utm_campaign=rodape_formacao" className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-700 px-6 py-3.5 text-sm font-bold text-white hover:bg-blue-800">Ver formação completa <ArrowRight className="ml-2 h-4 w-4" /></Link></div></section>
+      <section className="border-y border-blue-200 bg-blue-50"><div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-14 md:flex-row md:items-center md:justify-between md:px-8"><div><h2 className="text-3xl font-bold tracking-[-0.03em] text-[#0b1f3a]">Leve a formação completa por R$ 149,90</h2><p className="mt-3 max-w-2xl leading-7 text-slate-600">Vibe Coding, Arquitetura, RabbitMQ, IA Generativa e SaaS com acesso vitalício e futuras atualizações.</p></div><Link href="/formacao-completa?utm_source=vitrine&utm_medium=site&utm_campaign=rodape_formacao" className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-700 px-6 py-3.5 text-sm font-bold text-white hover:bg-blue-800">Ver formação completa <ArrowRight className="ml-2 h-4 w-4" /></Link></div></section>
       <footer className="border-t border-slate-200"><div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-slate-500 md:flex-row md:justify-between md:px-8"><strong className="text-[#0b1f3a]">Plugando IA</strong><span>Programação, arquitetura, produto e Inteligência Artificial.</span></div></footer>
     </main>
   );

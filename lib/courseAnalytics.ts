@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export const COURSE_ANALYTICS_PAGES = [
   { pageKey: "cursos", path: "/cursos", title: "Vitrine de cursos" },
+  { pageKey: "vibecode", path: "/vibecode", title: "Vibe Coding para Leigos" },
   { pageKey: "curso-arquitetura-software", path: "/curso-arquitetura-software", title: "Arquitetura de Software" },
   { pageKey: "curso-rabbitmq", path: "/curso-rabbitmq", title: "RabbitMQ com .NET" },
   { pageKey: "curso-saas", path: "/curso-saas", title: "SaaS com IA" },

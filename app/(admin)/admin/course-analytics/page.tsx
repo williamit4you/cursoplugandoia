@@ -23,6 +23,7 @@ type Payload = {
 const courses = [
   { value: "", label: "Todos os cursos" },
   { value: "cursos", label: "Vitrine de cursos" },
+  { value: "vibecode", label: "Vibe Coding para Leigos" },
   { value: "curso-arquitetura-software", label: "Arquitetura de Software" },
   { value: "curso-rabbitmq", label: "RabbitMQ com .NET" },
   { value: "curso-saas", label: "SaaS com IA" },

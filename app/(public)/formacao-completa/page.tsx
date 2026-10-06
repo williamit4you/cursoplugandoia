@@ -5,16 +5,15 @@ import { resolveSalesPageMetaPixelId } from "@/lib/salesPagePixel";
 const pageKey = "formacao-completa";
 
 export const metadata: Metadata = {
-  title: "Formação Completa Plugando IA | 4 cursos com acesso vitalício",
-  description: "Arquitetura de Software, RabbitMQ com .NET, Fundamentos de IA Generativa e SaaS com Antigravity por R$ 149,90, com acesso vitalício, futuras atualizações e garantia de 7 dias.",
+  title: "Formação Completa Plugando IA | 5 cursos com acesso vitalício",
+  description: "Vibe Coding, Arquitetura de Software, RabbitMQ com .NET, IA Generativa e SaaS com Antigravity por R$ 149,90, com acesso vitalício, futuras atualizações e garantia de 7 dias.",
   alternates: { canonical: "/formacao-completa" },
   openGraph: {
-    title: "Formação Completa Plugando IA — 4 cursos por R$ 149,90",
-    description: "Quatro cursos para aprender arquitetura, mensageria, IA Generativa e construção de SaaS.",
+    title: "Formação Completa Plugando IA — 5 cursos por R$ 149,90",
+    description: "Cinco cursos para aprender Vibe Coding, arquitetura, mensageria, IA Generativa e construção de SaaS.",
     type: "website",
     locale: "pt_BR",
     url: "/formacao-completa",
-    images: [{ url: "/images/formacao-completa-combo.png", width: 1060, height: 431, alt: "Os quatro cursos da Formação Completa Plugando IA" }],
   },
 };
 
