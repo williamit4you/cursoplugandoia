@@ -141,7 +141,7 @@ export default function SalesAnalyticsPage() {
     pageKey: "curso-fundamentos-ia",
     pagePath: "/curso-fundamentos-ia",
     title: "Plugando IA | Arquitetando o Futuro com LLMs e RAG",
-    metaPixelId: "2221646568647297",
+    metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID || "",
     notes: "",
   });
 

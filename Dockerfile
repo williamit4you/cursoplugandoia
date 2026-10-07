@@ -23,6 +23,32 @@ ENV COMMERCE_SITE_URL=$COMMERCE_SITE_URL
 ARG NEXT_PUBLIC_SITE_URL
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 
+# Variaveis NEXT_PUBLIC_* sao incorporadas pelo Next.js durante o build.
+# Declara-las apenas no container em execucao deixa o bundle sem esses valores.
+ARG NEXT_PUBLIC_META_PIXEL_ID
+ENV NEXT_PUBLIC_META_PIXEL_ID=$NEXT_PUBLIC_META_PIXEL_ID
+
+ARG NEXT_PUBLIC_CHECKOUT_URL
+ENV NEXT_PUBLIC_CHECKOUT_URL=$NEXT_PUBLIC_CHECKOUT_URL
+
+ARG NEXT_PUBLIC_RABBITMQ_CHECKOUT_URL
+ENV NEXT_PUBLIC_RABBITMQ_CHECKOUT_URL=$NEXT_PUBLIC_RABBITMQ_CHECKOUT_URL
+
+ARG NEXT_PUBLIC_SAAS_CHECKOUT_URL
+ENV NEXT_PUBLIC_SAAS_CHECKOUT_URL=$NEXT_PUBLIC_SAAS_CHECKOUT_URL
+
+ARG NEXT_PUBLIC_SAAS_PRICE
+ENV NEXT_PUBLIC_SAAS_PRICE=$NEXT_PUBLIC_SAAS_PRICE
+
+ARG NEXT_PUBLIC_ARCHITECTURE_CHECKOUT_URL
+ENV NEXT_PUBLIC_ARCHITECTURE_CHECKOUT_URL=$NEXT_PUBLIC_ARCHITECTURE_CHECKOUT_URL
+
+ARG NEXT_PUBLIC_VIBECODE_CHECKOUT_URL
+ENV NEXT_PUBLIC_VIBECODE_CHECKOUT_URL=$NEXT_PUBLIC_VIBECODE_CHECKOUT_URL
+
+ARG NEXT_PUBLIC_FORMACAO_COMPLETA_CHECKOUT_URL
+ENV NEXT_PUBLIC_FORMACAO_COMPLETA_CHECKOUT_URL=$NEXT_PUBLIC_FORMACAO_COMPLETA_CHECKOUT_URL
+
 ARG FASTAPI_URL
 ENV FASTAPI_URL=$FASTAPI_URL
 
@@ -41,7 +67,12 @@ ENV MINIO_BUCKET_NAME=$MINIO_BUCKET_NAME
 ARG MINIO_PUBLIC_URL
 ENV MINIO_PUBLIC_URL=$MINIO_PUBLIC_URL
 
+# Mantenha a instalacao em uma camada que depende somente dos manifests. Assim,
+# alteracoes em paginas, links e componentes reaproveitam o cache do npm ci.
 COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund
+
 COPY app ./app
 COPY components ./components
 COPY lib ./lib
@@ -56,20 +87,11 @@ COPY prisma.config.ts ./prisma.config.ts
 COPY tailwind.config.ts ./tailwind.config.ts
 COPY tsconfig.json ./tsconfig.json
 
-RUN npm ci --no-audit --no-fund \
-    && npx prisma generate \
-    && npm run build \
-    && npm cache clean --force \
-    && rm -rf node_modules /root/.npm
+RUN npx prisma generate \
+    && npm run build
 
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
-
-# A dependência explícita do estágio builder evita que Chromium e npm ci
-# consumam espaço em disco simultaneamente durante o build.
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=1001:1001 /app/.next/standalone ./
-COPY --from=builder --chown=1001:1001 /app/.next/static ./.next/static
 
 ARG FASTAPI_URL
 ENV FASTAPI_URL=$FASTAPI_URL
@@ -116,6 +138,12 @@ RUN adduser --system --uid 1001 nextjs
 RUN mkdir -p /home/nextjs/.config /home/nextjs/.cache /tmp/runtime-nextjs \
     && chown -R nextjs:nodejs /home/nextjs /tmp/runtime-nextjs \
     && chmod 700 /tmp/runtime-nextjs
+
+# Copie o resultado variavel da aplicacao somente depois das dependencias de
+# sistema. Assim, mudancas no codigo nao reinstalam Chromium e tiktok-uploader.
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=1001:1001 /app/.next/standalone ./
+COPY --from=builder --chown=1001:1001 /app/.next/static ./.next/static
 
 # Evita embutir segredos do build dentro da imagem (o "standalone" pode conter `.env`)
 RUN rm -f .env
