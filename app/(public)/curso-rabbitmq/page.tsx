@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { RabbitMqCourseLanding } from "@/components/course-sales/RabbitMqCourseLanding";
+import { RabbitMqCourseLandingV2 } from "@/components/course-sales/RabbitMqCourseLandingV2";
 import { resolveSalesPageMetaPixelId } from "@/lib/salesPagePixel";
 
 const pageKey = "curso-rabbitmq";
@@ -48,7 +48,7 @@ export default async function CursoRabbitmqPage() {
   });
 
   return (
-    <RabbitMqCourseLanding
+    <RabbitMqCourseLandingV2
       checkoutUrl={checkoutUrl}
       metaPixelId={metaPixelId || undefined}
       youtubeVideoId={safeYoutubeVideoId}
